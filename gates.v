@@ -253,14 +253,16 @@ Lemma PonX : Pgate : Xgate ~> Ygate.
 Proof. unfold gate_type. apply PX_eq_YP.
 Qed.
 
+
+
 Lemma PonZ : Pgate : Zgate ~> Zgate.
-Proof. unfold gate_type. (* did not prove above *)
+Proof. unfold gate_type. lma. (* did not prove above *)
        compute. prep_matrix_equality. do 3 (try destruct x; try destruct y; simpl; trivial). 
        all : lca.
 Qed.
 
 Lemma CNOT1onX1 : CNOT1 : (X 1) ~> (X 1 \u00d7 X 2). 
-Proof. Admitted.
+Proof. do 3 (try destruct x; try destruct y; simpl; trivial). 
 
 Lemma CNOT1onX2 : CNOT1 : (X 2) ~> (X 2). 
 Proof. Admitted.
@@ -300,6 +302,7 @@ Proof. intros n U A1 B1 A2 B2. unfold gate_app. intros H0 H1 H2. rewrite <- H1. 
        do 3 rewrite Mmult_assoc. rewrite H. unfold is_unitary in H0.
        apply Minv_flip in H0. rewrite H0. do 4 rewrite <- Mmult_assoc. assert (H': U \u00d7 A1 \u00d7 I n = U \u00d7 A1).
        { rewrite Mmult_assoc. rewrite Mmult_1_r. reflexivity. } rewrite H'. reflexivity.
+       
 Qed. 
 
 
@@ -309,7 +312,7 @@ Qed.
 Definition U1 : Matrix 4 4 := CNOT1 \u00d7 CNOT2 \u00d7 CNOT1.
 
 Lemma U1onX1 : U1 : (X 1) ~> (X 2).
-Proof. 
+Proof. unfold gate_app. unfold U1. (rewrite <- Mmult_1_r) X 1. rewrite <- Mmult_1_r.
 
 
 
