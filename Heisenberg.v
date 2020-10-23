@@ -8,7 +8,8 @@ Require Import Matrix.
 
 
 
-
+(* still could not remove these statements even when opening scopes... *)
+(* could be something with emacs?  *)
 Notation "√ n" := (sqrt n) (at level 20) : R_scope.
 
 Infix "∘" := dot (at level 40, left associativity) : matrix_scope.
@@ -24,67 +25,77 @@ Notation "n ⨂ A" := (kron_n n A) (at level 30, no associativity) : matrix_scop
 Notation "⨂ A" := (big_kron A) (at level 60): matrix_scope.
 Notation "n ⨉ A" := (Mmult_n n A) (at level 30, no associativity) : matrix_scope.
 
-Definition Xgate : Matrix 2 2 := 
-  list2D_to_matrix  
-  ([[RtoC 0; RtoC 1];
-    [RtoC 1; RtoC 0]]).
 
+
+Definition Xgate : Matrix 2 2 := 
+  fun x y => match x, y with
+          | 0, 1 => C1
+          | 1, 0 => C1
+          | _, _ => C0
+          end.
 
 Definition Ygate : Matrix 2 2 := 
-  list2D_to_matrix  
-  ([[RtoC 0; - Ci];
-    [Ci; RtoC 0]]).
-
+  fun x y => match x, y with
+          | 0, 1 => -Ci
+          | 1, 0 => Ci
+          | _, _ => C0
+          end.
 
 Definition Zgate : Matrix 2 2 := 
-  list2D_to_matrix  
-  ([[RtoC 1; RtoC 0];
-    [RtoC 0; - RtoC 1]]).
-
-
-Definition Hraw : Matrix 2 2 := 
-  list2D_to_matrix  
-  ([[RtoC 1; RtoC 1];
-    [RtoC 1; - RtoC 1]]).
-
-Definition Hgate : Matrix 2 2 :=
-  / (√ 2) .* Hraw. 
-
+  fun x y => match x, y with
+          | 0, 0 => C1
+          | 1, 1 => -C1
+          | _, _ => C0
+             end.
 
 Definition Pgate : Matrix 2 2 := 
-  list2D_to_matrix  
-  ([[RtoC 1; RtoC 0];
-    [RtoC 0; Ci]]).
+  fun x y => match x, y with
+          | 0, 0 => C1
+          | 1, 1 => Ci
+          | _, _ => C0
+             end.
+
+Definition Hgate : Matrix 2 2 := 
+  (fun x y => match x, y with
+          | 0, 0 => (1 / √2)
+          | 0, 1 => (1 / √2)
+          | 1, 0 => (1 / √2)
+          | 1, 1 => -(1 / √2)
+          | _, _ => 0
+              end).
+
+Definition CNOT1 : Matrix (2*2) (2*2) :=
+  fun x y => match x, y with 
+          | 0, 0 => C1
+          | 1, 1 => C1
+          | 2, 3 => C1
+          | 3, 2 => C1
+          | _, _ => C0
+          end.          
+
+Definition CNOT2 : Matrix (2*2) (2*2) :=
+  fun x y => match x, y with 
+          | 1, 3 => 1%C
+          | 3, 1 => 1%C
+          | 0, 0 => 1%C
+          | 2, 2 => 1%C
+          | _, _ => 0%C
+          end.          
 
 
-Definition CNOT1 : Matrix 4 4 := 
-  list2D_to_matrix  
-  ([[RtoC 1; RtoC 0; RtoC 0; RtoC 0];
-    [RtoC 0; RtoC 1; RtoC 0; RtoC 0];
-    [RtoC 0; RtoC 0; RtoC 0; RtoC 1];
-    [RtoC 0; RtoC 0; RtoC 1; RtoC 0]]).
+
+Definition control {n : nat} (A : Matrix n n) : Matrix (2*n) (2*n) :=
+  fun x y => if (x <? n) && (y =? x) then 1 else 
+          if (n <=? x) && (n <=? y) then A (x-n)%nat (y-n)%nat else 0.
 
 
-Definition CNOT2 : Matrix 4 4 := 
-  list2D_to_matrix  
-  ([[RtoC 1; RtoC 0; RtoC 0; RtoC 0];
-    [RtoC 0; RtoC 0; RtoC 0; RtoC 1];
-    [RtoC 0; RtoC 0; RtoC 1; RtoC 0];
-    [RtoC 0; RtoC 1; RtoC 0; RtoC 0]]).
 
-Definition X1 : Matrix 4 4 := 
-  list2D_to_matrix  
-  ([[RtoC 0; RtoC 0; RtoC 1; RtoC 0];
-    [RtoC 0; RtoC 0; RtoC 0; RtoC 1];
-    [RtoC 1; RtoC 0; RtoC 0; RtoC 0];
-    [RtoC 0; RtoC 1; RtoC 0; RtoC 0]]).
+Lemma cnot_eq : CNOT1 = control Xgate.
+Proof.
+  unfold CNOT1, control, Xgate.
+  solve_matrix.
+Qed.
 
-Definition X2 : Matrix 4 4 := 
-  list2D_to_matrix  
-  ([[RtoC 0; RtoC 1; RtoC 0; RtoC 0];
-    [RtoC 1; RtoC 0; RtoC 0; RtoC 0];
-    [RtoC 0; RtoC 0; RtoC 0; RtoC 1];
-    [RtoC 0; RtoC 0; RtoC 1; RtoC 0]]).
 
 
 Definition X (n : nat) : Matrix 4 4 :=
@@ -114,7 +125,7 @@ Definition Z (n : nat) : Matrix 4 4 :=
 
 
 (* we need this for some reason... I assume there is a built in tactic that does this*)
-Lemma Propff : forall (b : bool), 
+Lemma Propiff : forall (b : bool), 
   (if b then false else false) = false.
 Proof. destruct b; reflexivity; reflexivity.
 Qed.
@@ -122,13 +133,13 @@ Qed.
 
 
 (* added extra tactic to prevent stuckness at if _ then false else false lines *)
-Ltac destruct_m_eq2 := repeat (destruct_m_1; simpl; try lca; try (rewrite -> Propff)).
+Ltac destruct_m_eq_piff := repeat (destruct_m_1; simpl; try lca; try (rewrite -> Propiff)).
 
 Ltac lma2 :=
   compute;
   autounfold with U_db;
   prep_matrix_equality;
-  destruct_m_eq2;
+  destruct_m_eq_piff;
   try lca.
 
 
@@ -176,35 +187,21 @@ Lemma divmod_0 : forall x, fst (Nat.divmod x 0 0 0) = x.
 Proof. intros. rewrite divmod_0q0. lia. Qed.
 
 
-
-(*must prove but is definitely true. Will do later... may be difficult*)
-(*also I probably shouldn't have to prove this random thing, but it works*)
-(*does it generalize? Kron makes this very bad...*) 
-Lemma resolve_divmod : forall y : nat,
-    Nat.divmod y 1 2 0 = ((2 + y / 2 + (y mod 2%nat))%nat, y mod 2%nat).
-Proof. Admitted.
-
-
-
-
 Ltac destruct_m_eq' := repeat 
-                         (progress (try destruct_m_1'; try rewrite divmod_0; try rewrite divmod_S ; try rewrite resolve_divmod; simpl)).
+                         (progress (try destruct_m_1'; try rewrite divmod_0; try rewrite divmod_S ; simpl)).
 
 
 
-Ltac destruct_m_eq_super := repeat (destruct_m_eq'; destruct_m_eq2).  
+Ltac destruct_m_eq_piff' := repeat (destruct_m_eq'; destruct_m_eq_piff).  
 
-Ltac lma_super :=
+Ltac lma3 :=
   compute;
   autounfold with U_db;
   prep_matrix_equality;
-  destruct_m_eq2;
-  destruct_m_eq_super;    (* <---- For some reason adding this broke things... *)
+  destruct_m_eq_piff;
+  try destruct_m_eq_piff';    (* <---- For some reason adding this broke things... *)
   try lca. 
                                     
-
-
-
 
 
 
@@ -224,7 +221,7 @@ Ltac by_cell :=
   repeat (destruct i as [|i]; simpl; [|apply lt_S_n in Hi]; try solve_end); clear Hi;
   repeat (destruct j as [|j]; simpl; [|apply lt_S_n in Hj]; try solve_end); clear Hj.
 
-Ltac lma3 := by_cell; try lca.
+Ltac lma4 := by_cell; try lca.
 
 
 
@@ -271,54 +268,77 @@ Axiom mat_eq_list : forall {m n : nat} (A B : Matrix m n),
 
 
 
-(* Lemmas about Pauli and other common matrices *) 
+(* Lemmas about Pauli and other common gates *) 
 
 
-Lemma XtimesXid : Xgate × Xgate = I 2. 
-Proof. lma_super. (*now it almost seems like I am doing no work? It this the convention? Perhaps for computations...*)
+
+Lemma WF_Xgate : WF_Matrix Xgate. Proof. show_wf. Qed.
+Lemma WF_Ygate : WF_Matrix Xgate. Proof. show_wf. Qed.
+Lemma WF_Zgate : WF_Matrix Xgate. Proof. show_wf. Qed.
+Lemma WF_Pgate : WF_Matrix Xgate. Proof. show_wf. Qed.
+Lemma WF_Hgate : WF_Matrix Xgate. Proof. show_wf. Qed.
+Lemma WF_CNOT1 : WF_Matrix Xgate. Proof. show_wf. Qed.
+Lemma WF_CNOT2 : WF_Matrix Xgate. Proof. show_wf. Qed.
+
+
+Lemma WF_Xn : forall (n : nat), WF_Matrix (X n).
+Proof. destruct n as [|n]. simpl. apply WF_I.
+       destruct n as [|n]. simpl. apply WF_kron. easy. easy.
+       show_wf. apply WF_I.
+       destruct n as [|n]. simpl. apply WF_kron. easy. easy.
+       apply WF_I. show_wf. unfold X. apply WF_I.
+Qed.
+
+Lemma WF_Zn : forall (n : nat), WF_Matrix (Z n).
+Proof. destruct n as [|n]. simpl. apply WF_I.
+       destruct n as [|n]. simpl. apply WF_kron. easy. easy.
+       show_wf. apply WF_I.
+       destruct n as [|n]. simpl. apply WF_kron. easy. easy.
+       apply WF_I. show_wf. unfold X. apply WF_I.
+Qed.
+
+(* How to make single tactic apply to multiple subgoals?
+Ltac lma5 := apply mat_equiv_eq'; repeat (show_wf; apply WF_I); apply WF_I; by_cell; try lca.
+
+Ltac lma6 := apply mat_equiv_eq'; repeat (show_wf); apply WF_I; by_cell; try lca.
+*)
+
+Lemma XtimesXid : (Xgate × Xgate) = (I 2). 
+Proof. solve_matrix.
 Qed.      
 
 Lemma YtimesYid : Ygate × Ygate = I 2.
-Proof. lma_super.
+Proof. apply mat_equiv_eq'. show_wf. apply WF_I. by_cell; lca.
 Qed.
 
 Lemma ZtimesZid : Zgate × Zgate = I 2.
-Proof. lma_super.
+Proof. lma2.
 Qed.
-
-
 
 Lemma Y_eq_iXZ : Ygate = Ci .* Xgate × Zgate.
-Proof. lma_super.
+Proof. lma3.
 Qed.
-
 
 Lemma ZH_eq_HX : Zgate × Hgate = Hgate × Xgate.
-Proof. assert (H : Zgate × Hraw = Hraw × Xgate). 
-       { lma_super. }
-       unfold Hgate. rewrite Mscale_mult_dist_r. rewrite Mscale_mult_dist_l. rewrite H. 
-       reflexivity. 
+Proof. apply mat_equiv_eq'. show_wf. show_wf. by_cell; try lca.
 Qed.
-
-
 
 Lemma PX_eq_YP : Pgate × Xgate = Ygate × Pgate.
-Proof. lma_super.
+Proof. lma3.
 Qed.
 
+
+(* must develop Ltac for this: *)
 Lemma HtimesHid : Hgate × Hgate = I 2.
-Proof. assert (H : Hraw × Hraw = 2 .* I 2). 
-       { lma_super. }
-       unfold Hgate. rewrite Mscale_mult_dist_r. rewrite Mscale_mult_dist_l.
-       rewrite H. rewrite Mscale_assoc. rewrite Cinv_sqrt2_sqrt. rewrite Mscale_assoc.
-       assert (H': / 2 * 2 = 1). { lca. } rewrite H'. rewrite Mscale_1_l. reflexivity.
+Proof. solve_matrix.
+Qed.
+
+Lemma H_eq_Hadjoint : Hgate = Hgate†.
+Proof. lma2.
 Qed.
 
 Lemma XH_eq_HZ : Xgate × Hgate = Hgate × Zgate.
-Proof. assert (H : Xgate × Hraw = Hraw × Zgate). 
-       { lma_super. }
-       unfold Hgate. rewrite Mscale_mult_dist_r. rewrite Mscale_mult_dist_l. rewrite H. 
-       reflexivity.
+Proof. lma3. 
 Qed.
  
 (* Showing that the basic operators we use are unitary *)
@@ -326,38 +346,25 @@ Qed.
 Definition is_unitary {n : nat} (A : Square n) : Prop :=
   A × (A†) = I n. 
 
-Lemma X_unitary : is_unitary Xgate.
-Proof. lma_super. 
-Qed.
-
-Lemma Y_unitary : is_unitary Ygate.
-Proof. lma_super. 
-Qed.
-
-Lemma Z_unitary : is_unitary Zgate.
-Proof. lma_super.
-Qed.
+Lemma X_unitary : is_unitary Xgate. Proof. lma2. Qed.
+Lemma Y_unitary : is_unitary Ygate. Proof. lma2. Qed.
+Lemma Z_unitary : is_unitary Zgate. Proof. lma2. Qed.
+Lemma P_unitary : is_unitary Pgate. Proof. lma2. Qed.
+Lemma CNOT1_unitary : is_unitary CNOT1. Proof. lma2. Qed.
+Lemma CNOT2_unitary : is_unitary CNOT2. Proof. lma2. Qed.
 
 Lemma H_unitary : is_unitary Hgate.
-Proof. assert (H: Hgate† = Hgate). 
-       { lma_super. }
-       unfold is_unitary. rewrite H. apply HtimesHid.
-Qed.
-
-Lemma P_unitary : is_unitary Pgate.
-Proof. lma_super.
-Qed.
-
-Lemma CNOT1_unitary : is_unitary CNOT1.
-Proof. lma_super.
-Qed.
-
-Lemma CNOT2_unitary : is_unitary CNOT2.
-Proof. lma_super.
+Proof. unfold is_unitary. rewrite <- H_eq_Hadjoint. rewrite HtimesHid. reflexivity.
 Qed.
 
 
 (* defining Heisenberg representation *)
+
+
+Declare Scope heisenberg_scope.
+Delimit Scope heisenberg_scope with H.
+Open Scope heisenberg_scope.
+
 
 Definition gate_type {n : nat} (U A B : Square n) : Prop :=
   U × A = B × U.
@@ -366,11 +373,8 @@ Definition gate_app {n : nat} (U A : Square n) : Square n :=
   U × A × U†.
 
 
-
-
-Notation "U : A → B" := (gate_type U A B) (at level 0) : matrix_scope. 
-Notation "U [ A ]" := (gate_app U A) (at level 0) : matrix_scope. 
-
+Notation "U : A → B" := (gate_type U A B) (at level 0) : heisenberg_scope. 
+Notation "U [ A ]" := (gate_app U A) (at level 0) : heisenberg_scope. 
 
 
 (* how do I get rid of this?? I don't want to have to include that matrices 
@@ -400,11 +404,8 @@ Qed.
 
 
 Definition H_app := gate_app Hgate.
-
 Definition P_app_ := gate_app Hgate.
-
 Definition CNOT1_app := gate_app CNOT1.
-
 Definition CNOT2_app := gate_app CNOT2.
 
 
@@ -423,39 +424,60 @@ Qed.
 
 
 Lemma PonZ : Pgate : Zgate → Zgate.
-Proof. unfold gate_type. lma_super. 
+Proof. unfold gate_type. lma2. 
 Qed.
 
 
-Lemma X2iscorrect : X2 = X 2.
-Proof. lma_super. rewrite Propff. lca. 
-Qed.       
-
-
+(* will optimize these into Ltac *)
 Lemma CNOT1onX1 : CNOT1 : (X 1) → (X 1 × X 2). 
-Proof. Admitted. 
+Proof. apply mat_equiv_eq'. apply WF_mult. show_wf. apply WF_Xn.
+       apply WF_mult. apply WF_mult.
+       apply WF_Xn. apply WF_Xn. show_wf. by_cell; lca.
+Qed.
+    
 
 Lemma CNOT1onX2 : CNOT1 : (X 2) → (X 2). 
-Proof. Admitted. 
-       
+Proof. apply mat_equiv_eq'. apply WF_mult. show_wf.
+       apply WF_Xn. apply WF_mult.
+       apply WF_Xn. show_wf. by_cell; lca. 
+Qed.
+
 Lemma CNOT1onZ1 : CNOT1 : (Z 1) → (Z 1). 
-Proof. Admitted.
+Proof. apply mat_equiv_eq'. apply WF_mult. show_wf.
+       apply WF_Zn. apply WF_mult.
+       apply WF_Zn. show_wf. by_cell; lca. 
+Qed.
 
 Lemma CNOT1onZ2 : CNOT1 : (Z 2) → (Z 1 × Z 2). 
-Proof. Admitted.
+Proof. apply mat_equiv_eq'. apply WF_mult. show_wf. apply WF_Zn.
+       apply WF_mult. apply WF_mult.
+       apply WF_Zn. apply WF_Zn. show_wf. by_cell; lca.
+Qed.
 
 
 Lemma CNOT2onX1 : CNOT2 : (X 1) → (X 1). 
-Proof. Admitted.
-
+Proof. apply mat_equiv_eq'. apply WF_mult. show_wf.
+       apply WF_Xn. apply WF_mult.
+       apply WF_Xn. show_wf. by_cell; lca.
+Qed.
+       
 Lemma CNOT2onX2 : CNOT2 : (X 2) → (X 1 × X 2). 
-Proof. Admitted.
+Proof. apply mat_equiv_eq'. apply WF_mult. show_wf.
+       apply WF_Xn. apply WF_mult. apply WF_mult.
+       apply WF_Xn. apply WF_Xn. show_wf. by_cell; lca.
+Qed.
 
 Lemma CNOT2onZ1 : CNOT2 : (Z 1) → (Z 1 × Z 2). 
-Proof. Admitted.
+Proof. apply mat_equiv_eq'. apply WF_mult. show_wf. apply WF_Zn.
+       apply WF_mult. apply WF_mult.
+       apply WF_Zn. apply WF_Zn. show_wf. by_cell; lca.
+Qed.
 
-Lemma CNOT2onZ2 : CNOT2 : (Z 2) → (Z 1). 
-Proof. Admitted.
+Lemma CNOT2onZ2 : CNOT2 : (Z 2) → (Z 2). 
+Proof. apply mat_equiv_eq'. apply WF_mult. show_wf.
+       apply WF_Zn. apply WF_mult.
+       apply WF_Zn. show_wf. by_cell; lca. 
+Qed.
 
 (* lemmas about heisenberg representation *)
 
@@ -480,18 +502,17 @@ Qed.
 
 
 
-(* these lemmas seemed excessive. For some reason I could    *)
-(* not rewrite (Xgate ⊗ I 2) × (Xgate ⊗ I 2)without them..   *)
+(* Could write this using other method, but good to see use of kron_mixed_product *)
 Lemma X1timesX1id :  (Xgate ⊗ I 2) × (Xgate ⊗ I 2) = I 4.
 Proof. unfold X. rewrite kron_mixed_product. rewrite XtimesXid. rewrite Mmult_1_r.
        rewrite id_kron. simpl. easy.
 Qed.
 
 Lemma X2timesX2id :  (I 2 ⊗ Xgate) × (I 2 ⊗ Xgate) = I 4.
-Proof. unfold X. rewrite kron_mixed_product. rewrite XtimesXid. rewrite Mmult_1_r.
-       rewrite id_kron. simpl. easy.
+Proof. apply mat_equiv_eq'. apply WF_mult. apply WF_kron. easy. easy.
+       apply WF_I. show_wf. apply WF_kron. easy. easy.
+       apply WF_I. show_wf. apply WF_I. by_cell; lca.
 Qed.
-
 
 Lemma XntimesXnid : forall (n : nat), X n × X n = I 4.
 Proof. destruct n. simpl. rewrite Mmult_1_r. reflexivity.
@@ -528,10 +549,8 @@ Proof. unfold U1. assert (H1: CNOT1[X 1] = (X 1 × X 2)).
        - apply (app_comp 4 (CNOT2 × CNOT1) CNOT1 (X 1) (X 2) (X 2)).
          apply H6. apply H7.
 Qed.
-       
-    
 
-Definition Zgatetwo : Matrix 2 2 := 
-  list2D_to_matrix  
-  ([[RtoC 1; RtoC 0];
-    [RtoC 0; - RtoC 1]]).
+
+
+
+    
