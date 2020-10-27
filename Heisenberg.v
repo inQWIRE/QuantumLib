@@ -3,27 +3,8 @@ Require Import String.
 Require Import Program.
 Require Export Complex.
 Require Import List.
-Require Import Matrix.
-
-
-
-
-(* still could not remove these statements even when opening scopes... *)
-(* could be something with emacs?  *)
-Notation "√ n" := (sqrt n) (at level 20) : R_scope.
-
-Infix "∘" := dot (at level 40, left associativity) : matrix_scope.
-Infix ".+" := Mplus (at level 50, left associativity) : matrix_scope.
-Infix ".*" := scale (at level 40, left associativity) : matrix_scope.
-Infix "×" := Mmult (at level 40, left associativity) : matrix_scope.
-Infix "⊗" := kron (at level 40, left associativity) : matrix_scope.
-Infix "≡" := mat_equiv (at level 70) : matrix_scope.
-Notation "A ⊤" := (transpose A) (at level 0) : matrix_scope. 
-Notation "A †" := (adjoint A) (at level 0) : matrix_scope. 
-Notation "Σ^ n f" := (Csum f n) (at level 60) : matrix_scope.
-Notation "n ⨂ A" := (kron_n n A) (at level 30, no associativity) : matrix_scope.
-Notation "⨂ A" := (big_kron A) (at level 60): matrix_scope.
-Notation "n ⨉ A" := (Mmult_n n A) (at level 30, no associativity) : matrix_scope.
+Require Export Matrix.
+Require Import Quantum.
 
 
 
@@ -134,6 +115,14 @@ Qed.
 
 (* added extra tactic to prevent stuckness at if _ then false else false lines *)
 Ltac destruct_m_eq_piff := repeat (destruct_m_1; simpl; try lca; try (rewrite -> Propiff)).
+
+
+Ltac lma1 := 
+  autounfold with U_db;
+  prep_matrix_equality;
+  destruct_m_eq; 
+  lca.
+
 
 Ltac lma2 :=
   compute;
@@ -297,64 +286,68 @@ Proof. destruct n as [|n]. simpl. apply WF_I.
        apply WF_I. show_wf. unfold X. apply WF_I.
 Qed.
 
-(* How to make single tactic apply to multiple subgoals?
-Ltac lma5 := apply mat_equiv_eq'; repeat (show_wf; apply WF_I); apply WF_I; by_cell; try lca.
 
-Ltac lma6 := apply mat_equiv_eq'; repeat (show_wf); apply WF_I; by_cell; try lca.
-*)
-
-Lemma XtimesXid : (Xgate × Xgate) = (I 2). 
-Proof. solve_matrix.
-Qed.      
-
-Lemma YtimesYid : Ygate × Ygate = I 2.
-Proof. apply mat_equiv_eq'. show_wf. apply WF_I. by_cell; lca.
-Qed.
-
-Lemma ZtimesZid : Zgate × Zgate = I 2.
-Proof. lma2.
-Qed.
-
-Lemma Y_eq_iXZ : Ygate = Ci .* Xgate × Zgate.
-Proof. lma3.
-Qed.
-
-Lemma ZH_eq_HX : Zgate × Hgate = Hgate × Xgate.
-Proof. apply mat_equiv_eq'. show_wf. show_wf. by_cell; try lca.
-Qed.
-
-Lemma PX_eq_YP : Pgate × Xgate = Ygate × Pgate.
-Proof. lma3.
-Qed.
+Hint Resolve WF_Xn WF_Zn : wf_db.
 
 
-(* must develop Ltac for this: *)
-Lemma HtimesHid : Hgate × Hgate = I 2.
-Proof. solve_matrix.
-Qed.
+(* ran into problems with Hgate. Can probably make this more general. *)
+Ltac Hhelper :=
+   unfold Mmult;
+   unfold Csum;
+   unfold I;
+   simpl;
+   C_field_simplify;
+   try lca;
+   C_field.
 
-Lemma H_eq_Hadjoint : Hgate = Hgate†.
-Proof. lma2.
-Qed.
+Ltac show_wf' := 
+  repeat match goal with
+  | [ |- WF_Matrix (?A × ?B) ]  => apply WF_mult 
+  | [ |- WF_Matrix (?A .+ ?B) ] => apply WF_plus 
+  | [ |- WF_Matrix (?p .* ?B) ] => apply WF_scale
+  | [ |- WF_Matrix (?A ⊗ ?B) ]  => apply WF_kron
+  | [ |- WF_Matrix (?A⊤) ]      => apply WF_transpose 
+  | [ |- WF_Matrix (?A†) ]      => apply WF_adjoint 
+  | [ |- WF_Matrix (I _) ]      => apply WF_I
+  | [ |- WF_Matrix (X _) ]      => apply WF_Xn                                        
+  | [ |- WF_Matrix (Z _) ]      => apply WF_Zn
+  | [ |- WF_Matrix (?A)  ]      => show_wf                                          
+  end.
 
-Lemma XH_eq_HZ : Xgate × Hgate = Hgate × Zgate.
-Proof. lma3. 
-Qed.
+
+Ltac lma7 :=
+  apply mat_equiv_eq';
+  repeat match goal with
+  | [ |- WF_Matrix (?A) ]  => auto with wf_db; show_wf' 
+  | [ |- mat_equiv2 (?A) (?B) ] => by_cell; try lca                 
+  end;
+  repeat Hhelper.
+
+
+Lemma XtimesXid : Xgate × Xgate = I 2. Proof. lma7. Qed.      
+Lemma YtimesYid : Ygate × Ygate = I 2. Proof. lma7. Qed.
+Lemma ZtimesZid : Zgate × Zgate = I 2. Proof. lma7. Qed.
+Lemma Y_eq_iXZ : Ygate = Ci .* Xgate × Zgate. Proof. lma7. Qed.
+Lemma ZH_eq_HX : Zgate × Hgate = Hgate × Xgate. Proof. lma7. Qed.
+Lemma PX_eq_YP : Pgate × Xgate = Ygate × Pgate. Proof. lma7. Qed.
+Lemma HtimesHid : Hgate × Hgate = I 2. Proof. lma7. Qed.
+Lemma H_eq_Hadjoint : Hgate = Hgate†. Proof. lma7. Qed.
+Lemma XH_eq_HZ : Xgate × Hgate = Hgate × Zgate. Proof. lma7. Qed.
  
 (* Showing that the basic operators we use are unitary *)
 
 Definition is_unitary {n : nat} (A : Square n) : Prop :=
   A × (A†) = I n. 
 
-Lemma X_unitary : is_unitary Xgate. Proof. lma2. Qed.
-Lemma Y_unitary : is_unitary Ygate. Proof. lma2. Qed.
-Lemma Z_unitary : is_unitary Zgate. Proof. lma2. Qed.
-Lemma P_unitary : is_unitary Pgate. Proof. lma2. Qed.
-Lemma CNOT1_unitary : is_unitary CNOT1. Proof. lma2. Qed.
-Lemma CNOT2_unitary : is_unitary CNOT2. Proof. lma2. Qed.
+Lemma X_unitary : is_unitary Xgate. Proof. lma7. Qed.
+Lemma Y_unitary : is_unitary Ygate. Proof. lma7. Qed.
+Lemma Z_unitary : is_unitary Zgate. Proof. lma7. Qed.
+Lemma P_unitary : is_unitary Pgate. Proof. lma7. Qed.
+Lemma CNOT1_unitary : is_unitary CNOT1. Proof. lma7. Qed.
+Lemma CNOT2_unitary : is_unitary CNOT2. Proof. lma7. Qed.
 
 Lemma H_unitary : is_unitary Hgate.
-Proof. unfold is_unitary. rewrite <- H_eq_Hadjoint. rewrite HtimesHid. reflexivity.
+Proof.  unfold is_unitary. rewrite <- H_eq_Hadjoint. rewrite HtimesHid. reflexivity.
 Qed.
 
 
@@ -373,30 +366,30 @@ Definition gate_app {n : nat} (U A : Square n) : Square n :=
   U × A × U†.
 
 
-Notation "U : A → B" := (gate_type U A B) (at level 0) : heisenberg_scope. 
+Notation "U :: A → B" := (gate_type U A B) (at level 0) : heisenberg_scope. 
 Notation "U [ A ]" := (gate_app U A) (at level 0) : heisenberg_scope. 
 
 
 (* how do I get rid of this?? I don't want to have to include that matrices 
    are well formed every time, although perhaps it is neccesary... *)
 
-Axiom Mmult_1_r: forall (n : nat) (A : Square n),
+Axiom Mmult_1_r': forall (n : nat) (A : Square n),
   A × I n = A.
 
-Axiom Mmult_1_l: forall (n : nat) (A : Square n),
+Axiom Mmult_1_l': forall (n : nat) (A : Square n),
   I n × A = A.
 
 
 
   
 Lemma type_is_app : forall (n: nat) (U A B : Square n),
-  is_unitary U -> (U : A → B <-> U[A] = B).
+  is_unitary U -> (U :: A → B <-> U[A] = B).
 Proof. intros n U A B H. split.
        - unfold gate_type; unfold gate_app. intros H'. unfold is_unitary in H. rewrite H'.
-         rewrite Mmult_assoc. rewrite H. rewrite Mmult_1_r. reflexivity. 
+         rewrite Mmult_assoc. rewrite H. rewrite Mmult_1_r'. reflexivity. 
        - unfold gate_type; unfold gate_app. intros H'. rewrite <- H'. rewrite Mmult_assoc.
          unfold is_unitary in H. apply Minv_flip in H. rewrite H. rewrite Mmult_assoc.
-         rewrite Mmult_1_r. reflexivity. 
+         rewrite Mmult_1_r'. reflexivity. 
 Qed.
 
 
@@ -409,74 +402,63 @@ Definition CNOT1_app := gate_app CNOT1.
 Definition CNOT2_app := gate_app CNOT2.
 
 
-Lemma HonX : Hgate : Xgate → Zgate.
+Lemma HonX : Hgate :: Xgate → Zgate.
 Proof. unfold gate_type. rewrite ZH_eq_HX. easy.
 Qed.
 
-Lemma HonZ : Hgate : Zgate → Xgate.
+Lemma HonZ : Hgate :: Zgate → Xgate.
 Proof. unfold gate_type. symmetry. apply XH_eq_HZ.
 Qed.
 
-Lemma PonX : Pgate : Xgate → Ygate.
+Lemma PonX : Pgate :: Xgate → Ygate.
 Proof. unfold gate_type. apply PX_eq_YP.
 Qed.
 
 
 
-Lemma PonZ : Pgate : Zgate → Zgate.
-Proof. unfold gate_type. lma2. 
+Lemma PonZ : Pgate :: Zgate → Zgate.
+Proof. unfold gate_type. lma7. 
 Qed.
+
+
+
+
+
 
 
 (* will optimize these into Ltac *)
-Lemma CNOT1onX1 : CNOT1 : (X 1) → (X 1 × X 2). 
-Proof. apply mat_equiv_eq'. apply WF_mult. show_wf. apply WF_Xn.
-       apply WF_mult. apply WF_mult.
-       apply WF_Xn. apply WF_Xn. show_wf. by_cell; lca.
+Lemma CNOT1onX1 : CNOT1 :: (X 1) → (X 1 × X 2). 
+Proof.  apply mat_equiv_eq'; show_wf'. by_cell; lca.
 Qed.
     
 
-Lemma CNOT1onX2 : CNOT1 : (X 2) → (X 2). 
-Proof. apply mat_equiv_eq'. apply WF_mult. show_wf.
-       apply WF_Xn. apply WF_mult.
-       apply WF_Xn. show_wf. by_cell; lca. 
+Lemma CNOT1onX2 : CNOT1 :: (X 2) → (X 2). 
+Proof. lma7.
+Qed.       
+
+Lemma CNOT1onZ1 : CNOT1 :: (Z 1) → (Z 1). 
+Proof. lma7.
 Qed.
 
-Lemma CNOT1onZ1 : CNOT1 : (Z 1) → (Z 1). 
-Proof. apply mat_equiv_eq'. apply WF_mult. show_wf.
-       apply WF_Zn. apply WF_mult.
-       apply WF_Zn. show_wf. by_cell; lca. 
-Qed.
-
-Lemma CNOT1onZ2 : CNOT1 : (Z 2) → (Z 1 × Z 2). 
-Proof. apply mat_equiv_eq'. apply WF_mult. show_wf. apply WF_Zn.
-       apply WF_mult. apply WF_mult.
-       apply WF_Zn. apply WF_Zn. show_wf. by_cell; lca.
+Lemma CNOT1onZ2 : CNOT1 :: (Z 2) → (Z 1 × Z 2). 
+Proof. lma7.
 Qed.
 
 
-Lemma CNOT2onX1 : CNOT2 : (X 1) → (X 1). 
-Proof. apply mat_equiv_eq'. apply WF_mult. show_wf.
-       apply WF_Xn. apply WF_mult.
-       apply WF_Xn. show_wf. by_cell; lca.
+Lemma CNOT2onX1 : CNOT2 :: (X 1) → (X 1). 
+Proof. lma7.
 Qed.
        
-Lemma CNOT2onX2 : CNOT2 : (X 2) → (X 1 × X 2). 
-Proof. apply mat_equiv_eq'. apply WF_mult. show_wf.
-       apply WF_Xn. apply WF_mult. apply WF_mult.
-       apply WF_Xn. apply WF_Xn. show_wf. by_cell; lca.
+Lemma CNOT2onX2 : CNOT2 :: (X 2) → (X 1 × X 2). 
+Proof. lma7.
 Qed.
 
-Lemma CNOT2onZ1 : CNOT2 : (Z 1) → (Z 1 × Z 2). 
-Proof. apply mat_equiv_eq'. apply WF_mult. show_wf. apply WF_Zn.
-       apply WF_mult. apply WF_mult.
-       apply WF_Zn. apply WF_Zn. show_wf. by_cell; lca.
+Lemma CNOT2onZ1 : CNOT2 :: (Z 1) → (Z 1 × Z 2). 
+Proof. lma7.
 Qed.
 
-Lemma CNOT2onZ2 : CNOT2 : (Z 2) → (Z 2). 
-Proof. apply mat_equiv_eq'. apply WF_mult. show_wf.
-       apply WF_Zn. apply WF_mult.
-       apply WF_Zn. show_wf. by_cell; lca. 
+Lemma CNOT2onZ2 : CNOT2 :: (Z 2) → (Z 2). 
+Proof. lma7.
 Qed.
 
 (* lemmas about heisenberg representation *)
@@ -496,7 +478,7 @@ Proof. intros n U A1 B1 A2 B2. unfold gate_app. intros H0 H1 H2.
        do 3 rewrite Mmult_assoc. rewrite H. unfold is_unitary in H0.
        apply Minv_flip in H0. rewrite H0. do 4 rewrite <- Mmult_assoc.
        assert (H': U × A1 × I n = U × A1).
-         { rewrite Mmult_assoc. rewrite Mmult_1_r. reflexivity. }
+         { rewrite Mmult_assoc. rewrite Mmult_1_r'. reflexivity. }
        rewrite H'. reflexivity.       
 Qed. 
 
@@ -504,21 +486,19 @@ Qed.
 
 (* Could write this using other method, but good to see use of kron_mixed_product *)
 Lemma X1timesX1id :  (Xgate ⊗ I 2) × (Xgate ⊗ I 2) = I 4.
-Proof. unfold X. rewrite kron_mixed_product. rewrite XtimesXid. rewrite Mmult_1_r.
-       rewrite id_kron. simpl. easy.
+Proof. lma7.
 Qed.
 
 Lemma X2timesX2id :  (I 2 ⊗ Xgate) × (I 2 ⊗ Xgate) = I 4.
-Proof. apply mat_equiv_eq'. apply WF_mult. apply WF_kron. easy. easy.
-       apply WF_I. show_wf. apply WF_kron. easy. easy.
-       apply WF_I. show_wf. apply WF_I. by_cell; lca.
+Proof. lma7.
 Qed.
 
 Lemma XntimesXnid : forall (n : nat), X n × X n = I 4.
 Proof. destruct n. simpl. rewrite Mmult_1_r. reflexivity.
+       apply WF_I.
        destruct n. rewrite <- X1timesX1id. unfold X. reflexivity.
        destruct n. rewrite <- X2timesX2id. unfold X. reflexivity.
-       simpl. rewrite Mmult_1_r. reflexivity.
+       simpl. rewrite Mmult_1_r. reflexivity. apply WF_I.
 Qed. 
 
  
@@ -529,7 +509,7 @@ Qed.
 
 Definition U1 : Matrix 4 4 := CNOT1 × CNOT2 × CNOT1.
 
-Lemma U1onX1 : U1 : (X 1) → (X 2).
+Lemma U1onX1 : U1 :: (X 1) → (X 2).
 Proof. unfold U1. assert (H1: CNOT1[X 1] = (X 1 × X 2)).
        { apply type_is_app. apply CNOT1_unitary. apply CNOT1onX1. }
        assert (H2: CNOT2[X 1] = (X 1)).
@@ -539,18 +519,66 @@ Proof. unfold U1. assert (H1: CNOT1[X 1] = (X 1 × X 2)).
        assert (H4: CNOT2[(X 1) × (X 2)] = (X 1) × (X 1 × X 2)).
        { apply app_mult. apply CNOT2_unitary. apply H2. apply H3. }
        assert (H5: X 1 × (X 1 × X 2) = X 2). 
-       { rewrite <- Mmult_assoc. rewrite XntimesXnid. rewrite Mmult_1_l. reflexivity. }   
+       { rewrite <- Mmult_assoc. rewrite XntimesXnid. rewrite Mmult_1_l. reflexivity.
+       show_wf'. }   
        rewrite H5 in H4. assert (H6: (CNOT2 × CNOT1)[X 1] = X 2).
        { apply (app_comp 4 CNOT1 CNOT2 (X 1) (X 1 × X 2)). apply H1. apply H4. }
        assert (H7: CNOT1[X 2] = (X 2)).
        { apply type_is_app. apply CNOT1_unitary. apply CNOT1onX2. }
        rewrite Mmult_assoc. apply type_is_app.
-       - unfold is_unitary. lma2.
+       - unfold is_unitary. lma7.
        - apply (app_comp 4 (CNOT2 × CNOT1) CNOT1 (X 1) (X 2) (X 2)).
          apply H6. apply H7.
 Qed.
 
 
 
+Definition Eigenvector {n : nat} (U : Square n) (v : Vector n) : Prop :=
+  exists (λ : C), U × v = λ .* v.
 
-    
+Lemma all_v_eigen_I : forall (n : nat) (v : Vector n),
+    WF_Matrix v -> Eigenvector (I n) v.
+Proof. intros n v H. exists C1. rewrite Mmult_1_l. lma. apply H.
+Qed.
+
+
+Lemma Proposition1 : forall (n : nat) (U A B : Square n) (v : Vector n),
+    is_unitary U -> U :: A → B -> Eigenvector A v -> Eigenvector B (U × v).
+Proof. unfold Eigenvector. intros n U A B v isU ty [λ Eig].
+       unfold gate_type in ty. rewrite <- Mmult_assoc. rewrite <- ty.
+       rewrite Mmult_assoc. rewrite Eig. exists λ. rewrite Mscale_mult_dist_r.
+       reflexivity.
+Qed.
+
+Definition qubitP : Vector 2 := / (√ 2) .* (∣0⟩ .+ ∣1⟩).
+
+Definition qubitM : Vector 2 := / (√ 2) .* (∣0⟩ .+ ((-1) .* ∣1⟩)).
+
+Notation "∣+⟩" := qubitP.
+Notation "∣-⟩" := qubitM.
+
+Definition EPRpair : Vector 4 := / (√ 2) .* (∣0,0⟩ .+ ∣1,1⟩).
+
+Lemma EPRpair_creation : CNOT1 × (Hgate ⊗ I 2) × ∣0,0⟩ = EPRpair.
+Proof. unfold EPRpair. lma7.
+Qed.
+
+Lemma EigenXp : Eigenvector Xgate ∣+⟩.
+Proof. unfold Eigenvector. exists (1). lma7.
+Qed.
+
+Lemma EigenXm : Eigenvector Xgate ∣-⟩.
+Proof. unfold Eigenvector. exists (-1). lma7.
+Qed.
+
+Lemma EigenZ0 : Eigenvector Zgate ∣0⟩.
+Proof. unfold Eigenvector. exists (1). lma7.
+Qed.
+
+Lemma EigenZ1 : Eigenvector Zgate ∣1⟩.
+Proof. unfold Eigenvector. exists (-1). lma7.
+Qed.
+
+
+
+
