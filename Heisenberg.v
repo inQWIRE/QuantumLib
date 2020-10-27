@@ -509,7 +509,7 @@ Qed.
 
 Definition U1 : Matrix 4 4 := CNOT1 × CNOT2 × CNOT1.
 
-Lemma U1onX1 : U1 :: (X 1) → (X 2).
+Lemma U1onX1 : U1 :: (X 1) → (X 2). 
 Proof. unfold U1. assert (H1: CNOT1[X 1] = (X 1 × X 2)).
        { apply type_is_app. apply CNOT1_unitary. apply CNOT1onX1. }
        assert (H2: CNOT2[X 1] = (X 1)).
@@ -533,22 +533,34 @@ Qed.
 
 
 
-Definition Eigenvector {n : nat} (U : Square n) (v : Vector n) : Prop :=
+Definition Eigenstate {n : nat} (U : Square n) (v : Vector n) : Prop :=
   exists (λ : C), U × v = λ .* v.
 
 Lemma all_v_eigen_I : forall (n : nat) (v : Vector n),
-    WF_Matrix v -> Eigenvector (I n) v.
+    WF_Matrix v -> Eigenstate (I n) v.
 Proof. intros n v H. exists C1. rewrite Mmult_1_l. lma. apply H.
 Qed.
 
 
 Lemma Proposition1 : forall (n : nat) (U A B : Square n) (v : Vector n),
-    is_unitary U -> U :: A → B -> Eigenvector A v -> Eigenvector B (U × v).
-Proof. unfold Eigenvector. intros n U A B v isU ty [λ Eig].
+    is_unitary U -> U :: A → B -> Eigenstate A v -> Eigenstate B (U × v).
+Proof. unfold Eigenstate. intros n U A B v isU ty [λ Eig].
        unfold gate_type in ty. rewrite <- Mmult_assoc. rewrite <- ty.
        rewrite Mmult_assoc. rewrite Eig. exists λ. rewrite Mscale_mult_dist_r.
        reflexivity.
 Qed.
+
+Lemma Proposition2 : forall (n : nat) (U I: Square 2) (u : Vector 2) (v : Vector (2^(n-1))),
+    Eigenstate U u <-> Eigenstate (U ⊗ I) (u ⊗ v).
+Proof. intros n U u v. split.
+       - intros [λ Eig]. unfold Eigenstate. exists λ.
+         rewrite kron_n_I. rewrite (kron_mixed_product U (I (2 ^ (n - 1))) u v).
+         
+
+
+kron_n_I
+
+
 
 Definition qubitP : Vector 2 := / (√ 2) .* (∣0⟩ .+ ∣1⟩).
 
