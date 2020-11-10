@@ -19,9 +19,9 @@ This version modified to work without SSReflect,
 or any other dependencies, as part of the QWIRE project
 by Robert Rand and Jennifer Paykin (June 2017).
 *)
-Require Export RealAux.
-Require Export Prelim.
 
+Require Export Prelim.
+Require Export RealAux.
 
 (*********************)
 (** Complex Numbers **)
@@ -45,26 +45,8 @@ Bind Scope nat_scope with nat.
 Bind Scope R_scope with R.
 Bind Scope C_scope with C.
 
-
-Definition R0' : R := 0.0.
-Definition R1' : R := 1.0.
-
-Fixpoint NattoR (n : nat) : R :=
-  match n with 
-  | O    => R0'
-  | S n' => R1' + NattoR n' 
-  end.
-
 Definition RtoC (x : R) : C := (x,0).
 Coercion RtoC : R >-> C.
-
-
-
-Definition NattoC (n : nat) : C := RtoC (NattoR n).
-Coercion NattoC : nat >-> C.
-
-
-
 
 Lemma RtoC_inj : forall (x y : R),
   RtoC x = RtoC y -> x = y.
@@ -77,21 +59,14 @@ Lemma Ceq_dec (z1 z2 : C) : { z1 = z2 } + { z1 <> z2 }.
 Proof.
   destruct z1 as [x1 y1].
   destruct z2 as [x2 y2].
-  destruct (Req_EM_T x1 x2) as [Eqx | Neqx]. 
-  destruct (Req_EM_T y1 y2) as [Eqy | Neqy]. 
-  - left.  subst.  reflexivity.
-  - right. congruence. 
-  - right. congruence.
+  destruct (Req_EM_T x1 x2) as [Eqx | Neqx]; [| right; congruence].
+  destruct (Req_EM_T y1 y2) as [Eqy | Neqy]; [subst; auto | right; congruence].
 Qed.
-
-
 
 (** ** Constants and usual functions *)
 
 (** 0 and 1 for complex are defined as [RtoC 0] and [RtoC 1] *)
 Definition Ci : C := (0,1).
-
-
 
 (** *** Arithmetic operations *)
 
@@ -569,12 +544,10 @@ Qed.
 
 (* Lemmas about Conjugates *)
 
-Notation "\u221a n" := (sqrt n) (at level 20) : R_scope.
-
 Lemma Cconj_R : forall r : R, r^* = r.         Proof. intros; lca. Qed.
 Lemma Cconj_0 : 0^* = 0.                  Proof. lca. Qed.
 Lemma Cconj_opp : forall C, (- C)^* = - (C^*). Proof. reflexivity. Qed.
-Lemma Cconj_rad2 : (/ \u221a2)^* = / \u221a2.       Proof. lca. Qed.
+Lemma Cconj_rad2 : (/ √2)^* = / √2.       Proof. lca. Qed.
 Lemma Cplus_div2 : /2 + /2 = 1.           Proof. lca. Qed.
 Lemma Cconj_involutive : forall c, (c^*)^* = c. Proof. intros; lca. Qed.
 Lemma Cconj_plus_distr : forall (x y : C), (x + y)^* = x^* + y^*. Proof. intros; lca. Qed.
@@ -606,13 +579,13 @@ Qed.
 (** Square Roots **)
 (******************)
 
-Lemma Csqrt_sqrt : forall x : R, 0 <= x -> \u221a x * \u221a x = x.
+Lemma Csqrt_sqrt : forall x : R, 0 <= x -> √ x * √ x = x.
 Proof. intros. eapply c_proj_eq; simpl; try rewrite sqrt_sqrt; lra. Qed.
 
-Lemma Csqrt2_sqrt : \u221a 2 * \u221a 2 = 2.
+Lemma Csqrt2_sqrt : √ 2 * √ 2 = 2.
 Proof. apply Csqrt_sqrt; lra. Qed.
 
-Lemma Cinv_sqrt2_sqrt : / (\u221a2) * /(\u221a2) = /2. 
+Lemma Cinv_sqrt2_sqrt : /√2 * /√2 = /2. 
 Proof. 
   eapply c_proj_eq; simpl; try lra.
   autorewrite with R_db. 
@@ -622,7 +595,7 @@ Proof.
   rewrite sqrt_def; lra.
 Qed.
 
-Lemma Csqrt_inv : forall (r : R), 0 < r -> RtoC (\u221a (/ r)) = (/ \u221a r).
+Lemma Csqrt_inv : forall (r : R), 0 < r -> RtoC (√ (/ r)) = (/ √ r).
 Proof.
   intros r H.
   apply c_proj_eq; simpl.
@@ -633,10 +606,10 @@ Proof.
   field. apply sqrt_neq_0_compat; lra.
 Qed.
 
-Lemma Csqrt2_inv : RtoC (\u221a (/ 2)) = (/ \u221a 2).
+Lemma Csqrt2_inv : RtoC (√ (/ 2)) = (/ √ 2).
 Proof. apply Csqrt_inv; lra. Qed.  
 
-Lemma Csqrt_sqrt_inv : forall (r : R), 0 < r -> (\u221a r * \u221a / r) = 1.
+Lemma Csqrt_sqrt_inv : forall (r : R), 0 < r -> (√ r * √ / r) = 1.
 Proof. 
   intros. 
   rewrite Csqrt_inv; trivial. 
@@ -645,13 +618,13 @@ Proof.
   apply sqrt_neq_0_compat; easy.
 Qed.
 
-Lemma Csqrt2_sqrt2_inv : (\u221a 2 * \u221a / 2) = 1.
+Lemma Csqrt2_sqrt2_inv : (√ 2 * √ / 2) = 1.
 Proof. apply Csqrt_sqrt_inv. lra. Qed.
 
-Lemma Csqrt2_inv_sqrt2 : ((\u221a / 2) * \u221a 2) = 1.
+Lemma Csqrt2_inv_sqrt2 : ((√ / 2) * √ 2) = 1.
 Proof. rewrite Cmult_comm. apply Csqrt2_sqrt2_inv. Qed.
 
-Lemma Csqrt2_inv_sqrt2_inv : ((\u221a / 2) * (\u221a / 2)) = /2.
+Lemma Csqrt2_inv_sqrt2_inv : ((√ / 2) * (√ / 2)) = /2.
 Proof. 
   rewrite Csqrt2_inv. field_simplify. 
   rewrite Csqrt2_sqrt. easy. 
@@ -663,8 +636,8 @@ Qed.
 (** Complex Exponentiation **)
 (****************************)
 
-(* e^(ia) *)
-Definition Cexp (a : R) : C := (cos a, sin a).
+(* e^(iθ) *)
+Definition Cexp (θ : R) : C := (cos θ, sin θ).
 
 Lemma Cexp_0 : Cexp 0 = 1.
 Proof. unfold Cexp. autorewrite with trig_db; easy. Qed.
@@ -678,37 +651,37 @@ Proof.
   - rewrite sin_plus. field.
 Qed.
 
-Lemma Cexp_neg : forall a, Cexp (- a) = / Cexp a.
+Lemma Cexp_neg : forall θ, Cexp (- θ) = / Cexp θ.
 Proof.
-  intros a.
+  intros θ.
   unfold Cexp.
   rewrite sin_neg, cos_neg.
   apply c_proj_eq; simpl.
-  - replace (cos a * (cos a * 1) + sin a * (sin a * 1))%R with 
-        (cos a ^ 2 + sin a ^ 2)%R by reflexivity.
+  - replace (cos θ * (cos θ * 1) + sin θ * (sin θ * 1))%R with 
+        (cos θ ^ 2 + sin θ ^ 2)%R by reflexivity.
     repeat rewrite <- Rsqr_pow2.
     rewrite Rplus_comm.
     rewrite sin2_cos2.
     field.
-  - replace ((cos a * (cos a * 1) + sin a * (sin a * 1)))%R with 
-        (cos a ^ 2 + sin a ^ 2)%R by reflexivity.
+  - replace ((cos θ * (cos θ * 1) + sin θ * (sin θ * 1)))%R with 
+        (cos θ ^ 2 + sin θ ^ 2)%R by reflexivity.
     repeat rewrite <- Rsqr_pow2.
     rewrite Rplus_comm.
     rewrite sin2_cos2.
     field.
 Qed.
 
-Lemma Cexp_nonzero : forall a, Cexp a <> 0.
+Lemma Cexp_nonzero : forall θ, Cexp θ <> 0.
 Proof. 
-  intro a. unfold Cexp.
-  specialize (cos_sin_0_var a) as [? | ?].
+  intro θ. unfold Cexp.
+  specialize (cos_sin_0_var θ) as [? | ?].
   apply C0_fst_neq; auto. 
   apply C0_snd_neq; auto.
 Qed.
 
-Lemma Cexp_mul_neg_l : forall a, Cexp (- a) * Cexp a = 1.
+Lemma Cexp_mul_neg_l : forall θ, Cexp (- θ) * Cexp θ = 1.
 Proof.  
-  unfold Cexp. intros a.
+  unfold Cexp. intros θ.
   eapply c_proj_eq; simpl.
   - autorewrite with R_db trig_db.
     field_simplify_eq.
@@ -718,10 +691,10 @@ Proof.
   - autorewrite with R_db trig_db. field.
 Qed.
 
-Lemma Cexp_mul_neg_r : forall a, Cexp a * Cexp (-a) = 1.
+Lemma Cexp_mul_neg_r : forall θ, Cexp θ * Cexp (-θ) = 1.
 Proof. intros. rewrite Cmult_comm. apply Cexp_mul_neg_l. Qed.
 
-Lemma Cexp_pow : forall a k, Cexp a ^ k = Cexp (a * INR k).
+Lemma Cexp_pow : forall θ k, Cexp θ ^ k = Cexp (θ * INR k).
 Proof.
   intros.
   induction k. 
@@ -735,20 +708,20 @@ Proof.
   apply f_equal. lra.
 Qed.
 
-Lemma Cmod_Cexp : forall a, Cmod (Cexp a) = 1.
+Lemma Cmod_Cexp : forall θ, Cmod (Cexp θ) = 1.
 Proof.
   intro. unfold Cexp, Cmod. simpl. 
-  replace ((cos a * (cos a * 1) + sin a * (sin a * 1)))%R 
-    with (cos a * cos a + sin a * sin a)%R by lra. 
-  specialize (sin2_cos2 a) as H. 
+  replace ((cos θ * (cos θ * 1) + sin θ * (sin θ * 1)))%R 
+    with (cos θ * cos θ + sin θ * sin θ)%R by lra. 
+  specialize (sin2_cos2 θ) as H. 
   unfold Rsqr in H. 
   rewrite Rplus_comm in H. 
   rewrite H. apply sqrt_1.
 Qed.
 
-Lemma Cmod_Cexp_alt : forall a, Cmod (1 - Cexp (2 * a)) = Cmod (2 * (sin a)).
+Lemma Cmod_Cexp_alt : forall θ, Cmod (1 - Cexp (2 * θ)) = Cmod (2 * (sin θ)).
 Proof.
-  intro a.
+  intro θ.
   unfold Cexp, Cminus, Cplus.
   simpl.
   unfold Cmod. simpl. 
@@ -789,7 +762,7 @@ Proof.
   lca.
 Qed.
 
-Lemma Cexp_PI4 : Cexp (PI / 4) = /(\u221a2) + /(\u221a2) * Ci.
+Lemma Cexp_PI4 : Cexp (PI / 4) = /√2 + /√2 * Ci.
 Proof.
   unfold Cexp.
   rewrite sin_PI4, cos_PI4.
@@ -798,7 +771,7 @@ Proof.
   field_simplify_eq; trivial; apply sqrt2_neq_0.
 Qed.
 
-Lemma Cexp_PIm4 : Cexp (- PI / 4) = /(\u221a2) - /(\u221a2) * Ci.
+Lemma Cexp_PIm4 : Cexp (- PI / 4) = /√2 - /√2 * Ci.
 Proof.
   unfold Cexp. 
   rewrite Ropp_div.
@@ -813,15 +786,13 @@ Qed.
 Lemma Cexp_0PI4 : Cexp (0 * PI / 4) = 1.
 Proof. rewrite <- Cexp_0. apply f_equal. lra. Qed.
 
-Lemma Cexp_1PI4 : Cexp (1 * PI / 4) = /(\u221a2) + /(\u221a2) * Ci.
+Lemma Cexp_1PI4 : Cexp (1 * PI / 4) = /√2 + /√2 * Ci.
 Proof. rewrite <- Cexp_PI4. apply f_equal. lra. Qed.
 
 Lemma Cexp_2PI4 : Cexp (2 * PI / 4) = Ci.
 Proof. rewrite <- Cexp_PI2. apply f_equal. lra. Qed.
 
-(* Note: cos_3PI4 are sin_3PI4 deprecated in 8.10 by our own pull requests.
-   Don't update until Coq 8.12 release. *)
-Lemma Cexp_3PI4 : Cexp (3 * PI / 4) = -/(\u221a2) + /(\u221a2) * Ci.
+Lemma Cexp_3PI4 : Cexp (3 * PI / 4) = -/√2 + /√2 * Ci.
 Proof.
   unfold Cexp.
   rewrite <- Rmult_div_assoc.
@@ -834,7 +805,7 @@ Qed.
 Lemma Cexp_4PI4 : Cexp (4 * PI / 4) = -1.
 Proof. rewrite <- Cexp_PI. apply f_equal. lra. Qed.
   
-Lemma Cexp_5PI4 : Cexp (5 * PI / 4) = -/(\u221a2) - /(\u221a2) * Ci.
+Lemma Cexp_5PI4 : Cexp (5 * PI / 4) = -/√2 - /√2 * Ci.
 Proof.
   unfold Cexp.
   rewrite <- Rmult_div_assoc.
@@ -848,7 +819,7 @@ Lemma Cexp_6PI4 : Cexp (6 * PI / 4) = -Ci.
 Proof.
 Proof. rewrite <- Cexp_3PI2. apply f_equal. lra. Qed.
   
-Lemma Cexp_7PI4 : Cexp (7 * PI / 4) = /(\u221a2) - /(\u221a2) * Ci.
+Lemma Cexp_7PI4 : Cexp (7 * PI / 4) = /√2 - /√2 * Ci.
 Proof.
   unfold Cexp.
   replace (7 * PI / 4)%R with (- PI / 4 + 2 * INR 1 * PI)%R.
@@ -1019,13 +990,13 @@ Ltac group_radicals :=
   repeat rewrite <- Copp_mult_distr_r;
   repeat match goal with
   | _ => rewrite Cinv_sqrt2_sqrt
-  | |- context [ ?x * ?y ] => tryif has_term (\u221a 2) x then fail 
-                            else (has_term (\u221a 2) y; rewrite (Cmult_comm x y)) 
+  | |- context [ ?x * ?y ] => tryif has_term (√ 2) x then fail 
+                            else (has_term (√ 2) y; rewrite (Cmult_comm x y)) 
   | |- context [ ?x * ?y * ?z ] =>
-    tryif has_term (\u221a 2) y then fail 
-    else (has_term (\u221a 2) x; has_term (\u221a 2) z; rewrite <- (Cmult_assoc x y z)) 
+    tryif has_term (√ 2) y then fail 
+    else (has_term (√ 2) x; has_term (√ 2) z; rewrite <- (Cmult_assoc x y z)) 
   | |- context [ ?x * (?y * ?z) ] => 
-    has_term (\u221a 2) x; has_term (\u221a 2) y; rewrite (Cmult_assoc x y z)
+    has_term (√ 2) x; has_term (√ 2) y; rewrite (Cmult_assoc x y z)
   end.    
 
 Ltac cancel_terms t := 

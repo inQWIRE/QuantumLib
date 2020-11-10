@@ -25,7 +25,7 @@ Hint Rewrite Rminus_unfold Rdiv_unfold Ropp_0 Ropp_involutive Rplus_0_l Rplus_0_
 Hint Rewrite <- Ropp_mult_distr_l Ropp_mult_distr_r : R_db.
 Hint Rewrite Rinv_l Rinv_r sqrt_sqrt using lra : R_db.
 
-Notation "\u221a n" := (sqrt n) (at level 20) : R_scope.
+Notation "√ n" := (sqrt n) (at level 20) : R_scope.
 
 (* Useful Lemmas *)
 
@@ -81,10 +81,10 @@ Qed.
 (* Square Roots *)
 (****************)
 
-Lemma pow2_sqrt : forall x:R, 0 <= x -> (\u221a x) ^ 2 = x.
+Lemma pow2_sqrt : forall x:R, 0 <= x -> (√ x) ^ 2 = x.
 Proof. intros; simpl; rewrite Rmult_1_r, sqrt_def; auto. Qed.
 
-Lemma sqrt_pow : forall (r : R) (n : nat), (0 <= r)%R -> (\u221a (r ^ n) = \u221a r ^ n)%R.
+Lemma sqrt_pow : forall (r : R) (n : nat), (0 <= r)%R -> (√ (r ^ n) = √ r ^ n)%R.
 Proof.
   intros r n Hr.
   induction n.
@@ -94,19 +94,19 @@ Proof.
   rewrite IHn. reflexivity.
 Qed.
 
-Lemma pow2_sqrt2 : (\u221a 2) ^ 2 = 2.
+Lemma pow2_sqrt2 : (√ 2) ^ 2 = 2.
 Proof. apply pow2_sqrt; lra. Qed.
 
 Lemma pown_sqrt : forall (x : R) (n : nat), 
-  0 <= x -> \u221a x ^ (S (S n)) = x * \u221a x ^ n.
+  0 <= x -> √ x ^ (S (S n)) = x * √ x ^ n.
 Proof.
   intros. simpl. rewrite <- Rmult_assoc. rewrite sqrt_sqrt; auto.
 Qed.  
 
-Lemma sqrt_neq_0_compat : forall r : R, 0 < r -> \u221a r <> 0.
+Lemma sqrt_neq_0_compat : forall r : R, 0 < r -> √ r <> 0.
 Proof. intros. specialize (sqrt_lt_R0 r). lra. Qed.
 
-Lemma sqrt_inv : forall (r : R), 0 < r -> \u221a (/ r) = (/ \u221a r)%R.
+Lemma sqrt_inv : forall (r : R), 0 < r -> √ (/ r) = (/ √ r)%R.
 Proof.
   intros.
   replace (/r)%R with (1/r)%R by lra.
@@ -114,16 +114,16 @@ Proof.
   lra.
 Qed.  
 
-Lemma sqrt2_div2 : (\u221a 2 / 2)%R = (1 / \u221a 2)%R.
+Lemma sqrt2_div2 : (√ 2 / 2)%R = (1 / √ 2)%R.
 Proof.
    field_simplify_eq; try (apply sqrt_neq_0_compat; lra).
    rewrite pow2_sqrt2; easy.
 Qed.
 
-Lemma sqrt2_inv : \u221a (/ 2) = (/ \u221a 2)%R.
+Lemma sqrt2_inv : √ (/ 2) = (/ √ 2)%R.
 Proof. apply sqrt_inv; lra. Qed.  
 
-Lemma sqrt_sqrt_inv : forall (r : R), 0 < r -> (\u221a r * \u221a / r)%R = 1.
+Lemma sqrt_sqrt_inv : forall (r : R), 0 < r -> (√ r * √ / r)%R = 1.
 Proof. 
   intros. 
   rewrite sqrt_inv; trivial. 
@@ -131,13 +131,13 @@ Proof.
   apply sqrt_neq_0_compat; easy.
 Qed.
 
-Lemma sqrt2_sqrt2_inv : (\u221a 2 * \u221a / 2)%R = 1.
+Lemma sqrt2_sqrt2_inv : (√ 2 * √ / 2)%R = 1.
 Proof. apply sqrt_sqrt_inv. lra. Qed.
 
-Lemma sqrt2_inv_sqrt2 : ((\u221a / 2) * \u221a 2)%R = 1.
+Lemma sqrt2_inv_sqrt2 : ((√ / 2) * √ 2)%R = 1.
 Proof. rewrite Rmult_comm. apply sqrt2_sqrt2_inv. Qed.
 
-Lemma sqrt2_inv_sqrt2_inv : ((\u221a / 2) * (\u221a / 2) = /2)%R.
+Lemma sqrt2_inv_sqrt2_inv : ((√ / 2) * (√ / 2) = /2)%R.
 Proof. 
   rewrite sqrt2_inv. field_simplify. 
   rewrite pow2_sqrt2. easy. 
