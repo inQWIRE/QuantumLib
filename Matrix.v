@@ -41,18 +41,10 @@ Ltac prep_matrix_equality :=
   apply functional_extensionality; intros y.
 
 
-Definition test : list C := [Ci;Ci;Ci].
-
-Definition Cnat (n : nat) : C := NattoC n.
 
 
 Definition ltoM (l : list (list C)) : Matrix (length l) (length (hd [] l)) := 
-  (fun i j => nth j (nth i l []) (Cnat 0)).
-
-Definition test1 : list (list C) := [[Cnat 1; Cnat 3; Ci];
-                                   [Cplus (Cnat 1) Ci; Cnat 4; Ci];
-                                   [Cnat 0; Cnat 8; Cnat 3]].
-
+  (fun i j => nth j (nth i l []) (C0)).
 
 
 (* Matrix Equivalence *)
@@ -334,6 +326,35 @@ Ltac lma :=
   prep_matrix_equality;
   destruct_m_eq; 
   lca.
+
+
+
+Ltac solve_end :=
+  match goal with
+  | H : lt _ O |- _ => apply Nat.nlt_0_r in H; contradict H
+  end.
+                
+Ltac by_cell := 
+  intros;
+  let i := fresh "i" in 
+  let j := fresh "j" in 
+  let Hi := fresh "Hi" in 
+  let Hj := fresh "Hj" in 
+  intros i j Hi Hj; try solve_end;
+  repeat (destruct i as [|i]; simpl; [|apply lt_S_n in Hi]; try solve_end); clear Hi;
+  repeat (destruct j as [|j]; simpl; [|apply lt_S_n in Hj]; try solve_end); clear Hj.
+
+
+
+Ltac lma' :=
+  apply mat_equiv_eq';
+  repeat match goal with
+  | [ |- WF_Matrix (?A) ]  => auto with wf_db (* (try show_wf) *)
+  | [ |- mat_equiv2 (?A) (?B) ] => by_cell; try lca                 
+  end.
+
+
+
 
 (******************************)
 (** Proofs about finite sums **)

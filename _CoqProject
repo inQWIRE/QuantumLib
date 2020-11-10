@@ -8,4 +8,5 @@ Monoid.v
 Prelim.v
 Quantum.v
 RealAux.v
+Types.v
 
