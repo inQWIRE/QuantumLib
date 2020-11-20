@@ -26,6 +26,8 @@ Axiom CNOTTypes : CNOT 0 1 :: (X ⊗ I → X ⊗ X) ∩ (I ⊗ X → I ⊗ X) �
 (* T only takes Z → Z *)
 Axiom TTypes : T' 0 :: (Z → Z).
 
+
+
 Axiom SeqTypes : forall g1 g2 A B C,
     g1 :: A → B ->
     g2 :: B → C ->
