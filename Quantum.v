@@ -7,26 +7,6 @@ Require Export Matrix.
 
 
 
-Notation "√ n" := (sqrt n) (at level 20) : R_scope.
-
-
-Infix "∘" := dot (at level 40, left associativity) : matrix_scope.
-Infix ".+" := Mplus (at level 50, left associativity) : matrix_scope.
-Infix ".*" := scale (at level 40, left associativity) : matrix_scope.
-Infix "×" := Mmult (at level 40, left associativity) : matrix_scope.
-Infix "⊗" := kron (at level 40, left associativity) : matrix_scope.
-Infix "≡" := mat_equiv (at level 70) : matrix_scope.
-Notation "A ⊤" := (transpose A) (at level 0) : matrix_scope. 
-Notation "A †" := (adjoint A) (at level 0) : matrix_scope. 
-Notation "Σ^ n f" := (Csum f n) (at level 60) : matrix_scope.
-Notation "n ⨂ A" := (kron_n n A) (at level 30, no associativity) : matrix_scope.
-Notation "⨂ A" := (big_kron A) (at level 60): matrix_scope.
-Notation "n ⨉ A" := (Mmult_n n A) (at level 30, no associativity) : matrix_scope.
-Hint Unfold Zero I trace dot Mplus scale Mmult kron mat_equiv transpose 
-            adjoint : U_db.
-
-
-
 (*******************************************)
 (** * Quantum basis states *)
 (*******************************************)

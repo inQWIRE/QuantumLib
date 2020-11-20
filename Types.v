@@ -1,6 +1,16 @@
+Require Import Psatz.
+Require Import Reals.
+
+
+(*
+Require Export Matrix.
+Require Import Quantum.
+*)
+
 (** Types *)
 
-(* This won't work with equality due to inversion.
+(* 
+(* This won't work with equality due to inversion. *)
 Inductive coefficient :=
 | Gi
 | Gneg.
@@ -13,8 +23,8 @@ Inductive GType :=
 | mul : GType -> GType -> GType
 | tensor : GType -> GType -> GType
 | cap : GType -> GType -> GType
-| arrow : GType -> GType -> GType.
- *)
+| arrow : GType -> GType -> GType. *)
+
 
 Parameter GType : Type.
 Parameter I : GType.
@@ -26,6 +36,15 @@ Parameter mul : GType -> GType -> GType.
 Parameter tensor : GType -> GType -> GType.
 Parameter cap : GType -> GType -> GType.
 Parameter arrow : GType -> GType -> GType.
+
+
+(*
+Parameter toGType : Matrix 2 2 -> GType.
+Axiom ItoG : toGType (Matrix.I 2) = I.
+Axiom XtoG : toGType σx  = X.
+Axiom ZtoG : toGType σz  = Z.
+*)
+
 
 Notation "- T" := (neg T).
 Infix "*" := mul (at level 40, left associativity).
@@ -156,7 +175,16 @@ Ltac normalize_mul :=
       autorewrite with mul_db tensor_db;
       try rewrite mul_assoc ).
 
-Lemma Ysqr : Y * Y = I. Proof. normalize_mul. reflexivity. Qed.
+Lemma Ysqr : Y * Y = I. Proof. 
+autorewrite with mul_db.
+try rewrite mul_assoc.
+try rewrite <- (mul_assoc X Z _).
+autorewrite with mul_db.
+try rewrite mul_assoc.
+try rewrite <- (mul_assoc X Z _).
+autorewrite with mul_db.
+
+  reflexivity. Qed.
 Lemma XmulZ : X * Z = - Z * X. Proof. normalize_mul. reflexivity. Qed.
 Lemma XmulY : X * Y = i Z. Proof. normalize_mul. reflexivity. Qed.
 Lemma YmulX : Y * X = -i Z. Proof. normalize_mul. reflexivity. Qed.
