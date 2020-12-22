@@ -1,6 +1,7 @@
 -R . Top
 
 Complex.v
+Eigenvectors.v
 Heisenberg.v
 Matrix.v
 Monad.v
@@ -8,5 +9,6 @@ Monoid.v
 Prelim.v
 Quantum.v
 RealAux.v
+Subset.v
 Types.v
 
