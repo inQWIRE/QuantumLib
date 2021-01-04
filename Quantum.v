@@ -533,6 +533,15 @@ Lemma WF_qubit0 : WF_Matrix ∣0⟩. Proof. show_wf. Qed.
 Lemma WF_qubit1 : WF_Matrix ∣1⟩. Proof. show_wf. Qed.
 Lemma WF_braqubit0 : WF_Matrix ∣0⟩⟨0∣. Proof. show_wf. Qed.
 Lemma WF_braqubit1 : WF_Matrix ∣1⟩⟨1∣. Proof. show_wf. Qed.
+
+Lemma WF_bra : forall (x : nat), WF_Matrix (bra x).
+Proof. intros x. unfold bra. destruct (x =? 0). show_wf. show_wf. 
+Qed. 
+
+Lemma WF_ket : forall (x : nat), WF_Matrix (ket x).
+Proof. intros x. unfold ket. destruct (x =? 0). show_wf. show_wf. 
+Qed. 
+
 Lemma WF_bool_to_ket : forall b, WF_Matrix (bool_to_ket b). 
 Proof. destruct b; show_wf. Qed.
 Lemma WF_bool_to_matrix : forall b, WF_Matrix (bool_to_matrix b).
@@ -550,7 +559,7 @@ Proof.
   apply IHl.
 Qed.
 
-Hint Resolve WF_bra0 WF_bra1 WF_qubit0 WF_qubit1 WF_braqubit0 WF_braqubit1 : wf_db.
+Hint Resolve WF_bra0 WF_bra1 WF_qubit0 WF_qubit1 WF_bra WF_ket WF_braqubit0 WF_braqubit1 : wf_db.
 Hint Resolve WF_bool_to_ket WF_bool_to_matrix WF_bool_to_matrix' : wf_db.
 Hint Resolve WF_bools_to_matrix : wf_db.
 
@@ -1367,6 +1376,16 @@ Qed.
 
 Definition norm {n} (ψ : Vector n) : R :=
   sqrt (fst ((ψ† × ψ) O O)).
+
+
+Lemma norm_real : forall {n} (v : Vector n), snd ((v† × v) 0%nat 0%nat) = 0%R. 
+Proof. intros. unfold Mmult, adjoint.
+       rewrite Csum_snd_0. easy.
+       intros. rewrite Cmult_comm.
+       rewrite Cmult_conj_real.
+       reflexivity.
+Qed.
+
 
 Definition normalize {n} (ψ : Vector n) :=
   / (norm ψ) .* ψ.

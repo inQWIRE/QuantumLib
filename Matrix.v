@@ -578,8 +578,35 @@ Proof.
       apply Rplus_le_compat. 
       apply Csum_ge_0; easy.
       lra.
-Qed.            
+Qed.      
 
+
+Lemma Csum_snd_0 : forall n f, (forall x, snd (f x) = 0) -> snd (Csum f n) = 0.       
+Proof. intros. induction n.
+       - reflexivity.
+       - rewrite <- Csum_extend_r.
+         unfold Cplus. simpl. rewrite H, IHn.
+         lra.
+Qed.
+
+
+Lemma Csum_comm : forall f g n, 
+    (forall c1 c2 : C, g (c1 + c2) = g c1 + g c2) ->
+    Csum (fun x => g (f x)) n = g (Csum f n).
+Proof. intros. induction n as [| n'].
+       - simpl.
+         assert (H0 : g 0 - g 0 = g 0 + g 0 - g 0). 
+         { rewrite <- H. rewrite Cplus_0_r. easy. }
+         unfold Cminus in H0. 
+         rewrite <- Cplus_assoc in H0.
+         rewrite Cplus_opp_r in H0.
+         rewrite Cplus_0_r in H0. 
+         apply H0. 
+       - do 2 (rewrite <- Csum_extend_r).
+         rewrite IHn'.
+         rewrite H.
+         reflexivity.
+Qed.
 
 
 (**********************************)
@@ -1238,6 +1265,19 @@ Proof.
   intros. unfold scale. prep_matrix_equality.
   rewrite Cmult_assoc; reflexivity.
 Qed.
+
+
+Lemma Mscale_div : forall {n m} (c : C) (A B : Matrix n m),
+  c <> C0 -> c .* A = c .* B -> A = B.
+Proof. intros. 
+       rewrite <- Mscale_1_l. rewrite <- (Mscale_1_l n m A).
+       rewrite <- (Cinv_l c).
+       rewrite <- Mscale_assoc.
+       rewrite H0. 
+       lma.
+       apply H.
+Qed.
+
 
 Lemma Mscale_plus_distr_l : forall (m n : nat) (x y : C) (A : Matrix m n),
   (x + y) .* A = x .* A .+ y .* A.
