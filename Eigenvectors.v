@@ -41,13 +41,6 @@ Proof. split.
 Qed.
 
 
-Lemma norm_real : forall {n} (v : Vector n), snd ((v† × v) 0 0) = 0%R. 
-Proof. intros. unfold Mmult, adjoint.
-       rewrite Csum_snd_0. easy.
-       intros. rewrite Cmult_comm.
-       rewrite Cmult_conj_real.
-       reflexivity.
-Qed.
 
 
 Lemma sqrt_1_unique : forall x, √ x = 1%R -> x = 1%R.
@@ -370,6 +363,15 @@ Proof. intros. unfold unitary in *.
        rewrite H. reflexivity.
 Qed.
 
+Lemma unit_kron : forall {n m} (A : Square n) (B : Square m),
+  unitary A -> unitary B -> unitary (A ⊗ B).
+Proof. intros. unfold unitary in *.
+       rewrite kron_adjoint.
+       rewrite kron_mixed_product.
+       rewrite H, H0.
+       rewrite id_kron.
+       reflexivity.
+Qed.
 
 Lemma unit_adjoint : forall {n} (A : Square n),
   unitary A -> unitary (A†).
@@ -379,6 +381,11 @@ Proof. intros.
        apply Minv_flip.
        assumption.
 Qed.
+
+
+Hint Resolve X_unitary Y_unitary Z_unitary P_unitary H_unitary : unit_db.
+Hint Resolve cnot_unitary notc_unitary unit_I unit_mult unit_kron unit_adjoint : unit_db.
+
 
 
 Lemma unit_is_orthonormal : forall {n} (U : Square n),
@@ -689,6 +696,22 @@ Proof. intros.
        rewrite Mscale_mult_dist_l in H0.
        apply Mscale_div in H0;
        assumption.
+Qed.
+
+
+Lemma eig_unit_conv : forall {n} (v : Vector n) (c : C) (U B : Square n),
+  unitary U -> Eigenpair B (U × v, c) -> Eigenpair (U† × B × U) (v, c).  
+Proof. intros. 
+       unfold Eigenpair in *; simpl in *.
+       do 2 (rewrite Mmult_assoc).
+       rewrite H0.
+       rewrite Mscale_mult_dist_r.
+       rewrite <- Mmult_assoc.
+       unfold unitary in H.
+       apply Minv_flip in H.
+       rewrite H.
+       rewrite Mmult_1_l'.
+       reflexivity.
 Qed.
 
 

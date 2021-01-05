@@ -233,24 +233,91 @@ Fixpoint tensor_n n {m} (A : vecType m) :=
 
 Notation "- T" := (neg T) : heisenberg_scope. 
 Infix "*'" := mul (at level 40, left associativity) : heisenberg_scope. 
-Infix "⊗'" := tensor (at level 51, left associativity) : heisenberg_scope. 
+Infix "⊗'" := tensor (at level 51, right associativity) : heisenberg_scope. 
 Infix "·" := scale (at level 45, left associativity) : heisenberg_scope. 
 Notation "n ⨂' A" := (tensor_n n A) (at level 30, no associativity) : heisenberg_scope.
+
+(*****************************************************)
+(* helper lemmas to extract from mult, tensor, scale *)
+(*****************************************************)
+
+
+Lemma in_mult : forall {n} (p : Square n) (A B : vecType n),
+  In p (A *' B) -> exists a b, In a A /\ In b B /\ p = a × b.
+Proof. intros. induction A as [| h].
+       - simpl in H. easy.
+       - simpl in H.
+         apply in_app_or in H; destruct H as [H | H].
+         * apply in_map_iff in H. destruct H.
+           exists h, x. split.
+           simpl. left. easy. destruct H as [H H']. 
+           split. apply H'. rewrite H; reflexivity.
+         * apply IHA in H. do 2 (destruct H). 
+           exists x, x0. 
+           destruct H as [H1 H2].
+           split. simpl. right; apply H1.
+           apply H2.
+Qed.
+
+
+Lemma in_tensor : forall {n m} (p : Square (n*m)) (A : vecType n) (B : vecType m),
+  In p (A ⊗' B) -> exists a b, In a A /\ In b B /\ p = a ⊗ b.
+Proof. intros. induction A as [| h].
+       - simpl in H. easy.
+       - simpl in H.
+         apply in_app_or in H; destruct H as [H | H].
+         * apply in_map_iff in H. destruct H.
+           exists h, x. split.
+           simpl. left. easy. destruct H as [H H']. 
+           split. apply H'. rewrite H; reflexivity.
+         * apply IHA in H. do 2 (destruct H). 
+           exists x, x0. 
+           destruct H as [H1 H2].
+           split. simpl. right; apply H1.
+           apply H2.
+Qed.
+
+
+Lemma in_scale : forall {n} (p : Square n) (c : C) (A : vecType n),
+  In p (c · A) -> exists a, In a A /\ p = c .* a.
+Proof. intros. induction A as [| h].
+       - simpl in H. easy.
+       - simpl in H.
+         destruct H as [H | H].
+         * exists h. split.
+           left. easy.
+           rewrite H. reflexivity.
+         * apply IHA in H. do 2 (destruct H). 
+           exists x. split.
+           right. apply H.
+           apply H0. 
+Qed.
+
+
+Lemma in_scale_rev : forall {n} (p : Square n) (c : C) (A : vecType n),
+  In p A -> In (c .* p) (c · A).
+Proof. intros. induction A as [| h].
+       - simpl in H. easy.
+       - simpl in H.
+         destruct H as [H0 | H0].
+         * left. rewrite H0. reflexivity.
+         * right. apply IHA. apply H0.
+Qed.
 
 (******************)
 (* Singleton laws *)
 (******************)
 
-Definition X : vecType 2 := [σx].
-Definition Z : vecType 2 := [σz].
-Definition I : vecType 2 := [I 2].
+Definition X' : vecType 2 := [σx].
+Definition Z' : vecType 2 := [σz].
+Definition I' : vecType 2 := [I 2].
 
-Definition I_n (n : nat) : vecType n := [Matrix.I n].
+Definition I_n (n : nat) : vecType n := [I n].
 
 
-Lemma SI : Singleton I. Proof. easy. Qed.
-Lemma SX : Singleton X. Proof. easy. Qed.
-Lemma SZ : Singleton Z. Proof. easy. Qed.
+Lemma SI : Singleton I'. Proof. easy. Qed.
+Lemma SX : Singleton X'. Proof. easy. Qed.
+Lemma SZ : Singleton Z'. Proof. easy. Qed.
 Lemma SI_n : forall (n : nat), Singleton (I_n n). Proof. easy. Qed.
 
 Lemma S_neg : forall (n : nat) (A : vecType n), Singleton A -> Singleton (neg A).
@@ -278,11 +345,80 @@ Qed.
 
 Hint Resolve SI SX SZ SI_n S_neg S_i S_mul : sing_db.
 
-Notation Y := (i (X *' Z)).
+Notation Y' := (i (X' *' Z')).
 
-Lemma SY : Singleton Y.
+Lemma SY : Singleton Y'.
 Proof. auto with sing_db. Qed.
 
+(****************)
+(* Unitary laws *)
+(****************)
+
+
+Definition uni_vecType {n : nat} (vt : vecType n) : Prop :=
+  forall A, In A vt -> unitary A.
+
+
+Lemma univ_I : uni_vecType I'. 
+Proof. unfold uni_vecType. intros. 
+       apply in_simplify in H; rewrite H. 
+       auto with unit_db.
+Qed.
+
+Lemma univ_X : uni_vecType X'.
+Proof. unfold uni_vecType. intros. 
+       apply in_simplify in H; rewrite H. 
+       auto with unit_db.
+Qed.
+
+
+Lemma univ_Z : uni_vecType Z'. 
+Proof. unfold uni_vecType. intros. 
+       apply in_simplify in H; rewrite H. 
+       auto with unit_db.
+Qed.
+
+Lemma univ_I_n : forall (n : nat), uni_vecType (I_n n). 
+Proof. unfold uni_vecType. intros. 
+       apply in_simplify in H; rewrite H. 
+       auto with unit_db.
+Qed.
+
+Lemma univ_neg : forall (n : nat) (A : vecType n), uni_vecType A -> uni_vecType (neg A).
+Proof. unfold uni_vecType in *.
+       intros n A H a H1. unfold neg in H1.
+       apply in_scale in H1. destruct H1 as [x [H1 H2]].
+       apply H in H1. rewrite H2. unfold unitary.
+       rewrite Mscale_adj.
+       distribute_scale. rewrite H1.
+       lma. 
+Qed.
+
+Lemma univ_i : forall (n : nat) (A : vecType n), uni_vecType A -> uni_vecType (i A).
+Proof. unfold uni_vecType in *.
+       intros n A H a H1. unfold i in H1.
+       apply in_scale in H1. destruct H1 as [x [H1 H2]].
+       apply H in H1. rewrite H2. unfold unitary.
+       rewrite Mscale_adj.
+       distribute_scale. rewrite H1.
+       lma. 
+Qed.
+
+
+Lemma univ_mul : forall (n : nat) (A B : vecType n), 
+  uni_vecType A -> uni_vecType B -> uni_vecType (A *' B).
+Proof. unfold uni_vecType in *.
+       intros n A B HA HB ab Hab.
+       apply in_mult in Hab.
+       destruct Hab as [a [b [Ha [Hb Hab]]]].
+       rewrite Hab.
+       auto with unit_db.
+Qed. 
+
+Hint Resolve univ_I univ_X univ_Z univ_I_n univ_neg univ_i univ_mul : univ_db.
+
+Lemma univ_Y : uni_vecType Y'.
+Proof. auto with univ_db. Qed.
 
 (***********************)
 (* Multiplication laws *)
@@ -376,8 +512,8 @@ Proof. intros n A B C. induction A as [| a].
          reflexivity.
 Qed.
 
-Lemma mul_I_l : forall (A : vecType 2), I *' A = A.
-Proof. intros A. unfold I. induction A as [| a].
+Lemma mul_I_l : forall (A : vecType 2), I' *' A = A.
+Proof. intros A. unfold I'. induction A as [| a].
        - reflexivity.
        - rewrite (cons_conc _ a A). 
          rewrite sing_concat_into_mul_r.
@@ -387,8 +523,8 @@ Proof. intros A. unfold I. induction A as [| a].
          reflexivity.
 Qed.
 
-Lemma mul_I_r : forall (A : vecType 2), A *' I = A.
-Proof. intros A. unfold I. induction A as [| a].
+Lemma mul_I_r : forall (A : vecType 2), A *' I' = A.
+Proof. intros A. unfold I'. induction A as [| a].
        - reflexivity.
        - rewrite cons_into_mul_l.
          rewrite IHA.
@@ -397,15 +533,15 @@ Proof. intros A. unfold I. induction A as [| a].
          reflexivity.
 Qed.
   
-Lemma Xsqr : X *' X = I.
+Lemma Xsqr : X' *' X' = I'.
 Proof. simpl. unfold I. rewrite XtimesXid. reflexivity.
 Qed.
 
-Lemma Zsqr : Z *' Z = I.
+Lemma Zsqr : Z' *' Z' = I'.
 Proof. simpl. unfold I. rewrite ZtimesZid. reflexivity.
 Qed.
 
-Lemma ZmulX : Z *' X = - (X *' Z).
+Lemma ZmulX : Z' *' X' = - (X' *' Z').
 Proof. simpl. assert (H : σz × σx = -1 .* (σx × σz)). 
        { lma'. } rewrite H. reflexivity.
 Qed.
@@ -597,7 +733,7 @@ Qed.
 
 
 Lemma sing_tensor_assoc : forall (m n o : nat) (a : Square m) (b : Square n) (C : vecType o),
-    [a] ⊗' [b] ⊗' C = [a] ⊗' ([b] ⊗' C). 
+    ([a] ⊗' [b]) ⊗' C = [a] ⊗' ([b] ⊗' C). 
 Proof. intros m n o a b C. induction C as [| c].
        - simpl. reflexivity. 
        - rewrite (cons_conc _ c C).
@@ -612,7 +748,7 @@ Proof. intros m n o a b C. induction C as [| c].
 Qed.
 
 Lemma sing_tensor_assoc2 : forall (m n o: nat) (a : Square m) (B : vecType n) (C : vecType o),
-    [a] ⊗' B ⊗' C = [a] ⊗' (B ⊗' C). 
+    ([a] ⊗' B) ⊗' C = [a] ⊗' (B ⊗' C). 
 Proof. intros m n o a B C. induction B as [| b].
        - simpl. reflexivity. 
        - rewrite (cons_conc _ b B).
@@ -985,24 +1121,6 @@ Proof. intros n T1 T2 [S12 S21].
 Qed.
 
 
-(*
-
-
-(* essentially using functional extensionality to say this is true. *)
-(* note that this is not actually true, eg: [I] =\= [I; I] but both clearly have same type *)
-Axiom functional_type_equality : forall (n : nat) (T1 T2 : vecType n),
-  (forall v, v :' T1 <-> v:' T2) -> T1 = T2.
-
-Corollary eq_types_Eq : forall (n : nat) (T1 T2 : vecType n),
-  (T1 ≡ T2) -> T1 = T2.
-Proof. intros n T1 T2 H.
-       apply functional_type_equality.
-       intros v.
-       apply eq_types_same_type.
-       apply H.
-Qed
-
-*)
 
 
 Lemma cap_idem : forall (n : nat) (A : vecType n), A ∩ A ≡ A.
@@ -1171,13 +1289,6 @@ Qed.
 Notation gateType n := (list (vecType n * vecType n)).
 
 
-Definition uni_vecType {n : nat} (vt : vecType n) : Prop :=
-  forall A, In A vt -> unitary A.
-
-
-Definition uni_gateType {n : nat} (gt : gateType n) : Prop :=
-  forall p, In p gt -> (uni_vecType (fst p) /\ uni_vecType (snd p)).
-
 
 Definition singGateType {n : nat} (U : Square n) (p : vecType n * vecType n) : Prop :=
   forall (A B : Square n), In A (fst p) -> In B (snd p) -> U × A = B × U.
@@ -1206,21 +1317,6 @@ Proof. intros.
        { apply Ha. left. easy. }
        rewrite H''.
        rewrite Mscale_mult_dist_r.
-       reflexivity.
-Qed.
-
-Lemma eig_unit_conv : forall {n} (v : Vector n) (c : C) (U B : Square n),
-  unitary U -> Eigenpair B (U × v, c) -> Eigenpair (U† × B × U) (v, c).  
-Proof. intros. 
-       unfold Eigenpair in *; simpl in *.
-       do 2 (rewrite Mmult_assoc).
-       rewrite H0.
-       rewrite Mscale_mult_dist_r.
-       rewrite <- Mmult_assoc.
-       unfold unitary in H.
-       apply Minv_flip in H.
-       rewrite H.
-       rewrite Mmult_1_l'.
        reflexivity.
 Qed.
 
@@ -1355,6 +1451,7 @@ Definition seq {n : nat} (U1 U2 : Square n) := U2 × U1.
 
 Infix ";" := seq (at level 52, right associativity).
 
+
 Lemma singleton_simplify2 : forall {n} (U A B : Square n),
   singGateType U ([A], [B]) <-> U × A = B × U.
 Proof. intros. 
@@ -1368,45 +1465,6 @@ Proof. intros.
          rewrite <- H, <- H'; apply H0.
          easy. easy.
 Qed.       
-
-
-
-
-Ltac solve_gate_type :=
-  repeat match goal with
-         | |- singGateType' ?U ?g /\ _ => split
-         | |- ?g <> [] => easy
-         | |- singGateType' ?U ?g => apply sgt_implies_sgt' 
-         | |- singGateType ?U ?g => simpl; apply singleton_simplify2; lma'
-         | |- _ => try easy
-         end.
-
-
-
-
-Lemma Htypes : H ::' (Z → X) ∩ (X → Z).
-Proof. simpl. unfold Z, X. 
-       solve_gate_type. 
-Qed.
-       
-
-Lemma STypes : S ::' (X → Y) ∩ (Z → Z).
-Proof. simpl. unfold Z, X. 
-       solve_gate_type. 
-Qed.
-
-Lemma CNOTTypes : CNOT ::' (X ⊗' I → X ⊗' X) ∩ (I ⊗' X → I ⊗' X) ∩
-                          (Z ⊗' I → Z ⊗' I) ∩ (I ⊗' Z → Z ⊗' Z).
-Proof. simpl. unfold X, I, Z. 
-       solve_gate_type.
-Qed.
-      
-
-(* T only takes Z → Z *)
-Lemma TTypes : T ::' (Z → Z).
-Proof. simpl. unfold T, Z. 
-       solve_gate_type.
-Qed.
 
 
 (* lemmas about seq*)
@@ -1552,8 +1610,7 @@ Add Parametric Relation n : (gateType n) (@eq_gateType n)
 
 
 
-
-(* again, some form of converse is true, but not exactly *) 
+ 
 Lemma eq_types_are_Eq_gate : forall (n : nat) (g : Square n) (T1 T2 : gateType n),
   (T1 ⊆ T2 /\ T2 ⊆ T1) -> T1 ≡≡ T2.
 Proof. intros n v T1 T2 [S12 S21].
@@ -1591,8 +1648,8 @@ Proof. intros n g A B.
            apply Hb.
 Qed.
 
-(* Note that both cap_elim and cap_elim_gate are here. Both are necessary *)
-Hint Resolve cap_elim_l cap_elim_r cap_elim_l_gate cap_elim_r_gate cap_elim_l_pair cap_elim_r_pair cap_intro : subtype_db.
+(* Note that both cap_elim_pair and cap_elim_gate are here. Both are necessary *)
+Hint Resolve cap_elim_l_gate cap_elim_r_gate cap_elim_l_pair cap_elim_r_pair cap_intro : subtype_db.
 
 Lemma cap_elim : forall {n} (g : Square n) (A B : gateType n),
   g ::' A ∩ B -> g ::' A /\ g ::' B.
@@ -1665,23 +1722,6 @@ Qed.
 (***************)
 
 
-Lemma in_mult : forall {n} (p : Square n) (A B : vecType n),
-  In p (A *' B) -> exists a b, In a A /\ In b B /\ p = a × b.
-Proof. intros. induction A as [| h].
-       - simpl in H0. easy.
-       - simpl in H0.
-         apply in_app_or in H0; destruct H0 as [H0 | H0].
-         * apply in_map_iff in H0. destruct H0.
-           exists h, x. split.
-           simpl. left. easy. destruct H0 as [H0 H0']. 
-           split. apply H0'. rewrite H0; reflexivity.
-         * apply IHA in H0. do 2 (destruct H0). 
-           exists x, x0. 
-           destruct H0 as [H1 H2].
-           split. simpl. right; apply H1.
-           apply H2.
-Qed.
-
 
 Lemma arrow_mul : forall {n} (p : Square n) (A A' B B' : vecType n),
     Singleton A -> Singleton B ->
@@ -1722,31 +1762,6 @@ Proof. intros n p A A' B B' Hsa Hsb Hup Hua Hua' Hub Hub' [Ha _] [Hb _].
        split. apply Hua. apply Hua'.
 Qed.
 
-Lemma in_scale : forall {n} (p : Square n) (c : C) (A : vecType n),
-  In p (c · A) -> exists a, In a A /\ p = c .* a.
-Proof. intros. induction A as [| h].
-       - simpl in H0. easy.
-       - simpl in H0.
-         destruct H0 as [H0 | H0].
-         * exists h. split.
-           left. easy.
-           rewrite H0. reflexivity.
-         * apply IHA in H0. do 2 (destruct H0). 
-           exists x. split.
-           right. apply H0.
-           apply H1. 
-Qed.
-
-Lemma in_scale_rev : forall {n} (p : Square n) (c : C) (A : vecType n),
-  In p A -> In (c .* p) (c · A).
-Proof. intros. induction A as [| h].
-       - simpl in H0. easy.
-       - simpl in H0.
-         destruct H0 as [H0 | H0].
-         * left. rewrite H0. reflexivity.
-         * right. apply IHA. apply H0.
-Qed.
-
 
 
 
@@ -1782,7 +1797,7 @@ Lemma arrow_i : forall {n} (p : Square n) (A A' : vecType n),
     p ::' A → A' ->
     p ::' i A → i A'.
 Proof. unfold i. intros. 
-       apply arrow_scale.
+       apply arrow_scale. 
        apply C0_snd_neq. simpl. easy. 
        apply H0.
 Qed.
@@ -1792,68 +1807,28 @@ Lemma arrow_neg : forall {n} (p : Square n) (A A' : vecType n),
     p ::' -A → -A'.
 Proof. unfold neg. intros.
        apply arrow_scale.
-       apply C0_fst_neq. simpl. 
-       assert (H' : -1 * -1 = 1%R). { lca. }
-                                    
-lia. easy. 
+       rewrite <- Cexp_PI.
+       apply Cexp_nonzero.
+       apply H0.
+Qed.
+
 
 (*****************************)
 (** Typing Rules for Tensors *)
 (*****************************)
 
-
-
 Notation s := Datatypes.S.
-
 
 Local Open Scope nat_scope.
 
-
-(* defining projections to be used in prog_ctrl_app *)
-
-Definition proj0 : Matrix 2 2 := 
-  fun x y => match x, y with
-          | 0, 0 => C1
-          | _, _ => C0
-          end.
-
-Definition proj1 : Matrix 2 2 := 
-  fun x y => match x, y with
-          | 1, 1 => C1
-          | _, _ => C0
-          end.
-
-
-Lemma WF_proj0 : WF_Matrix proj0. Proof. show_wf. Qed.
-Lemma WF_proj1 : WF_Matrix proj1. Proof. show_wf. Qed.
-
-Hint Resolve WF_proj0 WF_proj1 : wf_db.
-
-
-
-Definition prog_simple_app (prg_len : nat) (U : Square 2) (bit : nat) : Square (2^prg_len) :=
-  Matrix.I (2^bit) ⊗ U ⊗ Matrix.I (2^(prg_len - bit - 1)).
-
-
-Definition prog_ctrl_app (prg_len : nat) (U : Square 2) (ctrl targ : nat) : Square (2^prg_len) :=
-  match (ctrl <? targ) with
-  | true => Matrix.I (2^ctrl) ⊗
-             (proj0 ⊗ Matrix.I (2^(targ - ctrl)) .+ 
-              proj1 ⊗ Matrix.I (2^(targ - ctrl - 1)) ⊗ U) ⊗ Matrix.I (2^(prg_len - targ - 1))
-  | false => Matrix.I (2^targ) ⊗
-             (Matrix.I (2^(ctrl - targ)) ⊗ proj0 .+ 
-              U ⊗ Matrix.I (2^(ctrl - targ - 1)) ⊗ proj1) ⊗ Matrix.I (2^(prg_len - ctrl - 1))
-  end.
-
-
-
-
 (* where can I find tactics to deal with this??? *)
-Lemma easy_sub : forall (n : nat), 1 + n - n = 1.
+Lemma easy_sub : forall (n : nat), 1 + n - n = 1. Proof. nia. Qed. 
+Lemma easy_sub2 : forall (n k : nat), k - (1 + n) - 1 = k - n - 2. Proof. nia. Qed.
+Lemma easy_sub3 : forall (n k : nat), n <> 0 -> n + k - 0 - 1 = n - 0 - 1 + k. 
 Proof. intros. 
-       rewrite plus_comm. 
-       rewrite minus_plus.
-       reflexivity.
+       destruct n as [| n].
+       - easy.
+       - simpl. nia. 
 Qed.
 
 Lemma easy_leb : forall (n : nat), n <? 1 + n = true. 
@@ -1861,11 +1836,100 @@ Proof. induction n as [| n']. easy.
        simpl. unfold Nat.ltb. simpl. unfold Nat.ltb in IHn'.
        simpl in IHn'. easy.
 Qed.
+Lemma easy_pow : forall (a n m : nat), a^(n + m) = a^n * a^m.
+Proof. intros. induction n as [| n'].
+       - simpl. nia.
+       - simpl. rewrite IHn'. nia.
+Qed.
+Lemma easy_pow2 : forall (a p : nat), p <> 0 -> a^p = a * a ^ (p - 0 - 1). 
+Proof. intros. destruct p as [| p']. easy. simpl. 
+       rewrite Nat.sub_0_r.  easy.
+Qed.
 
 
-Lemma easy_sub2 : forall (n k : nat), k - (1 + n) - 1 = k - n - 2.
+(* defining program application *)
+Definition prog_simple_app (prg_len : nat) (U : Square 2) (bit : nat) : Square (2^prg_len) :=
+  Matrix.I (2^bit) ⊗ U ⊗ Matrix.I (2^(prg_len - bit - 1)).
+
+
+Definition prog_ctrl_app (prg_len : nat) (U : Square 2) (ctrl targ : nat) : Square (2^prg_len) :=
+  match (ctrl <? targ) with
+  | true => Matrix.I (2^ctrl) ⊗
+             (∣0⟩⟨0∣ ⊗ Matrix.I (2^(targ - ctrl)) .+ 
+              ∣1⟩⟨1∣ ⊗ Matrix.I (2^(targ - ctrl - 1)) ⊗ U) ⊗ Matrix.I (2^(prg_len - targ - 1))
+  | false => Matrix.I (2^targ) ⊗
+             (Matrix.I (2^(ctrl - targ)) ⊗ ∣0⟩⟨0∣ .+ 
+              U ⊗ Matrix.I (2^(ctrl - targ - 1)) ⊗ ∣1⟩⟨1∣) ⊗ Matrix.I (2^(prg_len - ctrl - 1))
+  end.
+
+
+Lemma tensor_base : forall (prg_len new_len : nat) (g : Square 2) 
+                           (A A' : vecType (2^prg_len)) (E : vecType (2^new_len)),
+    prg_len <> 0 -> unitary g -> 
+    uni_vecType A -> uni_vecType A' ->
+    WF_Matrix g -> Singleton A -> Singleton E ->
+    (prog_simple_app prg_len g 0) ::' (A → A') ->
+    (prog_simple_app (prg_len + new_len) g 0) ::'  A ⊗' E → A' ⊗' E.
+Proof. unfold prog_simple_app in *.
+       intros prg_len new_len g A A' E Hp0 Hug Hua Hua' Hwfg Hsa Hse [H _].
+       apply sgt'_implies_sgt in H.
+       apply kill_true.
+       apply singleton_simplify in Hsa.
+       destruct Hsa as [a Ha]. 
+       apply singleton_simplify in Hse.
+       destruct Hse as [e He]. 
+       rewrite Ha, He.
+       apply sgt_implies_sgt'.
+       easy.
+       unfold singGateType in *; simpl in *.
+       intros.
+       apply in_tensor in H1.
+       destruct H1 as [a' [e1 [Ha1 [Ha2 Ha3]]]].
+       apply in_simplify in Ha2. rewrite Ha2 in *.
+       destruct H0 as [H0 | F].
+       - rewrite <- H0, Ha3.
+         rewrite kron_1_l in *. 
+         rewrite easy_sub3. 
+         rewrite (easy_pow 2 (prg_len - 0 - 1) new_len).
+         rewrite <- id_kron.
+         rewrite <- kron_assoc.
+         restore_dims; 
+         rewrite (kron_mixed_product (g ⊗ Matrix.I (2 ^ (prg_len - 0 - 1))) _ a e).
+         restore_dims;
+         rewrite (kron_mixed_product a' e (g ⊗ Matrix.I (2 ^ (prg_len - 0 - 1))) 
+                                     (Matrix.I (2 ^ new_len))).
+         assert (Ha' : In a A). 
+         { rewrite Ha. left. easy. }
+         apply (H a a') in Ha'.
+         repeat (rewrite <- easy_pow2 in *).
+         rewrite Ha'.
+         rewrite Mmult_1_l'; rewrite Mmult_1_r'.
+         reflexivity.
+         apply Hp0.
+         apply Ha1.
+         apply Hp0.
+         apply Hwfg. apply Hwfg.
+       - easy.
+       - simpl. rewrite kron_1_l.
+         rewrite easy_pow2.
+         apply unit_kron.
+         apply Hug. 
+         apply unit_I.
+         apply Hp0.
+         apply Hwfg.
+       - apply Hsa.
+       - split. apply Hua. apply Hua'.
+Qed.
+
+
+Lemma tensor_inc : forall (prg_len bit : nat) (g : Square 2) 
+                          (E : vecType 2) (A A' : vecType (2^prg_len)),
+    prg_len <> 0 -> bit < prg_len -> unitary g ->
+    uni_vecType A -> uni_vecType A' ->
+    WF_Matrix g -> Singleton E -> Singleton A ->
+    (prog_simple_app prg_len g bit) ::' (A → A') ->
+    (prog_simple_app (prg_len + 1) g (s bit)) ::'  E ⊗' A → E ⊗' A'.
 Proof. Admitted.
-
 
 
 Lemma adj_ctrlX_is_cnot : forall (prg_len ctrl : nat),
@@ -1873,7 +1937,7 @@ Lemma adj_ctrlX_is_cnot : forall (prg_len ctrl : nat),
   Matrix.I (2^ctrl) ⊗ cnot ⊗ Matrix.I (2^(prg_len - ctrl - 2)).
 Proof. intros; unfold prog_ctrl_app.
        rewrite easy_leb. rewrite easy_sub. 
-       assert (H : (proj0 ⊗ Matrix.I (2 ^ 1) .+ proj1 ⊗ Matrix.I (2 ^ (1 - 1)) ⊗ σx) = cnot).
+       assert (H : (∣0⟩⟨0∣ ⊗ Matrix.I (2 ^ 1) .+ ∣1⟩⟨1∣ ⊗ Matrix.I (2 ^ (1 - 1)) ⊗ σx) = cnot).
        { lma'. }
        rewrite H. rewrite easy_sub2. 
        reflexivity.
@@ -1886,7 +1950,7 @@ Proof. assert (H : cnot = Matrix.I (2^0) ⊗ cnot ⊗ Matrix.I (2^0)).
        rewrite H.
        rewrite adj_ctrlX_is_cnot.
        assert (H' : (2 - 0 - 2) = 0).
-       { rewrite <- minus_n_O. simpl. reflexivity. }
+       { nia. }
        rewrite H'. reflexivity.
 Qed.
 
@@ -1901,6 +1965,51 @@ Proof. lma'. unfold prog_ctrl_app. simpl.
 Qed.
 
 
+
+Ltac solve_gate_type :=
+  repeat match goal with
+         | |- singGateType' ?U ?g /\ _ => split
+         | |- ?g <> [] => easy
+         | |- singGateType' ?U ?g => apply sgt_implies_sgt' 
+         | |- singGateType ?U ?g => simpl; apply singleton_simplify2; lma'
+         | |- _ => try easy
+         end.
+
+
+Lemma HTypes : (prog_simple_app 1 H 0) ::' (Z → X) ∩ (X → Z).
+Proof. simpl. unfold Z, X, prog_simple_app. 
+       solve_gate_type. 
+Qed.
+       
+
+Lemma STypes : (prog_simple_app 1 S 0) ::' (X → Y) ∩ (Z → Z).
+Proof. simpl. unfold Z, X, prog_simple_app. 
+       solve_gate_type. 
+Qed.
+
+Lemma CNOTTypes : (prog_ctrl_app 2 σx 0 1) ::' (X ⊗' I → X ⊗' X) ∩ (I ⊗' X → I ⊗' X) ∩
+                          (Z ⊗' I → Z ⊗' I) ∩ (I ⊗' Z → Z ⊗' Z).
+Proof. rewrite adj_ctrlX_is_cnot1.
+       simpl. unfold X, I, Z. 
+       solve_gate_type.
+Qed.
+      
+
+(* T only takes Z → Z *)
+Lemma TTypes : T ::' (Z → Z).
+Proof. simpl. unfold T, Z. 
+       solve_gate_type. 
+Qed.
+
+Hint Resolve HTypes STypes TTypes CNOTTypes : base_types_db.
+Hint Resolve cap_elim_l_gate cap_elim_r_gate : base_types_db.
+
+Hint Resolve HTypes STypes TTypes CNOTTypes : typing_db.
+Hint Resolve cap_intro cap_elim_l cap_elim_r : typing_db.
+Hint Resolve SeqTypes : typing_db.
+
+
+
 Definition bell00 : Square 16 := (prog_simple_app 4 H 2); (prog_ctrl_app 4 σx 2 3).
 
 Definition encode : Square 16 := (prog_ctrl_app 4 σz 0 2); (prog_ctrl_app 4 σx 1 2).
@@ -1910,8 +2019,48 @@ Definition decode : Square 16 := (prog_ctrl_app 4 σx 2 3); (prog_simple_app 4 H
 Definition superdense := bell00 ; encode; decode.
 
 
+
 Lemma superdenseTypesQPL : superdense ::' (Z ⊗' Z ⊗' Z ⊗' Z → I ⊗' I ⊗' Z ⊗' Z).
-Proof. simpl. apply kill_true. 
+Proof. unfold superdense.
+       repeat (eapply SeqTypes).
+       eapply (tensor_inc 3 1 H Z (Z ⊗' Z ⊗' Z) _). 
+       9: { eapply (tensor_inc 2 0 H Z (Z ⊗' Z) _). 
+            9: { eapply (tensor_base 1 1 H Z _ Z). 
+                 8: { solve [eauto with base_types_db]. }
+                 nia. apply H_unitary. 
+Focus 9.
+       
+       nia. nia. apply H_unitary.
+       simpl. unfold uni_vecType. intros.
+       apply in_simplify in H0. rewrite H0.
+       assert (H : 8 = 2 * 4). { nia. }
+       rewrite H. apply unit_kron.
+       apply Z_unitary.
+       assert (H' : 4 = 2 * 2). { nia. }
+       rewrite H'. apply unit_kron.
+       apply Z_unitary. apply Z_unitary.
+
+
+
+Lemma tensor_base : forall (prg_len new_len : nat) (g : Square 2) 
+                           (A A' : vecType (2^prg_len)) (E : vecType (2^new_len)),
+    prg_len <> 0 -> unitary g -> 
+    uni_vecType A -> uni_vecType A' ->
+    WF_Matrix g -> Singleton A -> Singleton E ->
+    (prog_simple_app prg_len g 0) ::' (A → A') ->
+    (prog_simple_app (prg_len + new_len) g 0) ::'  A ⊗' E → A' ⊗' E.
+
+Lemma tensor_inc : forall (prg_len bit : nat) (g : Square 2) 
+                          (E : vecType 2) (A A' : vecType (2^prg_len)),
+    prg_len <> 0 -> bit < prg_len -> unitary g ->
+    uni_vecType A -> uni_vecType A' ->
+    WF_Matrix g -> Singleton E -> Singleton A ->
+    (prog_simple_app prg_len g bit) ::' (A → A') ->
+    (prog_simple_app (s prg_len) g (s bit)) ::'  E ⊗' A → E ⊗' A'.
+Proof. Admitted.
+
+
+simpl. apply kill_true. 
        unfold singGateType. simpl.
        intros A B [H | F] [H1 | F'].
        rewrite <- H, <- H1.
