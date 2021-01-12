@@ -413,9 +413,21 @@ Proof. unfold uni_vecType in *.
        destruct Hab as [a [b [Ha [Hb Hab]]]].
        rewrite Hab.
        auto with unit_db.
-Qed. 
+Qed.
 
-Hint Resolve univ_I univ_X univ_Z univ_I_n univ_neg univ_i univ_mul : univ_db.
+
+Lemma univ_tensor : forall (n m : nat) (A : vecType n) (B : vecType m),
+  uni_vecType A -> uni_vecType B -> uni_vecType (A ⊗' B).
+Proof. unfold uni_vecType in *.
+       intros n m A B HA HB ab Hab.
+       apply in_tensor in Hab.
+       destruct Hab as [a [b [Ha [Hb Hab]]]].
+       rewrite Hab.
+       auto with unit_db.
+Qed.
+
+Hint Resolve univ_I univ_X univ_Z univ_I_n univ_neg univ_i univ_mul univ_tensor : univ_db.
+
 
 Lemma univ_Y : uni_vecType Y'.
 Proof. auto with univ_db. Qed.
@@ -924,7 +936,7 @@ Qed.
 Lemma decompose_tensor : forall (A B : vecType 2),
     Singleton A ->
     Singleton B ->
-    A ⊗' B = (A ⊗' I) *' (I ⊗' B).
+    A ⊗' B = (A ⊗' I') *' (I' ⊗' B).
 Proof.
   intros.
   rewrite mul_tensor_dist;  auto with sing_db.
@@ -935,7 +947,7 @@ Qed.
 Lemma decompose_tensor_mult_l : forall (A B : vecType 2),
     Singleton A ->
     Singleton B ->
-    (A *' B) ⊗' I = (A ⊗' I) *' (B ⊗' I).
+    (A *' B) ⊗' I' = (A ⊗' I') *' (B ⊗' I').
 Proof.
   intros.
   rewrite mul_tensor_dist; auto with sing_db.
@@ -944,7 +956,7 @@ Proof.
 Qed.
 
 Lemma decompose_tensor_mult_r : forall (A B : vecType 2),
-    I ⊗' (A *' B) = (I ⊗' A) *' (I ⊗' B).
+    I' ⊗' (A *' B) = (I' ⊗' A) *' (I' ⊗' B).
 Proof.
   intros.
   rewrite mul_tensor_dist; auto with sing_db.
@@ -957,100 +969,7 @@ Qed.
 (* Subset definitions *)
 (**********************)
 
-
-(* Lemmas for subsets used in Heisenberg.v *)
-Definition subset {X : Type} (l1 l2 : list X) :=
-  forall (x : X), In x l1 -> In x l2.
-
-
-(* an alternate version of subset *)
-Fixpoint subset' {X : Type} (l1 l2 : list X) :=
-  match l1 with
-  | [] => True
-  | (l :: l1') => In l l2 /\ subset' l1' l2
-  end.
-
-
-Lemma subset_is_subset' : forall (X : Type) (l1 l2 : list X),
-    subset' l1 l2 <-> subset l1 l2.
-Proof. intros X l1 l2. split.
-       - induction l1 as [| l].
-         * easy.
-         * simpl. intros [H1 H2].
-           unfold subset'. intros x. simpl. intros [H3 | H4].
-           + rewrite H3 in H1. apply H1.
-           + apply IHl1 in H2. unfold subset' in H2. 
-             apply H2. apply H4.
-       - induction l1 as [| l].
-         * easy. 
-         * unfold subset'. intros H.
-           simpl. split.
-           + apply H. simpl. left. reflexivity.
-           + apply IHl1. unfold subset'. 
-             intros x H'. apply H. simpl. 
-             right. apply H'.
-Qed.           
-           
-  
-Infix "⊆" := subset (at level 30, no associativity) : R_scope.
-
-
-Lemma subset_cons : forall (X : Type) (l1 l2 : list X) (x : X),
-  l1 ⊆ l2 -> l1 ⊆ (x :: l2).
-Proof. intros X l1 l2 x.
-       unfold subset; intros H.
-       intros x0 H0.
-       simpl; right.
-       apply H; apply H0.
-Qed.
-
-
-Lemma subset_concat_l : forall (X : Type) (l1 l2 : list X),
-  l1 ⊆ (l1 ++ l2).
-Proof. intros X l1 l2.
-       unfold subset; intros x H.
-       apply in_or_app.
-       left; apply H.
-Qed.
-
-
-Lemma subset_concat_r : forall (X : Type) (l1 l2 : list X),
-  l1 ⊆ (l2 ++ l1).
-Proof. intros X l1 l2.
-       unfold subset; intros x H.
-       apply in_or_app.
-       right; apply H.
-Qed.
-
-
-Corollary subset_self : forall (X : Type) (l1 : list X),
-  l1 ⊆ l1. 
-Proof. intros X l1. assert (H: l1 ⊆ (l1 ++ [])). { apply subset_concat_l. }
-       rewrite <- app_nil_end in H. apply H. 
-Qed.
-
-
-Lemma subsets_add : forall (X : Type) (l1 l2 l3 : list X),
-  l1 ⊆ l3 -> l2 ⊆ l3 -> (l1 ++ l2) ⊆ l3.
-Proof. intros X l1 l2 l3.
-       unfold subset; intros H1 H2 x H.
-       apply in_app_or in H.
-       destruct H as [Hl1 | Hl2].
-       - apply H1; apply Hl1.
-       - apply H2; apply Hl2.
-Qed.
-
-
-Lemma subset_trans : forall (X : Type) (l1 l2 l3 : list X),
-    l1 ⊆ l2 -> l2 ⊆ l3 -> l1 ⊆ l3.
-Proof. intros X l1 l2 l3.
-       unfold subset; intros H1 H2. 
-       intros x H.
-       apply H1 in H; apply H2 in H.
-       apply H.
-Qed.
-
-Hint Resolve subset_concat_l subset_concat_r subset_self subsets_add subset_trans : sub_db.
+Infix "⊆" := subset_gen (at level 30, no associativity).
 
 
 (*********************)
@@ -1061,7 +980,7 @@ Hint Resolve subset_concat_l subset_concat_r subset_self subsets_add subset_tran
 Lemma has_type_subset : forall (n : nat) (v : Vector n) (t1s t2s : vecType n),
   (t1s ⊆ t2s) -> v :' t2s -> v :' t1s.
 Proof. intros n v t1s t2s.
-       unfold subset; unfold vecHasType.
+       unfold subset_gen; unfold vecHasType.
        intros H H0 A H1.
        apply H0; apply H; apply H1.
 Qed.
@@ -1211,16 +1130,16 @@ Ltac normalize_mul :=
   repeat (rewrite mul_tensor_dist by auto with sing_db);
   repeat rewrite mul_assoc;
   repeat (
-      try rewrite <- (mul_assoc _ X Z _);
+      try rewrite <- (mul_assoc _ X' Z' _);
       autorewrite with mul_db tensor_db;
       try rewrite mul_assoc).
 
-Lemma Ysqr : Y *' Y = I. Proof. normalize_mul; auto with sing_db. Qed.
-Lemma XmulZ : X *' Z = - Z *' X. Proof. normalize_mul; auto with sing_db. Qed.
-Lemma XmulY : X *' Y = i Z. Proof. normalize_mul; auto with sing_db. Qed.
-Lemma YmulX : Y *' X = -i Z. Proof. normalize_mul; auto with sing_db. Qed.
-Lemma ZmulY : Z *' Y = -i X. Proof. normalize_mul; auto with sing_db. Qed.
-Lemma YmulZ : Y *' Z = i X. Proof. normalize_mul; auto with sing_db. Qed.
+Lemma Ysqr : Y' *' Y' = I'. Proof. normalize_mul; auto with sing_db. Qed.
+Lemma XmulZ : X' *' Z' = - Z' *' X'. Proof. normalize_mul; auto with sing_db. Qed.
+Lemma XmulY : X' *' Y' = i Z'. Proof. normalize_mul; auto with sing_db. Qed.
+Lemma YmulX : Y' *' X' = -i Z'. Proof. normalize_mul; auto with sing_db. Qed.
+Lemma ZmulY : Z' *' Y' = -i X'. Proof. normalize_mul; auto with sing_db. Qed.
+Lemma YmulZ : Y' *' Z' = i X'. Proof. normalize_mul; auto with sing_db. Qed.
 
 
 (* some more lemmas about specific vectors *)
@@ -1233,16 +1152,16 @@ Ltac solveType := apply vecHasType_is_vecHasType';
                   try (exists C1; auto with eig_db; easy);
                   try (exists (Copp C1); auto with eig_db).
 
-Lemma all_hastype_I : forall (v : Vector 2), v :' I.
+Lemma all_hastype_I : forall (v : Vector 2), v :' I'.
 Proof. intros. solveType. 
 Qed.
   
-Lemma p_hastype_X : ∣+⟩ :' X. Proof. solveType. Qed. 
-Lemma m_hastype_X : ∣-⟩ :' X. Proof. solveType. Qed.
-Lemma O_hastype_Z : ∣0⟩ :' Z. Proof. solveType. Qed.
-Lemma i_hastype_Z : ∣1⟩ :' Z. Proof. solveType. Qed.
+Lemma p_hastype_X : ∣+⟩ :' X'. Proof. solveType. Qed. 
+Lemma m_hastype_X : ∣-⟩ :' X'. Proof. solveType. Qed.
+Lemma O_hastype_Z : ∣0⟩ :' Z'. Proof. solveType. Qed.
+Lemma i_hastype_Z : ∣1⟩ :' Z'. Proof. solveType. Qed.
 
-Lemma B_hastype_XX : ∣Φ+⟩ :' X ⊗' X. Proof. solveType. Qed.
+Lemma B_hastype_XX : ∣Φ+⟩ :' X' ⊗' X'. Proof. solveType. Qed.
 
 
 Hint Resolve all_hastype_I p_hastype_X m_hastype_X O_hastype_Z i_hastype_Z B_hastype_XX : vht_db.
@@ -1258,7 +1177,7 @@ Definition pairHasType {n : nat} (p : Vector n * C) (ts: vecType n) : Prop :=
 Lemma has_type_subset_pair : forall (n : nat) (p : Vector n * C) (t1s t2s : vecType n),
   (t1s ⊆ t2s) -> pairHasType p t2s -> pairHasType p t1s.
 Proof. intros n p t1s t2s.
-       unfold subset; unfold pairHasType.
+       unfold subset_gen; unfold pairHasType.
        intros H H0 A H1.
        apply H0; apply H; apply H1.
 Qed.
@@ -1284,7 +1203,6 @@ Qed.
 (***************************)
 (* Writing actual programs *)
 (***************************)
-
 
 Notation gateType n := (list (vecType n * vecType n)).
 
@@ -1499,8 +1417,8 @@ Qed.
 
 
 Lemma In_eq_Itensor : forall (n : nat),
-  n ⨂' I = [Matrix.I (2^n)].
-Proof. intros n. assert (H : n ⨂' I = [n ⨂ Matrix.I 2]).
+  n ⨂' I' = [I (2^n)].
+Proof. intros n. assert (H : n ⨂' I' = [n ⨂ I 2]).
        { induction n as [| n']. 
          - reflexivity.
          - simpl. rewrite IHn'. simpl. reflexivity. }
@@ -1509,7 +1427,7 @@ Proof. intros n. assert (H : n ⨂' I = [n ⨂ Matrix.I 2]).
 Qed.
 
 
-Lemma Types_I : forall {n} (p : Square n), p ::' [Matrix.I n] → [Matrix.I n].
+Lemma Types_I : forall {n} (p : Square n), p ::' [I n] → [I n].
 Proof. intros. 
        apply kill_true.
        apply sgt_implies_sgt'.
@@ -1524,22 +1442,22 @@ Proof. intros.
 Qed.
 
 (* Note that this doesn't restrict # of qubits referenced by p. *)
-Lemma TypesI1 : forall (p : Square 2), p ::' I → I.
-Proof. intros p. unfold I. 
+Lemma TypesI1 : forall (p : Square 2), p ::' I' → I'.
+Proof. intros p. unfold I'. 
        apply Types_I.
 Qed.
 
 
-Lemma TypesI2 : forall (p : Square 4), p ::' I ⊗' I → I ⊗' I.
+Lemma TypesI2 : forall (p : Square 4), p ::' I' ⊗' I' → I' ⊗' I'.
 Proof. intros p.
-       assert (H: I ⊗' I = [Matrix.I 4]).
+       assert (H: I' ⊗' I' = [I 4]).
        { simpl. rewrite id_kron. easy. }
        rewrite H.
        apply Types_I.
 Qed.
 
 
-Lemma TypesIn : forall (n : nat) (p : Square (2^n)), p ::' n ⨂' I → n ⨂' I.
+Lemma TypesIn : forall (n : nat) (p : Square (2^n)), p ::' n ⨂' I' → n ⨂' I'.
 Proof. intros n p. rewrite In_eq_Itensor. 
        apply (@Types_I (2^n) p).
 Qed.      
@@ -1813,6 +1731,14 @@ Proof. unfold neg. intros.
 Qed.
 
 
+
+Lemma eq_arrow_r : forall {n} (g : Square n) (A B B' : vecType n),
+    g ::' A → B ->
+    B = B' ->
+    g ::' A → B'.
+Proof. intros; subst; easy. Qed.
+
+
 (*****************************)
 (** Typing Rules for Tensors *)
 (*****************************)
@@ -1849,17 +1775,17 @@ Qed.
 
 (* defining program application *)
 Definition prog_simple_app (prg_len : nat) (U : Square 2) (bit : nat) : Square (2^prg_len) :=
-  Matrix.I (2^bit) ⊗ U ⊗ Matrix.I (2^(prg_len - bit - 1)).
+  I (2^bit) ⊗ U ⊗ I (2^(prg_len - bit - 1)).
 
 
 Definition prog_ctrl_app (prg_len : nat) (U : Square 2) (ctrl targ : nat) : Square (2^prg_len) :=
   match (ctrl <? targ) with
-  | true => Matrix.I (2^ctrl) ⊗
-             (∣0⟩⟨0∣ ⊗ Matrix.I (2^(targ - ctrl)) .+ 
-              ∣1⟩⟨1∣ ⊗ Matrix.I (2^(targ - ctrl - 1)) ⊗ U) ⊗ Matrix.I (2^(prg_len - targ - 1))
-  | false => Matrix.I (2^targ) ⊗
-             (Matrix.I (2^(ctrl - targ)) ⊗ ∣0⟩⟨0∣ .+ 
-              U ⊗ Matrix.I (2^(ctrl - targ - 1)) ⊗ ∣1⟩⟨1∣) ⊗ Matrix.I (2^(prg_len - ctrl - 1))
+  | true => I (2^ctrl) ⊗
+             (∣0⟩⟨0∣ ⊗ I (2^(targ - ctrl)) .+ 
+              ∣1⟩⟨1∣ ⊗ I (2^(targ - ctrl - 1)) ⊗ U) ⊗ I (2^(prg_len - targ - 1))
+  | false => I (2^targ) ⊗
+             (I (2^(ctrl - targ)) ⊗ ∣0⟩⟨0∣ .+ 
+              U ⊗ I (2^(ctrl - targ - 1)) ⊗ ∣1⟩⟨1∣) ⊗ I (2^(prg_len - ctrl - 1))
   end.
 
 
@@ -1894,10 +1820,10 @@ Proof. unfold prog_simple_app in *.
          rewrite <- id_kron.
          rewrite <- kron_assoc.
          restore_dims; 
-         rewrite (kron_mixed_product (g ⊗ Matrix.I (2 ^ (prg_len - 0 - 1))) _ a e).
+         rewrite (kron_mixed_product (g ⊗ I (2 ^ (prg_len - 0 - 1))) _ a e).
          restore_dims;
-         rewrite (kron_mixed_product a' e (g ⊗ Matrix.I (2 ^ (prg_len - 0 - 1))) 
-                                     (Matrix.I (2 ^ new_len))).
+         rewrite (kron_mixed_product a' e (g ⊗ I (2 ^ (prg_len - 0 - 1))) 
+                                     (I (2 ^ new_len))).
          assert (Ha' : In a A). 
          { rewrite Ha. left. easy. }
          apply (H a a') in Ha'.
@@ -1976,28 +1902,28 @@ Ltac solve_gate_type :=
          end.
 
 
-Lemma HTypes : (prog_simple_app 1 H 0) ::' (Z → X) ∩ (X → Z).
-Proof. simpl. unfold Z, X, prog_simple_app. 
+Lemma HTypes : (prog_simple_app 1 H 0) ::' (Z' → X') ∩ (X' → Z').
+Proof. simpl. unfold Z', X', prog_simple_app. 
        solve_gate_type. 
 Qed.
        
 
-Lemma STypes : (prog_simple_app 1 S 0) ::' (X → Y) ∩ (Z → Z).
-Proof. simpl. unfold Z, X, prog_simple_app. 
+Lemma STypes : (prog_simple_app 1 S 0) ::' (X' → Y') ∩ (Z' → Z').
+Proof. simpl. unfold Z', X', prog_simple_app. 
        solve_gate_type. 
 Qed.
 
-Lemma CNOTTypes : (prog_ctrl_app 2 σx 0 1) ::' (X ⊗' I → X ⊗' X) ∩ (I ⊗' X → I ⊗' X) ∩
-                          (Z ⊗' I → Z ⊗' I) ∩ (I ⊗' Z → Z ⊗' Z).
+Lemma CNOTTypes : (prog_ctrl_app 2 σx 0 1) ::' (X' ⊗' I' → X' ⊗' X') ∩ (I' ⊗' X' → I' ⊗' X') ∩
+                          (Z' ⊗' I' → Z' ⊗' I') ∩ (I' ⊗' Z' → Z' ⊗' Z').
 Proof. rewrite adj_ctrlX_is_cnot1.
-       simpl. unfold X, I, Z. 
+       simpl. unfold X', I', Z'. 
        solve_gate_type.
 Qed.
       
 
 (* T only takes Z → Z *)
-Lemma TTypes : T ::' (Z → Z).
-Proof. simpl. unfold T, Z. 
+Lemma TTypes : T ::' (Z' → Z').
+Proof. simpl. unfold T, Z'. 
        solve_gate_type. 
 Qed.
 
@@ -2019,15 +1945,93 @@ Definition decode : Square 16 := (prog_ctrl_app 4 σx 2 3); (prog_simple_app 4 H
 Definition superdense := bell00 ; encode; decode.
 
 
+Ltac type_check_base :=
+  repeat apply cap_intro;
+  repeat eapply SeqTypes; (* will automatically unfold compound progs *)
+  repeat match goal with
+         | |- Singleton _       => auto 50 with sing_db
+         | |- ?g :: ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
+         | |- ?g :: - ?A → ?B    => apply arrow_neg
+         | |- ?g :: i ?A → ?B    => apply arrow_i
+         | |- context[?A ⊗ ?B]  => progress (autorewrite with tensor_db)
+         | |- ?g :: ?A * ?B → _ => apply arrow_mul
+         | |- ?g :: (?A * ?B) ⊗ I → _ => rewrite decompose_tensor_mult_l
+         | |- ?g :: I ⊗ (?A * ?B) → _ => rewrite decompose_tensor_mult_r
+         | |- prog_simple_app (S ?n) ?g (S ?m) :: ?T => eapply (tensor_inc ?n ?m _ _ _ _) 
+         | |- prog_simple_app (S ?n) ?g 0 :: ?T => eapply (tensor_base n 1 _ _ _ _)
+         | |- ?g :: ?A ⊗ ?B → _  => rewrite (decompose_tensor A B) by (auto 50 with sing_db)
+         | |- ?g :: ?A → ?B      => tryif is_evar A then fail else
+             solve [eauto with base_types_db]
+         | |- ?B = ?B'          => tryif has_evar B then fail else
+            (repeat rewrite mul_tensor_dist);
+            (repeat normalize_mul);
+            (repeat rewrite <- i_tensor_dist_l);
+            (repeat rewrite <- neg_tensor_dist_l);
+            autorewrite with mul_db;
+            try reflexivity
+         | |- ?n <> ?m => nia
+         | |- ?n < ?m => nia
+         end.
 
-Lemma superdenseTypesQPL : superdense ::' (Z ⊗' Z ⊗' Z ⊗' Z → I ⊗' I ⊗' Z ⊗' Z).
+
+
+Ltac type_check_base' :=
+         match goal with
+         | |- (prog_simple_app (S ?n) ?g _) ::' _ => eapply (tensor_inc ?n _ _ _ _ _) 
+         | |- (prog_simple_app (S ?n) ?g 0) ::' _ => eapply (tensor_base ?n 1 _ _ _ _)
+         | |- ?n <> ?m => nia
+         | |- ?n < ?m => nia
+         end.
+
+
+Lemma superdenseTypesQPL : superdense ::' (Z' ⊗' Z' ⊗' Z' ⊗' Z' → I' ⊗' I' ⊗' Z' ⊗' Z').
 Proof. unfold superdense.
        repeat (eapply SeqTypes).
-       eapply (tensor_inc 3 1 H Z (Z ⊗' Z ⊗' Z) _). 
-       9: { eapply (tensor_inc 2 0 H Z (Z ⊗' Z) _). 
-            9: { eapply (tensor_base 1 1 H Z _ Z). 
+       type_check_base'.
+
+       eapply (tensor_inc 3 _ _ _ _ _). 
+       9: { eapply (tensor_inc 2 _ _ _ _ _). 
+            9: { eapply (tensor_base 1 1 _ _ _ _). 
                  8: { solve [eauto with base_types_db]. }
-                 nia. apply H_unitary. 
+                 nia. apply H_unitary.
+                 auto with univ_db.
+                 auto with univ_db.
+                 auto with wf_db.
+                 auto with sing_db.
+                 auto with sing_db. }
+            nia. nia. auto with unit_db.
+            apply univ_tensor.            
+            auto with univ_db.
+            auto with univ_db.
+            apply univ_tensor.    
+            auto with univ_db.
+            auto with univ_db.
+            auto with wf_db.
+            auto with sing_db.
+            auto with sing_db. }
+       nia. nia. 
+       auto with unit_db.
+       apply univ_tensor.
+       auto with univ_db.
+       apply univ_tensor.
+       auto with univ_db.
+       auto with univ_db.
+       apply univ_tensor.
+       auto with univ_db.
+       apply univ_tensor.
+       auto with univ_db.
+       auto with univ_db.
+       auto with wf_db.
+       auto with sing_db.
+       auto with sing_db.
+       
+
+
+            5: { auto with sing_db.
+            
+            auto with univ_db. simpl.
+            auto with univ_db.
+                 
 Focus 9.
        
        nia. nia. apply H_unitary.
