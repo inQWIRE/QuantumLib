@@ -170,14 +170,14 @@ Proof. unfold WF_Matrix. intros.
 Qed.
          
 
-(*
-Fixpoint Determinant {n : nat} (A : Square n) : C :=
+
+Program Fixpoint Determinant (n : nat) (A : Square n) {measure n} : C :=
   match n with 
   | 0 => C1
   | S 0 => A 0 0
-  | S n' => (Csum (fun i => Cmult (A 0 i) (@Determinant (n - 1) (reduce A 0 i))) n)
+  | S n' => (Csum (fun i => Cmult (A 0 i) (Determinant (n - 1) (reduce A 0 i))) n)
   end.
-*)
+
 
 
 (************************************************************************)
@@ -196,10 +196,31 @@ Definition get_vec {n m} (i : nat) (S : VecSet n m) : Vector n :=
   fun x y => (if (y =? 0) then S x i else C0).   
 
 
-Lemma get_vec_convsersion : forall {n m} (x y : nat) (S : VecSet n m),
+Lemma get_vec_conv : forall {n m} (x y : nat) (S : VecSet n m),
   (get_vec y S) x 0 = S x y.
 Proof. intros. unfold get_vec.
        easy.
+Qed.
+
+
+Lemma get_vec_mult : forall {n} (i : nat) (A B : Square n),
+  A × (get_vec i B) = get_vec i (A × B).
+Proof. intros. unfold get_vec, Mmult.
+       prep_matrix_equality.
+       bdestruct (y =? 0).
+       - reflexivity.
+       - apply Csum_0. intros.
+         apply Cmult_0_r.
+Qed.
+
+
+Lemma det_by_get_vec : forall {n} (A B : Square n),
+  (forall i, get_vec i A = get_vec i B) -> A = B.
+Proof. intros. prep_matrix_equality.
+       rewrite <- get_vec_conv.
+       rewrite <- (get_vec_conv _ _ B).
+       rewrite H.
+       reflexivity.
 Qed.
 
 
@@ -296,9 +317,106 @@ Qed.
 (************************************************)
 
 Fixpoint nonzero_entry_imp {n} (v : Vector n) (i : nat) : nat :=
-  match (v i 0) <> C0 with
-  | True => i
+  match i with
+  | 0 => 0
+  | S i' =>
+    match Ceq_dec (v i 0) C0 with 
+    | left _ => nonzero_entry_imp v i'
+    | right _ => i
+    end
   end.
+
+Definition nonzero_entry {n} (v : Vector n) : nat := nonzero_entry_imp v (n - 1).
+
+
+Definition reduce_vec {n} (v : Vector n) (entry : nat) : Vector (n - 1) :=
+  fun x y => if x <? entry
+             then v x y
+             else v (1 + x) y.
+
+
+Lemma WF_reduce_vec : forall {n} (entry : nat) (v : Vector n),
+  entry < n -> WF_Matrix v -> WF_Matrix (reduce_vec v entry).
+Proof. unfold WF_Matrix, reduce_vec. intros. 
+       bdestruct (x <? entry). 
+       - destruct H1 as [H1 | H1].
+         + assert (nibzo : forall (a b c : nat), a < b -> b < c -> 1 + a < c).
+           { nia. }
+           apply (nibzo x entry n) in H2.
+           simpl in H2. nia. apply H.
+         + apply H0. right. apply H1.
+       - apply H0. destruct H1.
+         + left. simpl. nia.
+         + right. apply H1.
+Qed.
+
+
+Definition reduce_vecn {n} (v : Vector n) : Vector (n - 1) :=
+  fun x y => if x <? (n - 1)
+             then v x y
+             else v (1 + x) y.
+
+
+Lemma rv_n_is_rvn : forall {n : nat} (v : Vector n),
+  reduce_vec v (n - 1) = reduce_vecn v.
+Proof. intros.
+       prep_matrix_equality.
+       unfold reduce_vec, reduce_vecn.
+       easy.
+Qed.
+
+
+Lemma last_zero_simplification : forall {n : nat} (v : Vector n),
+  WF_Matrix v -> v (n - 1) 0 = C0 -> v = reduce_vecn v.
+Proof. intros. unfold reduce_vecn.
+       prep_matrix_equality.
+       bdestruct (x <? (n - 1)).
+       - easy.
+       - unfold WF_Matrix in H.
+         destruct H1.
+         + destruct y. 
+           * rewrite H0, H. reflexivity.
+             left. nia. 
+           * rewrite H. rewrite H. reflexivity.
+             right; nia. right; nia.
+         + rewrite H. rewrite H. reflexivity.
+           left. nia. left. nia.
+Qed.
+
+
+Lemma last_zero_simplification2 : forall {n : nat} (v : Vector n),
+  WF_Matrix v -> v n 0 = C0 -> @nonzero_entry n v = @nonzero_entry (n - 1) (reduce_vecn v).
+Proof. intros. rewrite <- last_zero_simplification.
+       Admitted. 
+
+
+
+Lemma zero_reduce : forall {n : nat} (v : Vector (S n)),
+  WF_Matrix v -> (v = Zero <-> (reduce_vecn v) = Zero /\ v n 0 = C0).
+Proof. intros. split.  
+       - intros. rewrite H0. split.
+         + prep_matrix_equality. unfold reduce_vecn. 
+           simpl. assert (H' : n - 0 = n). nia. rewrite H'.
+           bdestruct (x <? n); easy. 
+         + easy.
+       - intros [H0 H1].
+         prep_matrix_equality. 
+         unfold reduce_vecn in H0.
+         destruct y as [| y'].
+         assert (H' : forall x y,  (@Zero (S n) 1) x y = (@Zero n 1) x y). easy.
+         + destruct (x <? n) eqn:E.
+           * Admitted.
+
+  
+
+Lemma nonzero_entry_ver : forall {n : nat} (v : Vector n),
+ WF_Matrix v -> v <> Zero -> v (nonzero_entry_imp v n) 0 <> C0.
+Proof. induction n as [| n']. 
+       - intros. assert (H' : v = Zero). 
+         { prep_matrix_equality. rewrite H.
+           easy. left. nia. }
+         easy.
+       - intros. Admitted.
 
 
 Definition form_basis {n} (v : Vector n) : VecSet n n :=
@@ -309,7 +427,7 @@ Definition form_basis {n} (v : Vector n) : VecSet n n :=
                   else (@e_i n y) x 0.
 
 Lemma form_basis_ver : forall {n} (v : Vector n),
-  v <> Zero -> linearly_independent (form_basis v).
+  v <> Zero -> linearly_independent (form_basis v) /\ get_vec 0 (form_basis v) = v.
 Proof. Admitted.
 
 Definition gram_schmidt {n} (S : VecSet n n) : VecSet n n := S.
@@ -445,6 +563,22 @@ Proof. intros.
        apply gram_schmidt_ver in H0.
        easy.
 Qed.          
+
+
+
+Lemma det_by_unit : forall {n} (A B X : Square n),
+  unitary X -> (forall i, A × (get_vec i X) = B × (get_vec i X)) -> A = B.
+Proof. intros. assert (H' : A × X = B × X).
+       { apply det_by_get_vec. intros.
+         do 2 (rewrite <- get_vec_mult).
+         apply H0. }
+       rewrite <- Mmult_1_r'.
+       rewrite <- (Mmult_1_r' A).
+       rewrite <- H.
+       do 2 (rewrite <- Mmult_assoc).
+       rewrite H'.
+       reflexivity. 
+Qed.
 
 
 (***********************************************************************************)
@@ -714,6 +848,12 @@ Proof. intros.
        reflexivity.
 Qed.
 
+Local Close Scope nat_scope.
+
+
+Lemma eig_unit_norm1 : forall {n} (U : Square n) (c : C),
+  (exists v, Eigenpair U (v, c)) -> c * c^* = 1.
+Proof. intros. destruct H as [v H].
 
 
 Lemma lin_ind_has_eigen : forall {n} (X : Square n),
@@ -735,7 +875,7 @@ Proof. intros.
        - apply onb_unit. 
          apply H3. apply H2.
        - intros x H4. 
-         rewrite <- (get_vec_convsersion x 0 _).
+         rewrite <- (get_vec_conv x 0 _).
          rewrite matrix_by_basis.
          rewrite Mmult_assoc.
          rewrite <- matrix_by_basis.
@@ -802,11 +942,26 @@ Admitted.
 
 (* we want to prove *)
 
-Theorem eigs_def_unit : forall (n : nat) (U1 U2 : Square n),
-  unitary U1 -> unitary U2 -> 
-  (forall v, Eigenpair U1 v <-> Eigenpair U2 v) ->
-  exists c, c .* U1 = U2.
-Proof. intros. Admitted.
+Definition eq_eigs {n : nat} (U1 U2 : Square n) : Prop := 
+  forall p, Eigenpair U1 p -> Eigenpair U2 p. 
+
+
+(* this is the main lemma we will need to assume *)
+Lemma eq_eigs_implies_eq : forall {n} (U1 U2 : Square n),
+  unitary U1 -> unitary U2 -> eq_eigs U1 U2 -> U1 = U2.
+Proof. Admitted.
+
+
+Theorem eigs_eq_gate : forall {n} (U1 U2 : Square n),
+  unitary U1 -> unitary U2 -> (U1 = U2 <-> eq_eigs U1 U2).
+Proof. intros. split.
+       - intros H'; rewrite H'; easy.
+       - apply eq_eigs_implies_eq.
+         apply H. apply H0.
+Qed.
+
+
+
 
 
 Local Close Scope nat_scope.
@@ -935,25 +1090,6 @@ Proof. unfold get_eig_vals.
        split.
        - lca. 
        - split. lca. easy. 
-Qed.
-
-
-Definition eq_eigs {n : nat} (U1 U2 : Square n) : Prop := 
-  forall p, Eigenpair U1 p -> Eigenpair U2 p. 
-
-
-(* this is the main lemma we will need to assume *)
-Lemma eq_eigs_implies_eq : forall {n} (U1 U2 : Square n),
-  unitary U1 -> unitary U2 -> eq_eigs U1 U2 -> U1 = U2.
-Proof. Admitted.
-
-
-Theorem eigs_eq_gate : forall {n} (U1 U2 : Square n),
-  unitary U1 -> unitary U2 -> (U1 = U2 <-> eq_eigs U1 U2).
-Proof. intros. split.
-       - intros H'; rewrite H'; easy.
-       - apply eq_eigs_implies_eq.
-         apply H. apply H0.
 Qed.
 
 
