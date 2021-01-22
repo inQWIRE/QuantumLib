@@ -471,6 +471,7 @@ Proof. intros. unfold unitary. rewrite Mmult_1_l'.
        apply id_adjoint_eq. 
 Qed.
 
+
 Lemma unit_mult : forall {n} (A B : Square n),
   unitary A -> unitary B -> unitary (A × B).
 Proof. intros. unfold unitary in *.
@@ -491,6 +492,19 @@ Proof. intros. unfold unitary in *.
        reflexivity.
 Qed.
 
+Lemma unit_big_kron : forall (n : nat) (ls : list (Square n)), 
+  (forall a, In a ls -> unitary a) -> unitary (⨂ ls).
+Proof. intros. induction ls as [| h].
+       - simpl. apply unit_I.
+       - simpl. 
+         apply unit_kron. 
+         apply H. left. easy. 
+         apply IHls. 
+         intros. 
+         apply H. right. easy.
+Qed.
+
+
 Lemma unit_adjoint : forall {n} (A : Square n),
   unitary A -> unitary (A†).
 Proof. intros.
@@ -502,7 +516,7 @@ Qed.
 
 
 Hint Resolve X_unitary Y_unitary Z_unitary P_unitary H_unitary : unit_db.
-Hint Resolve cnot_unitary notc_unitary unit_I unit_mult unit_kron unit_adjoint : unit_db.
+Hint Resolve cnot_unitary notc_unitary unit_I unit_mult unit_kron unit_adjoint unit_big_kron: unit_db.
 
 
 
@@ -852,15 +866,17 @@ Local Close Scope nat_scope.
 
 
 Lemma eig_unit_norm1 : forall {n} (U : Square n) (c : C),
-  (exists v, Eigenpair U (v, c)) -> c * c^* = 1.
-Proof. intros. destruct H as [v H].
+  unitary U -> (exists v, v <> Zero /\ Eigenpair U (v, c)) -> c * c^* = 1.
+Proof. intros. destruct H0 as [v H0].
+       unfold Eigenpair in H0; simpl in H0.
+       Admitted.
 
 
 Lemma lin_ind_has_eigen : forall {n} (X : Square n),
   (exists X', X × X' = I n) -> exists p, Eigenpair X p /\ fst p <> Zero /\ WF_Matrix (fst p).
 Proof. Admitted. 
 
-
+Local Open Scope nat_scope.
 
 Lemma ind_step1 : forall {n} (A : Square (n + 1)),
   WF_Matrix A -> unitary A -> 
