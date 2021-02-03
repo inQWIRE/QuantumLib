@@ -1848,6 +1848,73 @@ Proof. unfold prog_simple_app in *.
 Qed.
 
 
+Lemma tensor_smpl : forall (prg_len bit : nat) (g : Square 2) 
+                           (A A' : list (Square 2)),
+    unitary g -> 
+    length A = prg_len -> length A' = prg_len ->
+    uni_vecType A -> uni_vecType A' ->
+    WF_Matrix g -> 
+    g ::' [(nth bit A (I 2))] → [(nth bit A' (I 2))] ->
+    (prog_simple_app prg_len g bit) ::' ([⨂ A] → [⨂ A']).
+Proof. intros. induction prg_len as [| n].
+       - unfold prog_simple_app. simpl. 
+         apply kill_true. 
+         apply sgt_implies_sgt'.
+         unfold singGateType'.
+
+unfold prog_simple_app in *.
+       intros prg_len new_len g A A' E Hp0 Hug Hua Hua' Hwfg Hsa Hse [H _].
+       apply sgt'_implies_sgt in H.
+       apply kill_true.
+       apply singleton_simplify in Hsa.
+       destruct Hsa as [a Ha]. 
+       apply singleton_simplify in Hse.
+       destruct Hse as [e He]. 
+       rewrite Ha, He.
+       apply sgt_implies_sgt'.
+       easy.
+       unfold singGateType in *; simpl in *.
+       intros.
+       apply in_tensor in H1.
+       destruct H1 as [a' [e1 [Ha1 [Ha2 Ha3]]]].
+       apply in_simplify in Ha2. rewrite Ha2 in *.
+       destruct H0 as [H0 | F].
+       - rewrite <- H0, Ha3.
+         rewrite kron_1_l in *. 
+         rewrite easy_sub3. 
+         rewrite (easy_pow 2 (prg_len - 0 - 1) new_len).
+         rewrite <- id_kron.
+         rewrite <- kron_assoc.
+         restore_dims; 
+         rewrite (kron_mixed_product (g ⊗ I (2 ^ (prg_len - 0 - 1))) _ a e).
+         restore_dims;
+         rewrite (kron_mixed_product a' e (g ⊗ I (2 ^ (prg_len - 0 - 1))) 
+                                     (I (2 ^ new_len))).
+         assert (Ha' : In a A). 
+         { rewrite Ha. left. easy. }
+         apply (H a a') in Ha'.
+         repeat (rewrite <- easy_pow2 in *).
+         rewrite Ha'.
+         rewrite Mmult_1_l'; rewrite Mmult_1_r'.
+         reflexivity.
+         apply Hp0.
+         apply Ha1.
+         apply Hp0.
+         apply Hwfg. apply Hwfg.
+       - easy.
+       - simpl. rewrite kron_1_l.
+         rewrite easy_pow2.
+         apply unit_kron.
+         apply Hug. 
+         apply unit_I.
+         apply Hp0.
+         apply Hwfg.
+       - apply Hsa.
+       - split. apply Hua. apply Hua'.
+Qed.
+
+
+                 
 Lemma tensor_inc : forall (prg_len bit : nat) (g : Square 2) 
                           (E : vecType 2) (A A' : vecType (2^prg_len)),
     prg_len <> 0 -> bit < prg_len -> unitary g ->
@@ -1908,7 +1975,7 @@ Proof. simpl. unfold Z', X', prog_simple_app.
 Qed.
        
 
-Lemma STypes : (prog_simple_app 1 S 0) ::' (X' → Y') ∩ (Z' → Z').
+Lemma STypes : (prog_simple_app 1 S' 0) ::' (X' → Y') ∩ (Z' → Z').
 Proof. simpl. unfold Z', X', prog_simple_app. 
        solve_gate_type. 
 Qed.
@@ -1922,8 +1989,8 @@ Qed.
       
 
 (* T only takes Z → Z *)
-Lemma TTypes : T ::' (Z' → Z').
-Proof. simpl. unfold T, Z'. 
+Lemma TTypes : T' ::' (Z' → Z').
+Proof. simpl. unfold T', Z'. 
        solve_gate_type. 
 Qed.
 
