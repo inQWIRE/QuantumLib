@@ -2,37 +2,142 @@ Require Import Psatz.
 Require Import String. 
 Require Import Program.
 Require Import List.
-Require Import Setoid.
+
 
 Require Export Complex.
 Require Export Matrix.
 Require Export Quantum.
 Require Export Eigenvectors.
-Require Export SingVecType.
 
 
 
+(* Some helpers *)
+
+Lemma kill_false : forall P : Prop,
+  P \/ False <-> P.
+Proof. split. intros [H | F]. easy. easy.
+       intros. left. easy.
+Qed.
+
+Lemma kill_true : forall P : Prop,
+  P /\ True <-> P.
+Proof. split. intros [H _]. easy.
+       intros. split. easy. easy.
+Qed.
+
+Lemma in_simplify : forall {X} (x x1 : X),
+  In x1 [x] -> x1 = x.
+Proof. intros. simpl in H. 
+       apply (kill_false (x = x1)) in H.
+       easy.
+Qed.
+
+Definition Xn (n : nat) : Matrix 4 4 :=
+  match n with 
+  | 2 => I 2 ⊗ σx
+  | 1 => σx ⊗ I 2
+  | _ => I 4
+  end. 
+
+Definition Zn (n : nat) : Matrix 4 4 :=
+  match n with 
+  | 2 => I 2 ⊗ σz
+  | 1 => σz ⊗ I 2
+  | _ => I 4
+  end.
+
+
+
+
+
+(*****************************************************************)
+(* Lemmas about well formedness of pauli gates and some vectors. *)
+(* Commented out lemmas are already implemented in Quantam.v     *)
+(*****************************************************************)
+
+ 
+(*
+Lemma WF_σx : WF_Matrix σx. Proof. show_wf. Qed.
+Lemma WF_σy : WF_Matrix σy. Proof. show_wf. Qed.
+Lemma WF_σz : WF_Matrix σx. Proof. show_wf. Qed.
+Lemma WF_hadamard : WF_Matrix hadamard. Proof. show_wf. Qed.
+Lemma WF_cnot : WF_Matrix cnot. Proof. show_wf. Qed. 
+*)
+
+
+(* todo: must automate this *)
+Lemma WF_Xn : forall (n : nat), WF_Matrix (Xn n).
+Proof. unfold Xn. 
+       destruct n; simpl; auto with wf_db.
+       destruct n; simpl; auto with wf_db.
+       destruct n; simpl; auto with wf_db. 
+Qed.
+
+Lemma WF_Zn : forall (n : nat), WF_Matrix (Zn n).
+Proof. unfold Zn. 
+       destruct n; simpl; auto with wf_db.
+       destruct n; simpl; auto with wf_db.
+       destruct n; simpl; auto with wf_db. 
+Qed.
+
+
+
+Hint Resolve WF_Xn WF_Zn : wf_db.
+
+
+
+(****************************)
+(* Proving some indentities *)
+(****************************)
+
+
+Lemma XtimesXid : σx × σx = I 2. Proof. lma'. Qed.      
+Lemma YtimesYid : σy × σy = I 2. Proof. lma'. Qed.
+Lemma ZtimesZid : σz × σz = I 2. Proof. lma'. Qed.
+Lemma Y_eq_iXZ : σy = Ci .* σx × σz. Proof. lma'. Qed.
+Lemma ZH_eq_HX : σz × hadamard = hadamard × σx. Proof. lma'. Qed.
+Lemma PX_eq_YP : Phase × σx = σy × Phase. Proof. rewrite PEqP'. lma'. Qed.
+Lemma HtimesHid : hadamard × hadamard = I 2. Proof. lma'; Hhelper. Qed.
+Lemma H_eq_Hadjoint : hadamard = hadamard†. Proof. lma'. Qed.
+Lemma XH_eq_HZ : σx × hadamard = hadamard × σz. Proof. lma'. Qed.
+
+
+
+
+
+(**************************************)
+(* defining Heisenberg representation *)
+(**************************************)
+
+
+Declare Scope heisenberg_scope.
+Delimit Scope heisenberg_scope with H.
 Open Scope heisenberg_scope.
 
 
+Definition Eigenstate {n} (U : Square n) (v : Vector n) : Prop :=
+  exists λ, Eigenpair U (v, λ). 
 
-Definition vecType n := (list (singVecType n)). 
 
 
-Definition WF_vecType {n : nat} (A : vecType n) : Prop :=
-  forall m, In m A -> WF_svt m.
+Notation vecType n := (list (Square n)). 
 
-Definition vecHasType {n : nat} (v : Vector (2^n)) (ts: vecType n) : Prop := 
-  forall (A : singVecType n), In A ts -> vecHasSingType v A.
+
+Definition singVecType {n : nat} (v : Vector n) (A: Square n) : Prop :=
+  Eigenstate A v. 
+
+
+Definition vecHasType {n : nat} (v : Vector n) (ts: vecType n) : Prop := 
+  forall (A : Square n), In A ts -> singVecType v A.
 
 (* an alternate definition which helps with singleton tactics later *)
-Fixpoint vecHasType' {n : nat} (v : Vector (2^n)) (ts: vecType n) : Prop := 
+Fixpoint vecHasType' {n : nat} (v : Vector n) (ts: vecType n) : Prop := 
   match ts with  
   | [] => True
-  | (t :: ts') => (vecHasSingType v t) /\ vecHasType' v ts'
+  | (t :: ts') => (singVecType v t) /\ vecHasType' v ts'
   end.
 
-Lemma vecHasType_is_vecHasType' : forall (n : nat) (v : Vector (2^n)) (A : vecType n),
+Lemma vecHasType_is_vecHasType' : forall (n : nat) (v : Vector n) (A : vecType n),
   vecHasType v A <-> vecHasType' v A.
 Proof. intros n v A. split.
        - induction A as [| h]. 
@@ -71,7 +176,7 @@ Notation "A ∩ B" := (A ++ B) (at level 60, no associativity) : heisenberg_scop
 
 
 (* Singleton says if a vectType is able to be multiplied, scaled, or kronned  *)
-Definition Singleton {n} (A : vecType n) :=
+Definition Singleton {n : nat} (A : vecType n) :=
   match A with
   | [a] => True
   | _ => False
@@ -80,11 +185,11 @@ Definition Singleton {n} (A : vecType n) :=
 
 (* helper lemma to immediatly turn singleton vecType into [a] form *)
 Lemma singleton_simplify : forall {n} (A : vecType n),
-  Singleton A -> exists (a : singVecType n), A = [a].
+  Singleton A -> exists (a : Square n), A = [a].
 Proof. intros; destruct A. 
        easy. 
        destruct A.
-       exists s. 
+       exists m. 
        reflexivity. 
        easy.
 Qed.
@@ -95,42 +200,41 @@ Qed.
 Fixpoint mul {n : nat} (A B : vecType n) := 
   match A with
   | [] => [] 
-  | (a :: as') => List.map (fun b => sing_mul a b) B ++ @mul n as' B
+  | (a :: as') => List.map (fun b => a × b) B ++ mul as' B
   end.
 
 
 
 Definition scale {n : nat} (c : C) (A : vecType n) := 
-  List.map (fun a => sing_scale c a) A. 
+  List.map (fun a => c .* a) A. 
 
 
 Definition i {n : nat} (A : vecType n) :=
-  @scale n Ci A.
+  scale Ci A.
 
 Definition neg {n : nat} (A : vecType n) :=
-  @scale n (-1) A.
+  scale (-1) A.
 
 (* tensor similar to mul *)
 Fixpoint tensor {n m : nat} (A : vecType n) (B : vecType m) := 
   match A with
   | [] => [] 
-  | (a :: as') => List.map (fun b => sing_tensor a b) B ++ @tensor n m as' B
+  | (a :: as') => List.map (fun b => a ⊗ b) B ++ tensor as' B
   end.
 
 
 Fixpoint tensor_n n {m} (A : vecType m) :=
   match n with
-  | 0    => []
-  | S 0  => A
-  | S n' => @tensor m m (@tensor_n n' m A) A
+  | 0    => [I 1]
+  | S n' => tensor (tensor_n n' A) A
   end.
 
 
 
 Notation "- T" := (neg T) : heisenberg_scope. 
-Infix "*''" := mul (at level 40, left associativity) : heisenberg_scope. 
-Infix "⊗''" := tensor (at level 51, right associativity) : heisenberg_scope. 
-Infix "·'" := scale (at level 45, left associativity) : heisenberg_scope. 
+Infix "*'" := mul (at level 40, left associativity) : heisenberg_scope. 
+Infix "⊗'" := tensor (at level 51, right associativity) : heisenberg_scope. 
+Infix "·" := scale (at level 45, left associativity) : heisenberg_scope. 
 Notation "n ⨂' A" := (tensor_n n A) (at level 30, no associativity) : heisenberg_scope.
 
 (*****************************************************)
@@ -138,8 +242,8 @@ Notation "n ⨂' A" := (tensor_n n A) (at level 30, no associativity) : heisenbe
 (*****************************************************)
 
 
-Lemma in_mult : forall {n} (p : singVecType n) (A B : vecType n),
-  In p (A *'' B) -> exists a b, In a A /\ In b B /\ p = a *' b.
+Lemma in_mult : forall {n} (p : Square n) (A B : vecType n),
+  In p (A *' B) -> exists a b, In a A /\ In b B /\ p = a × b.
 Proof. intros. induction A as [| h].
        - simpl in H. easy.
        - simpl in H.
@@ -156,8 +260,8 @@ Proof. intros. induction A as [| h].
 Qed.
 
 
-Lemma in_tensor : forall {n m} (p : singVecType (n+m)) (A : vecType n) (B : vecType m),
-  In p (A ⊗'' B) -> exists a b, In a A /\ In b B /\ p = a ⊗' b.
+Lemma in_tensor : forall {n m} (p : Square (n*m)) (A : vecType n) (B : vecType m),
+  In p (A ⊗' B) -> exists a b, In a A /\ In b B /\ p = a ⊗ b.
 Proof. intros. induction A as [| h].
        - simpl in H. easy.
        - simpl in H.
@@ -174,8 +278,8 @@ Proof. intros. induction A as [| h].
 Qed.
 
 
-Lemma in_scale : forall {n} (p : singVecType n) (c : C) (A : vecType n),
-  In p (c ·' A) -> exists a, In a A /\ p = c · a.
+Lemma in_scale : forall {n} (p : Square n) (c : C) (A : vecType n),
+  In p (c · A) -> exists a, In a A /\ p = c .* a.
 Proof. intros. induction A as [| h].
        - simpl in H. easy.
        - simpl in H.
@@ -190,8 +294,8 @@ Proof. intros. induction A as [| h].
 Qed.
 
 
-Lemma in_scale_rev : forall {n} (p : singVecType n) (c : C) (A : vecType n),
-  In p A -> In (c · p) (c ·' A).
+Lemma in_scale_rev : forall {n} (p : Square n) (c : C) (A : vecType n),
+  In p A -> In (c .* p) (c · A).
 Proof. intros. induction A as [| h].
        - simpl in H. easy.
        - simpl in H.
@@ -204,17 +308,17 @@ Qed.
 (* Singleton laws *)
 (******************)
 
-Definition X' : vecType 1 := [[σx]].
-Definition Z' : vecType 1 := [[σz]].
-Definition I' : vecType 1 := [[I 2]].
+Definition X' : vecType 2 := [σx].
+Definition Z' : vecType 2 := [σz].
+Definition I' : vecType 2 := [I 2].
 
-Definition I'_n (n : nat) : vecType n := [I_n n].
+Definition I_n (n : nat) : vecType n := [I n].
 
 
 Lemma SI : Singleton I'. Proof. easy. Qed.
 Lemma SX : Singleton X'. Proof. easy. Qed.
 Lemma SZ : Singleton Z'. Proof. easy. Qed.
-Lemma SI_n : forall (n : nat), Singleton (I'_n n). Proof. easy. Qed.
+Lemma SI_n : forall (n : nat), Singleton (I_n n). Proof. easy. Qed.
 
 Lemma S_neg : forall (n : nat) (A : vecType n), Singleton A -> Singleton (neg A).
 Proof. intros n A H. 
@@ -231,7 +335,7 @@ Proof. intros n A H.
 Qed.
 
 Lemma S_mul : forall (n : nat) (A B : vecType n), 
-  Singleton A -> Singleton B -> Singleton (A *'' B).
+  Singleton A -> Singleton B -> Singleton (A *' B).
 Proof. intros n A B HA HB.
        apply singleton_simplify in HA;
        apply singleton_simplify in HB;
@@ -239,122 +343,12 @@ Proof. intros n A B HA HB.
        easy.
 Qed. 
 
-Lemma S_tensor : forall (n m : nat) (A : vecType n) (B : vecType m),
-  Singleton A -> Singleton B -> Singleton (A ⊗'' B).
-Proof. intros n m A B HA HB.
-       apply singleton_simplify in HA;
-       apply singleton_simplify in HB;
-       destruct HA; destruct HB; rewrite H, H0. 
-       easy.
-Qed. 
+Hint Resolve SI SX SZ SI_n S_neg S_i S_mul : sing_db.
 
-Hint Resolve SI SX SZ SI_n S_neg S_i S_mul S_tensor : sing_db.
-
-Notation Y' := (i (X' *'' Z')).
+Notation Y' := (i (X' *' Z')).
 
 Lemma SY : Singleton Y'.
 Proof. auto with sing_db. Qed.
-
-(*******************)
-(* WF_vecType laws *)
-(*******************)
-
-Lemma WF_I : WF_vecType I'.
-Proof. unfold WF_vecType. intros.
-       apply in_simplify in H.
-       rewrite H.
-       easy.
-Qed.
-
-Lemma WF_X : WF_vecType X'.
-Proof. unfold WF_vecType. intros.
-       apply in_simplify in H.
-       rewrite H.
-       easy.
-Qed.
-
-Lemma WF_Z : WF_vecType Z'.
-Proof. unfold WF_vecType. intros.
-       apply in_simplify in H.
-       rewrite H.
-       easy.
-Qed.
-
-Lemma WF_In : forall (n : nat), WF_vecType (I'_n n).
-Proof. unfold WF_vecType. intros.
-       apply in_simplify in H.
-       rewrite H.
-       unfold WF_svt, I_n.
-       rewrite repeat_length.
-       easy.
-Qed.
-
-Lemma WF_scale : forall (n : nat) (c : C) (A : vecType n), WF_vecType A -> WF_vecType (c ·' A).
-Proof. intros n c A H. 
-       unfold WF_vecType in *.
-       intros.
-       apply in_scale in H0.
-       do 2 (destruct H0).
-       apply H in H0.
-       unfold WF_svt in *.
-       destruct n as [| n'].
-       - destruct x as [| x'].
-         + rewrite H1. easy.
-         + easy.
-       - destruct x as [| x'].
-         + easy.
-         + rewrite H1.
-           simpl in *.
-           assumption. 
-Qed.
-
-
-
-Lemma WF_neg : forall (n : nat) (A : vecType n), WF_vecType A -> WF_vecType (neg A).
-Proof. intros n A H. 
-       apply WF_scale.
-       assumption. 
-Qed.
-
-Lemma WF_i : forall (n : nat) (A : vecType n), WF_vecType A -> WF_vecType (i A).
-Proof. intros n A H. 
-       apply WF_scale.
-       assumption. 
-Qed.
-
-Lemma WF_mul : forall (n : nat) (A B : vecType n), 
-  WF_vecType A -> WF_vecType B -> WF_vecType (A *'' B).
-Proof. intros n A B HA HB.
-       unfold WF_vecType in *.
-       intros. 
-       apply in_mult in H.
-       do 3 (destruct H); destruct H0.
-       apply HA in H; apply HB in H0.
-       rewrite H1.
-       apply WF_svt_mul.
-       apply H. apply H0.
-Qed.
- 
-
-Lemma WF_tensor : forall (n m : nat) (A : vecType n) (B : vecType m),
-  WF_vecType A -> WF_vecType B -> WF_vecType (A ⊗'' B).
-Proof. intros n m A B HA HB.
-       unfold WF_vecType in *.
-       intros. 
-       apply in_tensor in H.
-       do 3 (destruct H); destruct H0.
-       apply HA in H; apply HB in H0.
-       rewrite H1.
-       apply WF_svt_tensor.
-       apply H. apply H0.
-Qed.
- 
-
-Hint Resolve WF_I WF_X WF_Z WF_In WF_neg WF_i WF_mul WF_tensor : WFvt_db.
-
-Lemma WF_Y : WF_vecType Y'.
-Proof. auto with WFvt_db. Qed.
-
 
 (****************)
 (* Unitary laws *)
@@ -362,20 +356,18 @@ Proof. auto with WFvt_db. Qed.
 
 
 Definition uni_vecType {n : nat} (vt : vecType n) : Prop :=
-  forall A, In A vt -> unitary (⨂ A).
+  forall A, In A vt -> unitary A.
 
 
 Lemma univ_I : uni_vecType I'. 
 Proof. unfold uni_vecType. intros. 
        apply in_simplify in H; rewrite H. 
-       simpl. rewrite kron_1_r.
        auto with unit_db.
 Qed.
 
 Lemma univ_X : uni_vecType X'.
 Proof. unfold uni_vecType. intros. 
-       apply in_simplify in H; rewrite H.
-       simpl. rewrite kron_1_r. 
+       apply in_simplify in H; rewrite H. 
        auto with unit_db.
 Qed.
 
@@ -383,18 +375,12 @@ Qed.
 Lemma univ_Z : uni_vecType Z'. 
 Proof. unfold uni_vecType. intros. 
        apply in_simplify in H; rewrite H. 
-       simpl. rewrite kron_1_r.
        auto with unit_db.
 Qed.
 
-Lemma univ_I_n : forall (n : nat), uni_vecType (I'_n n). 
-Proof. unfold uni_vecType. intros.   
-       apply in_simplify in H; rewrite H.
-       simpl. 
-       apply unit_big_kron.
-       intros. unfold I_n in H0.
-       apply repeat_spec in H0.
-       rewrite H0.
+Lemma univ_I_n : forall (n : nat), uni_vecType (I_n n). 
+Proof. unfold uni_vecType. intros. 
+       apply in_simplify in H; rewrite H. 
        auto with unit_db.
 Qed.
 
@@ -1374,8 +1360,8 @@ Qed.
 (* Gate definitions *)
 
 Definition H := hadamard.
-Definition S := Phase'.
-Definition T := phase_shift (PI / 4).
+Definition S' := Phase'.
+Definition T' := phase_shift (PI / 4).
 Definition CNOT :=  cnot.
 
 
@@ -1874,10 +1860,10 @@ Proof. Admitted.
 
 Lemma adj_ctrlX_is_cnot : forall (prg_len ctrl : nat),
   prog_ctrl_app prg_len σx ctrl (1 + ctrl) = 
-  Matrix.I (2^ctrl) ⊗ cnot ⊗ Matrix.I (2^(prg_len - ctrl - 2)).
+  I (2^ctrl) ⊗ cnot ⊗ I (2^(prg_len - ctrl - 2)).
 Proof. intros; unfold prog_ctrl_app.
        rewrite easy_leb. rewrite easy_sub. 
-       assert (H : (∣0⟩⟨0∣ ⊗ Matrix.I (2 ^ 1) .+ ∣1⟩⟨1∣ ⊗ Matrix.I (2 ^ (1 - 1)) ⊗ σx) = cnot).
+       assert (H : (∣0⟩⟨0∣ ⊗ I (2 ^ 1) .+ ∣1⟩⟨1∣ ⊗ I (2 ^ (1 - 1)) ⊗ σx) = cnot).
        { lma'. }
        rewrite H. rewrite easy_sub2. 
        reflexivity.
@@ -1885,7 +1871,7 @@ Qed.
 
 
 Lemma adj_ctrlX_is_cnot1 : prog_ctrl_app 2 σx 0 1 = cnot.
-Proof. assert (H : cnot = Matrix.I (2^0) ⊗ cnot ⊗ Matrix.I (2^0)).
+Proof. assert (H : cnot = I (2^0) ⊗ cnot ⊗ I (2^0)).
        { lma'. } 
        rewrite H.
        rewrite adj_ctrlX_is_cnot.
@@ -2091,8 +2077,8 @@ simpl. apply kill_true.
 
 Lemma tensor_base : forall {n m} (g : Square 2) (A A' : vecType (2 * n)) (E : vecType m),
     Singleton A -> Singleton A' -> Singleton E ->
-    (g ⊗ Matrix.I n) ::' (A → A') ->
-    (g ⊗ Matrix.I (n * m)) ::'  A ⊗' E → A' ⊗' E.
+    (g ⊗ I n) ::' (A → A') ->
+    (g ⊗ I (n * m)) ::'  A ⊗' E → A' ⊗' E.
 Proof. intros.
        apply singleton_simplify in H0; destruct H0;
        apply singleton_simplify in H1; destruct H1;
@@ -2340,37 +2326,25 @@ Proof. intros n U u v. split.
 (****************************)
 
 (*
-
 (* we need this for some reason... I assume there is a built in tactic that does this*)
 Lemma Propiff : forall (b : bool), 
   (if b then false else false) = false.
 Proof. destruct b; reflexivity; reflexivity.
 Qed.
-
-
-
 (* added extra tactic to prevent stuckness at if _ then false else false lines *)
 Ltac destruct_m_eq_piff := repeat (destruct_m_1; simpl; try lca; try (rewrite -> Propiff)).
-
-
 Ltac lma1 := 
   autounfold with U_db;
   prep_matrix_equality;
   destruct_m_eq; 
   lca.
-
-
 Ltac lma2 :=
   compute;
   autounfold with U_db;
   prep_matrix_equality;
   destruct_m_eq_piff;
   try lca.
-
-
-
 (*stuff to deal with divmod problems*)
-
 Lemma divmod_eq : forall x y n z, 
   fst (Nat.divmod x y n z) = (n + fst (Nat.divmod x y 0 z))%nat.
 Proof.
@@ -2384,11 +2358,9 @@ Proof.
     rewrite IHx.
     reflexivity.
 Qed.
-
 Lemma divmod_S : forall x y n z, 
   fst (Nat.divmod x y (S n) z) = (S n + fst (Nat.divmod x y 0 z))%nat.
 Proof. intros. apply divmod_eq. Qed.
-
 Ltac destruct_m_1' :=
   match goal with
   | [ |- context[match ?x with 
@@ -2400,25 +2372,17 @@ Ltac destruct_m_1' :=
                  | S _ => _
                  end] ] => is_var x; destruct x
   end.
-
 Lemma divmod_0q0 : forall x q, fst (Nat.divmod x 0 q 0) = (x + q)%nat. 
 Proof.
   induction x.
   - intros. simpl. reflexivity.
   - intros. simpl. rewrite IHx. lia.
 Qed.
-
 Lemma divmod_0 : forall x, fst (Nat.divmod x 0 0 0) = x. 
 Proof. intros. rewrite divmod_0q0. lia. Qed.
-
-
 Ltac destruct_m_eq' := repeat 
                          (progress (try destruct_m_1'; try rewrite divmod_0; try rewrite divmod_S ; simpl)).
-
-
-
 Ltac destruct_m_eq_piff' := repeat (destruct_m_eq'; destruct_m_eq_piff).  
-
 Ltac lma3 :=
   compute;
   autounfold with U_db;
@@ -2427,10 +2391,6 @@ Ltac lma3 :=
   try destruct_m_eq_piff';    (* <---- For some reason adding this broke things... *)
   try lca. 
                                     
-
-
-
-
 Ltac solve_end :=
   match goal with
   | H : lt _ O |- _ => apply Nat.nlt_0_r in H; contradict H
@@ -2445,37 +2405,22 @@ Ltac by_cell :=
   intros i j Hi Hj; try solve_end;
   repeat (destruct i as [|i]; simpl; [|apply lt_S_n in Hi]; try solve_end); clear Hi;
   repeat (destruct j as [|j]; simpl; [|apply lt_S_n in Hj]; try solve_end); clear Hj.
-
 Ltac lma4 := by_cell; try lca.
-
-
-
-
-
-
 (*another approach but might be antithesis to the 'matrix is  function paradigm'
   This can probably be made better with less helper functions that make the axiom
   hard to prove  *)
-
 Fixpoint get_ps1 (n m : nat) : list (nat * nat) :=
   match m with
   | O    => [(n, m)]
   | S m' => (n, m) :: get_ps1 n m'
   end.
-
 Fixpoint get_ps (n m : nat) : list (nat * nat) :=
   match n with
   | O    => get_ps1 n m
   | S n' => get_ps1 n m ++ get_ps n' m
   end.
-
 Definition mtol {n m : nat} (M : Matrix n m) : list C :=
   map (fun p =>  M (fst p) (snd p)) (get_ps (n - 1) (m - 1)). 
-
-
 Axiom mat_eq_list : forall {m n : nat} (A B : Matrix m n),
   mtol A = mtol B <-> mat_equiv A B.
-
-
-
 *)
