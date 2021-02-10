@@ -175,6 +175,8 @@ Ltac normalize_mul :=
       autorewrite with mul_db tensor_db;
       try rewrite mul_assoc ).
 
+
+
 Lemma Ysqr : Y * Y = I. Proof. 
 autorewrite with mul_db.
 try rewrite mul_assoc.

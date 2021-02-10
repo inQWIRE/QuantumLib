@@ -9,16 +9,16 @@ Export ListNotations.
 
 (* Boolean notations, lemmas *)
 
-Notation "\u00ac b" := (negb b) (at level 10).
-Infix  "\u2295" := xorb (at level 20).
+Notation "¬ b" := (negb b) (at level 10).
+Infix  "⊕" := xorb (at level 20).
 
-Lemma xorb_nb_b : forall b, \u00ac b \u2295 b = true. Proof. destruct b; easy. Qed.
-Lemma xorb_b_nb : forall b, b \u2295 \u00ac b = true. Proof. destruct b; easy. Qed.
+Lemma xorb_nb_b : forall b, ¬ b ⊕ b = true. Proof. destruct b; easy. Qed.
+Lemma xorb_b_nb : forall b, b ⊕ ¬ b = true. Proof. destruct b; easy. Qed.
 
-Lemma xorb_involutive_l : forall b b', b \u2295 (b \u2295 b') = b'. Proof. destruct b, b'; easy. Qed.
-Lemma xorb_involutive_r : forall b b', b \u2295 b' \u2295 b' = b. Proof. destruct b, b'; easy. Qed.
+Lemma xorb_involutive_l : forall b b', b ⊕ (b ⊕ b') = b'. Proof. destruct b, b'; easy. Qed.
+Lemma xorb_involutive_r : forall b b', b ⊕ b' ⊕ b' = b. Proof. destruct b, b'; easy. Qed.
 
-Lemma andb_xorb_dist : forall b b1 b2, b && (b1 \u2295 b2) = (b && b1) \u2295 (b && b2).
+Lemma andb_xorb_dist : forall b b1 b2, b && (b1 ⊕ b2) = (b && b1) ⊕ (b && b2).
 Proof. destruct b, b1, b2; easy. Qed.
 
 (* A bit of useful reflection from Software Foundations Vol 3 *)
@@ -51,7 +51,7 @@ Ltac bdestruct X :=
     | destruct H as [H|H];
        [ | try first [apply not_lt in H | apply not_le in H]]].
 
-Ltac bdestruct' X := bdestruct X; simpl; try lia.
+Ltac bdestructΩ X := bdestruct X; simpl; try lia.
 
 
 (* Distribute functions over lists *)
@@ -216,103 +216,6 @@ Definition maybe {A} (o : option A) (default : A) : A :=
   end.
 
 
-(* Why are we defining this from scratch??? *)
-Fixpoint inb (a : nat) (ls : list nat) : bool :=
-  match ls with
-  | [] => false
-  | b :: ls' => (b =? a) || inb a ls'
-  end%bool.
-
-Fixpoint subset (ls1 ls2 : list nat) : bool :=
-  match ls1 with
-  | [] => true
-  | a :: ls1' => inb a ls2 && subset ls1' ls2
-  end.
-Notation "ls1 \u2286 ls2" := (subset ls1 ls2 = true) (at level 30).
-
-Fixpoint disjoint (ls1 ls2 : list nat) : bool :=
-  match ls1 with
-  | [] => true
-  | a :: ls1' => (negb (inb a ls2)) && disjoint ls1' ls2
-  end.
-Notation "ls1 \u22a5 ls2" := (disjoint ls1 ls2 = true) (at level 30).
-
-Lemma disjoint_nil_l : forall ls, nil \u22a5 ls. Proof. reflexivity. Qed.
-Lemma disjoint_nil_r : forall ls, ls \u22a5 nil. Proof. induction ls; trivial. Qed.
-
-Lemma disjoint_cons : forall a ls1 ls2, 
-    ((negb (inb a ls1)) && disjoint ls1 ls2 = disjoint ls1 (a :: ls2))%bool.
-Proof.
-  intros a ls1 ls2.
-  induction ls1. reflexivity.
-  simpl.
-  rewrite <- IHls1.
-  rewrite Nat.eqb_sym.
-  destruct (a =? a0), (inb a ls1), (inb a0 ls2); auto.
-Qed.  
-
-Lemma disjoint_symm : forall ls1 ls2, disjoint ls1 ls2 = disjoint ls2 ls1.
-Proof. intros. 
-       induction ls1.
-       - simpl.
-         symmetry.
-         apply disjoint_nil_r.
-       - simpl.
-         rewrite <- disjoint_cons.
-         rewrite IHls1.
-         reflexivity.
-Qed.         
-         
-
-Lemma eqb_neq : forall x y, x <> y -> x =? y = false.
-Proof.
-  induction x as [ | x]; destruct y as [ | y]; intros H; auto.
-  - contradiction.
-  - simpl.
-    apply IHx.
-    intros H'.
-    subst.
-    contradiction.
-Qed.
-
-Lemma lookup_app : forall x ls1 ls2,
-      lookup x (ls1 ++ ls2) = if inb x ls1 then lookup x ls1 
-                                           else (lookup x ls2 + length ls1)%nat.
-Proof.
-  induction ls1; intros; simpl; auto. 
-  destruct (Nat.eq_dec x a) as [H_x_a | H_x_a].
-  * subst.
-    rewrite Nat.eqb_refl.
-    reflexivity.
-  * repeat rewrite eqb_neq; auto. simpl.
-    rewrite IHls1.
-    destruct (inb x ls1); auto.
-Qed.
-
-Lemma subset_app : forall ls1 ls2 ls, (ls1 ++ ls2) \u2286 ls -> ls1 \u2286 ls /\ ls2 \u2286 ls.
-Proof.
-  induction ls1; intros ls2 ls H; simpl in *; split; auto.
-  - apply Bool.andb_true_iff in H.
-    destruct H as [H_a_ls H].
-    rewrite H_a_ls; simpl.
-    apply IHls1 in H.
-    destruct H; auto.
-  - apply Bool.andb_true_iff in H.
-    destruct H as [H_a_ls H].
-    apply IHls1 in H.
-    destruct H; auto.
-Qed.
-
-Lemma seq_app : forall offset1 offset2 start,
-      seq start offset1 ++ seq (start + offset1) offset2 
-    = seq start (offset1 + offset2).
-Proof.
-  induction offset1; intros; simpl; auto.
-  rewrite Nat.add_succ_r.
-  rewrite <- Nat.add_succ_l.
-  rewrite IHoffset1.
-  reflexivity.
-Qed.
 
 (************************************)
 (* Helpful, general purpose tactics *)
@@ -400,3 +303,102 @@ Ltac unify_pows_two :=
   | [ |- context[ (?a + (?b + ?c))%nat ]]   => rewrite plus_assoc 
   | [ |- (2^?x = 2^?y)%nat ]                => apply pow_components; try lia 
   end.
+
+
+
+(* general subset to be used in Heisenberg.v *)
+Definition subset_gen {X : Type} (l1 l2 : list X) :=
+  forall (x : X), In x l1 -> In x l2.
+
+
+(* an alternate version of subset *)
+Fixpoint subset_gen' {X : Type} (l1 l2 : list X) :=
+  match l1 with
+  | [] => True
+  | (l :: l1') => In l l2 /\ subset_gen' l1' l2
+  end.
+
+
+Lemma subset_is_subset' : forall (X : Type) (l1 l2 : list X),
+    subset_gen' l1 l2 <-> subset_gen l1 l2.
+Proof. intros X l1 l2. split.
+       - induction l1 as [| l].
+         * easy.
+         * simpl. intros [H1 H2].
+           unfold subset_gen'. intros x. simpl. intros [H3 | H4].
+           + rewrite H3 in H1. apply H1.
+           + apply IHl1 in H2. unfold subset_gen' in H2. 
+             apply H2. apply H4.
+       - induction l1 as [| l].
+         * easy. 
+         * unfold subset_gen'. intros H.
+           simpl. split.
+           + apply H. simpl. left. reflexivity.
+           + apply IHl1. unfold subset_gen'. 
+             intros x H'. apply H. simpl. 
+             right. apply H'.
+Qed.           
+
+           
+  
+Infix "⊆" := subset_gen (at level 30, no associativity).
+
+
+Lemma subset_cons : forall (X : Type) (l1 l2 : list X) (x : X),
+  l1 ⊆ l2 -> l1 ⊆ (x :: l2).
+Proof. intros X l1 l2 x.
+       intros H.
+       intros x0 H0.
+       simpl; right.
+       apply H; apply H0.
+Qed.
+
+
+Lemma subset_concat_l : forall (X : Type) (l1 l2 : list X),
+  l1 ⊆ (l1 ++ l2).
+Proof. intros X l1 l2.
+       intros x H.
+       apply in_or_app.
+       left; apply H.
+Qed.
+
+
+Lemma subset_concat_r : forall (X : Type) (l1 l2 : list X),
+  l1 ⊆ (l2 ++ l1).
+Proof. intros X l1 l2.
+       intros x H.
+       apply in_or_app.
+       right; apply H.
+Qed.
+
+
+Corollary subset_self : forall (X : Type) (l1 : list X),
+  l1 ⊆ l1. 
+Proof. intros X l1. assert (H: l1 ⊆ (l1 ++ [])). { apply subset_concat_l. }
+       rewrite <- app_nil_end in H. apply H. 
+Qed.
+
+
+Lemma subsets_add : forall (X : Type) (l1 l2 l3 : list X),
+  l1 ⊆ l3 -> l2 ⊆ l3 -> (l1 ++ l2) ⊆ l3.
+Proof. intros X l1 l2 l3.
+       intros H1 H2 x H.
+       apply in_app_or in H.
+       destruct H as [Hl1 | Hl2].
+       - apply H1; apply Hl1.
+       - apply H2; apply Hl2.
+Qed.
+
+
+Lemma subset_trans : forall (X : Type) (l1 l2 l3 : list X),
+    l1 ⊆ l2 -> l2 ⊆ l3 -> l1 ⊆ l3.
+Proof. intros X l1 l2 l3.
+       intros H1 H2. 
+       intros x H.
+       apply H1 in H; apply H2 in H.
+       apply H.
+Qed.
+
+
+
+Hint Resolve subset_concat_l subset_concat_r subset_self subsets_add subset_trans : sub_db.
