@@ -104,6 +104,9 @@ Axiom Mmult_1_r': forall {n m} (A : Matrix n m),
 Axiom Mmult_1_l': forall {n m} (A : Matrix n m),
   I n × A = A.
 
+Axiom kron_1_l' : forall (m n : nat) (A : Matrix m n), 
+  I 1 ⊗ A = A.
+
 
 
 Lemma inverse_is_valid : forall {n} (X X' : Square n) (u v : Vector n),
