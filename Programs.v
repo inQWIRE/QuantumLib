@@ -240,3 +240,52 @@ Ltac type_check_base :=
             try reflexivity
          end.
 
+
+
+Definition CZ m n : prog := H' n ; CNOT m n ; H' n.
+Definition SWAP m n : prog := CNOT m n; CNOT n m; CNOT m n.
+
+
+Lemma CZTypes : CZ 0 1 :: (X ⊗ I → X ⊗ Z) ∩ (I ⊗ X → Z ⊗ X) ∩
+                         (Z ⊗ I → Z ⊗ I) ∩ (I ⊗ Z → I ⊗ Z).
+Proof. type_check_base. Qed.
+
+Hint Resolve CZTypes : base_types_db.
+
+
+
+Definition bell00 : prog := H' 2; CNOT 2 3.
+
+Definition encode : prog := CZ 0 2; CNOT 1 2.
+
+Definition decode : prog := CNOT 2 3; H' 2.
+
+Definition superdense := bell00 ; encode; decode.
+
+Lemma superdenseTypesQPL : superdense :: (Z ⊗ Z ⊗ Z ⊗ Z → I ⊗ I ⊗ Z ⊗ Z).
+Proof. repeat eapply SeqTypes.
+       apply tensor_inc.
+       auto 50 with sing_db.
+       apply tensor_inc.
+       auto 50 with sing_db.
+       apply tensor_base.
+       auto 50 with sing_db.
+       solve [eauto with base_types_db].
+       apply tensor_inc2.
+       auto 50 with sing_db.
+       apply tensor_inc2.
+       auto 50 with sing_db.
+       match goal with
+       | |- ?g :: ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
+       end.
+       match goal with
+       | |- ?g :: ?A ⊗ ?B → _  => tryif (is_I A + is_I B) then fail else
+           rewrite (decompose_tensor A B) by (auto 50 with sing_db)
+       end.
+       match goal with
+         | |- ?g :: ?A * ?B → _ => apply arrow_mul
+         end.       
+       
+       
+
+       

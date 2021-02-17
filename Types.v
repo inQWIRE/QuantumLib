@@ -2,28 +2,414 @@ Require Import Psatz.
 Require Import Reals.
 
 
-(*
+Require Export Complex.
 Require Export Matrix.
-Require Import Quantum.
-*)
+Require Export Quantum.
+Require Export Eigenvectors.
+Require Export Heisenberg. 
 
-(** Types *)
 
-(* 
-(* This won't work with equality due to inversion. *)
-Inductive coefficient :=
-| Gi
-| Gneg.
+
+Fixpoint zip {X : Type} (f : X -> X -> X) (As Bs : list X) : list X :=
+  match As with
+  | [] => Bs
+  | (a :: As') => 
+    match Bs with 
+    | [] => As
+    | (b :: Bs') => (f a b :: zip f As' Bs')
+    end
+  end.
+
+
+Lemma zip_len_pres : forall {X : Type} (f : X -> X -> X) (n : nat) (As Bs : list X),
+  length As = n -> length Bs = n -> length (zip f As Bs) = n.
+Proof. induction n as [| n'].
+       - intros. 
+         destruct As. easy. easy.
+       - intros. 
+         destruct As. easy.
+         destruct Bs. easy.
+         simpl in *. 
+         rewrite IHn'.
+         reflexivity. 
+         nia. nia.
+Qed.
+
+
+(**********************)
+(* Defining the types *)
+(**********************)
+
 
 Inductive GType :=
-| I
-| X
-| Z
-| scale : coefficient -> GType -> GType
-| mul : GType -> GType -> GType
+| gI
+| gX
+| gZ
+| gIm : GType -> GType
+| gNeg : GType -> GType
+| gMul : GType -> GType -> GType.
+
+
+Fixpoint translate_gt (g : GType) : vecType 2 :=
+  match g with
+  | gI => I'
+  | gX => X'
+  | gZ => Z'
+  | gIm g => Ci · (translate_gt g)
+  | gNeg g => (Copp C1) · (translate_gt g)
+  | gMul g1 g2 => (translate_gt g1) *' (translate_gt g2)
+  end. 
+
+
+Definition GTypeT (len : nat) := (C * (list GType))%type. 
+
+
+Definition gMulT {n} (A B : GTypeT n) : GTypeT n :=
+  match A with
+  | (c1, g1) =>
+    match B with
+    | (c2, g2) => (c1 * c2, zip gMul g1 g2)
+    end
+  end.
+
+Definition gTensorT {n m} (A : GTypeT n) (B : GTypeT m) : GTypeT (n + m) :=
+  match A with
+  | (c1, g1) =>
+    match B with
+    | (c2, g2) => (c1 * c2, g1 ++ g2)
+    end
+  end.
+
+Definition gScaleT {n} (c : C) (A : GTypeT n) : GTypeT n :=
+  match A with
+  | (c1, g1) => (c * c1, g1)
+  end.
+
+
+Definition translate {n} (A : GTypeT n) : vecTypeT n := 
+  match (snd A) with
+  | [] => []
+  | (a :: As) => (fst A) · (translate_gt a) :: (map translate_gt As)
+  end.
+
+
+Notation gateTypeResize n := (list (vecType (2^n) * vecType (2^n))).
+
+
+Definition formGTypeT {len : nat} (A B : GTypeT len) : gateTypeResize len := 
+  formGateTypeT (translate A) (translate B).
+
+
+
+Definition i {n} (A : GTypeT n) := gScaleT Ci A.
+Notation "- A" := (gScaleT (Copp C1) A).
+Infix ".*" := gMulT (at level 40, left associativity).
+Infix ".⊗" := gTensorT (at level 51, right associativity).
+Infix "→" := formGTypeT (at level 60, no associativity).
+
+ 
+Definition I : GTypeT 1 := (C1, [gI]).
+Definition X : GTypeT 1 := (C1, [gX]).
+Definition Z : GTypeT 1 := (C1, [gZ]).
+
+Notation Y := (i (X .* Z)).
+
+
+(**************************)
+(* Well Formedness Lemmas *)
+(**************************)
+
+
+Definition WF_GTypeT {len : nat} (gtt : GTypeT len) := length (snd gtt) = len.
+
+
+Lemma WF_I : WF_GTypeT I. Proof. easy. Qed.
+Lemma WF_X : WF_GTypeT X. Proof. easy. Qed.
+Lemma WF_Z : WF_GTypeT Z. Proof. easy. Qed.
+
+
+Lemma WF_gMulT : forall {n} (A B : GTypeT n),
+  WF_GTypeT A -> WF_GTypeT B -> WF_GTypeT (A .* B). 
+Proof. intros. 
+       unfold WF_GTypeT in *.
+       destruct A.
+       destruct B.
+       simpl in *. 
+       apply zip_len_pres.
+       assumption.
+       assumption. 
+Qed.
+
+Lemma WF_gTensorT : forall {n m} (A : GTypeT n) (B : GTypeT m),
+  WF_GTypeT A -> WF_GTypeT B -> WF_GTypeT (A .⊗ B). 
+Proof. intros. 
+       unfold WF_GTypeT in *.
+       destruct A.
+       destruct B.
+       simpl in *. 
+       rewrite app_length.
+       nia. 
+Qed.
+
+Lemma WF_neg : forall {n} (A : GTypeT n),
+  WF_GTypeT A ->  WF_GTypeT (- A). 
+Proof. intros. 
+       unfold WF_GTypeT in *.
+       destruct A. 
+       easy. 
+Qed.
+   
+Lemma WF_i : forall {n} (A : GTypeT n),
+  WF_GTypeT A ->  WF_GTypeT (i A). 
+Proof. intros. 
+       unfold WF_GTypeT in *.
+       destruct A. 
+       easy. 
+Qed.
+
+
+Hint Resolve WF_I WF_X WF_Z WF_gMulT WF_gTensorT WF_neg WF_i : wfgt_db.
+
+
+Lemma WF_Y : WF_GTypeT Y.
+Proof. auto with wfgt_db. Qed.
+
+
+(*********************)
+(* defining programs *)
+(*********************)
+
+Inductive prog :=
+| H' (n : nat)
+| S' (n : nat)
+| T' (n : nat)
+| CNOT (n1 n2 : nat)
+| seq (p1 p2 : prog).
+
+Infix ";;" := seq (at level 51, right associativity).
+
+
+Fixpoint translate_prog (prg_len : nat) (p : prog) : Square (2^prg_len) :=
+  match p with 
+  | H' n => (prog_smpl_app prg_len hadamard n)
+  | S' n => (prog_smpl_app prg_len Phase' n)
+  | T' n => (prog_smpl_app prg_len (phase_shift (PI / 4)) n)
+  | CNOT n1 n2 => (prog_ctrl_app prg_len σx n1 n2)
+  | seq p1 p2 => (translate_prog prg_len p1) ; (translate_prog prg_len p2)
+  end.
+
+
+
+
+Definition progHasType {prg_len : nat} (p : prog) (T : gateTypeResize prg_len) :=
+  (translate_prog prg_len p) ::' T.
+
+
+Notation "p :' T" := (progHasType p T).
+
+
+(********************)
+(* Base type lemmas *)
+(********************)
+
+
+Lemma Hsimp : prog_smpl_app 1 hadamard 0 = hadamard.
+Proof. unfold prog_smpl_app. 
+       rewrite kron_1_r.
+       rewrite kron_1_l.
+       reflexivity. 
+       auto with wf_db.
+Qed.
+
+Lemma Ssimp : prog_smpl_app 1 Phase' 0 = Phase'.
+Proof. unfold prog_smpl_app. 
+       rewrite kron_1_r.
+       rewrite kron_1_l.
+       reflexivity. 
+       auto with wf_db.
+Qed.
+
+
+Lemma HTypes : H' 0 :' (X → Z) ∩ (Z → X).
+Proof. unfold progHasType, formGTypeT.
+       simpl. split. 
+       apply sgt_implies_sgt'.
+       easy.
+       apply singleton_simplify2.
+       rewrite Hsimp.
+       lma'. split. 
+       apply sgt_implies_sgt'.
+       easy.
+       apply singleton_simplify2.
+       rewrite Hsimp.
+       lma'. easy.
+Qed.
+
+
+
+Lemma STypes : S' 0 :' (X → Y) ∩ (Z → Z).
+Proof. unfold progHasType, formGTypeT.
+       simpl. split. 
+       apply sgt_implies_sgt'.
+       easy.
+       apply singleton_simplify2.
+       rewrite Ssimp.
+       lma'. split. 
+       apply sgt_implies_sgt'.
+       easy.
+       apply singleton_simplify2.
+       rewrite Ssimp.
+       lma'. easy.
+Qed.
+
+Lemma CNOTTypes : CNOT 0 1 :' (X .⊗ I → X .⊗ X) ∩ (I .⊗ X → I .⊗ X) ∩
+                             (Z .⊗ I → Z .⊗ I) ∩ (I .⊗ Z → Z .⊗ Z).
+Proof. unfold progHasType, formGTypeT.
+       simpl. rewrite adj_ctrlX_is_cnot1.
+       split. apply sgt_implies_sgt'. easy.
+       apply singleton_simplify2.
+       lma'. split. apply sgt_implies_sgt'. easy.
+       apply singleton_simplify2.
+       lma'. split. apply sgt_implies_sgt'. easy.
+       apply singleton_simplify2.
+       lma'. split. apply sgt_implies_sgt'. easy.
+       apply singleton_simplify2.
+       lma'. easy. 
+Qed.
+
+
+(*************************)
+(* Proving typing lemmas *)
+(*************************)
+
+(* we need this for now. should eventually rewrite defs to make proofs easier *)
+Lemma fgt_conv : forall (n : nat) (A B : vecType n), [(A, B)] = formGateType A B.
+Proof. easy. Qed.
+
+
+
+Lemma SeqTypes : forall {n} (g1 g2 : prog) (A B C : GTypeT n),
+  g1 :' A → B ->
+  g2 :' B → C ->
+  (g1 ;; g2) :' A → C.
+Proof. intros.  
+       unfold progHasType, formGTypeT, formGateTypeT in *.
+       simpl translate_prog. 
+       rewrite (fgt_conv (2^n) _ _). 
+       apply (Heisenberg.SeqTypes (translate_prog n g1) _  _ (⨂' translate B) _).
+       rewrite <- (fgt_conv (2^n) _ _); apply H.
+       rewrite <- (fgt_conv (2^n) _ _); apply H0.
+Qed.
+
+
+Lemma seq_assoc : forall {n} (g1 g2 g3 : prog) (T : gateTypeResize n),
+    g1 ;; (g2 ;; g3) :' T <-> (g1 ;; g2) ;; g3 :' T.
+Proof. intros. 
+       unfold progHasType.
+       simpl. 
+       apply Heisenberg.seq_assoc.
+Qed.
+
+
+
+
+(* Note that this doesn't restrict # of qubits referenced by p. *)
+Lemma TypesI : forall (p : prog), p :' I → I.
+Proof. intros. 
+       unfold progHasType, formGTypeT, formGateTypeT.
+       Admitted.
+      
+
+Lemma TypesI2 : forall p, p :' I .⊗ I → I .⊗ I.
+Proof. Admitted.
+
+Hint Resolve TypesI TypesI2 : base_types_db.
+
+(** Structural rules *)
+
+(* Subtyping rules *)
+Axiom cap_elim_l : forall g A B, g :: A ∩ B -> g :: A.
+Axiom cap_elim_r : forall g A B, g :: A ∩ B -> g :: B.
+Axiom cap_intro : forall g A B, g :: A -> g :: B -> g :: A ∩ B.
+Axiom cap_arrow : forall g A B C,
+  g :: (A → B) ∩ (A → C) ->
+  g :: A → (B ∩ C).
+
+
+      
+
+Definition progHasType {prg_len : nat} (p : prog) (T : gateTypeResize prg_len) :=
+  (translate_prog prg_len p) ::' T.
+
+
+Fixpoint gateHasType' {n : nat} (U : Square n) (ts: gateType n) : Prop := 
+  match ts with  
+  | [] => True
+  | (t :: ts') => (singGateType' U t) /\ gateHasType' U ts'
+  end.
+
+
+Definition H' := hadamard.
+Definition S' := Phase'.
+Definition T' := phase_shift (PI / 4).
+Definition CNOT :=  cnot.
+
+
+
+Definition bell00 : Square 16 := (prog_smpl_app 4 H' 2); (prog_ctrl_app 4 σx 2 3).
+
+Definition encode : Square 16 := (prog_ctrl_app 4 σz 0 2); (prog_ctrl_app 4 σx 1 2).
+
+Definition decode : Square 16 := (prog_ctrl_app 4 σx 2 3); (prog_smpl_app 4 H' 2).
+
+Definition superdense := bell00 ; encode; decode.
+
+
+
+Ltac is_I A :=
+  match A with
+
+
+Definition vecTypeT (len : nat) := (list (vecType 2)).
+
 | tensor : GType -> GType -> GType
 | cap : GType -> GType -> GType
-| arrow : GType -> GType -> GType. *)
+| arrow : GType -> GType -> GType. 
+
+Notation "- T" := (neg T).
+Infix ".*" := mul (at level 40, left associativity).
+Infix ".⊗" := tensor (at level 51, right associativity).
+Infix "→" := arrow (at level 60, no associativity).
+Infix "∩" := cap (at level 60, no associativity).
+
+Notation Y := (i (X .* Z)).
+
+
+Fixpoint singGType (g : GType) := 
+  match g with
+  | I => 
+  | X => 
+  | Z => 
+  | i g => 
+  | neg g => 
+  | mul g1 g2 => 
+  | tensor g1 g2 =>
+  | 
+
+
+
+Fixpoint translate (g : GType) :=
+  match g with
+  | gI => I''
+  | gX => X''
+  | gZ => Z''
+  | gmul g1 g2 => mulT' (translate g1) (translate g2)
+  | gtensor g1 g2 => tensorT (translate g1) (translate g2)
+  | gi g => scaleT Ci (translate g)
+  | gneg g => scaleT (Copp C1) (translate g)
+  | _ => I''
+  end. 
+
 
 
 Parameter GType : Type.
