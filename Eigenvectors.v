@@ -69,7 +69,7 @@ Lemma WF_Phase' : WF_Matrix Phase'. Proof. show_wf. Qed.
 Lemma WF_Tgate: WF_Matrix Tgate. Proof. show_wf. Qed.
 Lemma WF_notc : WF_Matrix notc. Proof. show_wf. Qed.
 
-Lemma WF_ket : forall (x : nat), WF_Matrix ∣x⟩.
+Lemma WF_ket : forall (x : nat), WF_Matrix (ket x).
 Proof. intros x. unfold ket. destruct (x =? 0). show_wf. show_wf. 
 Qed. 
 
@@ -119,6 +119,25 @@ Proof. intros.
        rewrite Mmult_1_l'.
        reflexivity.
 Qed.
+
+
+
+(****************************)
+(* Proving some indentities *)
+(****************************)
+
+
+Lemma XtimesXid : σx × σx = I 2. Proof. lma'. Qed.      
+Lemma YtimesYid : σy × σy = I 2. Proof. lma'. Qed.
+Lemma ZtimesZid : σz × σz = I 2. Proof. lma'. Qed.
+Lemma Y_eq_iXZ : σy = Ci .* σx × σz. Proof. lma'. Qed.
+Lemma ZH_eq_HX : σz × hadamard = hadamard × σx. Proof. lma'. Qed.
+Lemma PX_eq_YP : Phase × σx = σy × Phase. Proof. rewrite PEqP'. lma'. Qed.
+Lemma HtimesHid : hadamard × hadamard = I 2. Proof. lma'; Hhelper. Qed.
+Lemma H_eq_Hadjoint : hadamard = hadamard†. Proof. lma'. Qed.
+Lemma XH_eq_HZ : σx × hadamard = hadamard × σz. Proof. lma'. Qed.
+
+
 
 
 

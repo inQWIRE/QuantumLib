@@ -1,4 +1,4 @@
-Require Import Psatz. 
+Require Import Psatz.  
 Require Import String. 
 Require Import Program.
 Require Import List.
@@ -13,12 +13,8 @@ Require Export Eigenvectors.
 
 (* Some helpers *)
 
-Lemma kill_false : forall P : Prop,
-  P \/ False <-> P.
-Proof. split. intros [H | F]. easy. easy.
-       intros. left. easy.
-Qed.
 
+(* this is trivial but helps shorten proofs and Ltacs *)
 Lemma kill_true : forall P : Prop,
   P /\ True <-> P.
 Proof. split. intros [H _]. easy.
@@ -27,80 +23,9 @@ Qed.
 
 Lemma in_simplify : forall {X} (x x1 : X),
   In x1 [x] -> x1 = x.
-Proof. intros. simpl in H. 
-       apply (kill_false (x = x1)) in H.
-       easy.
+Proof. intros. simpl in H.
+       destruct H. easy. easy.  
 Qed.
-
-Definition Xn (n : nat) : Matrix 4 4 :=
-  match n with 
-  | 2 => I 2 ⊗ σx
-  | 1 => σx ⊗ I 2
-  | _ => I 4
-  end. 
-
-Definition Zn (n : nat) : Matrix 4 4 :=
-  match n with 
-  | 2 => I 2 ⊗ σz
-  | 1 => σz ⊗ I 2
-  | _ => I 4
-  end.
-
-
-
-
-
-(*****************************************************************)
-(* Lemmas about well formedness of pauli gates and some vectors. *)
-(* Commented out lemmas are already implemented in Quantam.v     *)
-(*****************************************************************)
-
- 
-(*
-Lemma WF_σx : WF_Matrix σx. Proof. show_wf. Qed.
-Lemma WF_σy : WF_Matrix σy. Proof. show_wf. Qed.
-Lemma WF_σz : WF_Matrix σx. Proof. show_wf. Qed.
-Lemma WF_hadamard : WF_Matrix hadamard. Proof. show_wf. Qed.
-Lemma WF_cnot : WF_Matrix cnot. Proof. show_wf. Qed. 
-*)
-
-
-(* todo: must automate this *)
-Lemma WF_Xn : forall (n : nat), WF_Matrix (Xn n).
-Proof. unfold Xn. 
-       destruct n; simpl; auto with wf_db.
-       destruct n; simpl; auto with wf_db.
-       destruct n; simpl; auto with wf_db. 
-Qed.
-
-Lemma WF_Zn : forall (n : nat), WF_Matrix (Zn n).
-Proof. unfold Zn. 
-       destruct n; simpl; auto with wf_db.
-       destruct n; simpl; auto with wf_db.
-       destruct n; simpl; auto with wf_db. 
-Qed.
-
-
-
-Hint Resolve WF_Xn WF_Zn : wf_db.
-
-
-
-(****************************)
-(* Proving some indentities *)
-(****************************)
-
-
-Lemma XtimesXid : σx × σx = I 2. Proof. lma'. Qed.      
-Lemma YtimesYid : σy × σy = I 2. Proof. lma'. Qed.
-Lemma ZtimesZid : σz × σz = I 2. Proof. lma'. Qed.
-Lemma Y_eq_iXZ : σy = Ci .* σx × σz. Proof. lma'. Qed.
-Lemma ZH_eq_HX : σz × hadamard = hadamard × σx. Proof. lma'. Qed.
-Lemma PX_eq_YP : Phase × σx = σy × Phase. Proof. rewrite PEqP'. lma'. Qed.
-Lemma HtimesHid : hadamard × hadamard = I 2. Proof. lma'; Hhelper. Qed.
-Lemma H_eq_Hadjoint : hadamard = hadamard†. Proof. lma'. Qed.
-Lemma XH_eq_HZ : σx × hadamard = hadamard × σz. Proof. lma'. Qed.
-
 
 
 
@@ -115,16 +40,12 @@ Delimit Scope heisenberg_scope with H.
 Open Scope heisenberg_scope.
 
 
-Definition Eigenstate {n} (U : Square n) (v : Vector n) : Prop :=
-  exists λ, Eigenpair U (v, λ). 
-
-
 
 Notation vecType n := (list (Square n)). 
 
 
-Definition singVecType {n : nat} (v : Vector n) (A: Square n) : Prop :=
-  Eigenstate A v. 
+Definition singVecType {n : nat} (v : Vector n) (U : Square n) : Prop :=
+  exists λ, Eigenpair U (v, λ).
 
 
 Definition vecHasType {n : nat} (v : Vector n) (ts: vecType n) : Prop := 
@@ -504,6 +425,8 @@ Qed.
 
 Local Open Scope nat_scope. 
 
+
+(* alternate version that is sometimes necessary *)
 Lemma univ_tensor' : forall (n m o : nat) (A : vecType n) (B : vecType m),
   n * m = o -> uni_vecType A -> uni_vecType B -> @uni_vecType o (A ⊗' B).
 Proof. unfold uni_vecType in *.
@@ -523,17 +446,6 @@ Hint Resolve univ_I univ_X univ_Z univ_I_n univ_neg univ_i univ_mul univ_tensor 
 
 Lemma univ_Y : uni_vecType Y'.
 Proof. auto with univ_db. Qed.
-
-
-Ltac show_univ := 
-  repeat match goal with
-  | [ |- uni_vecType (?A *' ?B) ] => apply univ_mul 
-  | [ |- uni_vecType (?A ⊗' ?B) ] => apply univ_tensor'
-  | [ |- uni_vecType (neg ?A) ]   => apply univ_neg
-  | [ |- uni_vecType (i ?A) ]   => apply univ_i
-  | [ |- uni_vecType (?A) ]   => auto with univ_db
-  | [ |- ?n * ?m = ?o ]   => (try nia)
-  end.
 
 
 Local Close Scope nat_scope. 
@@ -2102,6 +2014,8 @@ Qed.
 
 Definition vecTypeT (len : nat) := (list (vecType 2)).
 
+Definition vecTypeT' := (list (vecType 2)).
+
 
 Definition X'' : vecTypeT 1 := [X'].
 Definition Z'' : vecTypeT 1 := [Z'].
@@ -2109,6 +2023,29 @@ Definition I'' : vecTypeT 1 := [I'].
 
 
 Definition tensorT {n m} (A : vecTypeT n) (B : vecTypeT m) : vecTypeT (n + m) := A ++ B.
+
+Fixpoint mulT' (A B : vecTypeT') : vecTypeT' :=
+  match A with
+  | [] => B
+  | (a :: As) => 
+    match B with 
+    | [] => A
+    | (b :: Bs) => (a *' b :: mulT' As Bs)
+    end
+  end.
+
+
+Definition mulT {n : nat} (A B : vecTypeT n) : vecTypeT n := mulT' A B.
+
+
+Definition scaleT (c : C) {n : nat} (A : vecTypeT n) : vecTypeT n :=
+  match A with
+  | [] => []
+  | (h :: t) => (c · h :: t)
+  end.
+
+
+
 Definition formGateTypeT {n : nat} (A B : vecTypeT n) : gateType n := [(⨂' A, ⨂' B)].
 
 
@@ -2269,6 +2206,7 @@ Proof. intros prg_len bit g A a SA Sa Hug Hunb Hua Hbpl Hwf H.
        assumption.       
        assumption.
 Qed.
+
 
 
 Lemma tensor_ctrl : forall (prg_len ctrl targ : nat) (g : Square 2) 
@@ -2593,18 +2531,17 @@ Proof. repeat eapply SeqTypes.
        auto with unit_db.
        auto with univ_db.
        4: { solve [eauto with base_types_db]. }
+ 
        auto with univ_db.
-       show_univ. 
-       auto with univ_db.
-       
+       auto 20 with univ_db.
+
+
        apply univ_tensor.
-       auto with univ_db.
+       auto with univ_db. 
        apply univ_mul.     (* What happens here??? *) 
        auto with univ_db.
        auto with univ_db.
-       2: { simpl nth. 
-            assert (H : [σx × σz] = X' *' Z'). { reflexivity. }
-            rewrite H.
+       2: { Opaque mul. simpl nth.  
             rewrite decompose_tensor_mult_r.
             apply arrow_mul.
             auto with sing_db.
@@ -2643,9 +2580,6 @@ Proof. repeat eapply SeqTypes.
        auto with univ_db. 
        auto with univ_db. 
        2: { simpl nth. 
-            rewrite Mmult_1_l'.
-            assert (H : [σx × σz] = X' *' Z'). { reflexivity. }
-            rewrite H.
             rewrite decompose_tensor_mult_r.
             apply arrow_mul. 
             auto with sing_db.
@@ -2653,14 +2587,27 @@ Proof. repeat eapply SeqTypes.
             auto with unit_db.
             auto with univ_db.
             4: { solve [eauto with base_types_db]. }
-            4: { solve [eauto with base_types_db]. }
+            4: { rewrite decompose_tensor_mult_r.
+                 apply arrow_mul. 
+                 auto with sing_db.
+                 auto with sing_db.
+                 auto with unit_db.
+                 auto with univ_db.
+                 4: { solve [eauto with base_types_db]. }
+                 4: { solve [eauto with base_types_db]. }
+                 auto with univ_db.
+                 auto with univ_db.
+                 auto with univ_db. }
             auto with univ_db.
             auto with univ_db.
             auto with univ_db. }
        auto with univ_db.
        rewrite mul_tensor_dist.
        rewrite mul_tensor_dist.
+       rewrite mul_tensor_dist.
        reflexivity.
+       auto with sing_db.
+       auto with sing_db.
        auto with sing_db.
        auto with sing_db.
        auto with sing_db.
@@ -2681,6 +2628,7 @@ Proof. repeat eapply SeqTypes.
        auto with univ_db.
        auto with univ_db.
        4: { simpl nth. 
+            Admitted. (*
             rewrite Mmult_1_l'.  
             assert (H : [σx × σz] = X' *' Z'). { reflexivity. }
             rewrite H.     
@@ -2775,653 +2723,4 @@ Proof. repeat eapply SeqTypes.
          (repeat rewrite <- neg_tensor_dist_l);
          autorewrite with mul_db;
          try reflexivity.
-Qed.
-
-auto with univ_db. 
-simpl. 
-
-       rewrite mul_tensor_dist.
-
-
-eapply decompose_tensor_mult_r.   
-            
-simpl. 
-
-       simpl. 
-       assert (H : [I 2 × (σx × σz) ⊗ I 2] = I' *' (X' *' Z') ⊗' I'). { reflexivity. }
-       Set Printing All.       
-rewrite H.                                                             
-       repeat (auto with univ_db).
-       
-       auto with sing_db.
-
-
-       simpl. 
-       
-
-       apply univ_mul.     (* What happens here??? *) 
-       auto with univ_db.
-       simpl. 
-       auto with univ_db.
-
-
-
-
-
-simpl.  solve [eauto with base_types_db]. }
-
-
-type_check_base.
-       type_check_base1.                                                                          
-       type_check_base1.
-       unfold WF_vtt. easy.
-
-        match goal with
-        | |- ?g ::' ?A *' ?B → _ => apply arrow_mul
-        end;
-       type_check_base1;
-       type_check_base1.
-       type_check_base1.
-       simpl. 
-       type_check_base1.
-        match goal with
-         | |- Singleton ?A        => tryif is_evar A then fail else auto with sing_db
-         | |- unitary ?A          => tryif is_evar A then fail else auto with unit_db
-         | |- uni_vecType ?A      => tryif is_evar A then fail else auto with univ_db
-         end.
-         type_check_base1.
-                match goal with
-         | |- Singleton ?A        => tryif is_evar A then fail else auto with sing_db
-         | |- unitary ?A          => tryif is_evar A then fail else auto with unit_db
-         | |- uni_vecType ?A      => tryif is_evar A then fail else auto with univ_db
-         end.
-        match goal with
-         | |- Singleton ?A        => tryif is_evar A then fail else auto with sing_db
-         | |- unitary ?A          => tryif is_evar A then fail else auto with unit_db
-         | |- uni_vecType ?A      => tryif is_evar A then fail else auto with univ_db
-         end.
-        match goal with
-         | |- Singleton ?A        => tryif is_evar A then fail else auto with sing_db
-         | |- unitary ?A          => tryif is_evar A then fail else auto with unit_db
-         | |- uni_vecType ?A      => tryif is_evar A then fail else auto with univ_db
-         end.
-        2: { type_check_base1. }
-        3: { type_check_base1. }
-         type_check_base1.
-        2: { type_check_base1. } 
-
-
-solve [eauto with base_types_db]. simpl.  type_check_base1. }
-        match goal with
-         | |- Singleton ?A        => tryif is_evar A then fail else auto with sing_db
-         | |- unitary ?A          => tryif is_evar A then fail else auto with unit_db
-         | |- uni_vecType ?A      => tryif is_evar A then fail else auto with univ_db
-         end.
-
-
-        repeat match goal with
-        | |- Singleton _        => auto with sing_db
-        | |- unitary _          => auto with unit_db
-        | |- uni_vecType _      => auto with univ_db
-        end.      
-        repeat match goal with
-        | |- Singleton _        => auto with sing_db
-        | |- unitary _          => auto with unit_db
-        | |- uni_vecType _      => auto with univ_db
-        end. 
-        repeat match goal with
-        | |- Singleton _        => auto with sing_db
-        | |- unitary _          => auto with unit_db
-        | |- uni_vecType _      => auto with univ_db
-        end. 
-        repeat match goal with
-        | |- Singleton _        => auto with sing_db
-        | |- unitary _          => auto with unit_db
-        | |- uni_vecType _      => auto with univ_db
-        end. 
-        repeat match goal with
-        | |- Singleton _        => auto with sing_db
-        | |- unitary _          => auto with unit_db
-        | |- uni_vecType _      => auto with univ_db
-        end. 
-
-
- apply arrow_mul.
-     
-
-Ltac type_check_base :=
-  repeat apply cap_intro;
-  repeat eapply SeqTypes; (* will automatically unfold compound progs *)
-  repeat match goal with
-         | |- Singleton _        => auto with sing_db
-         | |- unitary _          => auto with unit_db
-         | |- uni_vecType _      => auto with univ_db
-         | |- (∣0⟩⟨0∣ ⊗ I 2 .+ ∣1⟩⟨1∣ ⊗ σx) ::' _      => rewrite CX_is_CNOT
-         | |- ?g ::' ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
-         | |- ?g ::' - ?A → ?B    => apply arrow_neg
-         | |- ?g ::' i ?A → ?B    => apply arrow_i
-         | |- context[?A ⊗' ?B]  => progress (autorewrite with tensor_db)
-         | |- ?g ::' ?A *' ?B → _ => apply arrow_mul
-         | |- ?g ::' (?A *' ?B) ⊗' I → _ => rewrite decompose_tensor_mult_l
-         | |- ?g ::' I ⊗' (?A *' ?B) → _ => rewrite decompose_tensor_mult_r
-         | |- (prog_smpl_app 4 ?g ?m) ::' ?T => eapply (tensor_smpl 4 _ _ _ _)
-         | |- (prog_ctrl_app 4 ?g ?n ?m) ::' ?T => eapply (tensor_ctrl 4 _ _ _ _)
-         | |- ?g ::' ?A ⊗' ?B → _  => rewrite (decompose_tensor A B) by (auto 50 with sing_db)
-         | |- ?g ::' ?A → ?B      => tryif is_evar A then fail else
-             solve [eauto with base_types_db]
-         | |- ?B = ?B'          => tryif has_evar B then fail else
-            (repeat rewrite mul_tensor_dist);
-            (repeat normalize_mul);
-            (repeat rewrite <- i_tensor_dist_l);
-            (repeat rewrite <- neg_tensor_dist_l);
-            autorewrite with mul_db;
-            try reflexivity
-         | |- ?n <> ?m => nia
-         | |- ?n < ?m => nia
-         end.
-
-
-
-       type_check_base.
-       simpl. 
-       
-
-       match goal with
-       | |- (∣0⟩⟨0∣ ⊗ I 2 .+ ∣1⟩⟨1∣ ⊗ σx) ::' _      => rewrite CX_is_CNOT
-       end.
-
-       solve [eauto with base_types_db]. 
-
-       repeat (eapply SeqTypes).
-       match goal with
-       | |- (prog_smpl_app 4 ?g ?m) ::' ?T => eapply (tensor_smpl 4 _ _ _ _)
-       end.
-
-                                                     
-       solve [eauto with base_types_db].
-
-       match goal with
-       | |- (prog_ctrl_app 4 ?g ?n ?m) ::' ?T => eapply (tensor_ctrl 4 _ _ _ _)
-       end.
-
-       eapply (tensor_ctrl 4 _ _ _ _). 
-       rewrite CX_is_CNOT.
-       eapply eq_arrow_r.
-       rewrite (decompose_tensor) by (auto 50 with sing_db).
-       apply arrow_mul. 
-       auto with sing_db.
-       auto with sing_db.
-       auto with unit_db.
-       auto with univ_db.
-       4: { solve [eauto with base_types_db]. }
-       auto with univ_db.
-       auto with univ_db.
-       2: { solve [eauto with base_types_db]. }
-       auto with univ_db.
-       rewrite mul_tensor_dist.
-       try reflexivity.
-
-       rewrite decompose_tensor.
-       assert (H : [σx ⊗ I 2 × (I 2 ⊗ σz)] = (X' ⊗' I') *' (I' ⊗' Z')). { reflexivity. }
-       assert (H1 : 2 * 2 = 4). { lia. }
-       rewrite H1 in *.      
-       rewrite H.
-       apply arrow_mul.
-       8: {
-       solve [eauto with base_types_db].
-       simpl. 
-
-
-
-
-         repeat match goal with
-         | |- prog_smpl_app (S ?n) ?g (S ?m) :: ?T => eapply (tensor_inc ?n ?m _ _ _ _) 
-         | |- prog_smpl_app (S ?n) ?g 0 :: ?T => eapply (tensor_base n 1 _ _ _ _)
-        
-         end.
-
-
-       
-Lemma tensor_smpl : forall (prg_len bit : nat) (g : Square 2) (A A' : vecTypeT prg_len),
-    g ::' ((nth bit A I') → (nth bit A' I')) ->
-    (prog_simple_app prg_len g bit) ::'  A →' A'.
-Proof. Admitted.
-
-       
-       type_check_base'.
-
-       eapply (tensor_inc 3 _ _ _ _ _). 
-       9: { eapply (tensor_inc 2 _ _ _ _ _). 
-            9: { eapply (tensor_base 1 1 _ _ _ _). 
-                 8: { solve [eauto with base_types_db]. }
-                 nia. apply H_unitary.
-                 auto with univ_db.
-                 auto with univ_db.
-                 auto with wf_db.
-                 auto with sing_db.
-                 auto with sing_db. }
-            nia. nia. auto with unit_db.
-            apply univ_tensor.            
-            auto with univ_db.
-            auto with univ_db.
-            apply univ_tensor.    
-            auto with univ_db.
-            auto with univ_db.
-            auto with wf_db.
-            auto with sing_db.
-            auto with sing_db. }
-       nia. nia. 
-       auto with unit_db.
-       apply univ_tensor.
-       auto with univ_db.
-       apply univ_tensor.
-       auto with univ_db.
-       auto with univ_db.
-       apply univ_tensor.
-       auto with univ_db.
-       apply univ_tensor.
-       auto with univ_db.
-       auto with univ_db.
-       auto with wf_db.
-       auto with sing_db.
-       auto with sing_db.
-       
-
-
-            5: { auto with sing_db.
-            
-            auto with univ_db. simpl.
-            auto with univ_db.
-                 
-Focus 9.
-       
-       nia. nia. apply H_unitary.
-       simpl. unfold uni_vecType. intros.
-       apply in_simplify in H0. rewrite H0.
-       assert (H : 8 = 2 * 4). { nia. }
-       rewrite H. apply unit_kron.
-       apply Z_unitary.
-       assert (H' : 4 = 2 * 2). { nia. }
-       rewrite H'. apply unit_kron.
-       apply Z_unitary. apply Z_unitary.
-
-
-
-Lemma tensor_base : forall (prg_len new_len : nat) (g : Square 2) 
-                           (A A' : vecType (2^prg_len)) (E : vecType (2^new_len)),
-    prg_len <> 0 -> unitary g -> 
-    uni_vecType A -> uni_vecType A' ->
-    WF_Matrix g -> Singleton A -> Singleton E ->
-    (prog_simple_app prg_len g 0) ::' (A → A') ->
-    (prog_simple_app (prg_len + new_len) g 0) ::'  A ⊗' E → A' ⊗' E.
-
-Lemma tensor_inc : forall (prg_len bit : nat) (g : Square 2) 
-                          (E : vecType 2) (A A' : vecType (2^prg_len)),
-    prg_len <> 0 -> bit < prg_len -> unitary g ->
-    uni_vecType A -> uni_vecType A' ->
-    WF_Matrix g -> Singleton E -> Singleton A ->
-    (prog_simple_app prg_len g bit) ::' (A → A') ->
-    (prog_simple_app (s prg_len) g (s bit)) ::'  E ⊗' A → E ⊗' A'.
-Proof. Admitted.
-
-
-simpl. apply kill_true. 
-       unfold singGateType. simpl.
-       intros A B [H | F] [H1 | F'].
-       rewrite <- H, <- H1.
-       lma'.
-
-
-
-
-
-
-Lemma tensor_base : forall {n m} (g : Square 2) (A A' : vecType (2 * n)) (E : vecType m),
-    Singleton A -> Singleton A' -> Singleton E ->
-    (g ⊗ I n) ::' (A → A') ->
-    (g ⊗ I (n * m)) ::'  A ⊗' E → A' ⊗' E.
-Proof. intros.
-       apply singleton_simplify in H0; destruct H0;
-       apply singleton_simplify in H1; destruct H1;
-       apply singleton_simplify in H2; destruct H2.
-       rewrite H0, H1 in H3; simpl in H3; 
-       destruct H3 as [H3 _]; 
-       unfold singGateType in H3; 
-       simpl in H3.
-       rewrite H0, H1, H2; simpl;
-       unfold singGateType; split; simpl.
-       rewrite <- id_kron. 
-       rewrite <- kron_assoc. 
-       assert (H: exists (A : Square (2*n)), A = (g ⊗ Matrix.I n)).
-       { intros. exists (g ⊗ Matrix.I n). reflexivity. }
-       destruct H. rewrite <- H4.
-       rewrite (testKron' n m x2 x x1) .
-
-
-  
-
-g ⊗ Matrix.I n ⊗ Matrix.I m × (x ⊗ x1) = x0 ⊗ x1 × (g ⊗ Matrix.I n ⊗ Matrix.I m)
-
-
-Axiom tensor_inc : forall g n E A A',
-    Singleton E ->
-    g n :: (A → A') ->
-    g (s n) ::  E ⊗ A → E ⊗ A'.
-
-Axiom tensor_base2 : forall g E A A' B B',
-    Singleton A ->
-    Singleton B ->
-    g 0 1 :: (A ⊗ B → A' ⊗ B') ->
-    g 0 1 :: (A ⊗ B ⊗ E → A' ⊗ B' ⊗ E).
-
-Axiom tensor_base2_inv : forall g E A A' B B',
-    Singleton A ->
-    Singleton B ->
-    g 0 1 :: (B ⊗ A → B' ⊗ A') ->
-    g 1 0 :: (A ⊗ B ⊗ E → A' ⊗ B' ⊗ E).
-
-Axiom tensor_inc2 : forall (g : nat -> nat -> prog) m n E A A' B B',
-    Singleton E ->
-    g m n :: (A ⊗ B → A' ⊗ B') ->
-    g (s m) (s n) ::  E ⊗ A ⊗ B → E ⊗ A' ⊗ B'.
-
-Axiom tensor_inc_l : forall (g : nat -> nat -> prog) m E A A' B B',
-    Singleton A ->
-    Singleton E ->
-    g m 0 :: (A ⊗ B → A' ⊗ B') ->
-    g (s m) 0 ::  A ⊗ E ⊗ B → A' ⊗ E ⊗ B'.
-
-Axiom tensor_inc_r : forall (g : nat -> nat -> prog) n E A A' B B',
-    Singleton A ->
-    Singleton E ->
-    g 0 n :: (A ⊗ B → A' ⊗ B') ->
-    g 0 (s n) ::  A ⊗ E ⊗ B → A' ⊗ E ⊗ B'.
-
-(* For flipping CNOTs. Could have CNOT specific rule. *)
-Axiom tensor2_comm : forall (g : nat -> nat -> prog) A A' B B',
-    Singleton A ->
-    Singleton B ->
-    g 0 1 :: A ⊗ B → A' ⊗ B' ->
-    g 1 0 :: B ⊗ A → B' ⊗ A'.
-
-
-
-
-Definition H_app := gateApp hadamard.
-Definition P_app_ := gateApp hadamard.
-Definition cnot_app := gateApp cnot.
-Definition notc_app := gateApp notc.
-
-
-Ltac Hsimpl := unfold gateHasType; 
-               split; unfold singGateType; simpl.
-
-
-Lemma HonX : hadamard ::: σx → σz.
-Proof. Hsimpl. lma'. easy. 
-Qed.
-
-Lemma HonZ : hadamard ::: σz → σx.
-Proof. Hsimpl. lma'. easy. 
-Qed.
-
-Lemma PonX : Phase ::: σx → σy.
-Proof. Hsimpl. apply PX_eq_YP. easy.
-Qed.
-
-
-Lemma PonZ : Phase ::: σz → σz.
-Proof. Hsimpl. lma'. easy. 
-Qed.
-
-
-
-
-
-(* will optimize these into Ltac *)
-Lemma cnotonX1 : cnot ::: (X 1) → (X 1 × X 2). 
-Proof. Hsimpl. apply mat_equiv_eq'; auto with wf_db. by_cell; lca. easy.
-Qed.
-    
-
-Lemma cnotonX2 : cnot ::: (X 2) → (X 2). 
-Proof. Hsimpl. lma'. easy.
-Qed.       
-
-Lemma cnotonZ1 : cnot ::: (Z 1) → (Z 1). 
-Proof. Hsimpl. lma'. easy.
-Qed.
-
-Lemma cnotonZ2 : cnot ::: (Z 2) → (Z 1 × Z 2). 
-Proof. Hsimpl. lma'. easy.
-Qed.
-
-
-Lemma notconX1 : notc ::: (X 1) → (X 1). 
-Proof. Hsimpl. lma'. easy.
-Qed.
-       
-Lemma notconX2 : notc ::: (X 2) → (X 1 × X 2). 
-Proof. Hsimpl. lma'. easy.
-Qed.
-
-Lemma notconZ1 : notc ::: (Z 1) → (Z 1 × Z 2). 
-Proof. Hsimpl. lma'. easy.
-Qed.
-
-Lemma notconZ2 : notc ::: (Z 2) → (Z 2). 
-Proof. Hsimpl. lma'. easy.
-Qed.
-
-(* lemmas about heisenberg representation *)
-
-
-
-Lemma app_mult : forall (n : nat) (U A1 B1 A2 B2 : Square n),
-  is_unitary U -> U[A1] = B1 -> U[A2] = B2 -> U[A1 × A2] = B1×B2.
-Proof. intros n U A1 B1 A2 B2. unfold gateApp. intros H0 H1 H2.
-       rewrite <- H1. rewrite <- H2.
-       assert (H: U† × (U × A2 × U†) = U† × U × A2 × U†).
-         { do 2 rewrite <- Mmult_assoc. reflexivity. }
-       do 3 rewrite Mmult_assoc. rewrite H. unfold is_unitary in H0.
-       apply Minv_flip in H0. rewrite H0. do 4 rewrite <- Mmult_assoc.
-       assert (H': U × A1 × I n = U × A1).
-         { rewrite Mmult_assoc. rewrite Mmult_1_r'. reflexivity. }
-       rewrite H'. reflexivity.       
-Qed. 
-
-
-
-(* Could write this using other method, but good to see use of kron_mixed_product *)
-Lemma X1timesX1id :  (σx ⊗ I 2) × (σx ⊗ I 2) = I 4.
-Proof. lma'.
-Qed.
-
-Lemma X2timesX2id :  (I 2 ⊗ σx) × (I 2 ⊗ σx) = I 4.
-Proof. lma'.
-Qed.
-
-Lemma XntimesXnid : forall (n : nat), X n × X n = I 4.
-Proof. destruct n. simpl. rewrite Mmult_1_r. reflexivity.
-       apply WF_I.
-       destruct n. rewrite <- X1timesX1id. unfold X. reflexivity.
-       destruct n. rewrite <- X2timesX2id. unfold X. reflexivity.
-       simpl. rewrite Mmult_1_r. reflexivity. apply WF_I.
-Qed. 
-
- 
-
-
-
-(* Example 1 *)
-
-Definition U1 : Matrix 4 4 := cnot × notc × cnot.
-
-Lemma U1onX1 : U1 :: (X 1) → (X 2). 
-Proof. unfold U1. assert (H1: cnot[X 1] = (X 1 × X 2)).
-       { apply type_is_app. apply cnot_unitary. apply cnotonX1. }
-       assert (H2: notc[X 1] = (X 1)).
-       { apply type_is_app. apply notc_unitary. apply notconX1. }
-       assert (H3: notc[X 2] = (X 1 × X 2)).
-       { apply type_is_app. apply notc_unitary. apply notconX2. }
-       assert (H4: notc[(X 1) × (X 2)] = (X 1) × (X 1 × X 2)).
-       { apply app_mult. apply notc_unitary. apply H2. apply H3. }
-       assert (H5: X 1 × (X 1 × X 2) = X 2). 
-       { rewrite <- Mmult_assoc. rewrite XntimesXnid. rewrite Mmult_1_l. reflexivity.
-       auto with wf_db. }   
-       rewrite H5 in H4. assert (H6: (notc × cnot)[X 1] = X 2).
-       { apply (app_comp 4 cnot notc (X 1) (X 1 × X 2)). apply H1. apply H4. }
-       assert (H7: cnot[X 2] = (X 2)).
-       { apply type_is_app. apply cnot_unitary. apply cnotonX2. }
-       rewrite Mmult_assoc. apply type_is_app.
-       - unfold is_unitary. lma'.
-       - apply (app_comp 4 (notc × cnot) cnot (X 1) (X 2) (X 2)).
-         apply H6. apply H7.
-Qed.
-
-
-Lemma Proposition1 : forall (n : nat) (U A B : Square n) (v : Vector n),
-    U ::' [A] → [B] -> v :' [A] -> (U × v) :' [B].
-Proof. intros n U A B v ty H. 
-       apply vecHasType_is_vecHasType'; simpl; split.
-       apply vecHasType_is_vecHasType' in H; simpl in H. 
-       destruct H as [H _]; unfold singVecType in H. 
-       destruct H as [λ Eig].
-       simpl in ty;
-       unfold singGateType in ty; 
-       simpl in ty; destruct ty as [ty _].
-       unfold singVecType.
-       unfold Eigenstate; exists λ.
-       rewrite <- Mmult_assoc. rewrite <- ty.
-       rewrite Mmult_assoc. 
-       rewrite Eig.  
-       rewrite Mscale_mult_dist_r.
-       reflexivity.
-       easy.
-Qed.
-
-
-
-Lemma Proposition1 : forall (n : nat) (U A B : Square n) (v : Vector n),
-    is_unitary U -> U :: A → B -> Eigenstate A v -> Eigenstate B (U × v).
-Proof. unfold Eigenstate. intros n U A B v isU ty [λ Eig].
-       unfold gate_type in ty. rewrite <- Mmult_assoc. rewrite <- ty.
-       rewrite Mmult_assoc. rewrite Eig. exists λ. rewrite Mscale_mult_dist_r.
-       reflexivity.
-Qed.
-
-(* Lemma Proposition2 : forall (n : nat) (U : Square 2) (u : Vector 2) (v : Vector (2^(n-1))),
-    Eigenstate U u <-> Eigenstate (U ⊗ ((n-1) ⨂ (I 2))) (u ⊗ v).
-Proof. intros n U u v. split.
-       - intros [λ Eig]. unfold Eigenstate. exists λ.
-         rewrite kron_n_I. rewrite kron_mixed_product.   *)
-         
-
-
-
-
-
-
-(****************************)
-(* ATTEMPTS AT REFINING LMA *)
-(****************************)
-
-(*
-(* we need this for some reason... I assume there is a built in tactic that does this*)
-Lemma Propiff : forall (b : bool), 
-  (if b then false else false) = false.
-Proof. destruct b; reflexivity; reflexivity.
-Qed.
-(* added extra tactic to prevent stuckness at if _ then false else false lines *)
-Ltac destruct_m_eq_piff := repeat (destruct_m_1; simpl; try lca; try (rewrite -> Propiff)).
-Ltac lma1 := 
-  autounfold with U_db;
-  prep_matrix_equality;
-  destruct_m_eq; 
-  lca.
-Ltac lma2 :=
-  compute;
-  autounfold with U_db;
-  prep_matrix_equality;
-  destruct_m_eq_piff;
-  try lca.
-(*stuff to deal with divmod problems*)
-Lemma divmod_eq : forall x y n z, 
-  fst (Nat.divmod x y n z) = (n + fst (Nat.divmod x y 0 z))%nat.
-Proof.
-  induction x.
-  + intros. simpl. lia.
-  + intros. simpl. 
-    destruct z.
-    rewrite IHx.
-    rewrite IHx with (n:=1%nat).
-    lia.
-    rewrite IHx.
-    reflexivity.
-Qed.
-Lemma divmod_S : forall x y n z, 
-  fst (Nat.divmod x y (S n) z) = (S n + fst (Nat.divmod x y 0 z))%nat.
-Proof. intros. apply divmod_eq. Qed.
-Ltac destruct_m_1' :=
-  match goal with
-  | [ |- context[match ?x with 
-                 | 0   => _
-                 | S _ => _
-                 end] ] => is_var x; destruct x
-  | [ |- context[match fst (Nat.divmod ?x _ _ _) with 
-                 | 0   => _
-                 | S _ => _
-                 end] ] => is_var x; destruct x
-  end.
-Lemma divmod_0q0 : forall x q, fst (Nat.divmod x 0 q 0) = (x + q)%nat. 
-Proof.
-  induction x.
-  - intros. simpl. reflexivity.
-  - intros. simpl. rewrite IHx. lia.
-Qed.
-Lemma divmod_0 : forall x, fst (Nat.divmod x 0 0 0) = x. 
-Proof. intros. rewrite divmod_0q0. lia. Qed.
-Ltac destruct_m_eq' := repeat 
-                         (progress (try destruct_m_1'; try rewrite divmod_0; try rewrite divmod_S ; simpl)).
-Ltac destruct_m_eq_piff' := repeat (destruct_m_eq'; destruct_m_eq_piff).  
-Ltac lma3 :=
-  compute;
-  autounfold with U_db;
-  prep_matrix_equality;
-  destruct_m_eq_piff;
-  try destruct_m_eq_piff';    (* <---- For some reason adding this broke things... *)
-  try lca. 
-                                    
-Ltac solve_end :=
-  match goal with
-  | H : lt _ O |- _ => apply Nat.nlt_0_r in H; contradict H
-  end.
-                
-Ltac by_cell := 
-  intros;
-  let i := fresh "i" in 
-  let j := fresh "j" in 
-  let Hi := fresh "Hi" in 
-  let Hj := fresh "Hj" in 
-  intros i j Hi Hj; try solve_end;
-  repeat (destruct i as [|i]; simpl; [|apply lt_S_n in Hi]; try solve_end); clear Hi;
-  repeat (destruct j as [|j]; simpl; [|apply lt_S_n in Hj]; try solve_end); clear Hj.
-Ltac lma4 := by_cell; try lca.
-(*another approach but might be antithesis to the 'matrix is  function paradigm'
-  This can probably be made better with less helper functions that make the axiom
-  hard to prove  *)
-Fixpoint get_ps1 (n m : nat) : list (nat * nat) :=
-  match m with
-  | O    => [(n, m)]
-  | S m' => (n, m) :: get_ps1 n m'
-  end.
-Fixpoint get_ps (n m : nat) : list (nat * nat) :=
-  match n with
-  | O    => get_ps1 n m
-  | S n' => get_ps1 n m ++ get_ps n' m
-  end.
-Definition mtol {n m : nat} (M : Matrix n m) : list C :=
-  map (fun p =>  M (fst p) (snd p)) (get_ps (n - 1) (m - 1)). 
-Axiom mat_eq_list : forall {m n : nat} (A B : Matrix m n),
-  mtol A = mtol B <-> mat_equiv A B.
-*)
+Qed. *)
