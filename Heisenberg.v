@@ -240,7 +240,7 @@ Qed.
 
 Definition X' : vecType 2 := [σx].
 Definition Z' : vecType 2 := [σz].
-Definition I' : vecType 2 := [I 2].
+Definition I' : vecType 2 := [I 2]c.
 
 Definition I_n (n : nat) : vecType n := [I n].
 
@@ -1787,11 +1787,17 @@ Proof. intros.
        - simpl. nia. 
 Qed.
 
-Lemma easy_leb : forall (n : nat), n <? 1 + n = true. 
+Lemma easy_ltb : forall (n : nat), n <? 1 + n = true. 
 Proof. induction n as [| n']. easy.
        simpl. unfold Nat.ltb. simpl. unfold Nat.ltb in IHn'.
        simpl in IHn'. easy.
 Qed.
+Lemma easy_ltb2 : forall (n : nat), S n <? 1 = false. 
+Proof. intros. destruct (S n <? 1) as [|] eqn:E. 
+       apply Nat.ltb_lt in E. nia. 
+       easy. 
+Qed.
+
 Lemma easy_pow : forall (a n m : nat), a^(n + m) = a^n * a^m.
 Proof. intros. induction n as [| n'].
        - simpl. nia.
@@ -1814,6 +1820,17 @@ Proof. intros.
        assumption. 
 Qed.
 
+
+Lemma easy_pow4 : forall (n : nat), (0 >= 2^n) -> False. 
+Proof. intros. induction n as [| n'].
+       - simpl in *. nia.
+       - simpl in *. 
+         assert (H' : forall (a : nat), a + 0 = a). { nia. }
+         rewrite H' in H.
+         assert (H'' : forall (a : nat), a + a >= a). { nia. }
+         apply IHn'.
+         nia. 
+Qed.
 
 Fixpoint switch {X : Type} (ls : list X) (x : X) (n : nat) :=
   match ls with
@@ -2311,7 +2328,7 @@ Lemma adj_ctrlX_is_cnot : forall (prg_len ctrl : nat),
   prog_ctrl_app prg_len σx ctrl (1 + ctrl) = 
   I (2^ctrl) ⊗ cnot ⊗ I (2^(prg_len - ctrl - 2)).
 Proof. intros; unfold prog_ctrl_app.
-       rewrite easy_leb. rewrite easy_sub. 
+       rewrite easy_ltb. rewrite easy_sub. 
        assert (H : (∣0⟩⟨0∣ ⊗ I (2 ^ 1) .+ ∣1⟩⟨1∣ ⊗ I (2 ^ (1 - 1)) ⊗ σx) = cnot).
        { lma'. }
        rewrite H. rewrite easy_sub2. 
