@@ -91,11 +91,6 @@ Ltac Hhelper :=
    C_field.
 
 
-Lemma PEqP' : Phase = Phase'.
-Proof. lma'. autorewrite with Cexp_db. reflexivity.
-Qed.
-
-
 (* these allow us to bypass WF requirements in every definition, which get annoying *)
 (* we could also just make an axiom saying that all Squares are WF... *)
 Axiom Mmult_1_r': forall {n m} (A : Matrix n m),
@@ -126,19 +121,34 @@ Qed.
 (* Proving some indentities *)
 (****************************)
 
+Lemma Y_eq_iXZ : σy = Ci .* σx × σz. Proof. lma'. Qed.
+Lemma PEqP' : Phase = Phase'.
+Proof. lma'. autorewrite with Cexp_db. reflexivity.
+Qed.
+Lemma H_eq_Hadjoint : hadamard† = hadamard. Proof. lma'. Qed.
 
+
+Hint Rewrite Y_eq_iXZ PEqP' H_eq_Hadjoint : id_db.
+
+Lemma ItimesIid : I 2 × I 2 = I 2. Proof. lma'. Qed.      
 Lemma XtimesXid : σx × σx = I 2. Proof. lma'. Qed.      
 Lemma YtimesYid : σy × σy = I 2. Proof. lma'. Qed.
 Lemma ZtimesZid : σz × σz = I 2. Proof. lma'. Qed.
-Lemma Y_eq_iXZ : σy = Ci .* σx × σz. Proof. lma'. Qed.
-Lemma ZH_eq_HX : σz × hadamard = hadamard × σx. Proof. lma'. Qed.
-Lemma PX_eq_YP : Phase × σx = σy × Phase. Proof. rewrite PEqP'. lma'. Qed.
 Lemma HtimesHid : hadamard × hadamard = I 2. Proof. lma'; Hhelper. Qed.
-Lemma H_eq_Hadjoint : hadamard = hadamard†. Proof. lma'. Qed.
+
+Hint Resolve ItimesIid XtimesXid YtimesYid ZtimesZid HtimesHid : id_db.
+
+Lemma ZH_eq_HX : σz × hadamard = hadamard × σx. Proof. lma'. Qed.
 Lemma XH_eq_HZ : σx × hadamard = hadamard × σz. Proof. lma'. Qed.
+Lemma PX_eq_YP : Phase × σx = σy × Phase. Proof. rewrite PEqP'. lma'. Qed.
+Lemma PZ_eq_ZP : Phase × σz = σz × Phase. Proof. lma'. Qed.
 
+Lemma cnotX1 : cnot × (σx ⊗ I 2) = (σx ⊗ σx) × cnot. Proof. lma'. Qed.
+Lemma cnotX2 : cnot × (I 2 ⊗ σx) = (I 2 ⊗ σx) × cnot. Proof. lma'. Qed.
+Lemma cnotZ1 : cnot × (σz ⊗ I 2) = (σz ⊗ I 2) × cnot. Proof. lma'. Qed.
+Lemma cnotZ2 : cnot × (I 2 ⊗ σz) = (σz ⊗ σz) × cnot. Proof. lma'. Qed.
 
-
+Hint Resolve ZH_eq_HX XH_eq_HZ PX_eq_YP PZ_eq_ZP cnotX1 cnotX2 cnotZ1 cnotZ2 : id_db.
 
 
 (*************************)
