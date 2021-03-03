@@ -35,6 +35,80 @@ Proof. induction n as [| n'].
          nia. nia.
 Qed.
 
+(************************)
+(* Defining coeficients *)
+(************************)
+
+
+Inductive Coef :=
+| p_1
+| p_i
+| n_1
+| n_i.
+
+Definition cNeg (c : Coef) : Coef :=
+  match c with
+  | p_1 => n_1
+  | n_1 => p_1
+  | p_i => n_i
+  | n_i => p_i
+  end.
+
+Lemma cNeg_inv : forall (c : Coef), cNeg (cNeg c) = c.
+Proof. destruct c; easy.
+Qed.
+
+
+Definition cMul (c1 c2 : Coef) : Coef :=
+  match (c1, c2) with
+  | (p_1, _) => c2
+  | (_, p_1) => c1
+  | (n_1, _) => cNeg c2
+  | (_, n_1) => cNeg c1
+  | (p_i, p_i) => n_1
+  | (n_i, n_i) => n_1
+  | (p_i, n_i) => p_1
+  | (n_i, p_i) => p_1
+  end.
+
+
+Infix "*" := cMul (at level 40, left associativity).
+
+Lemma cMul_comm : forall (c1 c2 : Coef), c1 * c2 = c2 * c1.
+Proof. intros. 
+       destruct c1;
+       destruct c2;
+       easy. 
+Qed.
+
+Lemma cMul_assoc : forall (c1 c2 c3 : Coef), (c1 * c2) * c3 = c1 * (c2 * c3).
+Proof. intros. 
+       destruct c1;
+       destruct c2;
+       destruct c3;
+       easy. 
+Qed.
+
+
+Definition translate_coef (c : Coef) : C :=
+  match c with
+  | p_1 => C1
+  | p_i => Ci
+  | n_1 => -C1
+  | n_i => -Ci
+  end. 
+
+Lemma translate_coef_cMul : forall (c1 c2 : Coef), 
+    translate_coef (cMul c1 c2) = ((translate_coef c1) * (translate_coef c2))%C. 
+Proof. intros.
+       destruct c1; 
+       destruct c2;
+       unfold translate_coef;
+       unfold cMul;
+       unfold cNeg;
+       try lca. 
+Qed.
+
 
 (**********************)
 (* Defining the types *)
@@ -61,35 +135,13 @@ Fixpoint translate_gt (g : GType) : Square 2 :=
   end. 
 
 
-(*
-Inductive Coef :=
-| c1
-| ci
-| neg_c1
-| neg_ci.
-
-
-Definition translate_coef (c : Coef) : C :=
-  match c with
-  | c1 => C1
-  | ci => Ci
-  | neg_c1 => -C1
-  | neg_ci => -Ci
-  end. 
-*)
-
-
 Lemma WF_Matrix_GType : forall (g : GType), WF_Matrix (translate_gt g).
-Proof. intros. induction g as [| | | | |].  
-       - simpl. auto with wf_db.
-       - simpl. auto with wf_db.
-       - simpl. auto with wf_db.
-       - simpl. auto with wf_db.
-       - simpl. auto with wf_db.
-       - simpl. auto with wf_db.
+Proof. intros. induction g as [| | | | |];  
+       simpl; auto with wf_db.
 Qed.
 
-Definition GTypeT (len : nat) := (C * (list GType))%type. 
+
+Definition GTypeT (len : nat) := (Coef * (list GType))%type. 
 
 
 Definition gMulT {n} (A B : GTypeT n) : GTypeT n :=
@@ -108,17 +160,15 @@ Definition gTensorT {n m} (A : GTypeT n) (B : GTypeT m) : GTypeT (n + m) :=
     end
   end.
 
-Definition gScaleT {n} (c : C) (A : GTypeT n) : GTypeT n :=
+Definition gScaleT {n} (c : Coef) (A : GTypeT n) : GTypeT n :=
   match A with
   | (c1, g1) => (c * c1, g1)
   end.
 
 
 Definition translate {n} (A : GTypeT n) : Square (2^n) := 
-  match (snd A) with
-  | [] => I 1
-  | (a :: As) => (fst A) .* ⨂ (map translate_gt (snd A))
-  end.
+  (translate_coef (fst A)) .* ⨂ (map translate_gt (snd A)).
+  
 
 
 Inductive vType (n : nat) : Type :=
@@ -149,15 +199,16 @@ Definition tensor {n m} (A : vType n) (B : vType m) : vType (n + m) :=
   | _ => Err (n + m)
   end.
 
-Definition scale {n} (c : C) (A : vType n) : vType n :=
+Fixpoint scale {n} (c : Coef) (A : vType n) : vType n :=
   match A with
   | G _ a => G n (gScaleT c a)
+  | Cap _ g1 g2 => Cap n (scale c g1) (scale c g2)
   | _ => Err n
   end.
 
 
-Definition i {n} (A : vType n) := scale Ci A.
-Notation "- A" := (scale (Copp C1) A).
+Definition i {n} (A : vType n) := scale p_i A.
+Notation "- A" := (scale n_1 A).
 Infix ".*" := mul (at level 40, left associativity).
 Infix ".⊗" := tensor (at level 51, right associativity).
 
@@ -196,30 +247,22 @@ Fixpoint Cap_vt_bool {n} (A : vType n) : bool :=
 Lemma Cap_vt_conv : forall {n} (A : vType n),
   Cap_vt A <-> Cap_vt_bool A = true.
 Proof. intros. split. 
-       + induction A as [| | |].
-         - easy.
+       + induction A as [| | |]; try easy.
          - intros. 
            destruct H.
            simpl. 
-           rewrite IHA1, IHA2.
-           easy. assumption. assumption.
-         - easy.
-         - easy.
-       + induction A as [| | |].
-         - easy.
+           rewrite IHA1, IHA2;
+           easy.
+       + induction A as [| | |]; try easy.
          - intros.
            simpl in *. 
            apply andb_true_iff in H.
            destruct H.
-           split. 
-           apply IHA1.
+           split;
+           try (apply IHA1); 
+           try (apply IHA2); 
            assumption.
-           apply IHA2.
-           assumption. 
-         - easy.
-         - easy.
 Qed.         
-
 
 
 Definition Sing_gt {n} (A : vType n) : Prop :=
@@ -250,29 +293,22 @@ Fixpoint translate_vecType {n} (A : vType n) :=
   end.
 
 
-Lemma singleton_sing_vt : forall {n} (A : vType n),
-  Sing_vt A -> Singleton (translate_vecType A).
-Proof. intros. destruct A.
-       + easy. 
-       + easy. 
-       + easy. 
-       + easy. 
+Lemma singleton_sing_vt : forall {n m} (A : vType n),
+  Sing_vt A -> @Singleton m (translate_vecType A).
+Proof. intros. destruct A; easy. 
 Qed.
 
 
 Lemma sing_vt_simplify : forall {n} (A : vType n),
   Sing_vt A -> (exists a, A = G n a).
-Proof. intros. destruct A.
+Proof. intros. destruct A; try easy.
        - exists g. reflexivity. 
-       - easy. 
-       - easy. 
-       - easy. 
-Qed.
+Qed. 
 
 
-Definition I : vType 1 := G 1 (C1, [gI]).
-Definition X : vType 1 := G 1 (C1, [gX]).
-Definition Z : vType 1 := G 1 (C1, [gZ]).
+Definition I : vType 1 := G 1 (p_1, [gI]).
+Definition X : vType 1 := G 1 (p_1, [gX]).
+Definition Z : vType 1 := G 1 (p_1, [gZ]).
 
 Lemma Itrans : translate_vecType I = I'.
 Proof. simpl. 
@@ -301,6 +337,35 @@ Qed.
 Notation Y := (i (X .* Z)).
 
 
+
+(***************)
+(* Sing Lemmas *)
+(***************)
+
+Lemma SI : Sing_vt I. Proof. easy. Qed.
+Lemma SX : Sing_vt I. Proof. easy. Qed.
+Lemma SZ : Sing_vt I. Proof. easy. Qed.
+
+Lemma S_neg : forall {n} (A : vType n), Sing_vt A -> Sing_vt (- A).
+Proof. intros. destruct A; easy. Qed. 
+ 
+Lemma S_i : forall {n} (A : vType n), Sing_vt A -> Sing_vt (i A).
+Proof. intros. destruct A; easy. Qed. 
+
+Lemma S_mul : forall {n} (A B : vType n), Sing_vt A -> Sing_vt B -> Sing_vt (A .* B).
+Proof. intros.
+       destruct A; destruct B; easy.
+Qed.
+
+
+Hint Resolve SI SX SZ S_neg S_i S_mul : svt_db.
+
+Lemma SY : Sing_vt Y.
+Proof. auto with svt_db. Qed.
+
+
+
+
 (**************************)
 (* Well Formedness Lemmas *)
 (**************************)
@@ -311,8 +376,8 @@ Definition WF_GTypeT {len : nat} (gtt : GTypeT len) := length (snd gtt) = len.
 Fixpoint WF_vType {n} (A : vType n) : Prop :=
   match A with
   | G _ a => WF_GTypeT a
-  | Cap _ a1 a2 => WF_vType a1 /\ WF_vType a1
-  | Arrow _ a1 a2 => WF_vType a1 /\ WF_vType a1
+  | Cap _ a1 a2 => WF_vType a1 /\ WF_vType a2
+  | Arrow _ a1 a2 => WF_vType a1 /\ WF_vType a2
   | _ => False
   end.
 
@@ -326,15 +391,12 @@ Lemma WF_mul : forall {n} (A B : vType n),
   WF_vType A -> WF_vType B -> 
   WF_vType (A .* B). 
 Proof. intros. 
-       destruct A.
-       destruct B.
-       destruct g.
+       destruct A;
+       destruct B; try easy.
+       destruct g;
        destruct g0.
-       apply zip_len_pres.
+       apply zip_len_pres;
        assumption.
-       assumption.
-       easy. easy. easy.
-       easy. easy. easy. 
 Qed.
 
 
@@ -343,36 +405,30 @@ Lemma WF_tensor : forall {n m} (A : vType n) (B : vType m),
   WF_vType A -> WF_vType B ->
   WF_vType (A .⊗ B). 
 Proof. intros. 
-       destruct A.
-       destruct B.
-       destruct g.
+       destruct A;
+       destruct B; try easy.
+       destruct g;
        destruct g0.
        simpl in *. 
        unfold WF_GTypeT in *.
        simpl in *.
-       rewrite app_length.
+       rewrite app_length;
        nia. 
-       easy. easy. easy.
-       easy. easy. easy. 
 Qed.
 
 
 Lemma WF_neg : forall {n} (A : vType n),
   Sing_vt A -> WF_vType A ->  WF_vType (- A). 
 Proof. intros. 
-       destruct A. 
-       destruct g.
-       easy. easy.
-       easy. easy.
+       destruct A; try easy.
+       destruct g; easy.
 Qed.
    
 Lemma WF_i : forall {n} (A : vType n),
   Sing_vt A -> WF_vType A ->  WF_vType (i A). 
 Proof. intros. 
-       destruct A. 
-       destruct g.
-       easy. easy.
-       easy. easy.
+       destruct A; try easy.
+       destruct g; easy.
 Qed.
 
 
@@ -386,20 +442,19 @@ Proof. auto with wfvt_db. Qed.
 Lemma WF_Matrix_GTypeT : forall {n} (A : GTypeT n), WF_GTypeT A -> WF_Matrix (translate A). 
 Proof. intros. destruct A.
        destruct l as [| h].
-       - unfold translate; simpl. 
-         unfold WF_GTypeT in H; simpl in H.
-         rewrite <- H; simpl.
+       - unfold translate; simpl.
+         rewrite <- H.
          auto with wf_db.          
         - unfold translate; simpl. 
-          unfold WF_GTypeT in H; simpl in H.
-          rewrite <- H.
           assert (H' : forall n, (2^n + (2^n +0) = 2^ (S n))%nat). { simpl. nia. }
           rewrite H'.      
           rewrite map_length.
-          apply WF_scale. 
-          apply WF_kron.
-          simpl. nia. 
-          simpl. nia. 
+          unfold WF_GTypeT in H; simpl in H. 
+          rewrite H.
+          apply WF_scale.
+          apply WF_kron;
+          try (rewrite <- H);
+          try simpl; try nia. 
           apply WF_Matrix_GType.
           rewrite <- (map_length translate_gt _).
           apply (WF_big_kron _ _ (map translate_gt l) (translate_gt gI)).
@@ -413,33 +468,199 @@ Qed.
 (******************)
 
 Lemma unit_GType : forall (g : GType), unitary (translate_gt g).
-Proof. intros. induction g as [| | | | |].  
-       - simpl. auto with unit_db.
-       - simpl. auto with unit_db.
-       - simpl. auto with unit_db.
-       - simpl. unfold unitary. 
-         distribute_adjoint.
-         distribute_scale.
-         rewrite IHg. lma'. 
-       - simpl. unfold unitary. 
-         distribute_adjoint.
-         distribute_scale.
-         rewrite IHg. lma'. 
-       - simpl. auto with unit_db.
+Proof. intros. induction g as [| | | | |]; 
+       simpl; auto with unit_db;
+       repeat 
+       (try (apply unit_scale);
+        try (apply IHg);
+        try lca).
 Qed.
 
 
-Definition uni_vType {n} (A : vType n) := uni_vecType (translate_vecType A).
+Lemma unit_GTypeT : forall {n} (A : GTypeT n), WF_GTypeT A -> unitary (translate A). 
+Proof. intros. destruct A.
+       destruct l as [| h].
+       - unfold translate; simpl. 
+         unfold WF_GTypeT in H; simpl in H.
+         rewrite <- H.
+         apply unit_scale. 
+         auto with unit_db.
+         destruct c; lca.          
+        - unfold translate; simpl. 
+          assert (H' : forall n, (2^n + (2^n +0) = 2^ (S n))%nat). { simpl. nia. }
+          rewrite H'.      
+          rewrite map_length.
+          unfold WF_GTypeT in H; simpl in H.
+          rewrite <- H.
+          apply unit_scale.
+          apply unit_kron. 
+          apply unit_GType. 
+          rewrite <- (map_length translate_gt _).
+          apply (unit_big_kron 2 (map translate_gt l)).
+          intros. 
+          apply in_map_iff in H0.
+          do 2 (destruct H0).
+          rewrite <- H0.
+          apply unit_GType.
+          destruct c; lca.      
+Qed.
 
+
+Lemma unit_vType : forall {n} (A : vType n), 
+    WF_vType A -> uni_vecType (translate_vecType A).
+Proof. intros. 
+       induction A as [| | |]; try easy. 
+       - simpl; unfold uni_vecType. 
+         intros A [H0 | F]; try easy. 
+         rewrite <- H0, <- H.   
+         apply unit_GTypeT.
+         simpl in H.
+         easy.
+       - simpl.
+         destruct (Cap_vt_bool A1 && Cap_vt_bool A2).
+         + simpl in H.
+           destruct H as [H1 H2].
+           apply IHA1 in H1;
+           apply IHA2 in H2.
+           unfold uni_vecType in *.
+           intros.
+           apply in_app_or in H.
+           destruct H as [H | H].
+           apply H1; apply H.
+           apply H2; apply H.
+         + easy. 
+Qed.
+
+
+(******************************************************)
+(* Showing translations preserves relevent properties *)
+(******************************************************)
+
+
+
+Lemma translate_gt_Mmult : forall {n} (l1 l2 : list GType),
+  length l1 = n -> length l2 = n ->
+  ⨂ map translate_gt (zip gMul l1 l2) = 
+  @Mmult (2^n) (2^n) (2^n) (⨂ map translate_gt l1) (⨂ map translate_gt l2). 
+Proof. induction n as [| n'].
+       - intros.
+         destruct l1; destruct l2; try easy.
+         simpl. lma'.
+       - intros. 
+         destruct l1; destruct l2; try easy.
+         simpl in *.
+         assert (H' : forall n m, S n = S m -> n = m). { nia. }
+         apply H' in H; apply H' in H0.
+         rewrite map_length.
+         rewrite (zip_len_pres _ n' _ _).
+         assert (H'' : forall n, (2^n + (2^n + 0) = 2*2^n)%nat). { nia. }
+         rewrite H''.
+         do 2 (rewrite map_length).
+         rewrite H, H0 in *.
+         rewrite kron_mixed_product.
+         rewrite IHn'; try easy. 
+         easy. easy.
+Qed.
+
+
+Lemma translate_Mmult : forall {n} (g1 g2 : GTypeT n),
+    length (snd g1) = n -> length (snd g2) = n ->
+    translate (gMulT g1 g2) = (translate g1) × (translate g2).
+Proof. intros. unfold translate.
+         destruct g1; destruct g2.
+         simpl in *.
+         do 3 (rewrite map_length). 
+         unfold WF_GTypeT in *.
+         rewrite H, H0 in *.
+         rewrite (zip_len_pres _ n _ _); try easy.
+         distribute_scale.
+         rewrite translate_gt_Mmult.
+         rewrite translate_coef_cMul.
+         distribute_scale.
+         rewrite Cmult_comm.
+         rewrite <- Mscale_assoc.
+         rewrite Mscale_mult_dist_l.
+         rewrite map_length. 
+         rewrite (zip_len_pres _ n _ _); try easy.
+         rewrite map_length.
+         rewrite (zip_len_pres _ n _ _); try (rewrite H1); try easy.
+         rewrite map_length.
+         rewrite (zip_len_pres _ n _ _); try (rewrite H1); try easy.
+Qed.
+
+
+
+Lemma translate_vecType_mMult : forall {n} (A B : vType n),
+  Sing_vt A -> Sing_vt B ->
+  WF_vType A -> WF_vType B -> 
+  translate_vecType (A .* B) = (translate_vecType A) *' (translate_vecType B).
+Proof. intros. 
+       destruct A; try easy.
+       destruct B; try easy.
+       simpl.
+       rewrite translate_Mmult.
+       reflexivity. 
+       unfold WF_vType in *; unfold WF_GTypeT in *.
+       destruct g; destruct g0;
+       simpl in *. easy. easy.
+Qed.
+
+
+
+Lemma translate_scale : forall {n} (A : GTypeT n) (c : Coef),
+  translate (gScaleT c A) = Matrix.scale (translate_coef c) (translate A).
+Proof. intros. 
+       unfold translate. 
+       destruct A. simpl. 
+       rewrite translate_coef_cMul.
+       rewrite <- Mscale_assoc.     
+       reflexivity. 
+Qed.
+
+
+
+Lemma Cap_vt_scale : forall {n} (A : vType n) (c : Coef), 
+    Cap_vt_bool (scale c A) = Cap_vt_bool A.
+Proof. intros. induction A as [| | |]; try easy.
+       simpl. rewrite IHA1, IHA2.
+       reflexivity.
+Qed.       
+
+Lemma translate_vecType_scale : forall {n} (A : vType n) (c : Coef),
+  translate_vecType (scale c A) = (translate_coef c) · (translate_vecType A).
+Proof. intros. induction A; try easy.
+       - simpl. rewrite translate_scale.
+         reflexivity.
+       - simpl translate_vecType.
+         do 2 (rewrite Cap_vt_scale).
+         destruct (Cap_vt_bool A1 && Cap_vt_bool A2); try easy.
+         rewrite IHA1, IHA2.
+         rewrite concat_into_scale.
+         reflexivity.
+Qed.
+
+Local Open Scope nat_scope. 
+
+Lemma translate_gt_mul_assoc : forall (n : nat) (A B C : list GType),
+  length A < n -> length B < n -> length C < n ->
+  map translate_gt (zip gMul A (zip gMul B C)) =
+  map translate_gt (zip gMul (zip gMul A B) C).
+Proof. induction n as [| n']. 
+       - easy.
+       - intros. 
+         destruct A; destruct B; destruct C; try easy.
+         simpl in *.
+         rewrite Mmult_assoc, IHn'; try nia; try easy.
+Qed.
 
 
 (**************************)
-(* defining vector typing *)
+(* Defining vector typing *)
 (**************************)
 
 
 (* we need this for now. should eventually rewrite defs to make proofs easier *)
-Lemma fgt_conv : forall (n : nat) (A B : vecType n), [(A, B)] = formGateType A B.
+Lemma fgt_conv : forall {n m} (A B : vecType n), [(A, B)] = @formGateType m A B.
 Proof. easy. Qed.
 
 Lemma ite_conv : forall {X : Type} (x1 x2 : X), (if true && true then x1 else x2) = x1.
@@ -491,6 +712,317 @@ Qed.
 
 
 
+(********************************************************************************************)
+(* Defining looser notion of vType equality which will allow us to prove mult, tensor props *)
+(********************************************************************************************)
+
+
+Definition eq_vType {n} (T1 T2 : vType n) := 
+  translate_vecType T1 = translate_vecType T2.
+
+(* looser def for when dims do not align *) 
+Definition eq_vType' {n m} (T1 : vType n) (T2 : vType m) := 
+  translate_vecType T1 = translate_vecType T2.
+
+
+Infix "≡" := eq_vType (at level 70, no associativity).
+
+(* will now show this is an equivalence relation *)
+Lemma eq_vType_refl : forall {n} (A : vType n), A ≡ A.
+Proof. intros n A. easy.
+Qed.
+
+Lemma eq_vType_sym : forall {n} (A B : vType n), A ≡ B -> B ≡ A.
+Proof. intros n A B H. easy. 
+Qed.
+
+Lemma eq_vType_trans : forall {n} (A B C : vType n),
+    A ≡ B -> B ≡ C -> A ≡ C.
+Proof.
+  intros n A B C HAB HBC.
+  unfold eq_vType in *.
+  rewrite HAB; assumption. 
+Qed.
+
+
+Add Parametric Relation n : (vType n) (@eq_vType n)
+  reflexivity proved by eq_vType_refl
+  symmetry proved by eq_vType_sym
+  transitivity proved by eq_vType_trans
+    as eq_vType_rel.
+
+
+
+Lemma Cap_vt_bool_nempty : forall {n} (A : vType n),
+  Cap_vt_bool A = true <-> translate_vecType A <> [].
+Proof. split. 
+       - induction A as [| | |]; try easy.
+         intros; simpl in *.
+         destruct (Cap_vt_bool A1);
+         destruct (Cap_vt_bool A2);
+         try easy. simpl in *.
+         destruct (translate_vecType A1);
+         destruct (translate_vecType A2);
+         try easy. 
+         apply IHA1 in H; easy.
+       - destruct (Cap_vt_bool A) eqn:E; try easy.
+         destruct A; try easy.
+         simpl in *. rewrite E.
+         easy. 
+Qed.
+
+
+Lemma eq_vType_cap_vt_bool : forall {n} (A A' : vType n),
+  A ≡ A' -> Cap_vt_bool A = Cap_vt_bool A'.
+Proof. destruct A;
+       destruct A'; 
+       try easy; 
+       intros; unfold eq_vType in H; simpl in *.  
+       - destruct (Cap_vt_bool A'1);
+         destruct (Cap_vt_bool A'2);
+         try easy.
+       - destruct (Cap_vt_bool A1);
+         destruct (Cap_vt_bool A2);
+         try easy.
+       - destruct (Cap_vt_bool A1) eqn:E1;
+         destruct (Cap_vt_bool A2) eqn:E2; 
+         destruct (Cap_vt_bool A'1) eqn:E3;
+         destruct (Cap_vt_bool A'2) eqn:E4;
+         try easy; 
+         try (simpl in *;
+              apply Cap_vt_bool_nempty in E1;
+              destruct (translate_vecType A1); easy); 
+         try (simpl in *;
+              apply Cap_vt_bool_nempty in E3;
+              destruct (translate_vecType A'1); easy).
+       - destruct (Cap_vt_bool A1) eqn:E;
+         destruct (Cap_vt_bool A2);
+         try easy.
+         simpl in *.
+         apply Cap_vt_bool_nempty in E;
+         destruct (translate_vecType A1); try easy.
+       - destruct (Cap_vt_bool A1) eqn:E;
+         destruct (Cap_vt_bool A2);
+         try easy.
+         simpl in *.
+         apply Cap_vt_bool_nempty in E;
+         destruct (translate_vecType A1); try easy. 
+       - destruct (Cap_vt_bool A'1) eqn:E;
+         destruct (Cap_vt_bool A'2);
+         try easy.
+         simpl in *.
+         apply Cap_vt_bool_nempty in E;
+         destruct (translate_vecType A'1); try easy. 
+       - destruct (Cap_vt_bool A'1) eqn:E;
+         destruct (Cap_vt_bool A'2);
+         try easy.
+         simpl in *.
+         apply Cap_vt_bool_nempty in E;
+         destruct (translate_vecType A'1); try easy. 
+Qed.
+
+
+
+(* Multiplication laws *)
+
+Lemma mul_assoc : forall {n} (A B C : vType n), A .* (B .* C) ≡ A .* B .* C.
+Proof. intros. unfold eq_vType.
+       destruct A; destruct B; destruct C; try easy.
+       destruct g; destruct g0; destruct g1; simpl.
+       unfold translate; simpl. 
+       rewrite cMul_assoc. 
+       rewrite (translate_gt_mul_assoc (length l + length l0 + length l1 + 1) _ _ _); try nia.
+       reflexivity. 
+Qed.
+
+Lemma mul_I_l : forall (A : vType 1), WF_vType A -> Sing_vt A -> I .* A ≡ A.
+Proof. intros. unfold eq_vType.
+       destruct A; try easy.
+       destruct g.
+       do 2 (destruct l; try easy).
+       simpl. 
+       unfold translate. simpl. 
+       rewrite Mmult_1_l; try (apply WF_Matrix_GType).
+       destruct c; easy.
+Qed.
+
+Lemma mul_I_r : forall (A : vType 1), WF_vType A -> Sing_vt A -> A .* I ≡ A.
+Proof. intros. unfold eq_vType.
+       destruct A; try easy.
+       destruct g.
+       do 2 (destruct l; try easy).
+       simpl. 
+       unfold translate. simpl. 
+       rewrite Mmult_1_r; try (apply WF_Matrix_GType).
+       destruct c; easy.
+Qed.
+
+
+Lemma Xsqr : X .* X ≡ I.
+Proof. intros. unfold eq_vType.
+       simpl. unfold translate. simpl.
+       rewrite XtimesXid.
+       reflexivity. 
+Qed.       
+
+
+Lemma Zsqr : Z .* Z ≡ I.
+Proof. intros. unfold eq_vType.
+       simpl. unfold translate. simpl.
+       rewrite ZtimesZid.
+       reflexivity. 
+Qed.       
+
+
+Lemma ZmulX : Z .* X ≡ - (X .* Z).
+Proof. intros. unfold eq_vType.
+       simpl. unfold translate. simpl.
+       do 2 (rewrite kron_1_r).
+       assert (H : (C1 .* (σz × σx) = ((Copp C1) .* (σx × σz)))%M). 
+       { lma'. } rewrite H. reflexivity.       
+Qed.
+
+
+Lemma neg_inv : forall (n : nat) (A : vType n), - - A ≡ A.
+Proof. intros. unfold eq_vType.
+       induction A; try easy. 
+       - destruct g. simpl. 
+         unfold translate; simpl. 
+         destruct c; easy.
+       - simpl. rewrite IHA1, IHA2.
+         do 4 (rewrite Cap_vt_scale). 
+         reflexivity. 
+Qed.
+
+Lemma neg_dist_l : forall (n : nat) (A B : vType n), -A .* B ≡ - (A .* B).
+Proof. intros. unfold eq_vType.
+       destruct A; destruct B; try easy. 
+       destruct g; destruct g0; simpl. 
+       unfold translate; simpl.
+       destruct c; destruct c0; easy. 
+Qed.
+
+
+Lemma neg_dist_r : forall (n : nat) (A B : vType n), A .* (-B) ≡ - (A .* B).
+Proof. intros. unfold eq_vType.
+       destruct A; destruct B; try easy. 
+       destruct g; destruct g0; simpl. 
+       unfold translate; simpl.
+       destruct c; destruct c0; easy. 
+Qed.
+
+
+Lemma i_sqr : forall (n : nat) (A : vType n), i (i A) ≡ -A.
+Proof. intros. unfold eq_vType.
+       induction A; try easy. 
+       - destruct g. simpl. 
+         unfold translate; simpl. 
+         destruct c; easy.
+       - simpl. unfold i in *.
+         rewrite IHA1, IHA2.
+         do 6 (rewrite Cap_vt_scale). 
+         reflexivity. 
+Qed.
+
+
+Lemma i_dist_l : forall (n : nat) (A B : vType n), i A .* B ≡ i (A .* B).
+Proof. intros. unfold eq_vType.
+       destruct A; destruct B; try easy. 
+       destruct g; destruct g0; simpl. 
+       unfold translate; simpl.
+       destruct c; destruct c0; easy. 
+Qed.
+
+
+Lemma i_dist_r : forall (n : nat) (A B : vType n), A .* i B ≡ i (A .* B).
+Proof. intros. unfold eq_vType.
+       destruct A; destruct B; try easy. 
+       destruct g; destruct g0; simpl. 
+       unfold translate; simpl.
+       destruct c; destruct c0; easy. 
+Qed.
+
+
+Lemma i_neg_comm : forall (n : nat) (A : vType n), i (-A) ≡ -i A.
+Proof. intros. unfold eq_vType.
+       induction A; try easy. 
+       - destruct g. simpl. 
+         unfold translate; simpl. 
+         destruct c; easy.
+       - simpl. unfold i in *.
+         rewrite IHA1, IHA2.
+         do 8 (rewrite Cap_vt_scale). 
+         reflexivity. 
+Qed.
+
+
+Hint Rewrite mul_I_l mul_I_r Xsqr Zsqr ZmulX neg_inv neg_dist_l neg_dist_r i_sqr i_dist_l i_dist_r i_neg_comm : mul_db.
+
+
+(** ** Tensor Laws *)
+
+
+Lemma tensor_assoc : forall {n m o : nat} (A : vType n) (B : vType m) (C : vType o), 
+  eq_vType' (A .⊗ (B .⊗ C)) ((A .⊗ B) .⊗ C).  
+Proof. intros. unfold eq_vType'.
+       destruct A; destruct B; destruct C; try easy.
+       destruct g; destruct g0; destruct g1; simpl.
+       rewrite app_ass.
+       rewrite cMul_assoc. 
+       reflexivity. 
+Qed.       
+
+
+Axiom neg_tensor_dist_l : forall A B, -A ⊗ B = - (A ⊗ B).
+Axiom neg_tensor_dist_r : forall A B, A ⊗ -B = - (A ⊗ B).
+Axiom i_tensor_dist_l : forall A B, i A ⊗ B = i (A ⊗ B).
+Axiom i_tensor_dist_r : forall A B, A ⊗ i B = i (A ⊗ B).
+
+(** ** Multiplication & Tensor Laws *)
+
+(* Appropriate restriction is that size A = size C and size B = size D,
+   but axiomatization doesn't allow for that calculation. *)
+(* This should be generalizable to the other, assuming we're multiplying
+   valid types. *)
+Axiom mul_tensor_dist : forall A B C D,
+    Singleton A ->
+    Singleton C ->
+    (A ⊗ B) * (C ⊗ D) = (A * C) ⊗ (B * D).
+
+Lemma decompose_tensor : forall A B,
+    Singleton A ->
+    Singleton B ->
+    A ⊗ B = (A ⊗ I) * (I ⊗ B).
+Proof.
+  intros.
+  rewrite mul_tensor_dist; auto with sing_db.
+  rewrite mul_I_l, mul_I_r. 
+  easy.
+Qed.
+
+Lemma decompose_tensor_mult_l : forall A B,
+    Singleton A ->
+    Singleton B ->
+    (A * B) ⊗ I = (A ⊗ I) * (B ⊗ I).
+Proof.
+  intros.
+  rewrite mul_tensor_dist; auto with sing_db.
+  rewrite mul_I_l.
+  easy.
+Qed.
+
+Lemma decompose_tensor_mult_r : forall A B,
+    I ⊗ (A * B) = (I ⊗ A) * (I ⊗ B).
+Proof.
+  intros.
+  rewrite mul_tensor_dist; auto with sing_db.
+  rewrite mul_I_l.
+  easy.
+Qed.
+  
+Hint Rewrite neg_tensor_dist_l neg_tensor_dist_r i_tensor_dist_l i_tensor_dist_r : tensor_db.
+
+
 (*********************)
 (* defining programs *)
 (*********************)
@@ -515,6 +1047,16 @@ Fixpoint translate_prog (prg_len : nat) (p : prog) : Square (2^prg_len) :=
   end.
 
 
+Lemma unit_prog : forall (prg_len : nat) (p : prog), 
+  unitary (translate_prog prg_len p).
+Proof. intros. induction p as [| | | |];
+       try (apply unit_prog_smpl_app; auto with unit_db);
+       try (apply unit_prog_ctrl_app; auto with unit_db).
+       simpl. apply unit_mult; easy. 
+Qed.      
+
+
+
 
 
 Definition progHasSingType {prg_len : nat} (p : prog) (T1 T2 : vType prg_len) :=
@@ -534,6 +1076,37 @@ Fixpoint progHasType {prg_len : nat} (p : prog) (T : vType prg_len) :=
   
 
 Notation "p :' T" := (progHasType p T).
+
+
+
+Local Close Scope nat_scope.
+
+(*******************************************************)
+(* establishing support for eq_vType in program typing *)
+(*******************************************************)
+
+Lemma eq_type_conv_input : forall {n} (p : prog) (A A' B : vType n),
+  A ≡ A' -> p :' A → B -> p :' A' → B.
+Proof. intros. 
+       simpl in *. 
+       unfold progHasSingType in *.
+       rewrite <- H.
+       apply eq_vType_cap_vt_bool in H.
+       rewrite <- H.
+       assumption. 
+Qed.
+
+
+Lemma eq_type_conv_output : forall {n} (p : prog) (A B B' : vType n),
+  B ≡ B' -> p :' A → B -> p :' A → B'.
+Proof. intros. 
+       simpl in *. 
+       unfold progHasSingType in *.
+       rewrite <- H.
+       apply eq_vType_cap_vt_bool in H.
+       rewrite <- H.
+       assumption. 
+Qed.
 
 
 (********************)
@@ -558,29 +1131,29 @@ Proof. unfold prog_smpl_app.
 Qed.
 
 
-Lemma Isimp : @translate 1 (C1, [gI]) = Matrix.I 2. 
+Lemma Isimp : @translate 1 (p_1, [gI]) = Matrix.I 2. 
 Proof. unfold translate; simpl. 
        lma'. 
 Qed.
 
-Lemma Xsimp : @translate 1 (C1, [gX]) = σx. 
+Lemma Xsimp : @translate 1 (p_1, [gX]) = σx. 
 Proof. unfold translate; simpl. 
        lma'. 
 Qed.
 
-Lemma Zsimp : @translate 1 (C1, [gZ]) = σz. 
+Lemma Zsimp : @translate 1 (p_1, [gZ]) = σz. 
 Proof. unfold translate; simpl. 
        lma'. 
 Qed.
 
-Lemma Ysimp : @translate 1 (Ci * (C1 * C1), [gMul gX gZ]) = σy. 
+Lemma Ysimp : @translate 1 (p_i * (p_1 * p_1), [gMul gX gZ]) = σy. 
 Proof. unfold translate; simpl. 
        lma'. 
 Qed.
 
 
 Lemma kron_simp : forall (g1 g2 : GType), 
-    @translate 2 (C1 * C1, g1 :: [g2]) = (translate_gt g1) ⊗ (translate_gt g2).  
+    @translate 2 (p_1 * p_1, g1 :: [g2]) = (translate_gt g1) ⊗ (translate_gt g2).  
 Proof. intros. 
        unfold translate; simpl. 
        autorewrite with C_db.
@@ -621,7 +1194,7 @@ Proof. solve_ground_type. unfold not.
        rewrite H1, H2 in H'.
        unfold Cdiv in H'.
        rewrite Copp_mult_distr_l in H'.
-       assert (H3 : forall c1 c2 , c1 = c2 -> c1 * √ 2 = c2 * √ 2). 
+       assert (H3 : forall c1 c2 , (c1 = c2 -> c1 * √ 2 = c2 * √ 2)%C). 
        { intros. rewrite H3. easy. }
        apply H3 in H'.
        do 2 (rewrite <- Cmult_assoc in H').
@@ -650,6 +1223,10 @@ Proof. solve_ground_type. Qed.
 
 
 
+Definition CZ m n : prog := H' n ;; CNOT m n ;; H' n.
+
+
+
 
 (*************************)
 (* Proving typing lemmas *)
@@ -667,10 +1244,10 @@ Proof. intros.
        destruct (Cap_vt_bool C).
        rewrite ite_conv in *.
        simpl translate_prog. 
-       rewrite (fgt_conv (2^n) _ _). 
+       rewrite (@fgt_conv (2^n) _ _ _). 
        apply (Heisenberg.SeqTypes (translate_prog n g1) _  _ (translate_vecType B) _).
-       rewrite <- (fgt_conv (2^n) _ _); apply H.
-       rewrite <- (fgt_conv (2^n) _ _); apply H0.
+       rewrite <- (@fgt_conv (2^n) _ _ _); apply H.
+       rewrite <- (@fgt_conv (2^n) _ _ _); apply H0.
        rewrite andb_false_r in H0; easy.
        easy. easy.       
 Qed.
@@ -678,8 +1255,7 @@ Qed.
 
 Lemma seq_assoc : forall {n} (g1 g2 g3 : prog) (T : vType n),
     g1 ;; (g2 ;; g3) :' T <-> (g1 ;; g2) ;; g3 :' T.
-Proof. induction T as [| | |].
-       - easy. 
+Proof. induction T as [| | |]; try easy. 
        - simpl. split. 
          intros [H1 H2].
          split. 
@@ -693,10 +1269,8 @@ Proof. induction T as [| | |].
          destruct (Cap_vt_bool T1 && Cap_vt_bool T2).
          simpl translate_prog.
          apply Heisenberg.seq_assoc.
-         easy. 
-       - easy. 
+         easy.  
 Qed.
-
 
 
 (* Note that this doesn't restrict # of qubits referenced by p. *)
@@ -784,19 +1358,17 @@ Proof. intros. simpl in *.
        unfold vecHasType in *.
        apply Cap_vt_conv in H.
        apply Cap_vt_conv in H0.
-       destruct (Cap_vt_bool A).
-       destruct (Cap_vt_bool B).
-       destruct (Cap_vt_bool A').
-       destruct (Cap_vt_bool B').
+       destruct (Cap_vt_bool A);
+       destruct (Cap_vt_bool B);
+       destruct (Cap_vt_bool A');
+       destruct (Cap_vt_bool B');
+       try easy. 
        rewrite ite_conv in *.
        rewrite fgt_conv in *.
        apply (Heisenberg.arrow_sub _ (translate_vecType A) _ (translate_vecType B) _).
        apply H1.
        apply H2.
        apply H3.
-       easy. easy.
-       rewrite andb_false_r in H3; easy. 
-       easy.
 Qed.
 
 
@@ -814,49 +1386,37 @@ Lemma cap_arrow_distributes'' : forall {n} g (A A' B B' : vType n),
 Proof.
   intros. simpl in H.
   unfold progHasSingType in H.
-  destruct (Cap_vt_bool A) eqn:E1.
-  destruct (Cap_vt_bool B) eqn:E2.
-  destruct (Cap_vt_bool A') eqn:E3.
-  destruct (Cap_vt_bool B') eqn:E4.
+  destruct (Cap_vt_bool A) eqn:E1;
+  destruct (Cap_vt_bool B) eqn:E2;
+  destruct (Cap_vt_bool A') eqn:E3;
+  destruct (Cap_vt_bool B') eqn:E4;
+  try easy.
   destruct H as [H H0].
-  rewrite ite_conv in H.
+  rewrite ite_conv in H;
   rewrite ite_conv in H0.
   apply cap_arrow.
   apply cap_intro.
-  - eapply arrow_sub; intros.
-    + simpl. split. 
-      * apply Cap_vt_conv.
-        assumption.
-      * apply Cap_vt_conv.
-        assumption.
-    + apply Cap_vt_conv.
-        assumption.
+  - eapply arrow_sub; intros;
+    repeat(try split; 
+           try (apply Cap_vt_conv); 
+           try assumption).
     + eapply cap_elim_l_vec. apply H1.
     + apply H1.
     + simpl; unfold progHasSingType. 
       rewrite E1, E3.
       rewrite ite_conv.
       assumption.
-  - eapply arrow_sub; intros.
-    + simpl. split. 
-      * apply Cap_vt_conv.
-        assumption.
-      * apply Cap_vt_conv.
-        assumption.
-    + apply Cap_vt_conv.
-        assumption.
+  - eapply arrow_sub; intros;
+    repeat(try split; 
+           try (apply Cap_vt_conv); 
+           try assumption).
     + eapply cap_elim_r_vec. apply H1.
     + apply H1.
     + simpl; unfold progHasSingType. 
       rewrite E2, E4.
       rewrite ite_conv.
       assumption.
-  - rewrite andb_false_r in H; easy. 
-  - rewrite andb_false_r in H; easy.
-  - easy. 
-  - easy.
 Qed.
-
 
 
 
@@ -869,7 +1429,7 @@ Notation s := Datatypes.S.
 
 Definition nth_vType {n} (bit : nat) (A : vType n) : vType 1 :=
   match A with 
-  | G _ g => G 1 (C1, [nth bit (snd g) gI])         
+  | G _ g => G 1 (p_1, [nth bit (snd g) gI])         
   | _ => Err 1
   end. 
 
@@ -882,16 +1442,16 @@ Definition switch_vType {n} (A : vType n) (a : GType) (bit : nat) : vType n :=
 
 
 
-Lemma tensor_smpl : forall (prg_len bit : nat) p  
+Lemma tensor_smpl : forall  {prg_len} (bit : nat) p  
                            (A : vType prg_len) (a : GType),
-    (p 0) :' (nth_vType bit A) → (G 1 (C1, [a])) ->
+    (p 0) :' (nth_vType bit A) → (G 1 (p_1, [a])) ->
     (p bit) :'  A → (switch_vType A a bit).
 Proof. Admitted. 
 
 
 Lemma tensor_ctrl : forall (prg_len ctrl targ : nat) p  
                            (A : vType prg_len) (a b : GType),
-    (p 0 1) :' (nth_vType ctrl A) .⊗ (nth_vType targ A) → (G 1 (C1, [a])) .⊗ (G 1 (C1, [b])) ->
+    (p 0 1) :' (nth_vType ctrl A) .⊗ (nth_vType targ A) → (G 1 (p_1, [a])) .⊗ (G 1 (p_1, [b])) ->
     (p ctrl targ) :'  A → switch_vType (switch_vType A a ctrl) b targ.
 Proof. Admitted. 
 
@@ -906,60 +1466,75 @@ Proof. Admitted.
 *)
 
 
-Lemma helper : forall {n} (A B : vType n),
-  translate_vecType (A .* B) = (translate_vecType A) *' (translate_vecType B).
-Proof. intros. 
-       destruct A.
-       destruct B.
-       simpl.
-       destruct g. destruct g0.
-       simpl. 
-       unfold translate. 
-       simpl. 
-
-
-
-(translate_vecType (G n x .* G n x0)
 
 Lemma arrow_mul : forall {n} g (A A' B B' : vType n),
     Sing_vt A -> Sing_vt B ->
     Sing_vt A' -> Sing_vt B' ->
-    uni_vType A -> uni_vType A' ->
-    uni_vType B -> uni_vType B' ->
+    WF_vType A -> WF_vType A' ->
+    WF_vType B -> WF_vType B' ->
     g :' A → A' ->
     g :' B → B' ->
     g :' A .* B → A' .* B'.
 Proof. intros; simpl in *.
        assert (H' : Sing_vt A). { apply H. }
        assert (H0' : Sing_vt B). { apply H0. }
+       assert (H1' : Sing_vt A'). { apply H1. }
+       assert (H2' : Sing_vt B'). { apply H2. } 
        apply sing_vt_simplify in H; destruct H;
        apply sing_vt_simplify in H0; destruct H0;
        apply sing_vt_simplify in H1; destruct H1;
-       apply sing_vt_simplify in H2; destruct H2.
+       apply sing_vt_simplify in H2; destruct H2; try easy.
        unfold progHasSingType in *. 
        rewrite H, H0, H1, H2 in *.
        simpl Cap_vt_bool in *. 
        rewrite ite_conv in *.
-       simpl translate_vecType in *. 
-       unfold translate. 
-       simpl. 
-Lemma arrow_mul : forall {n} (p : Square n) (A A' B B' : vecType n),
-    Singleton A -> Singleton B ->
-    unitary p ->
-    uni_vecType A -> uni_vecType A' ->
-    uni_vecType B -> uni_vecType B' ->
-    p ::' A → A' ->
-    p ::' B → B' ->
-    p ::' A *' B → A' *' B'.
+       rewrite translate_vecType_mMult; try easy.
+       rewrite translate_vecType_mMult; try easy.
+       rewrite fgt_conv.
+       apply Heisenberg.arrow_mul; 
+       try (apply unit_prog);
+       try (apply unit_vType); try easy.
+Qed. 
+       
+
+Lemma arrow_scale : forall {n} (p : prog) (A A' : vType n) (c : Coef),
+  p :' A → A' -> p :' (scale c A) → (scale c A').
+Proof. intros. simpl in *. 
+       unfold progHasSingType in *.
+       do 2 (rewrite Cap_vt_scale).
+       destruct (Cap_vt_bool A && Cap_vt_bool A'); try easy.
+       rewrite fgt_conv in *.
+       do 2 (rewrite translate_vecType_scale).
+       apply Heisenberg.arrow_scale.
+       destruct c; try simpl; try nonzero.
+       apply C0_fst_neq. unfold Copp. 
+       simpl. lra. 
+       apply C0_snd_neq. unfold Copp.
+       simpl. lra. apply H.
+Qed.
 
 
-Axiom arrow_i : forall p A A',
-    p :: A → A' ->
-    p :: i A → i A'.
+Lemma arrow_i : forall {n} (p : prog) (A A' : vType n),
+  p :' A → A' ->
+  p :' i A → i A'.
+Proof. intros;
+       apply arrow_scale;
+       assumption.
+Qed.
 
-Axiom arrow_neg : forall p A A',
-    p :: A → A' ->
-    p :: -A → -A'.
+
+Lemma arrow_neg : forall {n} (p : prog) (A A' : vType n),
+  p :' A → A' ->
+  p :' -A → -A'.
+Proof. intros;
+       apply arrow_scale;
+       assumption.
+Qed.
+
+
+
+
+
 
 Hint Resolve HTypes STypes TTypes CNOTTypes : base_types_db.
 Hint Resolve cap_elim_l cap_elim_r : base_types_db.
@@ -968,30 +1543,31 @@ Hint Resolve HTypes STypes TTypes CNOTTypes : typing_db.
 Hint Resolve cap_intro cap_elim_l cap_elim_r : typing_db.
 Hint Resolve SeqTypes : typing_db.
 
-Lemma eq_arrow_r : forall g A B B',
-    g :: A → B ->
+Lemma eq_arrow_r : forall {n} (g : prog) (A B B' : vType n),
+    g :' A → B ->
     B = B' ->
-    g :: A → B'.
+    g :' A → B'.
 Proof. intros; subst; easy. Qed.
 
 
 (* Tactics *)
 
+
 Ltac is_I A :=
   match A with
-  | I => idtac
+  | I => idtac 
   end.
 
 Ltac is_prog1 A :=
-  match A with
-  | H' => idtac
-  | S' => idtac
-  | T' => idtac
-  end. 
+ match A with 
+  | H' _ => idtac
+  | S' _ => idtac
+  | T' _ => idtac
+  end.
               
 Ltac is_prog2 A :=
   match A with
-  | CNOT => idtac
+  | CNOT _ _ => idtac
   end.
 
 (* Reduces to sequence of H, S and CNOT *)
@@ -999,33 +1575,18 @@ Ltac type_check_base :=
   repeat apply cap_intro;
   repeat eapply SeqTypes; (* will automatically unfold compound progs *)
   repeat match goal with
-         | |- Singleton _       => auto 50 with sing_db
-         | |- ?g :: ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
-         | |- ?g :: - ?A → ?B    => apply arrow_neg
-         | |- ?g :: i ?A → ?B    => apply arrow_i
+         | |- Singleton _       => auto 50 with svt_db
+         | |- ?g :' ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
+         | |- ?g :' - ?A → ?B    => apply arrow_neg
+         | |- ?g :' i ?A → ?B    => apply arrow_i
          | |- context[?A ⊗ ?B]  => progress (autorewrite with tensor_db)
-         | |- ?g :: ?A * ?B → _ => apply arrow_mul
-         | |- ?g :: (?A * ?B) ⊗ I → _ => rewrite decompose_tensor_mult_l
-         | |- ?g :: I ⊗ (?A * ?B) → _ => rewrite decompose_tensor_mult_r
-         | |- ?g (S _) (S _) :: ?T => apply tensor_inc2
-         | |- ?g 0 (S (S _)) :: ?T => apply tensor_inc_r
-         | |- ?g (S (S _)) 0 :: ?T => apply tensor_inc_l
-         | |- ?g 1 0 :: ?T       => apply tensor_base2_inv
-         | |- ?g 0 1 :: ?T       => apply tensor_base2
-         | |- ?g 1 0 :: ?T       => apply tensor2_comm
-         | |- ?g (S _) :: ?T     => is_prog1 g; apply tensor_inc
-         | |- ?g 0 :: ?T         => is_prog1 g; apply tensor_base
-         | |- ?g :: ?A ⊗ ?B → _  => tryif (is_I A + is_I B) then fail else
+         | |- ?g :' ?A * ?B → _ => apply arrow_mul
+         | |- ?g :' (?A * ?B) ⊗ I → _ => rewrite decompose_tensor_mult_l
+         | |- ?g :' I ⊗ (?A * ?B) → _ => rewrite decompose_tensor_mult_r
+         | |- ?g :' ?A ⊗ ?B → _  => tryif (is_I A + is_I B) then fail else
              rewrite (decompose_tensor A B) by (auto 50 with sing_db)
-         | |- ?g :: ?A → ?B      => tryif is_evar A then fail else
+         | |- ?g :' ?A → ?B      => tryif is_evar A then fail else
              solve [eauto with base_types_db]
-         | |- ?B = ?B'          => tryif has_evar B then fail else
-            (repeat rewrite mul_tensor_dist);
-            (repeat normalize_mul);
-            (repeat rewrite <- i_tensor_dist_l);
-            (repeat rewrite <- neg_tensor_dist_l);
-            autorewrite with mul_db;
-            try reflexivity
          end.
 
 
@@ -1034,33 +1595,51 @@ Ltac type_check_base :=
 
 
 
+Definition bell00 : prog := (H' 2);; (CNOT 2 3).
 
-Definition progHasType {prg_len : nat} (p : prog) (T : gateTypeResize prg_len) :=
-  (translate_prog prg_len p) ::' T.
+Definition encode : prog := (CZ 0 2);; (CNOT 1 2).
 
+Definition decode : prog := (CNOT 2 3);; (H' 2).
 
-Fixpoint gateHasType' {n : nat} (U : Square n) (ts: gateType n) : Prop := 
-  match ts with  
-  | [] => True
-  | (t :: ts') => (singGateType' U t) /\ gateHasType' U ts'
-  end.
-
-
-Definition H' := hadamard.
-Definition S' := Phase'.
-Definition T' := phase_shift (PI / 4).
-Definition CNOT :=  cnot.
+Definition superdense : prog := bell00;; encode;; decode.
 
 
 
-Definition bell00 : Square 16 := (prog_smpl_app 4 H' 2); (prog_ctrl_app 4 σx 2 3).
+Lemma superdenseTypesQPL : superdense :' (Z .⊗ Z .⊗ Z .⊗ Z → I .⊗ I .⊗ Z .⊗ Z).
+Proof. repeat (eapply SeqTypes).                                                                
+       eapply (tensor_smpl 2 _ _ _).
+       solve [eauto with base_types_db]. 
+       eapply (tensor_ctrl 4 2 3 _ _ _).
+       simpl nth_vType.
+       rewrite decompose_tensor.
+       eapply eq_arrow_r.
+       apply arrow_mul.
+       auto with sing_db.
+       auto with sing_db.
+       auto with unit_db.
+       auto with univ_db.
 
-Definition encode : Square 16 := (prog_ctrl_app 4 σz 0 2); (prog_ctrl_app 4 σx 1 2).
 
-Definition decode : Square 16 := (prog_ctrl_app 4 σx 2 3); (prog_smpl_app 4 H' 2).
 
-Definition superdense := bell00 ; encode; decode.
+       assert (H : G 1 (p_1, [gX]) = X). { easy. }
+       assert (H' : G 1 (p_1, [gZ]) = Z). { easy. }
+       rewrite H, H'.
+                                         
 
+solve [eauto with base_types_db]. }
+       auto with univ_db.
+       auto with univ_db.
+       2: { solve [eauto with base_types_db]. }
+       auto with univ_db.
+       rewrite mul_tensor_dist.
+       reflexivity.
+       auto with sing_db.
+       auto with sing_db.
+       auto with sing_db.
+       auto with sing_db.
+       eapply (tensor_ctrl 4 0 2 _ _ _).
+       rewrite decompose_tensor.
+       eapply eq_arrow_r.
 
 
 Ltac is_I A :=
