@@ -3,7 +3,7 @@ Require Import String.
 Require Import Program.
 Require Import List.
 
-
+ 
 Require Export Complex.
 Require Export Matrix.
 Require Export Quantum.
@@ -240,7 +240,7 @@ Qed.
 
 Definition X' : vecType 2 := [σx].
 Definition Z' : vecType 2 := [σz].
-Definition I' : vecType 2 := [I 2]c.
+Definition I' : vecType 2 := [I 2].
 
 Definition I_n (n : nat) : vecType n := [I n].
 
@@ -1786,16 +1786,42 @@ Proof. intros.
        - easy.
        - simpl. nia. 
 Qed.
+Lemma easy_sub4 : forall (n : nat), n - 0 = n. Proof. nia. Qed.
+Lemma easy_sub5 : forall (a b : nat), a < b -> a + S (b - a) = S b.
+Proof. nia. Qed.
+
+Lemma easy_sub6 : forall (a c b : nat), 
+  b < c -> a < b -> c = (a + S (b - a) + (c - b - 1)).
+Proof. intros. rewrite easy_sub5; try easy. nia. Qed.
+
 
 Lemma easy_ltb : forall (n : nat), n <? 1 + n = true. 
 Proof. induction n as [| n']. easy.
        simpl. unfold Nat.ltb. simpl. unfold Nat.ltb in IHn'.
        simpl in IHn'. easy.
 Qed.
-Lemma easy_ltb2 : forall (n : nat), S n <? 1 = false. 
+Lemma easy_ltb2 : forall (n : nat), S n <? 1 = false.  
 Proof. intros. destruct (S n <? 1) as [|] eqn:E. 
        apply Nat.ltb_lt in E. nia. 
        easy. 
+Qed.
+Lemma easy_ltb3 : forall (n m : nat), (n <? m) = false -> (n =? m) = false -> m < n.
+Proof. intros.  
+       assert (H' : ~ (n < m)). 
+           { unfold not. intros. 
+             apply Nat.ltb_lt in H1.
+             rewrite H1 in H. easy. }
+           apply not_lt in H'.  
+           unfold ge in H'.
+           assert (H'' : forall (n m : nat), m <= n -> n <> m -> m < n). { nia. }
+           apply H'' in H'. nia. 
+           assert (H''' : forall (n m : nat), (n =? m) = false -> n <> m).
+           { induction n0.
+             - destruct m0; easy. 
+             - intros. 
+               destruct m0. easy. 
+               simpl in *. apply IHn0 in H1. nia. }
+           apply H'''; easy.
 Qed.
 
 Lemma easy_pow : forall (a n m : nat), a^(n + m) = a^n * a^m.
@@ -1831,6 +1857,50 @@ Proof. intros. induction n as [| n'].
          apply IHn'.
          nia. 
 Qed.
+
+
+Lemma easy_pow5 : forall (a b c : nat), 
+  b < c -> a < b ->
+  2^c = (2^a * (2^(b - a) + (2^(b - a) + 0))) * 2^(c - b - 1).
+Proof. intros.
+       assert (H' : forall n, 2^n + (2^n + 0) = 2^(S n)).
+       { reflexivity. } 
+       rewrite H'.
+       do 2 (rewrite <- easy_pow).
+       rewrite <- (easy_sub6 a c b); try easy.
+Qed.
+
+Lemma easy_pow5' : forall (a b c : nat), 
+  b < c ->  a < b ->
+  2^c = (2^a * (2^(b - a) * 2)) * 2^(c - b - 1).
+Proof. intros.
+       assert (H' : 2 ^ (b - a) * 2 = 2 ^ (b - a) * 2^1).
+       { reflexivity. } 
+       rewrite H'.
+       do 3 (rewrite <- easy_pow).
+       assert (H'' : b - a + 1 = S (b - a)). { nia. }
+       rewrite H''.
+       rewrite <- (easy_sub6 a c b); try easy.
+Qed.
+
+Lemma easy_pow6 : forall (n : nat), n <> 0 -> 2*2^n = (2*2^(n-1))*2. 
+Proof. destruct n.
+       - easy.
+       - intros. 
+         simpl.  
+         rewrite easy_sub4.
+         nia. 
+Qed.
+
+Lemma easy_pow6' : forall (n : nat), n <> 0 -> (2^n)*2 = (2*2^(n-1))*2. 
+Proof. intros. rewrite mult_comm.
+       apply easy_pow6; easy.
+Qed.
+
+
+
+
+
 
 Fixpoint switch {X : Type} (ls : list X) (x : X) (n : nat) :=
   match ls with
@@ -2076,18 +2146,195 @@ Definition WF_vtt {len : nat} (vt : vecTypeT len) := length vt = len.
 
 (* defining program application *)
 Definition prog_smpl_app (prg_len : nat) (U : Square 2) (bit : nat) : Square (2^prg_len) :=
-  I (2^bit) ⊗ U ⊗ I (2^(prg_len - bit - 1)).
+  match bit <? prg_len with
+  | true => I (2^bit) ⊗ U ⊗ I (2^(prg_len - bit - 1))
+  | false => I (2^prg_len)
+  end.
+
+
+
+Lemma unit_prog_smpl_app : forall (prg_len : nat) (U : Square 2) (bit : nat),
+  unitary U -> unitary (prog_smpl_app prg_len U bit). 
+Proof. intros.  
+       unfold prog_smpl_app.
+       destruct (bit <? prg_len) eqn:E; auto with unit_db.
+       rewrite (easy_pow3 _ bit); try (apply Nat.ltb_lt; easy).
+       auto with unit_db.
+Qed.
+
 
 
 Definition prog_ctrl_app (prg_len : nat) (U : Square 2) (ctrl targ : nat) : Square (2^prg_len) :=
-  match (ctrl <? targ) with
-  | true => I (2^ctrl) ⊗
-             (∣0⟩⟨0∣ ⊗ I (2^(targ - ctrl)) .+ 
-              ∣1⟩⟨1∣ ⊗ I (2^(targ - ctrl - 1)) ⊗ U) ⊗ I (2^(prg_len - targ - 1))
-  | false => I (2^targ) ⊗
-             (I (2^(ctrl - targ)) ⊗ ∣0⟩⟨0∣ .+ 
-              U ⊗ I (2^(ctrl - targ - 1)) ⊗ ∣1⟩⟨1∣) ⊗ I (2^(prg_len - ctrl - 1))
+  match ((ctrl <? prg_len) && (targ <? prg_len) && (negb (ctrl =? targ))) with
+  | false => I (2^prg_len)
+  | true =>
+    match (ctrl <? targ) with
+    | true => I (2^ctrl) ⊗
+               (∣0⟩⟨0∣ ⊗ I (2^(targ - ctrl)) .+ 
+                ∣1⟩⟨1∣ ⊗ I (2^(targ - ctrl - 1)) ⊗ U) ⊗ I (2^(prg_len - targ - 1))
+    | false => I (2^targ) ⊗
+               (I (2^(ctrl - targ)) ⊗ ∣0⟩⟨0∣ .+ 
+                U ⊗ I (2^(ctrl - targ - 1)) ⊗ ∣1⟩⟨1∣) ⊗ I (2^(prg_len - ctrl - 1))
+    end
   end.
+
+
+
+Lemma unit_proj : forall (n : nat) (U : Square 2),
+  n <> 0 -> unitary U -> unitary (∣0⟩⟨0∣ ⊗ I (2^n) .+ ∣1⟩⟨1∣ ⊗ I (2^(n - 1)) ⊗ U).
+Proof. intros.
+       unfold unitary.
+       rewrite Mplus_adjoint.
+       rewrite kron_adjoint.
+       assert (H1 : ∣0⟩⟨0∣  † = ∣0⟩⟨0∣). 
+       { lma'. }
+       assert (H1' : ∣1⟩⟨1∣  † = ∣1⟩⟨1∣). 
+       { lma'. }
+       rewrite H1.
+       rewrite id_adjoint_eq.
+       assert (H' : n - 0 = n). { nia. }
+       assert (H2 : 2 * 2^(n - 1) = 2^n).
+       { rewrite (easy_pow3 n 0); try nia.
+         rewrite H'. simpl. nia. }
+       assert (H2' : 2^(n - 1)*2 = 2^n). { rewrite mult_comm. apply H2. }
+       assert (H3 : ( ∣1⟩⟨1∣ ⊗ I (2 ^ (n - 1)) ⊗ U ) † = ∣1⟩⟨1∣ ⊗ I (2 ^ (n - 1)) ⊗ U † ).
+       { rewrite H2.
+         rewrite kron_adjoint.
+         rewrite <- H2.
+         rewrite kron_adjoint.
+         rewrite id_adjoint_eq.
+         rewrite H1'.
+         reflexivity. }       
+       rewrite easy_pow6; try easy. 
+       rewrite H3. 
+       rewrite Mmult_plus_distr_l.
+       do 2 (rewrite Mmult_plus_distr_r). 
+       rewrite kron_mixed_product.      
+       rewrite <- easy_pow6; try easy.
+       do 2 (rewrite kron_mixed_product).       
+       assert (H4 : ∣0⟩⟨0∣ × ∣0⟩⟨0∣ = ∣0⟩⟨0∣). { lma'. }
+       rewrite H4. rewrite Mmult_1_l; try auto with wf_db.
+       assert (H4' : ∣1⟩⟨1∣ × ∣1⟩⟨1∣ = ∣1⟩⟨1∣). { lma'. }
+       rewrite H4'. rewrite Mmult_1_l; try auto with wf_db.
+       do 2 (rewrite kron_assoc). 
+       rewrite H2'.
+       do 2 (rewrite kron_mixed_product).
+       assert (H5 : ∣1⟩⟨1∣ × ∣0⟩⟨0∣ = Zero). { lma'. }
+       assert (H5' : ∣0⟩⟨0∣ × ∣1⟩⟨1∣ = Zero). { lma'. }
+       rewrite H5, H5'.
+       do 2 (rewrite kron_0_l). 
+       rewrite Mplus_0_l.
+       rewrite kron_assoc.
+       rewrite H0.
+       rewrite id_kron.
+       rewrite H2'. 
+       rewrite Mplus_0_r.
+       rewrite <- kron_plus_distr_r.
+       assert (H6 : ∣0⟩⟨0∣ .+ ∣1⟩⟨1∣ = I 2). { lma'. }
+       rewrite H6.
+       rewrite id_kron.
+       reflexivity.
+Qed.
+
+
+Lemma unit_proj2 : forall (n : nat) (U : Square 2),
+  n <> 0 -> unitary U -> 
+  unitary (I (2 ^ n) ⊗ ∣0⟩⟨0∣ .+ U ⊗ I (2 ^ (n - 1)) ⊗ ∣1⟩⟨1∣).
+Proof. intros. 
+       unfold unitary.
+       rewrite Mplus_adjoint.
+       rewrite kron_adjoint.
+       assert (H1 : ∣0⟩⟨0∣  † = ∣0⟩⟨0∣). 
+       { lma'. }
+       assert (H1' : ∣1⟩⟨1∣  † = ∣1⟩⟨1∣). 
+       { lma'. }
+       rewrite H1.
+       rewrite id_adjoint_eq.
+       assert (H' : n - 0 = n). { nia. }
+       assert (H2 : 2 * 2^(n - 1) = 2^n).
+       { rewrite (easy_pow3 n 0); try nia.
+         rewrite H'. simpl. nia. }
+       assert (H2' : 2^(n - 1)*2 = 2^n). { rewrite mult_comm. apply H2. }
+       assert (H3 :  (U ⊗ I (2 ^ (n - 1)) ⊗ ∣1⟩⟨1∣) † = U † ⊗ I (2 ^ (n - 1)) ⊗ ∣1⟩⟨1∣).
+       { rewrite H2.
+         rewrite kron_adjoint.
+         rewrite <- H2.
+         rewrite kron_adjoint.
+         rewrite id_adjoint_eq.
+         rewrite H1'.
+         reflexivity. }
+       rewrite easy_pow6'; try easy. 
+       rewrite H3. 
+       rewrite Mmult_plus_distr_l.
+       do 2 (rewrite Mmult_plus_distr_r). 
+       rewrite kron_mixed_product.      
+       rewrite <- easy_pow6'; try easy. 
+       do 2 (rewrite kron_mixed_product).       
+       assert (H4 : ∣0⟩⟨0∣ × ∣0⟩⟨0∣ = ∣0⟩⟨0∣). { lma'. }
+       rewrite H4. rewrite Mmult_1_l; try auto with wf_db.
+       assert (H4' : ∣1⟩⟨1∣ × ∣1⟩⟨1∣ = ∣1⟩⟨1∣). { lma'. }
+       rewrite H4'. rewrite Mmult_1_l; try auto with wf_db.
+       rewrite (kron_mixed_product' (2*2^(n-1)) (2*2^(n-1)) _ _ 2 2 _ _ 
+                                    (2^n*2) (2^n*2) (2^n*2) _ _ _ _); try easy;
+                                    try (rewrite H2; easy).
+       rewrite (kron_mixed_product' (2^n) (2^n) (2*2^(n-1)) (2*2^(n-1)) 2 2 _ _ 
+                                    (2^n*2) (2^n*2) (2^n*2) _ _ _ _); try easy;
+                                    try (rewrite H2; easy).
+       assert (H5 : ∣1⟩⟨1∣ × ∣0⟩⟨0∣ = Zero). { lma'. }
+       assert (H5' : ∣0⟩⟨0∣ × ∣1⟩⟨1∣ = Zero). { lma'. }
+       rewrite H5, H5'.
+       do 2 (rewrite kron_0_r). 
+       rewrite H0.
+       rewrite id_kron.
+       rewrite H2.
+       rewrite Mplus_0_l.
+       rewrite Mplus_0_r.
+       rewrite <- kron_plus_distr_l.
+       assert (H6 : ∣0⟩⟨0∣ .+ ∣1⟩⟨1∣ = I 2). { lma'. }
+       rewrite H6.
+       rewrite id_kron.
+       reflexivity.
+Qed.
+
+
+Lemma unit_prog_ctrl_app : forall (prg_len : nat) (U : Square 2) (ctrl targ : nat),
+  unitary U -> unitary (prog_ctrl_app prg_len U ctrl targ). 
+Proof. intros.
+       unfold prog_ctrl_app.
+       destruct (ctrl =? targ) eqn:E3.
+       - rewrite andb_false_r.
+         auto with unit_db.
+       - destruct (ctrl <? prg_len) eqn:E1;
+         destruct (targ <? prg_len) eqn:E2;
+         simpl; auto with unit_db.
+         destruct (ctrl <? targ) eqn:E4.
+         + rewrite (easy_pow5 ctrl targ _). 
+           apply unit_kron.
+           apply unit_kron.
+           auto with unit_db.
+           apply unit_proj; try easy.
+           intro.  
+           apply Nat.ltb_lt in E4.
+           nia. 
+           auto with unit_db.
+           apply Nat.ltb_lt in E2; 
+           assumption. 
+           apply Nat.ltb_lt in E4; 
+           assumption.
+         + rewrite (easy_pow5' targ ctrl _).
+           apply unit_kron.
+           apply unit_kron.
+           auto with unit_db.
+           apply unit_proj2; try easy. 
+           intro. 
+           assert (H' : targ < ctrl). 
+           { apply easy_ltb3; easy. }
+           nia. 
+           auto with unit_db.
+           apply Nat.ltb_lt in E1; 
+           assumption. 
+           apply easy_ltb3; easy. 
+Qed.
 
 
 
@@ -2139,26 +2386,22 @@ Lemma sgt'_reduce_smpl : forall {n m : nat} (u : Square 2) (a b : vecType 2)
     singGateType' u (a, b) -> 
     singGateType' ((I n) ⊗ u ⊗ (I m)) (A ⊗' a ⊗' B, A ⊗' b ⊗' B).  
 Proof. intros n m u a b A B HSA HSB HSa HSb Huu Hua Hub Hsgt.
-       apply sgt_implies_sgt'. 
-       destruct A. easy. 
-       destruct B. easy.
-       destruct a. easy. 
-       easy. 
-       apply sgt'_implies_sgt in Hsgt.
-       unfold singGateType in *.
-       simpl. intros.
        apply singleton_simplify in HSA;
-       destruct HSA as [A' HSA];    
+       destruct HSA as [A' HSA];
        apply singleton_simplify in HSB;
        destruct HSB as [B' HSB];
        apply singleton_simplify in HSa;
        destruct HSa as [a' HSa];
        apply singleton_simplify in HSb;
-       destruct HSb as [b' HSb];
-       rewrite HSA, HSB, HSa, HSb in *.
+       destruct HSb as [b' HSb];       
+       rewrite HSA, HSB, HSa, HSb in *.    
+       apply sgt_implies_sgt'; try easy. 
+       apply sgt'_implies_sgt in Hsgt; try easy.
+       unfold singGateType in *.
+       intros.
        simpl in *;
        destruct H as [H | F];
-       destruct H0 as [H0 | F0].
+       destruct H0 as [H0 | F0]; try easy.
        rewrite <- H, <- H0.
        rewrite kron_assoc. 
        assert (H' : m + (m + 0) = 2 * m). { nia. }
@@ -2168,19 +2411,10 @@ Proof. intros n m u a b A B HSA HSB HSa HSb Huu Hua Hub Hsgt.
        do 4 (rewrite kron_mixed_product).  
        do 2 (rewrite Mmult_1_l').
        do 2 (rewrite Mmult_1_r').
-       rewrite (Hsgt a' b').
-       reflexivity. 
-       left; easy. 
-       left; easy. 
-       easy. easy. easy.
-       assumption. 
-       assumption. 
-       split.
-       assumption.
-       assumption.
+       rewrite (Hsgt a' b'); 
+       try easy; 
+       try (left; easy).
 Qed.
-
-
 
 
 Lemma tensor_smpl : forall (prg_len bit : nat) (g : Square 2) 
@@ -2192,8 +2426,8 @@ Lemma tensor_smpl : forall (prg_len bit : nat) (g : Square 2)
     (prog_smpl_app prg_len g bit) ::'  A →' (switch A a bit).
 Proof. intros prg_len bit g A a SA Sa Hug Hunb Hua Hbpl Hwf H. 
        simpl. 
-       rewrite (nth_tensor_inc bit prg_len A).
-       rewrite (switch_tensor_inc bit prg_len A a). 
+       rewrite (nth_tensor_inc bit prg_len A); try easy.
+       rewrite (switch_tensor_inc bit prg_len A a); try easy. 
        unfold prog_smpl_app.
        apply kill_true.
        repeat (rewrite firstn_length_le).
@@ -2201,27 +2435,20 @@ Proof. intros prg_len bit g A a SA Sa Hug Hunb Hua Hbpl Hwf H.
        repeat (rewrite switch_len).
        unfold WF_vtt in Hwf. 
        rewrite Hwf in *.
-       repeat (rewrite (easy_pow3 prg_len bit)).
-       apply sgt'_reduce_smpl.
+       repeat (rewrite (easy_pow3 prg_len bit)); try easy. 
+       apply Nat.ltb_lt in Hbpl.
+       rewrite Hbpl.
+       apply sgt'_reduce_smpl; try easy.
        apply (S_tensor_subset _ A _). 
        apply SA. apply firstn_subset.
        apply (S_tensor_subset _ A _). 
        apply SA. apply skipn_subset.
        apply (S_big_tensor_conv _ A _).
        apply SA. apply nth_In.
-       rewrite Hwf; assumption.
-       apply Sa.
-       apply Hug.
-       apply Hunb.
-       apply Hua.
+       rewrite Hwf; apply Nat.ltb_lt; assumption.
        destruct H as [H _].
        apply H.
-       assumption.
        rewrite Hwf. nia. 
-       assumption.
-       assumption.
-       assumption.       
-       assumption.
 Qed.
 
 
@@ -2253,85 +2480,27 @@ Proof. lma'. Qed.
 
 Hint Resolve unit_CZ : unit_db.
                 
-Lemma tensor_base : forall (prg_len new_len : nat) (g : Square 2) 
-                           (A A' : vecType (2^prg_len)) (E : vecType (2^new_len)),
-    prg_len <> 0 -> unitary g -> 
-    uni_vecType A -> uni_vecType A' ->
-    WF_Matrix g -> Singleton A -> Singleton E ->
-    (prog_smpl_app prg_len g 0) ::' (A → A') ->
-    (prog_smpl_app (prg_len + new_len) g 0) ::'  A ⊗' E → A' ⊗' E.
-Proof. unfold prog_smpl_app in *.
-       intros prg_len new_len g A A' E Hp0 Hug Hua Hua' Hwfg Hsa Hse [H _].
-       apply sgt'_implies_sgt in H.
-       apply kill_true.
-       apply singleton_simplify in Hsa.
-       destruct Hsa as [a Ha]. 
-       apply singleton_simplify in Hse.
-       destruct Hse as [e He]. 
-       rewrite Ha, He.
-       apply sgt_implies_sgt'.
-       easy.
-       unfold singGateType in *; simpl in *.
-       intros.
-       apply in_tensor in H1.
-       destruct H1 as [a' [e1 [Ha1 [Ha2 Ha3]]]].
-       apply in_simplify in Ha2. rewrite Ha2 in *.
-       destruct H0 as [H0 | F].
-       - rewrite <- H0, Ha3.
-         rewrite kron_1_l in *. 
-         rewrite easy_sub3. 
-         rewrite (easy_pow 2 (prg_len - 0 - 1) new_len).
-         rewrite <- id_kron.
-         rewrite <- kron_assoc.
-         restore_dims; 
-         rewrite (kron_mixed_product (g ⊗ I (2 ^ (prg_len - 0 - 1))) _ a e).
-         restore_dims;
-         rewrite (kron_mixed_product a' e (g ⊗ I (2 ^ (prg_len - 0 - 1))) 
-                                     (I (2 ^ new_len))).
-         assert (Ha' : In a A). 
-         { rewrite Ha. left. easy. }
-         apply (H a a') in Ha'.
-         repeat (rewrite <- easy_pow2 in *).
-         rewrite Ha'.
-         rewrite Mmult_1_l'; rewrite Mmult_1_r'.
-         reflexivity.
-         apply Hp0.
-         apply Ha1.
-         apply Hp0.
-         apply Hwfg. apply Hwfg.
-       - easy.
-       - simpl. rewrite kron_1_l.
-         rewrite easy_pow2.
-         apply unit_kron.
-         apply Hug. 
-         apply unit_I.
-         apply Hp0.
-         apply Hwfg.
-       - apply Hsa.
-       - split. apply Hua. apply Hua'.
-Qed.
-
-
-
-                 
-Lemma tensor_inc : forall (prg_len bit : nat) (g : Square 2) 
-                          (E : vecType 2) (A A' : vecType (2^prg_len)),
-    prg_len <> 0 -> bit < prg_len -> unitary g ->
-    uni_vecType A -> uni_vecType A' ->
-    WF_Matrix g -> Singleton E -> Singleton A ->
-    (prog_smpl_app prg_len g bit) ::' (A → A') ->
-    (prog_smpl_app (prg_len + 1) g (S bit)) ::'  E ⊗' A → E ⊗' A'.
-Proof. Admitted.
 
 
 Lemma adj_ctrlX_is_cnot : forall (prg_len ctrl : nat),
+  1 + ctrl < prg_len ->
   prog_ctrl_app prg_len σx ctrl (1 + ctrl) = 
   I (2^ctrl) ⊗ cnot ⊗ I (2^(prg_len - ctrl - 2)).
 Proof. intros; unfold prog_ctrl_app.
        rewrite easy_ltb. rewrite easy_sub. 
-       assert (H : (∣0⟩⟨0∣ ⊗ I (2 ^ 1) .+ ∣1⟩⟨1∣ ⊗ I (2 ^ (1 - 1)) ⊗ σx) = cnot).
+       assert (H' : (∣0⟩⟨0∣ ⊗ I (2 ^ 1) .+ ∣1⟩⟨1∣ ⊗ I (2 ^ (1 - 1)) ⊗ σx) = cnot).
        { lma'. }
-       rewrite H. rewrite easy_sub2. 
+       rewrite H'. rewrite easy_sub2. 
+       assert (H'' : ctrl < prg_len). { nia. }
+       apply Nat.ltb_lt in H.
+       apply Nat.ltb_lt in H''.
+       rewrite H, H''.
+       simpl. 
+       assert (H''' : forall n, n =? S n = false). 
+       { induction n.
+         - easy. 
+         - easy. }
+       rewrite H'''.
        reflexivity.
 Qed.
 
@@ -2344,6 +2513,7 @@ Proof. assert (H : cnot = I (2^0) ⊗ cnot ⊗ I (2^0)).
        assert (H' : (2 - 0 - 2) = 0).
        { nia. }
        rewrite H'. reflexivity.
+       nia. 
 Qed.
 
 

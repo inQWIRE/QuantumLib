@@ -489,8 +489,20 @@ Lemma X_unitary : unitary σx. Proof. lma'. Qed.
 Lemma Y_unitary : unitary σy. Proof. lma'. Qed.
 Lemma Z_unitary : unitary σz. Proof. lma'. Qed.
 Lemma P_unitary : unitary Phase. Proof. rewrite PEqP'. lma'. Qed.
+Lemma T_unitary : unitary Tgate. 
+Proof. lma'. unfold Mmult, adjoint, I.
+       simpl. 
+       assert (H : (Cexp (PI / 4)) ^* = Cexp (- PI / 4)).
+       { autorewrite with Cexp_db. lca. }
+       assert (H1 : (- PI / 4 = - (PI / 4))%R ). { lra. } 
+       rewrite H1 in H; rewrite H.
+       rewrite Cexp_mul_neg_r. lca. 
+Qed.
+
+
 Lemma cnot_unitary : unitary cnot. Proof. lma'. Qed.
 Lemma notc_unitary : unitary notc. Proof. lma'. Qed.
+
 
 Lemma H_unitary : unitary hadamard.
 Proof. assert (H : hadamard † = hadamard). { lma'. }
@@ -524,6 +536,18 @@ Proof. intros. unfold unitary in *.
        reflexivity.
 Qed.
 
+
+Lemma unit_scale : forall {n} (c : C) (A : Square n),
+  unitary A -> (c * c ^*)%C = C1 -> unitary (c .* A).
+Proof. intros. 
+       simpl. unfold unitary. 
+       distribute_adjoint.
+       distribute_scale.
+       rewrite H, H0. 
+       lma'. 
+Qed.
+
+
 Lemma unit_big_kron : forall (n : nat) (ls : list (Square n)), 
   (forall a, In a ls -> unitary a) -> unitary (⨂ ls).
 Proof. intros. induction ls as [| h].
@@ -547,8 +571,8 @@ Proof. intros.
 Qed.
 
 
-Hint Resolve X_unitary Y_unitary Z_unitary P_unitary H_unitary : unit_db.
-Hint Resolve cnot_unitary notc_unitary unit_I unit_mult unit_kron unit_adjoint unit_big_kron: unit_db.
+Hint Resolve X_unitary Y_unitary Z_unitary P_unitary H_unitary T_unitary : unit_db.
+Hint Resolve cnot_unitary notc_unitary unit_I unit_mult unit_kron unit_adjoint unit_scale unit_big_kron: unit_db.
 
 
 
