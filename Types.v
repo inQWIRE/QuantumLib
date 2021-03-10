@@ -35,6 +35,19 @@ Proof. induction n as [| n'].
          nia. nia.
 Qed.
 
+
+Lemma zip_app_product : forall {X : Type} (f : X -> X -> X) (n : nat) (l0s l1s l2s l3s : list X),
+  length l0s = n -> length l1s = n -> 
+  (zip f l0s l1s) ++ (zip f l2s l3s) = zip f (l0s ++ l2s) (l1s ++ l3s).
+Proof. induction n as [| n'].
+       - intros. destruct l0s; destruct l1s; easy. 
+       - intros. destruct l0s; destruct l1s; try easy.
+         simpl in *. 
+         rewrite <- IHn'; try nia. 
+         reflexivity. 
+Qed.
+
+
 (************************)
 (* Defining coeficients *)
 (************************)
@@ -607,6 +620,30 @@ Qed.
 
 
 
+Lemma translate_kron : forall {n m} (g1 : GTypeT n) (g2 : GTypeT m),
+    length (snd g1) = n -> length (snd g2) = m ->
+    translate (gTensorT g1 g2) = (translate g1) ⊗ (translate g2).
+Proof. intros. unfold translate.
+         destruct g1; destruct g2.
+         simpl in *.
+         do 3 (rewrite map_length). 
+         unfold WF_GTypeT in *.
+         rewrite H, H0 in *.
+         rewrite Mscale_kron_dist_r.
+         rewrite Mscale_kron_dist_l.
+         rewrite Mscale_assoc.
+         rewrite translate_coef_cMul.
+         rewrite Cmult_comm.
+         rewrite map_app.
+         rewrite big_kron_app.
+         do 2 (rewrite map_length).
+         rewrite app_length.
+         rewrite H, H0 in *.
+         reflexivity.
+Qed.
+
+
+
 Lemma translate_scale : forall {n} (A : GTypeT n) (c : Coef),
   translate (gScaleT c A) = Matrix.scale (translate_coef c) (translate A).
 Proof. intros. 
@@ -750,6 +787,31 @@ Add Parametric Relation n : (vType n) (@eq_vType n)
   symmetry proved by eq_vType_sym
   transitivity proved by eq_vType_trans
     as eq_vType_rel.
+
+
+Lemma kron_compat : forall {n} (A A' B B' : vType n),
+    Sing_vt A -> Sing_vt A' ->
+    Sing_vt B -> Sing_vt B' ->
+    WF_vType A -> WF_vType A' ->
+    WF_vType B -> WF_vType B' ->  
+    A ≡ A' -> B ≡ B' -> A .⊗ B ≡ A' .⊗ B'.
+Proof.
+  intros. unfold eq_vType in *.
+  destruct A; destruct A'; destruct B; destruct B'; try easy.
+  simpl in *. unfold WF_GTypeT in *.
+  rewrite translate_kron; try easy.
+  rewrite translate_kron; try easy.
+  assert (H' : forall {X} (a b : X), [a] = [b] -> a = b). 
+  { intros. assert (H'' : forall {X} (a : X), [] ++ [a] = [a]). { easy. }  
+    rewrite <- H'' in H9.
+    rewrite <- (H'' _ b) in H9.
+    apply app_inj_tail in H9.
+    easy. }
+  apply H' in H7.
+  apply H' in H8.
+  rewrite H7, H8.
+  reflexivity.
+Qed.
 
 
 
@@ -956,9 +1018,6 @@ Proof. intros. unfold eq_vType.
 Qed.
 
 
-Hint Rewrite mul_I_l mul_I_r Xsqr Zsqr ZmulX neg_inv neg_dist_l neg_dist_r i_sqr i_dist_l i_dist_r i_neg_comm : mul_db.
-
-
 (** ** Tensor Laws *)
 
 
@@ -973,10 +1032,46 @@ Proof. intros. unfold eq_vType'.
 Qed.       
 
 
-Axiom neg_tensor_dist_l : forall A B, -A ⊗ B = - (A ⊗ B).
-Axiom neg_tensor_dist_r : forall A B, A ⊗ -B = - (A ⊗ B).
-Axiom i_tensor_dist_l : forall A B, i A ⊗ B = i (A ⊗ B).
-Axiom i_tensor_dist_r : forall A B, A ⊗ i B = i (A ⊗ B).
+
+Lemma neg_tensor_dist_l : forall {n m} (A : vType n) (B : vType m), -A .⊗ B ≡ - (A .⊗ B).
+Proof. intros. unfold eq_vType.
+       destruct A; destruct B; try easy.
+       destruct g; destruct g0; simpl.
+       rewrite cMul_assoc. 
+       reflexivity. 
+Qed.
+
+
+Lemma neg_tensor_dist_r : forall {n m} (A : vType n) (B : vType m), A .⊗ (-B) ≡ - (A .⊗ B).
+Proof. intros. unfold eq_vType.
+       destruct A; destruct B; try easy.
+       destruct g; destruct g0; simpl.
+       rewrite <- cMul_assoc. 
+       rewrite (cMul_comm c n_1).
+       rewrite cMul_assoc.
+       reflexivity. 
+Qed.
+
+Lemma i_tensor_dist_l : forall {n m} (A : vType n) (B : vType m), i A .⊗ B ≡ i (A .⊗ B).
+Proof. intros. unfold eq_vType.
+       destruct A; destruct B; try easy.
+       destruct g; destruct g0; simpl.
+       rewrite cMul_assoc. 
+       reflexivity. 
+Qed.
+
+
+Lemma i_tensor_dist_r : forall {n m} (A : vType n) (B : vType m), A .⊗ i B ≡ i (A .⊗ B).
+Proof. intros. unfold eq_vType.
+       destruct A; destruct B; try easy.
+       destruct g; destruct g0; simpl.
+       rewrite <- cMul_assoc. 
+       rewrite (cMul_comm c p_i).
+       rewrite cMul_assoc.
+       reflexivity. 
+Qed.
+
+
 
 (** ** Multiplication & Tensor Laws *)
 
@@ -984,44 +1079,66 @@ Axiom i_tensor_dist_r : forall A B, A ⊗ i B = i (A ⊗ B).
    but axiomatization doesn't allow for that calculation. *)
 (* This should be generalizable to the other, assuming we're multiplying
    valid types. *)
-Axiom mul_tensor_dist : forall A B C D,
-    Singleton A ->
-    Singleton C ->
-    (A ⊗ B) * (C ⊗ D) = (A * C) ⊗ (B * D).
+Lemma mul_tensor_dist : forall {n m} (A C : vType n) (B D : vType m),
+    WF_vType A -> WF_vType C ->
+    (A .⊗ B) .* (C .⊗ D) ≡ (A .* C) .⊗ (B .* D).
+Proof. intros. unfold eq_vType.
+       destruct A; destruct B; destruct C; destruct D; try easy.
+       destruct g; destruct g0; destruct g1; destruct g2; simpl.
+       simpl in *.
+       unfold WF_GTypeT in *; simpl in *.
+       rewrite (zip_app_product _ n _ _ _ _); try nia.  
+       rewrite <- cMul_assoc. 
+       rewrite (cMul_assoc c c0 c1).
+       rewrite (cMul_comm c0 c1).
+       rewrite <- cMul_assoc.  
+       rewrite cMul_assoc. 
+       reflexivity. 
+Qed.
 
-Lemma decompose_tensor : forall A B,
-    Singleton A ->
-    Singleton B ->
-    A ⊗ B = (A ⊗ I) * (I ⊗ B).
+
+
+Lemma decompose_tensor : forall (A B : vType 1),
+    Sing_vt A -> WF_vType A ->
+    Sing_vt B -> WF_vType B ->
+    A .⊗ B ≡ (A .⊗ I) .* (I .⊗ B).
 Proof.
   intros.
-  rewrite mul_tensor_dist; auto with sing_db.
-  rewrite mul_I_l, mul_I_r. 
+  rewrite mul_tensor_dist; auto with wfvt_db.
+  destruct A; destruct B; try easy.
+  apply kron_compat; try easy; try auto with wfvt_db.
+  rewrite mul_I_r; try easy.
+  rewrite mul_I_l; try easy.
+Qed.
+
+
+Lemma decompose_tensor_mult_l : forall (A B : vType 1),
+    Sing_vt A -> WF_vType A -> 
+    Sing_vt B -> WF_vType B ->
+    (A .* B) .⊗ I ≡ (A .⊗ I) .* (B .⊗ I).
+Proof.
+  intros.
+  rewrite mul_tensor_dist; auto with wfvt_db.
+  destruct A; destruct B; try easy.
+  apply kron_compat; try easy; try auto with wfvt_db.
+  rewrite mul_I_l; try auto with wfvt_db.
   easy.
 Qed.
 
-Lemma decompose_tensor_mult_l : forall A B,
-    Singleton A ->
-    Singleton B ->
-    (A * B) ⊗ I = (A ⊗ I) * (B ⊗ I).
-Proof.
-  intros.
-  rewrite mul_tensor_dist; auto with sing_db.
-  rewrite mul_I_l.
-  easy.
-Qed.
 
-Lemma decompose_tensor_mult_r : forall A B,
-    I ⊗ (A * B) = (I ⊗ A) * (I ⊗ B).
+Lemma decompose_tensor_mult_r : forall (A B : vType 1),
+    Sing_vt A -> WF_vType A -> 
+    Sing_vt B -> WF_vType B ->
+    I .⊗ (A .* B) ≡ (I .⊗ A) .* (I .⊗ B).
 Proof.
   intros.
-  rewrite mul_tensor_dist; auto with sing_db.
-  rewrite mul_I_l.
+  rewrite mul_tensor_dist; auto with wfvt_db.
+  destruct A; destruct B; try easy.
+  apply kron_compat; try easy; try auto with wfvt_db.
+  rewrite mul_I_r; try auto with wfvt_db.
   easy.
 Qed.
   
-Hint Rewrite neg_tensor_dist_l neg_tensor_dist_r i_tensor_dist_l i_tensor_dist_r : tensor_db.
-
 
 (*********************)
 (* defining programs *)
@@ -1096,6 +1213,17 @@ Proof. intros.
        assumption. 
 Qed.
 
+(*
+Lemma eq_type_conv_input' : forall {n m} (p : prog) (A' : vType m) (A B : vType n),
+  eq_vType' A A' -> n = m -> p :' A → B -> p :' A' → B.
+Proof. intros. 
+       simpl in *. 
+       unfold progHasSingType in *.
+       rewrite <- H.
+       apply eq_vType_cap_vt_bool in H.
+       rewrite <- H.
+       assumption. 
+Qed. *)
 
 Lemma eq_type_conv_output : forall {n} (p : prog) (A B B' : vType n),
   B ≡ B' -> p :' A → B -> p :' A → B'.
@@ -1107,6 +1235,57 @@ Proof. intros.
        rewrite <- H.
        assumption. 
 Qed.
+
+
+Lemma eq_type_conv : forall {n} (p : prog) (A A' B B' : vType n),
+  A ≡ A' -> B ≡ B' -> (p :' A → B <-> p :' A' → B').
+Proof. intros. split. 
+       - intros. simpl in *. 
+         unfold progHasSingType in *.
+         rewrite <- H, <- H0.
+         apply eq_vType_cap_vt_bool in H;
+         apply eq_vType_cap_vt_bool in H0.
+         rewrite <- H, <- H0.
+         easy.
+       - intros. simpl in *. 
+         unfold progHasSingType in *.
+         rewrite H, H0.
+         apply eq_vType_cap_vt_bool in H;
+         apply eq_vType_cap_vt_bool in H0.
+         rewrite H, H0.
+         easy.
+Qed.
+
+
+Lemma prog_decompose_tensor_mult_l : forall (p : prog) (A B : vType 1) (T : vType 2),
+  Sing_vt A -> WF_vType A ->
+  Sing_vt B -> WF_vType B ->
+  p :' ((A .⊗ I) .* (B .⊗ I)) → T -> p :' ((A .* B) .⊗ I) → T.
+Proof. intros. 
+       apply (eq_type_conv_input p ((A .⊗ I) .* (B .⊗ I)) ((A .* B) .⊗ I) T); try easy.
+       rewrite decompose_tensor_mult_l; easy.
+Qed.
+
+
+Lemma prog_decompose_tensor_mult_r : forall (p : prog) (A B : vType 1) (T : vType 2),
+  Sing_vt A -> WF_vType A ->
+  Sing_vt B -> WF_vType B ->
+  p :' ((I .⊗ A) .* (I .⊗ B)) → T -> p :' (I .⊗ (A .* B)) → T.
+Proof. intros. 
+       apply (eq_type_conv_input p ((I .⊗ A) .* (I .⊗ B)) (I .⊗ (A .* B)) T); try easy.
+       rewrite decompose_tensor_mult_r; easy.
+Qed.
+
+
+Lemma prog_decompose_tensor : forall (p : prog) (A B : vType 1) (T : vType 2),
+  Sing_vt A -> WF_vType A ->
+  Sing_vt B -> WF_vType B ->
+  p :' ((A .⊗ I) .* (I .⊗ B)) → T -> p :' (A .⊗ B) → T.
+Proof. intros. 
+       apply (eq_type_conv_input p ((A .⊗ I) .* (I .⊗ B)) (A .⊗ B) T); try easy.
+       rewrite <- decompose_tensor; easy.
+Qed.
+
 
 
 (********************)
@@ -1223,7 +1402,7 @@ Proof. solve_ground_type. Qed.
 
 
 
-Definition CZ m n : prog := H' n ;; CNOT m n ;; H' n.
+Notation CZ m n := (H' n ;; CNOT m n ;; H' n).
 
 
 
@@ -1419,10 +1598,55 @@ Proof.
 Qed.
 
 
+(***************************************************)
+(* Prelim lemmas for tensoring in the next section *)
+(***************************************************)
+
+
+Local Open Scope nat_scope.
+
+
+Definition smpl_prog (p : prog) : Prop := 
+  match p with 
+  | H' _ => True 
+  | S' _ => True
+  | T' _ => True
+  | _ => False
+  end.
+
+Definition smpl_nat_to_prog (p : nat -> prog) : Prop := 
+  (forall (n : nat), smpl_prog (p n)).
+
+
+
+Definition ctrl_prog (p : prog) : Prop :=
+  match p with 
+  | CNOT _ _ => True 
+  | _ => False
+  end.
+
+Lemma nth_tensor_inc : forall (n len : nat) (A : list (Square 2)),
+    length A = len -> n < len -> 
+    ⨂ A = (⨂ (firstn n A)) ⊗ (nth n A (Matrix.I 2)) ⊗ (⨂ (skipn (S n) A)).
+Proof. Admitted.
+
+
+(*
+Lemma switch_tensor_inc : forall (n len : nat) (A : vecTypeT len) (x : vecType 2),
+    n < len -> WF_vtt A -> ⨂' (switch A x n) = (⨂' (firstn n A)) ⊗' x ⊗' (⨂' (skipn (S n) A)).
+Proof. intros. 
+       rewrite <- (@big_tensor_simpl n (len - n) (firstn n A) (skipn (S n) A) x).
+       rewrite <- switch_inc.
+       reflexivity. 
+       rewrite H0.
+       assumption. 
+Qed.
+*)
+
+
 
 (** Typing Rules for Tensors *)
 
-Local Open Scope nat_scope.
 
 Notation s := Datatypes.S.
 
@@ -1438,16 +1662,40 @@ Definition switch_vType {n} (A : vType n) (a : GType) (bit : nat) : vType n :=
   match A with 
   | G _ g => G n (fst g, switch (snd g) a bit)         
   | _ => Err n
-  end. 
+  end.
+
+
+
+
+Lemma cons_eq : forall (n m : nat) (p1 p2 : nat -> prog),
+    p1 n = p2 m -> p1 = p2.
+Proof. Admitted.
+
 
 
 
 Lemma tensor_smpl : forall  {prg_len} (bit : nat) p  
                            (A : vType prg_len) (a : GType),
+    smpl_prog (p bit) -> 
     (p 0) :' (nth_vType bit A) → (G 1 (p_1, [a])) ->
     (p bit) :'  A → (switch_vType A a bit).
-Proof. Admitted. 
+Proof. intros. destruct A; try easy.
+       destruct (p bit) eqn:E; try easy.
+       - apply cons_eq in E. rewrite E in H0.
+         destruct g. simpl in *.
+         unfold progHasSingType in *. 
+         rewrite ite_conv in *.
+         rewrite fgt_conv in *.
+         simpl translate_vecType in *. 
+         unfold translate in *. simpl in *. apply kill_true.
+         destruct H0. unfold translate_prog in *.
 
+
+
+
+
+
+Admitted.
 
 Lemma tensor_ctrl : forall (prg_len ctrl targ : nat) p  
                            (A : vType prg_len) (a b : GType),
@@ -1455,7 +1703,7 @@ Lemma tensor_ctrl : forall (prg_len ctrl targ : nat) p
     (p ctrl targ) :'  A → switch_vType (switch_vType A a ctrl) b targ.
 Proof. Admitted. 
 
-                 
+                
 
 (** Arrow rules *)
 
@@ -1533,9 +1781,6 @@ Qed.
 
 
 
-
-
-
 Hint Resolve HTypes STypes TTypes CNOTTypes : base_types_db.
 Hint Resolve cap_elim_l cap_elim_r : base_types_db.
 
@@ -1543,12 +1788,13 @@ Hint Resolve HTypes STypes TTypes CNOTTypes : typing_db.
 Hint Resolve cap_intro cap_elim_l cap_elim_r : typing_db.
 Hint Resolve SeqTypes : typing_db.
 
+
+(* basically just eq_type_conv_output but with different order hypotheses *)
 Lemma eq_arrow_r : forall {n} (g : prog) (A B B' : vType n),
     g :' A → B ->
-    B = B' ->
+    B ≡ B' ->
     g :' A → B'.
-Proof. intros; subst; easy. Qed.
-
+Proof. intros. apply (eq_type_conv_output g A B B'); easy.
 
 (* Tactics *)
 
@@ -1570,23 +1816,125 @@ Ltac is_prog2 A :=
   | CNOT _ _ => idtac
   end.
 
+
+Ltac expand_prog := match goal with
+                    | |- ?p1 ;; ?p2 :' ?T => eapply SeqTypes
+                    end.
+
 (* Reduces to sequence of H, S and CNOT *)
 Ltac type_check_base :=
   repeat apply cap_intro;
-  repeat eapply SeqTypes; (* will automatically unfold compound progs *)
+  repeat expand_prog; (* will automatically unfold compound progs *)
   repeat match goal with
-         | |- Singleton _       => auto 50 with svt_db
+         | |- Sing_vt _       => auto 50 with svt_db
          | |- ?g :' ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
          | |- ?g :' - ?A → ?B    => apply arrow_neg
          | |- ?g :' i ?A → ?B    => apply arrow_i
          | |- context[?A ⊗ ?B]  => progress (autorewrite with tensor_db)
+         | |- ?g ?n :' ?T => eapply (tensor_smpl n _ _ _) 
+         | |- ?g ?n ?m :' ?T => eapply (tensor_ctrl n m _ _ _) 
          | |- ?g :' ?A * ?B → _ => apply arrow_mul
          | |- ?g :' (?A * ?B) ⊗ I → _ => rewrite decompose_tensor_mult_l
          | |- ?g :' I ⊗ (?A * ?B) → _ => rewrite decompose_tensor_mult_r
          | |- ?g :' ?A ⊗ ?B → _  => tryif (is_I A + is_I B) then fail else
              rewrite (decompose_tensor A B) by (auto 50 with sing_db)
          | |- ?g :' ?A → ?B      => tryif is_evar A then fail else
+             (try (eapply TypesI)); 
              solve [eauto with base_types_db]
+         end.
+
+
+Ltac type_check_base' :=
+  repeat apply cap_intro;
+  repeat expand_prog; (* will automatically unfold compound progs *)
+  repeat match goal with
+         | |- Sing_vt _       => auto 50 with svt_db
+         | |- ?g :' ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
+         | |- ?g :' - ?A → ?B    => apply arrow_neg
+         | |- ?g :' i ?A → ?B    => apply arrow_i
+         | |- context[?A ⊗ ?B]  => progress (autorewrite with tensor_db)
+         | |- ?g :' ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r 
+         | |- ?g 0 1 :' ?A → ?B => tryif is_evar A then fail else
+             (try (eapply TypesI2)); 
+             solve [eauto with base_types_db]
+         | |- ?g 0 :' ?A → ?B => tryif is_evar A then fail else
+             (try (eapply TypesI)); 
+             solve [eauto with base_types_db]
+         | |- ?g (S ?n) ?m :' ?T => eapply (tensor_ctrl (S n) m _ _ _) 
+         | |- ?g (S ?n) :' ?T => eapply (tensor_smpl (S n) _ _ _)
+         | |- ?g :' ?A .* ?B → _ => apply arrow_mul
+         | |- ?g :' (?A .* ?B) .⊗ I → _ => apply prog_decompose_tensor_mult_l
+         | |- ?g :' I .⊗ (?A .* ?B) → _ => apply prog_decompose_tensor_mult_r
+         | |- ?g :' ?A .⊗ ?B → _  => tryif (is_I A + is_I B) then fail else
+             apply prog_decompose_tensor
+         | |- ?A ≡ ?B => try easy
+         end.
+
+
+
+Lemma CZTypes : CZ 0 1 :' (X .⊗ I → X .⊗ Z) ∩ (I .⊗ X → Z .⊗ X) ∩
+                          (Z .⊗ I → Z .⊗ I) ∩ (I .⊗ Z → I .⊗ Z).
+Proof. type_check_base'. Qed.
+
+
+
+
+Notation bell00 := ((H' 2);; (CNOT 2 3)).
+
+Notation encode := ((CZ 0 2);; (CNOT 1 2)).
+
+Notation decode := ((CNOT 2 3);; (H' 2)).
+
+Notation superdense := (bell00;; encode;; decode).
+
+
+
+Lemma superdenseTypesQPL : superdense :' (Z .⊗ Z .⊗ Z .⊗ Z → I .⊗ I .⊗ Z .⊗ Z).
+Proof. repeat expand_prog.
+  repeat match goal with
+         | |- Sing_vt _       => auto 50 with svt_db
+         | |- ?g :' ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
+         | |- ?g :' - ?A → ?B    => apply arrow_neg
+         | |- ?g :' i ?A → ?B    => apply arrow_i
+         | |- context[?A ⊗ ?B]  => progress (autorewrite with tensor_db)
+         | |- ?g :' ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r 
+         | |- ?g 0 1 :' ?A → ?B => tryif is_evar A then fail else
+             (try (eapply TypesI2)); 
+             solve [eauto with base_types_db]
+         | |- ?g 0 :' ?A → ?B => tryif is_evar A then fail else
+             (try (eapply TypesI)); 
+             solve [eauto with base_types_db]
+         | |- ?g (S ?n) ?m :' ?T => eapply (tensor_ctrl (S n) m _ _ _) 
+         | |- ?g (S ?n) :' ?T => eapply (tensor_smpl (S n) _ _ _)
+         | |- ?g :' ?A .* ?B → _ => apply arrow_mul
+         | |- ?g :' (?A .* ?B) .⊗ I → _ => apply prog_decompose_tensor_mult_l
+         | |- ?g :' I .⊗ (?A .* ?B) → _ => apply prog_decompose_tensor_mult_r
+         | |- ?g :' ?A .⊗ ?B → _  => tryif (is_I A + is_I B) then fail else
+             apply prog_decompose_tensor
+         | |- ?A ≡ ?B => try easy
+         end.
+  eapply (tensor_ctrl 2 3 _ _ _). 
+ match goal with
+         | |- Sing_vt _       => auto 50 with svt_db
+         | |- ?g :' ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
+         | |- ?g :' - ?A → ?B    => apply arrow_neg
+         | |- ?g :' i ?A → ?B    => apply arrow_i
+         | |- context[?A ⊗ ?B]  => progress (autorewrite with tensor_db)
+         | |- ?g :' ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r 
+         | |- ?g 0 1 :' ?A → ?B => tryif is_evar A then fail else
+             (try (eapply TypesI2)); 
+             solve [eauto with base_types_db]
+         | |- ?g 0 :' ?A → ?B => tryif is_evar A then fail else
+             (try (eapply TypesI)); 
+             solve [eauto with base_types_db]
+         | |- ?g (S ?n) ?m :' ?T => eapply (tensor_ctrl (S n) m _ _ _) 
+         | |- ?g (S ?n) :' ?T => idtac 4
+         | |- ?g :' ?A .* ?B → _ => apply arrow_mul
+         | |- ?g :' (?A .* ?B) .⊗ I → _ => apply prog_decompose_tensor_mult_l
+         | |- ?g :' I .⊗ (?A .* ?B) → _ => apply prog_decompose_tensor_mult_r
+         | |- ?g :' ?A .⊗ ?B → _  => tryif (is_I A + is_I B) then fail else
+             apply prog_decompose_tensor
+         | |- ?A ≡ ?B => try easy
          end.
 
 
@@ -1595,22 +1943,90 @@ Ltac type_check_base :=
 
 
 
-Definition bell00 : prog := (H' 2);; (CNOT 2 3).
 
-Definition encode : prog := (CZ 0 2);; (CNOT 1 2).
+repeat apply cap_intro;
+  repeat expand_prog; (* will automatically unfold compound progs *)
+  repeat match goal with
+         | |- Sing_vt _       => auto 50 with svt_db
+         | |- ?g :' ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
+         | |- ?g :' - ?A → ?B    => apply arrow_neg
+         | |- ?g :' i ?A → ?B    => apply arrow_i
+         | |- context[?A ⊗ ?B]  => progress (autorewrite with tensor_db)
+         | |- ?g :' ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r 
+         | |- ?g 0 1 :' ?A → ?B => tryif is_evar A then fail else
+             (try (eapply TypesI2)); 
+             solve [eauto with base_types_db]
+         | |- ?g 0 :' ?A → ?B => tryif is_evar A then fail else
+             (try (eapply TypesI)); 
+             solve [eauto with base_types_db]
+         | |- ?g (S ?n) ?m :' ?T => eapply (tensor_ctrl (S n) m _ _ _) 
+         | |- ?g (S ?n) :' ?T => eapply (tensor_smpl (S n) _ _ _)
+         | |- ?g :' ?A .* ?B → _ => apply arrow_mul
+         | |- ?g :' (?A .* ?B) .⊗ I → _ => apply prog_decompose_tensor_mult_l
+         | |- ?g :' I .⊗ (?A .* ?B) → _ => apply prog_decompose_tensor_mult_r
+         | |- ?g :' ?A .⊗ ?B → _  => tryif (is_I A + is_I B) then fail else
+             apply prog_decompose_tensor
+         | |- ?A ≡ ?B => try easy
+         end.
 
-Definition decode : prog := (CNOT 2 3);; (H' 2).
 
-Definition superdense : prog := bell00;; encode;; decode.
-
-
-
-Lemma superdenseTypesQPL : superdense :' (Z .⊗ Z .⊗ Z .⊗ Z → I .⊗ I .⊗ Z .⊗ Z).
-Proof. repeat (eapply SeqTypes).                                                                
+repeat match goal with
+              | |- ?p1 ;; ?p2 :' ?T => eapply SeqTypes
+              end.
        eapply (tensor_smpl 2 _ _ _).
        solve [eauto with base_types_db]. 
        eapply (tensor_ctrl 4 2 3 _ _ _).
        simpl nth_vType.
+       apply prog_decompose_tensor; try easy.
+       eapply eq_arrow_r.
+       apply arrow_mul; 
+         try (solve [eauto with base_types_db]);
+         try easy.
+       rewrite mul_tensor_dist; try easy.
+       eapply (tensor_ctrl 2 _ _ _).
+       simpl. 
+       solve [eauto with base_types_db]. 
+
+
+
+reflexivity. 
+try easy.
+       5: { solve [eauto with base_types_db]. }
+       5: { solve [eauto with base_types_db]. }
+       
+
+
+
+    auto with univ_db.
+       auto with univ_db.
+       nia. 
+       easy. 
+       eapply (tensor_ctrl 4 2 3 _ _ _).
+       rewrite CX_is_CNOT.
+       rewrite decompose_tensor.
+       eapply eq_arrow_r.
+       apply arrow_mul.
+       auto with sing_db.
+       auto with sing_db.
+       auto with unit_db.
+       auto with univ_db.
+       4: { solve [eauto with base_types_db]. }
+       auto with univ_db.
+       auto with univ_db.
+
+
+
+emma prog_decompose_tensor : forall (p : prog) (A B : vType 1) (T : vType 2),
+  Sing_vt A -> WF_vType A ->
+  Sing_vt B -> WF_vType B ->
+  p :' ((A .⊗ I) .* (I .⊗ B)) → T -> p :' (A .⊗ B) → T.
+Proof. intros. 
+       apply (eq_type_conv_input p ((A .⊗ I) .* (I .⊗ B)) (A .⊗ B) T); try easy.
+       rewrite <- decompose_tensor; easy.
+Qed.
+
+
+       
        rewrite decompose_tensor.
        eapply eq_arrow_r.
        apply arrow_mul.
