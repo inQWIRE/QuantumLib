@@ -10,6 +10,123 @@ Require Export Quantum.
 
 Local Open Scope nat_scope.
 
+
+(* where can I find tactics to deal with this??? *)
+Lemma easy_sub : forall (n : nat), 1 + n - n = 1. Proof. nia. Qed. 
+Lemma easy_sub2 : forall (n k : nat), k - (1 + n) - 1 = k - n - 2. Proof. nia. Qed.
+Lemma easy_sub3 : forall (n k : nat), n <> 0 -> n + k - 0 - 1 = n - 0 - 1 + k. 
+Proof. intros. 
+       destruct n as [| n].
+       - easy.
+       - simpl. nia. 
+Qed.
+Lemma easy_sub4 : forall (n : nat), n - 0 = n. Proof. nia. Qed.
+Lemma easy_sub5 : forall (a b : nat), a < b -> a + S (b - a) = S b.
+Proof. nia. Qed.
+
+Lemma easy_sub6 : forall (a c b : nat), 
+  b < c -> a < b -> c = (a + S (b - a) + (c - b - 1)).
+Proof. intros. rewrite easy_sub5; try easy. nia. Qed.
+
+
+Lemma easy_ltb : forall (n : nat), n <? 1 + n = true. 
+Proof. induction n as [| n']. easy.
+       simpl. unfold Nat.ltb. simpl. unfold Nat.ltb in IHn'.
+       simpl in IHn'. easy.
+Qed.
+Lemma easy_ltb2 : forall (n : nat), S n <? 1 = false.  
+Proof. intros. destruct (S n <? 1) as [|] eqn:E. 
+       apply Nat.ltb_lt in E. nia. 
+       easy. 
+Qed.
+Lemma easy_ltb3 : forall (n m : nat), (n <? m) = false -> (n =? m) = false -> m < n.
+Proof. intros.  
+       assert (H' : ~ (n < m)). 
+           { unfold not. intros. 
+             apply Nat.ltb_lt in H1.
+             rewrite H1 in H. easy. }
+           apply not_lt in H'.  
+           unfold ge in H'.
+           assert (H'' : forall (n m : nat), m <= n -> n <> m -> m < n). { nia. }
+           apply H'' in H'. nia. 
+           assert (H''' : forall (n m : nat), (n =? m) = false -> n <> m).
+           { induction n0.
+             - destruct m0; easy. 
+             - intros. 
+               destruct m0. easy. 
+               simpl in *. apply IHn0 in H1. nia. }
+           apply H'''; easy.
+Qed.
+
+Lemma easy_pow : forall (a n m : nat), a^(n + m) = a^n * a^m.
+Proof. intros. induction n as [| n'].
+       - simpl. nia.
+       - simpl. rewrite IHn'. nia.
+Qed.
+Lemma easy_pow2 : forall (a p : nat), p <> 0 -> a^p = a * a ^ (p - 0 - 1). 
+Proof. intros. destruct p as [| p']. easy. simpl. 
+       rewrite Nat.sub_0_r.  easy.
+Qed.
+Lemma easy_pow3 : forall (n m : nat), m < n -> 2^n = (2^m) * 2 * 2^(n - m - 1).
+Proof. intros. 
+       assert (H' : 2^m * 2 = 2^(m + 1)). 
+       { rewrite easy_pow. reflexivity. } 
+       rewrite H'. 
+       rewrite <- easy_pow.
+       assert (H'' : m < n -> m + 1 + (n - m - 1) = n).
+       { nia. }
+       rewrite H''. 
+       reflexivity.
+       assumption. 
+Qed.
+Lemma easy_pow4 : forall (n : nat), (0 >= 2^n) -> False. 
+Proof. intros. induction n as [| n'].
+       - simpl in *. nia.
+       - simpl in *. 
+         assert (H' : forall (a : nat), a + 0 = a). { nia. }
+         rewrite H' in H.
+         assert (H'' : forall (a : nat), a + a >= a). { nia. }
+         apply IHn'.
+         nia. 
+Qed.
+Lemma easy_pow5 : forall (a b c : nat), 
+  b < c -> a < b ->
+  2^c = (2^a * (2^(b - a) + (2^(b - a) + 0))) * 2^(c - b - 1).
+Proof. intros.
+       assert (H' : forall n, 2^n + (2^n + 0) = 2^(S n)).
+       { reflexivity. } 
+       rewrite H'.
+       do 2 (rewrite <- easy_pow).
+       rewrite <- (easy_sub6 a c b); try easy.
+Qed.
+Lemma easy_pow5' : forall (a b c : nat), 
+  b < c ->  a < b ->
+  2^c = (2^a * (2^(b - a) * 2)) * 2^(c - b - 1).
+Proof. intros.
+       assert (H' : 2 ^ (b - a) * 2 = 2 ^ (b - a) * 2^1).
+       { reflexivity. } 
+       rewrite H'.
+       do 3 (rewrite <- easy_pow).
+       assert (H'' : b - a + 1 = S (b - a)). { nia. }
+       rewrite H''.
+       rewrite <- (easy_sub6 a c b); try easy.
+Qed.
+Lemma easy_pow6 : forall (n : nat), n <> 0 -> 2*2^n = (2*2^(n-1))*2. 
+Proof. destruct n.
+       - easy.
+       - intros. 
+         simpl.  
+         rewrite easy_sub4.
+         nia. 
+Qed.
+
+Lemma easy_pow6' : forall (n : nat), n <> 0 -> (2^n)*2 = (2*2^(n-1))*2. 
+Proof. intros. rewrite mult_comm.
+       apply easy_pow6; easy.
+Qed.
+
+
+
 Fixpoint first_n (n : nat) : list nat :=
   match n with
   | 0 => [0]
@@ -99,9 +216,20 @@ Axiom Mmult_1_r': forall {n m} (A : Matrix n m),
 Axiom Mmult_1_l': forall {n m} (A : Matrix n m),
   I n × A = A.
 
-Axiom kron_1_l' : forall (m n : nat) (A : Matrix m n), 
+Axiom kron_1_l' : forall {m n : nat} (A : Matrix m n), 
   I 1 ⊗ A = A.
 
+
+Lemma big_kron_app : forall {n m} (l1 l2 : list (Matrix n m)),
+  ⨂ (l1 ++ l2) = (⨂ l1) ⊗ (⨂ l2).
+Proof. induction l1.
+       - intros. simpl. rewrite (kron_1_l' (⨂ l2)). easy.
+       - intros. simpl. rewrite IHl1. 
+         rewrite kron_assoc.
+         do 2 (rewrite <- easy_pow).
+         rewrite app_length.
+         reflexivity.
+Qed.
 
 
 Lemma inverse_is_valid : forall {n} (X X' : Square n) (u v : Vector n),
