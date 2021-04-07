@@ -1798,6 +1798,14 @@ Proof. induction n as [| n'].
 Qed.
 
 
+Lemma switch_map : forall {X Y : Type} (n : nat) (ls : list X) (x : X) (f : X -> Y),
+    map f (switch ls x n) = switch (map f ls) (f x) n.
+Proof. induction n as [| n'].
+       - intros. destruct ls; easy.
+       - intros. destruct ls. easy.
+         simpl. rewrite IHn'. easy.
+Qed.
+         
 Lemma switch_base : forall {X : Type} (ls : list X) (x : X),
     ls <> [] -> switch ls x 0 = x :: (skipn 1 ls).
 Proof. intros. 

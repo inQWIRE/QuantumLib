@@ -9,7 +9,6 @@ Require Export Eigenvectors.
 Require Export Heisenberg. 
 
 
-
 Fixpoint zip {X : Type} (f : X -> X -> X) (As Bs : list X) : list X :=
   match As with
   | [] => Bs
@@ -122,6 +121,11 @@ Proof. intros.
        try lca. 
 Qed.
 
+Lemma translate_coef_nonzero : forall (c : Coef), translate_coef c <> C0.
+Proof. destruct c; simpl; 
+         try (apply C0_fst_neq; simpl; lra);
+         try (apply C0_snd_neq; simpl; lra).
+Qed.
 
 (**********************)
 (* Defining the types *)
@@ -1625,25 +1629,6 @@ Definition ctrl_prog (p : prog) : Prop :=
   | _ => False
   end.
 
-Lemma nth_tensor_inc : forall (n len : nat) (A : list (Square 2)),
-    length A = len -> n < len -> 
-    ⨂ A = (⨂ (firstn n A)) ⊗ (nth n A (Matrix.I 2)) ⊗ (⨂ (skipn (S n) A)).
-Proof. Admitted.
-
-
-(*
-Lemma switch_tensor_inc : forall (n len : nat) (A : vecTypeT len) (x : vecType 2),
-    n < len -> WF_vtt A -> ⨂' (switch A x n) = (⨂' (firstn n A)) ⊗' x ⊗' (⨂' (skipn (S n) A)).
-Proof. intros. 
-       rewrite <- (@big_tensor_simpl n (len - n) (firstn n A) (skipn (S n) A) x).
-       rewrite <- switch_inc.
-       reflexivity. 
-       rewrite H0.
-       assumption. 
-Qed.
-*)
-
-
 
 (** Typing Rules for Tensors *)
 
@@ -1666,41 +1651,347 @@ Definition switch_vType {n} (A : vType n) (a : GType) (bit : nat) : vType n :=
 
 
 
+Definition box {X : Type} (x : X) : list X := [x].
 
-Lemma cons_eq : forall (n m : nat) (p1 p2 : nat -> prog),
-    p1 n = p2 m -> p1 = p2.
-Proof. Admitted.
+Lemma box_simplify : forall {X} (x : X), box x = [x]. Proof. easy. Qed.
+
+Lemma Mscale_to_VTscale : forall {n} (A : Square n) (c : C), [(c .* A)%M] = c · [A].
+Proof. easy. Qed.
 
 
+Lemma big_tensor_cons : forall {n} (A : vecType n) (As : list (vecType n)),
+   ⨂' (A :: As) = A ⊗' (⨂' As).
+Proof. intros. easy. Qed.
 
 
-Lemma tensor_smpl : forall  {prg_len} (bit : nat) p  
-                           (A : vType prg_len) (a : GType),
-    smpl_prog (p bit) -> 
-    (p 0) :' (nth_vType bit A) → (G 1 (p_1, [a])) ->
-    (p bit) :'  A → (switch_vType A a bit).
+Lemma big_kron_to_big_tensor : forall {n} (As : list (Square n)),
+    [⨂ As] = ⨂' (map box As).
+Proof. induction As as [| h]. 
+       - easy. 
+       - simpl map. 
+         simpl big_kron.
+         rewrite big_tensor_cons.
+         rewrite <- IHAs. 
+         rewrite map_length. easy.
+Qed.
+
+
+Lemma switch_out_of_bounds : forall {X : Type} (n : nat) (ls : list X) (x : X),
+  length ls <= n -> switch ls x n = ls.
+Proof. induction n as [| n'].
+       - destruct ls; easy. 
+       - destruct ls. easy. 
+         intros; simpl; rewrite IHn'. 
+         reflexivity. 
+         simpl in H; nia. 
+Qed.
+
+
+Lemma tensor_smpl_H : forall  {prg_len} (bit : nat) 
+                              (A : vType prg_len) (a : GType),
+    WF_vType A ->
+    (H' 0) :' (nth_vType bit A) → (G 1 (p_1, [a])) ->
+    (H' bit) :'  A → (switch_vType A a bit).
 Proof. intros. destruct A; try easy.
-       destruct (p bit) eqn:E; try easy.
-       - apply cons_eq in E. rewrite E in H0.
-         destruct g. simpl in *.
-         unfold progHasSingType in *. 
-         rewrite ite_conv in *.
-         rewrite fgt_conv in *.
-         simpl translate_vecType in *. 
-         unfold translate in *. simpl in *. apply kill_true.
-         destruct H0. unfold translate_prog in *.
+       destruct g. simpl in *.
+       unfold progHasSingType in *. 
+       rewrite ite_conv in *.
+       rewrite fgt_conv in *. 
+       simpl translate_vecType in *. 
+       unfold translate in *.
+       simpl fst in *; simpl snd in *; simpl in H0; destruct H0.       
+       do 2 (rewrite kron_1_r in H0; rewrite Mscale_1_l in H0; rewrite map_length);
+       rewrite switch_len; 
+       unfold WF_GTypeT in *; simpl in H.
+       rewrite <- H. 
+       do 2 (rewrite (@Mscale_to_VTscale (2^(length l)) _)).
+       apply arrow_scale.
+       apply translate_coef_nonzero.
+       rewrite switch_map.
+       simpl; apply kill_true.
+       unfold prog_smpl_app. 
+       destruct (bit <? length l) eqn:E.
+       - apply Nat.ltb_lt in E.
+         rewrite <- (map_length translate_gt _).
+         rewrite big_kron_to_big_tensor.
+         rewrite <- (switch_len bit _ (translate_gt a)).               
+         rewrite big_kron_to_big_tensor.
+         rewrite switch_map.
+         rewrite (switch_tensor_inc bit prg_len _ _).
+         rewrite (nth_tensor_inc bit prg_len _).
+         rewrite switch_len.
+         rewrite map_length.
+         rewrite (easy_pow3 (length l) bit).
+         rewrite firstn_length_le. 
+         rewrite skipn_length.
+         do 2 (rewrite map_length).
+         assert (H' : length l - s bit = length l - bit - 1). { nia. }
+         rewrite H'.
+         apply sgt'_reduce_smpl; try easy.
+         apply (S_tensor_subset _ (map box (map translate_gt l)) _).
+         apply S_big_tensor. intros. 
+         apply in_map_iff in H2; do 2 (destruct H2).
+         apply in_map_iff in H3; do 2 (destruct H3).
+         rewrite <- H3 in H2.
+         rewrite <- H2. easy. 
+         apply firstn_subset.
+         apply (S_tensor_subset _ (map box (map translate_gt l)) _).
+         apply S_big_tensor. intros. 
+         apply in_map_iff in H2; do 2 (destruct H2).
+         apply in_map_iff in H3; do 2 (destruct H3).
+         rewrite <- H3 in H2.
+         rewrite <- H2. easy. 
+         apply skipn_subset.
+         destruct (nth_in_or_default bit (map box (map translate_gt l)) I').
+         apply in_map_iff in i0; destruct i0; destruct H2.
+         apply in_map_iff in H3; do 2 (destruct H3).
+         rewrite <- H3 in H2; rewrite <- H2; easy.
+         rewrite e; easy.
+         auto with unit_db. 
+         destruct (nth_in_or_default bit (map box (map translate_gt l)) I').
+         apply in_map_iff in i0; destruct i0; destruct H2.
+         apply in_map_iff in H3; do 2 (destruct H3).
+         rewrite <- H3 in H2; rewrite <- H2. 
+         unfold uni_vecType. intros. 
+         rewrite box_simplify in H5. simpl in H5.
+         destruct H5. rewrite <- H5. 
+         apply unit_GType. easy. 
+         rewrite e. 
+         auto with univ_db.
+         rewrite box_simplify. unfold uni_vecType. 
+         intros; simpl in H2; destruct H2.
+         rewrite <- H2. 
+         apply unit_GType. easy. 
+         unfold prog_smpl_app in H0; simpl in *.
+         rewrite box_simplify. 
+         rewrite kron_1_l in H0; rewrite kron_1_r in H0.
+         unfold I'. rewrite <- (box_simplify (Matrix.I 2)).
+         rewrite map_nth. 
+         assert (H'' : Matrix.I 2 = translate_gt gI). { easy. }
+         rewrite H''. rewrite map_nth. 
+         rewrite box_simplify. 
+         apply H0. auto with wf_db.
+         do 2 (rewrite map_length).
+         nia. nia. nia. 
+         unfold WF_vtt. 
+         do 2 (rewrite map_length); easy. nia.
+         unfold WF_vtt. 
+         do 2 (rewrite map_length); easy. 
+       - rewrite switch_out_of_bounds.
+         unfold singGateType'; intros. 
+         simpl in *. rewrite Mmult_1_l'; easy.
+         rewrite map_length.
+         unfold Nat.ltb in E. 
+         apply leb_iff_conv in E.
+         nia. 
+Qed.
+
+
+Lemma tensor_smpl_S : forall  {prg_len} (bit : nat) 
+                              (A : vType prg_len) (a : GType),
+    WF_vType A ->
+    (S' 0) :' (nth_vType bit A) → (G 1 (p_1, [a])) ->
+    (S' bit) :'  A → (switch_vType A a bit).
+Proof. intros. destruct A; try easy.
+       destruct g. simpl in *.
+       unfold progHasSingType in *. 
+       rewrite ite_conv in *.
+       rewrite fgt_conv in *. 
+       simpl translate_vecType in *. 
+       unfold translate in *.
+       simpl fst in *; simpl snd in *; simpl in H0; destruct H0.       
+       do 2 (rewrite kron_1_r in H0; rewrite Mscale_1_l in H0; rewrite map_length);
+       rewrite switch_len; 
+       unfold WF_GTypeT in *; simpl in H.
+       rewrite <- H. 
+       do 2 (rewrite (@Mscale_to_VTscale (2^(length l)) _)).
+       apply arrow_scale.
+       apply translate_coef_nonzero.
+       rewrite switch_map.
+       simpl; apply kill_true.
+       unfold prog_smpl_app. 
+       destruct (bit <? length l) eqn:E.
+       - apply Nat.ltb_lt in E.
+         rewrite <- (map_length translate_gt _).
+         rewrite big_kron_to_big_tensor.
+         rewrite <- (switch_len bit _ (translate_gt a)).               
+         rewrite big_kron_to_big_tensor.
+         rewrite switch_map.
+         rewrite (switch_tensor_inc bit prg_len _ _).
+         rewrite (nth_tensor_inc bit prg_len _).
+         rewrite switch_len.
+         rewrite map_length.
+         rewrite (easy_pow3 (length l) bit).
+         rewrite firstn_length_le. 
+         rewrite skipn_length.
+         do 2 (rewrite map_length).
+         assert (H' : length l - s bit = length l - bit - 1). { nia. }
+         rewrite H'.
+         apply sgt'_reduce_smpl; try easy.
+         apply (S_tensor_subset _ (map box (map translate_gt l)) _).
+         apply S_big_tensor. intros. 
+         apply in_map_iff in H2; do 2 (destruct H2).
+         apply in_map_iff in H3; do 2 (destruct H3).
+         rewrite <- H3 in H2.
+         rewrite <- H2. easy. 
+         apply firstn_subset.
+         apply (S_tensor_subset _ (map box (map translate_gt l)) _).
+         apply S_big_tensor. intros. 
+         apply in_map_iff in H2; do 2 (destruct H2).
+         apply in_map_iff in H3; do 2 (destruct H3).
+         rewrite <- H3 in H2.
+         rewrite <- H2. easy. 
+         apply skipn_subset.
+         destruct (nth_in_or_default bit (map box (map translate_gt l)) I').
+         apply in_map_iff in i0; destruct i0; destruct H2.
+         apply in_map_iff in H3; do 2 (destruct H3).
+         rewrite <- H3 in H2; rewrite <- H2; easy.
+         rewrite e; easy.
+         auto with unit_db. 
+         destruct (nth_in_or_default bit (map box (map translate_gt l)) I').
+         apply in_map_iff in i0; destruct i0; destruct H2.
+         apply in_map_iff in H3; do 2 (destruct H3).
+         rewrite <- H3 in H2; rewrite <- H2. 
+         unfold uni_vecType. intros. 
+         rewrite box_simplify in H5. simpl in H5.
+         destruct H5. rewrite <- H5. 
+         apply unit_GType. easy. 
+         rewrite e. 
+         auto with univ_db.
+         rewrite box_simplify. unfold uni_vecType. 
+         intros; simpl in H2; destruct H2.
+         rewrite <- H2. 
+         apply unit_GType. easy. 
+         unfold prog_smpl_app in H0; simpl in *.
+         rewrite box_simplify. 
+         rewrite kron_1_l in H0; rewrite kron_1_r in H0.
+         unfold I'. rewrite <- (box_simplify (Matrix.I 2)).
+         rewrite map_nth. 
+         assert (H'' : Matrix.I 2 = translate_gt gI). { easy. }
+         rewrite H''. rewrite map_nth. 
+         rewrite box_simplify. 
+         apply H0. auto with wf_db.
+         do 2 (rewrite map_length).
+         nia. nia. nia. 
+         unfold WF_vtt. 
+         do 2 (rewrite map_length); easy. nia.
+         unfold WF_vtt. 
+         do 2 (rewrite map_length); easy. 
+       - rewrite switch_out_of_bounds.
+         unfold singGateType'; intros. 
+         simpl in *. rewrite Mmult_1_l'; easy.
+         rewrite map_length.
+         unfold Nat.ltb in E. 
+         apply leb_iff_conv in E.
+         nia. 
+Qed.
+
+
+Lemma tensor_smpl_T : forall  {prg_len} (bit : nat) 
+                              (A : vType prg_len) (a : GType),
+    WF_vType A ->
+    (T' 0) :' (nth_vType bit A) → (G 1 (p_1, [a])) ->
+    (T' bit) :'  A → (switch_vType A a bit).
+Proof. intros. destruct A; try easy.
+       destruct g. simpl in *.
+       unfold progHasSingType in *. 
+       rewrite ite_conv in *.
+       rewrite fgt_conv in *. 
+       simpl translate_vecType in *. 
+       unfold translate in *.
+       simpl fst in *; simpl snd in *; simpl in H0; destruct H0.       
+       do 2 (rewrite kron_1_r in H0; rewrite Mscale_1_l in H0; rewrite map_length);
+       rewrite switch_len; 
+       unfold WF_GTypeT in *; simpl in H.
+       rewrite <- H. 
+       do 2 (rewrite (@Mscale_to_VTscale (2^(length l)) _)).
+       apply arrow_scale.
+       apply translate_coef_nonzero.
+       rewrite switch_map.
+       simpl; apply kill_true.
+       unfold prog_smpl_app. 
+       destruct (bit <? length l) eqn:E.
+       - apply Nat.ltb_lt in E.
+         rewrite <- (map_length translate_gt _).
+         rewrite big_kron_to_big_tensor.
+         rewrite <- (switch_len bit _ (translate_gt a)).               
+         rewrite big_kron_to_big_tensor.
+         rewrite switch_map.
+         rewrite (switch_tensor_inc bit prg_len _ _).
+         rewrite (nth_tensor_inc bit prg_len _).
+         rewrite switch_len.
+         rewrite map_length.
+         rewrite (easy_pow3 (length l) bit).
+         rewrite firstn_length_le. 
+         rewrite skipn_length.
+         do 2 (rewrite map_length).
+         assert (H' : length l - s bit = length l - bit - 1). { nia. }
+         rewrite H'.
+         apply sgt'_reduce_smpl; try easy.
+         apply (S_tensor_subset _ (map box (map translate_gt l)) _).
+         apply S_big_tensor. intros. 
+         apply in_map_iff in H2; do 2 (destruct H2).
+         apply in_map_iff in H3; do 2 (destruct H3).
+         rewrite <- H3 in H2.
+         rewrite <- H2. easy. 
+         apply firstn_subset.
+         apply (S_tensor_subset _ (map box (map translate_gt l)) _).
+         apply S_big_tensor. intros. 
+         apply in_map_iff in H2; do 2 (destruct H2).
+         apply in_map_iff in H3; do 2 (destruct H3).
+         rewrite <- H3 in H2.
+         rewrite <- H2. easy. 
+         apply skipn_subset.
+         destruct (nth_in_or_default bit (map box (map translate_gt l)) I').
+         apply in_map_iff in i0; destruct i0; destruct H2.
+         apply in_map_iff in H3; do 2 (destruct H3).
+         rewrite <- H3 in H2; rewrite <- H2; easy.
+         rewrite e; easy.
+         auto with unit_db. 
+         destruct (nth_in_or_default bit (map box (map translate_gt l)) I').
+         apply in_map_iff in i0; destruct i0; destruct H2.
+         apply in_map_iff in H3; do 2 (destruct H3).
+         rewrite <- H3 in H2; rewrite <- H2. 
+         unfold uni_vecType. intros. 
+         rewrite box_simplify in H5. simpl in H5.
+         destruct H5. rewrite <- H5. 
+         apply unit_GType. easy. 
+         rewrite e. 
+         auto with univ_db.
+         rewrite box_simplify. unfold uni_vecType. 
+         intros; simpl in H2; destruct H2.
+         rewrite <- H2. 
+         apply unit_GType. easy. 
+         unfold prog_smpl_app in H0; simpl in *.
+         rewrite box_simplify. 
+         rewrite kron_1_l in H0; rewrite kron_1_r in H0.
+         unfold I'. rewrite <- (box_simplify (Matrix.I 2)).
+         rewrite map_nth. 
+         assert (H'' : Matrix.I 2 = translate_gt gI). { easy. }
+         rewrite H''. rewrite map_nth. 
+         rewrite box_simplify. 
+         apply H0. auto with wf_db.
+         do 2 (rewrite map_length).
+         nia. nia. nia. 
+         unfold WF_vtt. 
+         do 2 (rewrite map_length); easy. nia.
+         unfold WF_vtt. 
+         do 2 (rewrite map_length); easy. 
+       - rewrite switch_out_of_bounds.
+         unfold singGateType'; intros. 
+         simpl in *. rewrite Mmult_1_l'; easy.
+         rewrite map_length.
+         unfold Nat.ltb in E. 
+         apply leb_iff_conv in E.
+         nia. 
+Qed.
 
 
 
-
-
-
-Admitted.
-
-Lemma tensor_ctrl : forall (prg_len ctrl targ : nat) p  
+Lemma tensor_ctrl : forall (prg_len ctrl targ : nat)   
                            (A : vType prg_len) (a b : GType),
-    (p 0 1) :' (nth_vType ctrl A) .⊗ (nth_vType targ A) → (G 1 (p_1, [a])) .⊗ (G 1 (p_1, [b])) ->
-    (p ctrl targ) :'  A → switch_vType (switch_vType A a ctrl) b targ.
+  (CNOT 0 1) :' (nth_vType ctrl A) .⊗ (nth_vType targ A) → (G 1 (p_1, [a])) .⊗ (G 1 (p_1, [b])) ->
+  (CNOT ctrl targ) :'  A → switch_vType (switch_vType A a ctrl) b targ.
 Proof. Admitted. 
 
                 
@@ -1794,7 +2085,7 @@ Lemma eq_arrow_r : forall {n} (g : prog) (A B B' : vType n),
     g :' A → B ->
     B ≡ B' ->
     g :' A → B'.
-Proof. intros. apply (eq_type_conv_output g A B B'); easy.
+Proof. intros. apply (eq_type_conv_output g A B B'); easy. Qed.
 
 (* Tactics *)
 
@@ -1861,20 +2152,24 @@ Ltac type_check_base' :=
              (try (eapply TypesI)); 
              solve [eauto with base_types_db]
          | |- ?g (S ?n) ?m :' ?T => eapply (tensor_ctrl (S n) m _ _ _) 
-         | |- ?g (S ?n) :' ?T => eapply (tensor_smpl (S n) _ _ _)
+         | |- H' (S ?n) :' ?T => eapply (tensor_smpl_H (S n) _ _ _); auto with wfvt_db
+         | |- S' (S ?n) :' ?T => eapply (tensor_smpl_S (S n) _ _ _); auto with wfvt_db
+         | |- T' (S ?n) :' ?T => eapply (tensor_smpl_T (S n) _ _ _); auto with wfvt_db
          | |- ?g :' ?A .* ?B → _ => apply arrow_mul
          | |- ?g :' (?A .* ?B) .⊗ I → _ => apply prog_decompose_tensor_mult_l
          | |- ?g :' I .⊗ (?A .* ?B) → _ => apply prog_decompose_tensor_mult_r
          | |- ?g :' ?A .⊗ ?B → _  => tryif (is_I A + is_I B) then fail else
              apply prog_decompose_tensor
          | |- ?A ≡ ?B => try easy
+         | |- WF_vType ?T => auto with wfvt_db
          end.
 
 
 
 Lemma CZTypes : CZ 0 1 :' (X .⊗ I → X .⊗ Z) ∩ (I .⊗ X → Z .⊗ X) ∩
                           (Z .⊗ I → Z .⊗ I) ∩ (I .⊗ Z → I .⊗ Z).
-Proof. type_check_base'. Qed.
+Proof. type_check_base'. 
+Qed.
 
 
 
