@@ -1815,6 +1815,41 @@ Proof. intros.
 Qed.
 
 
+
+Lemma nth_switch_hit : forall {X : Type} (n : nat) (ls : list X) (x def : X),
+    n < length ls ->
+    nth n (switch ls x n) def = x.
+Proof. induction n as [| n'].
+       - destruct ls; easy.
+       - intros. 
+         destruct ls; try easy.
+         apply IHn'. 
+         simpl in H.
+         nia. 
+Qed.
+
+
+
+Lemma nth_switch_miss : forall {X : Type} (sn n : nat) (ls : list X) (x def : X),
+    n <> sn ->
+    nth n (switch ls x sn) def = nth n ls def.
+Proof. induction sn as [| sn'].
+       - destruct ls.
+         easy.
+         destruct n; easy.
+       - intros. 
+         destruct n.
+         + destruct ls; easy.
+         + assert (H' : n <> sn'). { nia. }
+           destruct ls.                                   
+           easy. simpl.  
+           apply IHsn'.
+           apply H'.
+Qed.
+
+
+ 
+
 Lemma switch_inc_helper : forall {X : Type} (n : nat) (l1 l2 : list X) (x : X),
     length l1 = n -> 
     switch (l1 ++ l2) x n = l1 ++ switch l2 x 0.
