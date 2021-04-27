@@ -9,43 +9,6 @@ Require Export Eigenvectors.
 Require Export Heisenberg. 
 
 
-Fixpoint zip {X : Type} (f : X -> X -> X) (As Bs : list X) : list X :=
-  match As with
-  | [] => Bs
-  | (a :: As') => 
-    match Bs with 
-    | [] => As
-    | (b :: Bs') => (f a b :: zip f As' Bs')
-    end
-  end.
-
-
-Lemma zip_len_pres : forall {X : Type} (f : X -> X -> X) (n : nat) (As Bs : list X),
-  length As = n -> length Bs = n -> length (zip f As Bs) = n.
-Proof. induction n as [| n'].
-       - intros. 
-         destruct As. easy. easy.
-       - intros. 
-         destruct As. easy.
-         destruct Bs. easy.
-         simpl in *. 
-         rewrite IHn'.
-         reflexivity. 
-         nia. nia.
-Qed.
-
-
-Lemma zip_app_product : forall {X : Type} (f : X -> X -> X) (n : nat) (l0s l1s l2s l3s : list X),
-  length l0s = n -> length l1s = n -> 
-  (zip f l0s l1s) ++ (zip f l2s l3s) = zip f (l0s ++ l2s) (l1s ++ l3s).
-Proof. induction n as [| n'].
-       - intros. destruct l0s; destruct l1s; easy. 
-       - intros. destruct l0s; destruct l1s; try easy.
-         simpl in *. 
-         rewrite <- IHn'; try nia. 
-         reflexivity. 
-Qed.
-
 
 (************************)
 (* Defining coeficients *)
@@ -793,7 +756,41 @@ Add Parametric Relation n : (vType n) (@eq_vType n)
     as eq_vType_rel.
 
 
-Lemma kron_compat : forall {n} (A A' B B' : vType n),
+
+Lemma hd_inj : forall (X : Type) (a b : X), [a] = [b] <-> a = b.
+Proof. split. intros. 
+       assert (H' : forall (X : Type) (a : X), [] ++ [a] = [a]). { easy. }  
+       rewrite <- H' in H.
+       rewrite <- (H' _ b) in H.
+       apply app_inj_tail in H.
+       easy.
+       intros. 
+       rewrite H; easy.
+Qed.
+
+
+
+
+Lemma mul_compat : forall {n} (A A' B B' : vType n),
+    Sing_vt A -> Sing_vt A' ->
+    Sing_vt B -> Sing_vt B' ->
+    WF_vType A -> WF_vType A' ->
+    WF_vType B -> WF_vType B' ->  
+    A ≡ A' -> B ≡ B' -> A .* B ≡ A' .* B'.
+Proof.
+  intros. unfold eq_vType in *.
+  destruct A; destruct A'; destruct B; destruct B'; try easy.
+  simpl in *. unfold WF_GTypeT in *.
+  rewrite translate_Mmult; try easy.
+  rewrite translate_Mmult; try easy.
+  apply -> hd_inj in H7.
+  apply -> hd_inj in H8.
+  rewrite H7, H8.
+  reflexivity.
+Qed.
+
+
+Lemma kron_compat : forall (n m : nat) (A A' : vType n) (B B' : vType m),
     Sing_vt A -> Sing_vt A' ->
     Sing_vt B -> Sing_vt B' ->
     WF_vType A -> WF_vType A' ->
@@ -805,14 +802,8 @@ Proof.
   simpl in *. unfold WF_GTypeT in *.
   rewrite translate_kron; try easy.
   rewrite translate_kron; try easy.
-  assert (H' : forall {X} (a b : X), [a] = [b] -> a = b). 
-  { intros. assert (H'' : forall {X} (a : X), [] ++ [a] = [a]). { easy. }  
-    rewrite <- H'' in H9.
-    rewrite <- (H'' _ b) in H9.
-    apply app_inj_tail in H9.
-    easy. }
-  apply H' in H7.
-  apply H' in H8.
+  apply -> hd_inj in H7.
+  apply -> hd_inj in H8.
   rewrite H7, H8.
   reflexivity.
 Qed.
@@ -2186,8 +2177,10 @@ Ltac is_prog2 A :=
 
 
 Ltac simp_switch :=  
-  repeat (rewrite nth_vswitch_miss; try easy; try nia; auto with gt_db); 
-  repeat (rewrite nth_vswitch_hit; try easy; try nia; auto with gt_db). 
+  repeat (
+      try (rewrite nth_vswitch_hit; try easy; try lia; auto with gt_db);
+      try (rewrite nth_vswitch_miss; try easy; try lia; auto with gt_db)). 
+  
 
 
 Ltac expand_prog := match goal with
@@ -2239,8 +2232,10 @@ Ltac type_check_base' :=
          | |- ?g 0 :' ?A → ?B => tryif is_evar A then fail else
              (try (eapply TypesI)); 
              solve [eauto with base_types_db]
-         | |- ?g (S ?n) ?m :' ?T => simp_switch; eapply tensor_ctrl'
-         | |- H' (S ?n) :' ?T => simp_switch; eapply tensor_smpl'; auto with wfvt_db
+         | |- ?g (S ?n) ?m :' ?T => eapply tensor_ctrl'; simp_switch
+         | |- ?g 0 (S (S ?m)) :' ?T => eapply tensor_ctrl'; simp_switch
+         | |- H' (S ?n) :' ?T => eapply tensor_smpl'; auto with wfvt_db; simp_switch
+         | |- ?g :' nth_vType _ _ → _ => simp_switch 
          | |- ?g :' ?A .* ?B → _ => apply arrow_mul
          | |- ?g :' (?A .* ?B) .⊗ I → _ => apply prog_decompose_tensor_mult_l
          | |- ?g :' I .⊗ (?A .* ?B) → _ => apply prog_decompose_tensor_mult_r
@@ -2269,18 +2264,101 @@ Notation decode := ((CNOT 2 3);; (H' 2)).
 Notation superdense := (bell00;; encode;; decode).
 
 
+Check Heisenberg.S'.
+
 
 Lemma superdenseTypesQPL : superdense :' (Z .⊗ Z .⊗ Z .⊗ Z → I .⊗ I .⊗ Z .⊗ Z).
-Proof. repeat expand_prog.
-       type_check_base.
-       type_check_base.
-       type_check_base.
+Proof. repeat expand_prog. 
+       type_check_base'.
+       type_check_base'.
+       type_check_base'.
+       type_check_base'.
+       3 : { rewrite mul_compat;
+             try rewrite mul_tensor_dist;
+             try easy; auto with wfvt_db. }
+       all : auto with gt_db.
+       type_check_base'.
+       type_check_base'.
+        3 : { rewrite mul_compat;
+             try rewrite mul_tensor_dist;
+             try easy; auto with wfvt_db. 
+              4 : { rewrite mul_compat;
+                    try rewrite mul_tensor_dist;
+                    try easy; auto with wfvt_db. }
+              all : auto with wfvt_db. }
+        all : auto with gt_db.
+        type_check_base'.
+        3 : { rewrite mul_compat;
+             try rewrite mul_tensor_dist;
+             try easy; auto with wfvt_db. 
+              4 : { rewrite mul_compat;
+                    try rewrite mul_tensor_dist;
+                    try easy; auto with wfvt_db. 
+                    4 : rewrite mul_compat;
+                      try rewrite mul_tensor_dist;
+                      try easy; auto with wfvt_db. 
+                    all : auto with wfvt_db. }
+              all : auto with wfvt_db. }
+        all : auto with gt_db.
+        type_check_base'.
+        unfold eq_vType.
+        simpl switch_vType'.
+        unfold translate. simpl.
+        apply hd_inj.
+        crunch_matrix.
+try easy.
+
+       type_check_base'.
+
+       2 : { simp_switch.
+
+
+rewrite nth_vswitch_hit. try easy; try lia; auto with gt_db).
+  repeat (rewrite nth_vswitch_miss; try easy; try lia; auto with gt_db). 
+
+match goal with
+         | |- ?g :' nth_vType ?n (switch_vType' _ _ ?n) → _ => 
+                rewrite nth_vswitch_hit; try easy; try lia; auto with gt_db 
+         | |- ?g :' nth_vType ?n (switch_vType' _ _ ?m) → _ => 
+                rewrite nth_vswitch_miss; try easy; try nia; auto with gt_db
+end.
+match goal with
+         | |- ?g :' nth_vType ?n (switch_vType' _ _ ?n) → _ => 
+                rewrite nth_vswitch_hit; try easy; try lia; auto with gt_db 
+         | |- ?g :' nth_vType ?n (switch_vType' _ _ ?m) → _ => 
+                rewrite nth_vswitch_miss; try easy; try nia; auto with gt_db
+end.
+
+
+
+nth_vType bit (switch_vType' A a bit) = a.
+
+
+       => tryif is_evar A then fail else auto 50 with svt_db
+         | |- WF_vType ?A       => tryif is_evar A then fail else auto with wfvt_db
+         | |- ?g :' ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
+         | |- ?g :' - ?A → ?B    => apply arrow_neg
+         | |- ?g :' i ?A → ?B    => apply arrow_i
+         | |- context[?A ⊗
+
+
+
+       econstructor; reflexivity.
+
+
+       rewrite nth_vswitch_miss; try easy; try nia; auto with gt_db.
+       rewrite nth_vswitch_hit; [| nia | | |]. try easy; try nia; auto with gt_db. 
+       
+
+
+rewrite nth_vswitch_hit; try easy; try lia; auto with gt_db. 
+
+
        simpl nth_vType.
        apply arrow_mul_1.
        solve [eauto with base_types_db].  
        solve [eauto with base_types_db].
-       eapply tensor_ctrl.
-
+       eapply tensor_ctrl. 
        simpl nth_vType. 
        type_check_base'.
 
