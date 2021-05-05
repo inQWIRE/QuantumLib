@@ -1378,6 +1378,7 @@ Definition norm {n} (ψ : Vector n) : R :=
   sqrt (fst ((ψ† × ψ) O O)).
 
 
+
 Lemma norm_real : forall {n} (v : Vector n), snd ((v† × v) 0%nat 0%nat) = 0%R. 
 Proof. intros. unfold Mmult, adjoint.
        rewrite Csum_snd_0. easy.
@@ -1387,8 +1388,10 @@ Proof. intros. unfold Mmult, adjoint.
 Qed.
 
 
+
 Definition normalize {n} (ψ : Vector n) :=
   / (norm ψ) .* ψ.
+
 
 Lemma inner_product_ge_0 : forall {d} (ψ : Vector d),
   0 <= fst ((ψ† × ψ) O O).
@@ -1402,6 +1405,7 @@ Proof.
   autorewrite with R_db.
   apply Rmult_le_pos; apply Cmod_ge_0.
 Qed.
+
 
 Lemma norm_scale : forall {n} c (v : Vector n), norm (c .* v) = ((Cmod c) * norm v)%R.
 Proof.
@@ -1420,6 +1424,65 @@ Proof.
   apply Rplus_le_le_0_compat; apply pow2_ge_0.
   lra.
 Qed.
+
+
+Lemma div_real : forall (c : C),
+  snd c = 0 -> snd (/ c) = 0.
+Proof. intros. 
+       unfold Cinv. 
+       simpl. 
+       rewrite H. lra. 
+Qed.
+
+
+Lemma Cmod_real : forall (c : C), 
+  fst c >= 0 -> snd c = 0 -> Cmod c = fst c. 
+Proof. intros. 
+       unfold Cmod. 
+       rewrite H0.
+       simpl. 
+       autorewrite with R_db.
+       apply sqrt_square.
+       lra. 
+Qed.
+
+
+Lemma normalized_norm_1 : forall {n} (v : Vector n),
+  norm v <> 0 -> norm (normalize v) = 1.
+Proof. intros. 
+       unfold normalize.
+       distribute_scale. 
+       rewrite norm_scale.  
+       rewrite Cmod_real. 
+       simpl.  
+       autorewrite with R_db.
+       rewrite Rmult_comm.
+       rewrite Rinv_mult_distr; try easy. 
+       rewrite <- Rmult_comm.
+       rewrite <- Rmult_assoc.
+       rewrite Rinv_r; try easy.
+       autorewrite with R_db.
+       reflexivity. 
+       unfold Cinv.
+       simpl. 
+       autorewrite with R_db.
+       rewrite Rinv_mult_distr; try easy. 
+       rewrite <- Rmult_assoc.
+       rewrite Rinv_r; try easy.
+       autorewrite with R_db.
+       assert (H' : norm v >= 0).
+       { assert (H'' : 0 <= norm v).
+         { apply sqrt_pos. }
+         lra. }
+       destruct H' as [H0 | H0].
+       left.
+       assert (H1 : 0 < norm v). { lra. }
+       apply Rinv_0_lt_compat in H1.
+       lra. easy. 
+       apply div_real.
+       easy. 
+Qed.
+
 
 (** Density matrices and superoperators **)
 

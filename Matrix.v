@@ -558,6 +558,25 @@ Proof.
     apply Rplus_le_compat; easy.
 Qed.
 
+
+Lemma Csum_gt_0 : forall f n, (forall x, 0 <= fst (f x)) -> 
+                              (exists y : nat, (y < n)%nat /\ 0 < fst (f y)) ->
+                              0 < fst (Csum f n).
+Proof.
+  intros f n H [y [H0 H1]].
+  induction n.
+  - simpl. lia. 
+  - simpl in *.
+    bdestruct (y <? n)%nat; bdestruct (y =? n)%nat; try lia. 
+    + assert (H' : 0 <= fst (f n)). { apply H. } 
+      apply IHn in H2. lra. 
+    + apply (Csum_ge_0 f n) in H.
+      rewrite H3 in H1.
+      lra. 
+Qed.
+
+
+
 Lemma Csum_member_le : forall (f : nat -> C) (n : nat), (forall x, 0 <= fst (f x)) -> 
                       (forall x, (x < n)%nat -> fst (f x) <= fst (Csum f n)).
 Proof.
