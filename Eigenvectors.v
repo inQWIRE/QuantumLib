@@ -693,13 +693,12 @@ Proof. intros. unfold get_vec, e_i.
        - simpl. destruct (y =? 0). unfold I.
          bdestruct (x =? i). easy.
          reflexivity. reflexivity.
-Qed.
+Qed. 
 
 Lemma invertible_implies_linind : forall {n} (X : Square n),
-  (exists X', X × X' = I n) -> linearly_independent X.
+  (exists X', X' × X = I n) -> linearly_independent X.
 Proof. intros. destruct H.
        unfold linearly_independent. intros.
-       apply Minv_flip in H. 
        rewrite <- (Mmult_1_l' a); 
        rewrite <- H.
        rewrite Mmult_assoc, H1.
@@ -1515,9 +1514,15 @@ Proof. induction size.
          apply IHsize; try lia; easy.
 Qed.
 
+
 (**********************************************************************)
 (* Defining "commuter" matrices which will be used to prove Minv_flip *)
 (**********************************************************************)
+
+Definition commuter {n} (A : Square n) : Prop := 
+  forall B, A × B = B × A.
+
+
 
 
 
@@ -1849,7 +1854,7 @@ Proof. intros.
        intros. bdestruct (x0 <? 0); try lia; try easy.
 Qed.
 
-(*
+(* More general case: 
 Lemma reduce_mul : forall {n} (A : Square (S n)) (v : Vector (S n)) (x : nat),
   get_vec x A = @e_i (S n) x -> (reduce A x x) × (reduce_row v x) = reduce_row (A × v) x.
 Proof. *)

@@ -304,6 +304,8 @@ Proof.
   apply injective_projections ; simpl ; ring.
 Qed.
 
+
+
 (* I'll be leaving out mixins and Canonical Structures :
 Definition C_AbelianGroup_mixin :=
   AbelianGroup.Mixin _ _ _ _ Cplus_comm Cplus_assoc Cplus_0_r Cplus_opp_r.
@@ -464,6 +466,25 @@ Lemma C0_snd_neq : forall (c : C), snd c <> 0 -> c <> 0.
 Proof. intros c. intros N E. apply N. rewrite E. reflexivity. Qed.
 Lemma RtoC_neq : forall (r : R), r <> 0 -> RtoC r <> 0. 
 Proof. intros. apply C0_fst_neq. easy. Qed.
+
+Lemma C1_neq_C0 : C1 <> C0.
+Proof. apply C0_fst_neq.
+       simpl. 
+       apply R1_neq_R0.
+Qed.
+
+
+Lemma nonzero_div_nonzero : forall c : C, c <> C0 -> / c <> C0.
+Proof. intros. 
+       unfold not; intros. 
+        assert (H' : (c * (/ c) = c * C0)%C). 
+        { rewrite H0; easy. } 
+        rewrite Cinv_r in H'; try easy.
+        rewrite Cmult_0_r in H'.
+        apply C1_neq_C0; easy.
+Qed.
+
+
 
 Lemma Cinv_mult_distr : forall c1 c2 : C, c1 <> 0 -> c2 <> 0 -> / (c1 * c2) = / c1 * / c2.
 Proof.
