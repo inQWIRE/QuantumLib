@@ -2713,7 +2713,8 @@ Proof. induction m as [| m'].
              assert (H1' := (@WF_reduce_row (S n') (S m'))).
              rewrite easy_sub in *.
              apply H1'; try lia; easy. }
-
+           unfold linearly_dependent in H'.
+           destruct H' as [a [H2 [H3 H4]]].
              apply WF_reduce_row.
              apply lin_dep_col_append_n.
 
