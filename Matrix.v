@@ -1317,12 +1317,126 @@ Proof. reflexivity. Qed.
 Lemma Mscale_adj : forall (m n : nat) (x : C) (A : Matrix m n),
     (x .* A)† = x^* .* A†.
 Proof.
-  intros m n x A.
+  intros m n xtranspose A.
   unfold scale, adjoint.
   prep_matrix_equality.
   rewrite Cconj_mult_distr.          
   reflexivity.
 Qed.
+
+
+Lemma Mplus_transpose : forall (m n : nat) (A : Matrix m n) (B : Matrix m n),
+  (A .+ B)⊤ = A⊤ .+ B⊤.
+Proof. reflexivity. Qed.
+
+Lemma Mmult_transpose : forall (m n o : nat) (A : Matrix m n) (B : Matrix n o),
+      (A × B)⊤ = B⊤ × A⊤.
+Proof.
+  intros m n o A B.
+  unfold Mmult, transpose.
+  prep_matrix_equality.
+  apply Csum_eq.  
+  apply functional_extensionality. intros z.
+  rewrite Cmult_comm.
+  reflexivity.
+Qed.
+
+Lemma kron_transpose : forall (m n o p : nat) (A : Matrix m n) (B : Matrix o p ),
+  (A ⊗ B)⊤ = A⊤ ⊗ B⊤.
+Proof. reflexivity. Qed.
+
+
+Lemma Mplus_adjoint : forall (m n : nat) (A : Matrix m n) (B : Matrix m n),
+  (A .+ B)† = A† .+ B†.
+Proof.  
+  intros m n A B.
+  unfold Mplus, adjoint.
+  prep_matrix_equality.
+  rewrite Cconj_plus_distr.
+  reflexivity.
+Qed.
+
+Lemma Mmult_adjoint : forall {m n o : nat} (A : Matrix m n) (B : Matrix n o),
+      (A × B)† = B† × A†.
+Proof.
+  intros m n o A B.
+  unfold Mmult, adjoint.
+  prep_matrix_equality.
+  rewrite Csum_conj_distr.
+  apply Csum_eq.  
+  apply functional_extensionality. intros z.
+  rewrite Cconj_mult_distr.
+  rewrite Cmult_comm.
+  reflexivity.
+Qed.
+
+Lemma kron_adjoint : forall {m n o p : nat} (A : Matrix m n) (B : Matrix o p),
+  (A ⊗ B)† = A† ⊗ B†.
+Proof. 
+  intros. unfold adjoint, kron. 
+  prep_matrix_equality.
+  rewrite Cconj_mult_distr.
+  reflexivity.
+Qed.
+
+Lemma id_kron : forall (m n : nat),  I m ⊗ I n = I (m * n).
+Proof.
+  intros.
+  unfold I, kron.
+  prep_matrix_equality.
+  bdestruct (x =? y); rename H into Eq; subst.
+  + repeat rewrite <- beq_nat_refl; simpl.
+    destruct n.
+    - simpl.
+      rewrite mult_0_r.
+      bdestruct (y <? 0); try lia.
+      autorewrite with C_db; reflexivity.
+    - bdestruct (y mod S n <? S n). 
+      2: specialize (Nat.mod_upper_bound y (S n)); intros; lia. 
+      rewrite Cmult_1_r.
+      destruct (y / S n <? m) eqn:L1, (y <? m * S n) eqn:L2; trivial.
+      * apply Nat.ltb_lt in L1. 
+        apply Nat.ltb_nlt in L2. 
+        contradict L2. 
+        clear H.
+        (* Why doesn't this lemma exist??? *)
+        destruct m.
+        lia.
+        apply Nat.div_small_iff. 
+        simpl. apply Nat.neq_succ_0. (* `lia` will solve in 8.11+ *)
+        apply Nat.div_small in L1.
+        rewrite Nat.div_div in L1; try lia.
+        rewrite mult_comm.
+        assumption.
+      * apply Nat.ltb_nlt in L1. 
+        apply Nat.ltb_lt in L2. 
+        contradict L1. 
+        apply Nat.div_lt_upper_bound. lia.
+        rewrite mult_comm.
+        assumption.
+  + simpl.
+    bdestruct (x / n =? y / n); simpl; try lca.
+    bdestruct (x mod n =? y mod n); simpl; try lca.
+    destruct n; try lca.    
+    contradict Eq.
+    rewrite (Nat.div_mod x (S n)) by lia.
+    rewrite (Nat.div_mod y (S n)) by lia.
+    rewrite H, H0; reflexivity.
+Qed.
+
+
+(* this was origionally with the other Msum stuff, but I needed it earlier... *)
+Lemma Msum_Csum : forall {d1 d2} n (f : nat -> Matrix d1 d2) i j,
+  Msum n f i j = Csum (fun x => f x i j) n.
+Proof.
+  intros. 
+  induction n; simpl.
+  reflexivity.
+  unfold Mplus.
+  rewrite IHn.
+  reflexivity.
+Qed.
+
 
 
 (*****************************************************)
@@ -1379,6 +1493,21 @@ Definition smash {n m1 m2} (T1 : Matrix n m1) (T2 : Matrix n m2) : Matrix n (m1 
   fun i j => if j <? m1 then T1 i j else T2 i (j - m1).
 
 
+Definition col_wedge {n m} (T : Matrix n m) (v : Vector n) (spot : nat) : Matrix n (S m) :=
+  fun i j => if j <? spot 
+             then T i j
+             else if j =? spot
+                  then v i 0
+                  else T i (j-1).
+
+Definition row_wedge {n m} (T : Matrix n m) (v : Matrix 1 m) (spot : nat) : Matrix (S n) m :=
+  fun i j => if i <? spot 
+             then T i j
+             else if i =? spot
+                  then v 0 j
+                  else T (i-1) j.
+
+
 Definition col_swap {n m : nat} (S : Matrix n m) (x y : nat) : Matrix n m := 
   fun i j => if (j =? x) 
              then S i y
@@ -1417,28 +1546,44 @@ Definition row_add {n m : nat} (S : Matrix n m) (row to_add : nat) (a : C) : Mat
 
 
 (* generalizing col_add *)
-Definition gen_new_vec (n m size : nat) (S : Matrix n m) (as' : Vector size) : Vector n :=
-  Msum size (fun i => (as' i 0) .* (get_vec i S)).
+Definition gen_new_vec (n m : nat) (S : Matrix n m) (as' : Vector m) : Vector n :=
+  Msum m (fun i => (as' i 0) .* (get_vec i S)).
 
-Definition gen_new_row (n m size : nat) (S : Matrix n m) (as' : Matrix 1 size) : Matrix 1 m :=
-  Msum size (fun i => (as' 0 i) .* (get_row i S)).
+Definition gen_new_row (n m : nat) (S : Matrix n m) (as' : Matrix 1 n) : Matrix 1 m :=
+  Msum n (fun i => (as' 0 i) .* (get_row i S)).
 
-Definition col_add_many {n m} (col size : nat) (as' : Vector size) (S : Matrix n m) : Matrix n m :=
+(* adds all columns to single column *)
+Definition col_add_many {n m} (col : nat) (as' : Vector m) (S : Matrix n m) : Matrix n m :=
   fun i j => if (j =? col) 
-             then (S i j + (gen_new_vec n m size S as') i 0)%C
+             then (S i j + (gen_new_vec n m S as') i 0)%C
              else S i j.
 
-Definition row_add_many {n m} (row size : nat) (as' : Matrix 1 size) (S : Matrix n m) : Matrix n m :=
+Definition row_add_many {n m} (row : nat) (as' : Matrix 1 n) (S : Matrix n m) : Matrix n m :=
   fun i j => if (i =? row) 
-             then (S i j + (gen_new_row n m size S as') 0 j)%C
+             then (S i j + (gen_new_row n m S as') 0 j)%C
              else S i j.
 
+(* adds single column to each other column *)
 Definition col_add_each {n m} (col : nat) (as' : Matrix 1 m) (S : Matrix n m) : Matrix n m := 
   S .+ ((get_vec col S) × as').
 
 
 Definition row_add_each {n m} (row : nat) (as' : Vector n) (S : Matrix n m) : Matrix n m := 
   S .+ (as' × get_row row S).
+
+
+Definition make_col_zero {n m} (col : nat) (S : Matrix n m) : Matrix n m :=
+  fun i j => if (j =? col) 
+             then C0
+             else S i j.
+
+Definition make_row_zero {n m} (row : nat) (S : Matrix n m) : Matrix n m :=
+  fun i j => if (i =? row) 
+             then C0
+             else S i j.
+
+Definition make_WF {n m} (S : Matrix n m) : Matrix n m :=
+  fun i j => if (i <? n) && (j <? m) then S i j else C0.
 
 
 (* proving lemmas about these new functions *)
@@ -1590,8 +1735,8 @@ Proof. unfold WF_Matrix, row_add in *.
 Qed.
 
 
-Lemma WF_gen_new_vec : forall {n m} (size : nat) (S : Matrix n m) (as' : Vector size),
-  WF_Matrix S -> WF_Matrix (gen_new_vec n m size S as').
+Lemma WF_gen_new_vec : forall {n m} (S : Matrix n m) (as' : Vector m),
+  WF_Matrix S -> WF_Matrix (gen_new_vec n m S as').
 Proof. intros.
        unfold gen_new_vec.
        apply WF_Msum; intros. 
@@ -1601,8 +1746,8 @@ Proof. intros.
 Qed.
 
 
-Lemma WF_gen_new_row : forall {n m} (size : nat) (S : Matrix n m) (as' : Matrix 1 size),
-  WF_Matrix S -> WF_Matrix (gen_new_row n m size S as').
+Lemma WF_gen_new_row : forall {n m} (S : Matrix n m) (as' : Matrix 1 n),
+  WF_Matrix S -> WF_Matrix (gen_new_row n m S as').
 Proof. intros.
        unfold gen_new_row.
        apply WF_Msum; intros. 
@@ -1611,26 +1756,26 @@ Proof. intros.
        easy.
 Qed.
 
-Lemma WF_col_add_many : forall {n m} (col size : nat) (as' : Vector size) (S : Matrix n m),
-  col < m -> size < m -> WF_Matrix S -> WF_Matrix (col_add_many col size as' S).
+Lemma WF_col_add_many : forall {n m} (col : nat) (as' : Vector m) (S : Matrix n m),
+  col < m -> WF_Matrix S -> WF_Matrix (col_add_many col as' S).
 Proof. unfold WF_Matrix, col_add_many.
        intros. 
        bdestruct (y =? col).
-       assert (H4 := (WF_gen_new_vec size S as')).
-       rewrite H4, H1; try easy.
+       assert (H4 := (WF_gen_new_vec S as')).
+       rewrite H4, H0; try easy.
        lca. destruct H2; lia. 
-       rewrite H1; easy.
+       rewrite H0; easy.
 Qed.
 
-Lemma WF_row_add_many : forall {n m} (row size : nat) (as' : Matrix 1 size) (S : Matrix n m),
-  row < n -> size < n -> WF_Matrix S -> WF_Matrix (row_add_many row size as' S).
+Lemma WF_row_add_many : forall {n m} (row : nat) (as' : Matrix 1 n) (S : Matrix n m),
+  row < n -> WF_Matrix S -> WF_Matrix (row_add_many row as' S).
 Proof. unfold WF_Matrix, row_add_many.
        intros. 
        bdestruct (x =? row).
-       assert (H4 := (WF_gen_new_row size S as')).
-       rewrite H4, H1; try easy.
+       assert (H4 := (WF_gen_new_row S as')).
+       rewrite H4, H0; try easy.
        lca. destruct H2; lia. 
-       rewrite H1; easy.
+       rewrite H0; easy.
 Qed.
 
 
@@ -1659,6 +1804,37 @@ Proof. unfold WF_Matrix in *.
          bdestruct (x =? n); easy. 
 Qed.
 
+
+Lemma WF_col_wedge : forall {n m} (T : Matrix n m) (v : Vector n) (spot : nat),
+  spot <= m -> WF_Matrix T -> WF_Matrix v -> WF_Matrix (col_wedge T v spot).
+Proof. unfold WF_Matrix in *.
+       intros; destruct H2 as [H2 | H2]. 
+       - unfold col_wedge.
+         rewrite H0, H1; try lia. 
+         rewrite H0; try lia. 
+         bdestruct (y <? spot); bdestruct (y =? spot); easy. 
+       - unfold col_wedge.
+         bdestruct (y <? spot); bdestruct (y =? spot); try lia. 
+         rewrite H0; try lia. 
+         easy.  
+Qed.
+
+
+Lemma WF_row_wedge : forall {n m} (T : Matrix n m) (v : Matrix 1 m) (spot : nat),
+  spot <= n -> WF_Matrix T -> WF_Matrix v -> WF_Matrix (row_wedge T v spot).
+Proof. unfold WF_Matrix in *.
+       intros; destruct H2 as [H2 | H2]. 
+       - unfold row_wedge.
+         bdestruct (x <? spot); bdestruct (x =? spot); try lia. 
+         rewrite H0; try lia. 
+         easy.  
+       - unfold row_wedge.
+         rewrite H0, H1; try lia. 
+         rewrite H0; try lia. 
+         bdestruct (x <? spot); bdestruct (x =? spot); easy. 
+Qed.
+
+
 Lemma WF_smash : forall {n m1 m2} (T1 : Matrix n m1) (T2 : Matrix n m2),
   WF_Matrix T1 -> WF_Matrix T2 -> WF_Matrix (smash T1 T2).
 Proof. unfold WF_Matrix, smash in *.
@@ -1669,9 +1845,54 @@ Proof. unfold WF_Matrix, smash in *.
 Qed.
 
 
+Lemma WF_col_add_each : forall {n m} (col : nat) (as' : Matrix 1 m) (S : Matrix n m),
+  WF_Matrix S -> WF_Matrix as' -> WF_Matrix (col_add_each col as' S).
+Proof. intros.
+       unfold col_add_each.
+       apply WF_plus; try easy;
+       apply WF_mult; try easy;
+       apply WF_get_vec; easy.
+Qed.
+
+Lemma WF_row_add_each : forall {n m} (row : nat) (as' : Vector n) (S : Matrix n m),
+  WF_Matrix S -> WF_Matrix as' -> WF_Matrix (row_add_each row as' S).
+Proof. intros.
+       unfold row_add_each.
+       apply WF_plus; try easy;
+       apply WF_mult; try easy;
+       apply WF_get_row; easy.
+Qed.
+
+Lemma WF_make_col_zero : forall {n m} (col : nat) (S : Matrix n m),
+  WF_Matrix S -> WF_Matrix (make_col_zero col S).
+Proof. unfold make_col_zero, WF_Matrix.
+       intros. 
+       rewrite H; try easy.
+       bdestruct (y =? col); easy.
+Qed.
+
+Lemma WF_make_row_zero : forall {n m} (row : nat) (S : Matrix n m),
+  WF_Matrix S -> WF_Matrix (make_row_zero row S).
+Proof. unfold make_row_zero, WF_Matrix.
+       intros. 
+       rewrite H; try easy.
+       bdestruct (x =? row); easy.
+Qed.
+
+Lemma WF_make_WF : forall {n m} (S : Matrix n m), WF_Matrix (make_WF S).
+Proof. intros. 
+       unfold WF_Matrix, make_WF; intros. 
+       destruct H as [H | H].
+       bdestruct (x <? n); try lia; easy. 
+       bdestruct (y <? m); bdestruct (x <? n); try lia; easy.
+Qed.
+
+
 Hint Resolve WF_get_vec WF_get_row WF_reduce_row WF_reduce_col WF_reduce_vecn WF_reduce : wf_db.
 Hint Resolve WF_col_swap WF_row_swap WF_col_scale WF_row_scale WF_col_add WF_row_add  : wf_db.
-Hint Resolve WF_col_add_many WF_row_add_many WF_col_append WF_row_append WF_smash : wf_db.
+Hint Resolve WF_gen_new_vec WF_gen_new_row WF_col_add_many WF_row_add_many : wf_db.
+Hint Resolve WF_col_append WF_row_append WF_row_wedge WF_col_wedge WF_smash : wf_db.
+Hint Resolve WF_col_add_each WF_row_add_each WF_make_col_zero WF_make_row_zero : wf_db.
  
 
 Lemma get_vec_reduce_col : forall {n m} (i col : nat) (A : Matrix n m),
@@ -1712,6 +1933,14 @@ Proof. intros. prep_matrix_equality.
 Qed.
 
 
+Lemma col_scale_reduce_col_same : forall {n m} (T : Matrix n m) (y col : nat) (a : C),
+  y = col -> reduce_col (col_scale T col a) y = reduce_col T y.
+Proof. intros.
+       prep_matrix_equality. 
+       unfold reduce_col, col_scale. 
+       bdestruct (y0 <? y); bdestruct (y0 =? col); bdestruct (1 + y0 =? col); try lia; easy. 
+Qed.
+
 
 Lemma col_scale_reduce_before : forall {n : nat} (T : Square n) (x y col : nat) (a : C),
   y < col -> reduce (col_scale T col a) x y = col_scale (reduce T x y) (col - 1) a.
@@ -1745,43 +1974,79 @@ Proof. intros.
 Qed.
 
 
-(* this was origionally with the other Msum stuff, but I needed it earlier... *)
-Lemma Msum_Csum : forall {d1 d2} n (f : nat -> Matrix d1 d2) i j,
-  Msum n f i j = Csum (fun x => f x i j) n.
-Proof.
-  intros. 
-  induction n; simpl.
-  reflexivity.
-  unfold Mplus.
-  rewrite IHn.
-  reflexivity.
+Lemma mcz_reduce_col_same : forall {n m} (T : Matrix n m) (col : nat),
+  reduce_col (make_col_zero col T) col = reduce_col T col.
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold reduce_col, make_col_zero. 
+       bdestruct (y <? col); bdestruct (1 + y <? col); 
+         bdestruct (y =? col); bdestruct (1 + y =? col); try lia; easy. 
 Qed.
 
-
-Lemma gnv_iterated_add : forall (n m col size : nat) (T : Matrix n m) (as' : Vector (S size)),
-  col < m -> S size < m -> size <> col ->
-  col_add_many col (S size) as' T = 
-  col_add (col_add_many col size (reduce_vecn as') T) col size (as' size 0).
+Lemma mrz_reduce_row_same : forall {n m} (T : Matrix n m) (row : nat),
+  reduce_row (make_row_zero row T) row = reduce_row T row.
 Proof. intros. 
-       unfold col_add_many, col_add.
+       prep_matrix_equality. 
+       unfold reduce_row, make_row_zero. 
+       bdestruct (x <? row); bdestruct (1 + x <? row); 
+         bdestruct (x =? row); bdestruct (1 + x =? row); try lia; easy. 
+Qed.
+
+Lemma col_add_many_reduce_col_same : forall {n m} (T : Matrix n m) (v : Vector m) (col : nat),
+  reduce_col (col_add_many col v T) col = reduce_col T col.
+Proof. intros. 
+       unfold reduce_col, col_add_many.
+       prep_matrix_equality. 
+       bdestruct (y <? col); bdestruct (1 + y <? col); 
+         bdestruct (y =? col); bdestruct (1 + y =? col); try lia; easy. 
+Qed.
+
+Lemma row_add_many_reduce_row_same : forall {n m} (T : Matrix n m) (v : Matrix 1 n) (row : nat),
+  reduce_row (row_add_many row v T) row = reduce_row T row.
+Proof. intros. 
+       unfold reduce_row, row_add_many.
+       prep_matrix_equality. 
+       bdestruct (x <? row); bdestruct (1 + x <? row); 
+         bdestruct (x =? row); bdestruct (1 + x =? row); try lia; easy. 
+Qed.
+
+Lemma col_wedge_reduce_col_same : forall {n m} (T : Matrix n m) (v : Vector m) (col : nat),
+  reduce_col (col_wedge T v col) col = T.
+Proof. intros.
        prep_matrix_equality.
-       bdestruct (y =? col); try easy.
-       bdestruct (size =? col); try lia.
-       unfold gen_new_vec.
-       simpl.
-       rewrite <- Cplus_assoc.
-       apply Csum_simplify; try easy.
-       unfold Mplus.
-       apply Csum_simplify. 
-       do 2 rewrite Msum_Csum. 
-       apply Csum_eq_bounded.
-       intros. 
-       unfold scale. 
-       unfold reduce_vecn.
-       bdestruct (x0 <? S size - 1); try lia; easy.
-       unfold scale.
-       rewrite get_vec_conv.
-       easy.
+       unfold reduce_col, col_wedge.
+       assert (p : (1 + y - 1) = y). lia.
+       bdestruct (y <? col); bdestruct (1 + y <? col); 
+         bdestruct (y =? col); bdestruct (1 + y =? col); try lia; try easy. 
+       all : rewrite p; easy.
+Qed.
+
+Lemma row_wedge_reduce_row_same : forall {n m} (T : Matrix n m) (v : Matrix 1 n) (row : nat),
+  reduce_row (row_wedge T v row) row = T.
+Proof. intros.
+       prep_matrix_equality.
+       unfold reduce_row, row_wedge.
+       assert (p : (1 + x - 1) = x). lia.
+       bdestruct (x <? row); bdestruct (1 + x <? row); 
+         bdestruct (x =? row); bdestruct (1 + x =? row); try lia; try easy. 
+       all : rewrite p; easy.
+Qed.
+
+Lemma col_add_many_reduce_row : forall {n m} (T : Matrix n m) (v : Vector m) (col row : nat),
+  col_add_many col v (reduce_row T row) = reduce_row (col_add_many col v T) row.
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold col_add_many, reduce_row, gen_new_vec, scale, get_vec. 
+       bdestruct (y =? col); try lia; try easy. 
+       bdestruct (x <? row); try lia. 
+       apply Csum_simplify; try easy. 
+       do 2 rewrite Msum_Csum.
+       apply Csum_eq_bounded; intros. 
+       bdestruct (x <? row); try lia; easy.
+       apply Csum_simplify; try easy. 
+       do 2 rewrite Msum_Csum.
+       apply Csum_eq_bounded; intros. 
+       bdestruct (x <? row); try lia; easy.
 Qed.
 
 
@@ -1852,6 +2117,28 @@ Proof. intros.
        prep_matrix_equality. 
        unfold get_vec, col_swap. 
        bdestruct (x =? x); bdestruct (x =? y); try lia; try easy.
+Qed.
+
+
+Lemma col_swap_end_reduce_col_hit : forall {n m : nat} (T : Matrix n (S (S m))) (i : nat),
+  i <= m -> col_swap (reduce_col T i) m i = reduce_col (col_swap T (S m) (S i)) i.
+Proof. intros.
+       prep_matrix_equality. 
+       unfold reduce_col, col_swap. 
+       bdestruct (i <? i); bdestruct (m <? i); bdestruct (y =? m); bdestruct (y =? i); 
+         bdestruct (y <? i); bdestruct (1 + y =? S m); try lia; try easy. 
+       bdestruct (1 + y =? S i); try lia; easy.
+       bdestruct (y =? S m); bdestruct (y =? S i); try lia; easy. 
+       bdestruct (1 + y =? S i); try lia; easy.
+Qed.
+
+
+Lemma col_swap_reduce_row : forall {n m : nat} (S : Matrix n m) (x y row : nat),
+  col_swap (reduce_row S row) x y = reduce_row (col_swap S x y) row.
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold col_swap, reduce_row. 
+       bdestruct (y0 =? x); bdestruct (x0 <? row); bdestruct (y0 =? y); try lia; easy. 
 Qed.
 
 
@@ -1936,8 +2223,193 @@ Proof. intros.
 Qed.
 
 
-Lemma col_add_many_inv : forall {n m} (S : Matrix n m) (col size : nat) (as' : Vector size),
-  size <= col -> S = col_add_many col size (-C1 .* as') (col_add_many col size as' S).
+
+Lemma mat_equiv_make_WF : forall {n m} (T : Matrix n m),
+  T == make_WF T.
+Proof. unfold make_WF, mat_equiv; intros. 
+       bdestruct (i <? n); bdestruct (j <? m); try lia; easy.
+Qed.
+
+
+Lemma gen_new_vec_0 : forall {n m} (T : Matrix n m) (as' : Vector m),
+  as' == Zero -> gen_new_vec n m T as' = Zero.
+Proof. intros.
+       unfold mat_equiv, gen_new_vec in *.
+       prep_matrix_equality.
+       rewrite Msum_Csum.
+       unfold Zero in *.
+       apply Csum_0_bounded; intros. 
+       rewrite H; try lia. 
+       rewrite Mscale_0_l.
+       easy.
+Qed.
+
+Lemma gen_new_row_0 : forall {n m} (T : Matrix n m) (as' : Matrix 1 n),
+  as' == Zero -> gen_new_row n m T as' = Zero.
+Proof. intros.
+       unfold mat_equiv, gen_new_row in *.
+       prep_matrix_equality.
+       rewrite Msum_Csum.
+       unfold Zero in *.
+       apply Csum_0_bounded; intros. 
+       rewrite H; try lia. 
+       rewrite Mscale_0_l.
+       easy.
+Qed.
+
+Lemma col_add_many_0 : forall {n m} (col : nat) (T : Matrix n m) (as' : Vector m),
+  as' == Zero -> T = col_add_many col as' T.
+Proof. intros. 
+       unfold col_add_many in *.
+       prep_matrix_equality.
+       bdestruct (y =? col); try easy.
+       rewrite gen_new_vec_0; try easy.
+       unfold Zero; lca. 
+Qed.
+
+Lemma row_add_many_0 : forall {n m} (row : nat) (T : Matrix n m) (as' : Matrix 1 n),
+  as' == Zero -> T = row_add_many row as' T.
+Proof. intros. 
+       unfold row_add_many in *.
+       prep_matrix_equality.
+       bdestruct (x =? row); try easy.
+       rewrite gen_new_row_0; try easy.
+       unfold Zero; lca. 
+Qed.
+
+
+Lemma gen_new_vec_mat_equiv : forall {n m} (T : Matrix n m) (as' bs : Vector m),
+  as' == bs -> gen_new_vec n m T as' = gen_new_vec n m T bs.
+Proof. unfold mat_equiv, gen_new_vec; intros.
+       prep_matrix_equality.
+       do 2 rewrite Msum_Csum.
+       apply Csum_eq_bounded; intros. 
+       rewrite H; try lia. 
+       easy.
+Qed.
+
+Lemma gen_new_row_mat_equiv : forall {n m} (T : Matrix n m) (as' bs : Matrix 1 n),
+  as' == bs -> gen_new_row n m T as' = gen_new_row n m T bs.
+Proof. unfold mat_equiv, gen_new_row; intros.
+       prep_matrix_equality.
+       do 2 rewrite Msum_Csum.
+       apply Csum_eq_bounded; intros. 
+       rewrite H; try lia. 
+       easy.
+Qed.
+
+Lemma col_add_many_mat_equiv : forall {n m} (col : nat) (T : Matrix n m) (as' bs : Vector m),
+  as' == bs -> col_add_many col as' T = col_add_many col bs T.
+Proof. intros. 
+       unfold col_add_many.
+       rewrite (gen_new_vec_mat_equiv _ as' bs); easy.
+Qed.
+
+Lemma row_add_many_mat_equiv : forall {n m} (row : nat) (T : Matrix n m) (as' bs : Matrix 1 n),
+  as' == bs -> row_add_many row as' T = row_add_many row bs T.
+Proof. intros. 
+       unfold row_add_many.
+       rewrite (gen_new_row_mat_equiv _ as' bs); easy.
+Qed.
+
+
+Lemma col_add_each_0 : forall {n m} (col : nat) (T : Matrix n m) (v : Matrix 1 m),
+  v = Zero -> T = col_add_each col v T.
+Proof. intros. 
+       rewrite H.
+       unfold col_add_each.
+       rewrite Mmult_0_r.
+       rewrite Mplus_0_r.
+       easy. 
+Qed.
+
+Lemma row_add_each_0 : forall {n m} (row : nat) (T : Matrix n m) (v : Vector n),
+  v = Zero -> T = row_add_each row v T.
+Proof. intros. 
+       rewrite H.
+       unfold row_add_each.
+       rewrite Mmult_0_l.
+       rewrite Mplus_0_r.
+       easy. 
+Qed.
+
+
+
+Lemma col_add_many_col_add : forall {n m} (col e : nat) (T : Matrix n m) (as' : Vector m),
+  col <> e -> e < m -> as' col 0 = C0 ->
+  col_add_many col as' T = 
+  col_add (col_add_many col (make_row_zero e as') T) col e (as' e 0).
+Proof. intros. 
+       unfold col_add_many, col_add, gen_new_vec.
+       prep_matrix_equality.
+       bdestruct (y =? col); try easy.
+       bdestruct (e =? col); try lia.
+       rewrite <- Cplus_assoc.
+       apply Csum_simplify; try easy.
+       assert (H' : m = e + (m - e)). lia. 
+       rewrite H'.
+       do 2 rewrite Msum_Csum. 
+       rewrite Csum_sum.
+       rewrite Csum_sum.
+       rewrite <- Cplus_assoc.
+       apply Csum_simplify.
+       apply Csum_eq_bounded; intros.
+       unfold make_row_zero.
+       bdestruct (x0 =? e); try lia; easy. 
+       destruct (m - e); try lia. 
+       do 2 rewrite <- Csum_extend_l.
+       unfold make_row_zero.
+       bdestruct (e + 0 =? e); try lia. 
+       unfold scale.
+       rewrite Cmult_0_l, Cplus_0_l.
+       rewrite Cplus_comm.
+       apply Csum_simplify.
+       apply Csum_eq_bounded; intros.
+       bdestruct (e + S x0 =? e); try lia; easy.
+       unfold get_vec. simpl. 
+       rewrite plus_0_r; easy.
+Qed.
+
+
+Lemma col_add_many_cancel : forall {n m} (T : Matrix n m) (as' : Vector m) (col : nat),
+  col < m -> as' col 0 = C0 ->
+  (reduce_col T col) × (reduce_row as' col) = -C1 .* (get_vec col T) -> 
+  (forall i : nat, (col_add_many col as' T) i col = C0).
+Proof. intros.
+       destruct m; try lia. 
+       unfold col_add_many, gen_new_vec.
+       bdestruct (col =? col); try lia. 
+       rewrite Msum_Csum. 
+       assert (H' : (Csum (fun x : nat => (as' x 0 .* get_vec x T) i 0) (S m) = 
+                     (@Mmult n m 1 (reduce_col T col) (reduce_row as' col)) i 0)%C).
+       { unfold Mmult. 
+         assert (p : S m = col + (S (m - col))). lia.
+         assert (p1 : m = col + (m - col)). lia.
+         rewrite p; rewrite Csum_sum. 
+         rewrite p1; rewrite Csum_sum. 
+         apply Csum_simplify. 
+         apply Csum_eq_bounded; intros. 
+         unfold get_vec, scale, reduce_col, reduce_row. 
+         bdestruct (x <? col); simpl; try lia; lca.  
+         rewrite <- p1, <- Csum_extend_l. 
+         assert (p2 : col + 0 = col). lia. rewrite p2, H0.
+         unfold scale; rewrite Cmult_0_l, Cplus_0_l.
+         apply Csum_eq_bounded; intros. 
+         unfold get_vec, scale, reduce_col, reduce_row. 
+         bdestruct (col + x <? col); simpl; try lia.
+         assert (p3 : (col + S x) = (S (col + x))). lia.
+         rewrite p3. lca. }
+       rewrite H'.
+       rewrite easy_sub in *.
+       rewrite H1.
+       unfold scale, get_vec. 
+       bdestruct (0 =? 0); try lia. 
+       lca.
+Qed.
+
+
+Lemma col_add_many_inv : forall {n m} (S : Matrix n m) (col : nat) (as' : Vector m),
+  as' col 0 = C0 -> S = col_add_many col (-C1 .* as') (col_add_many col as' S).
 Proof. intros. 
        unfold col_add_many, gen_new_vec.
        prep_matrix_equality. 
@@ -1950,9 +2422,172 @@ Proof. intros.
        rewrite Csum_0_bounded; try lca.
        intros. 
        unfold get_vec, scale.
-       bdestruct (0 =? 0); bdestruct (x0 =? col); try lia; lca.
+       bdestruct (0 =? 0); bdestruct (x0 =? col); try lia; try lca.
+       rewrite Msum_Csum.
+       bdestruct (0 =? 0); try lia. 
+       rewrite H3, H. lca.
 Qed.
 
+
+Lemma col_add_each_col_add : forall {n m} (col e : nat) (S : Matrix n m) (as' : Matrix 1 m),
+  col <> e -> (forall x, as' x col = C0) ->
+              col_add_each col as' S = 
+              col_add (col_add_each col (make_col_zero e as') S) e col (as' 0 e).
+Proof. intros.
+       prep_matrix_equality.
+       unfold col_add_each, col_add, make_col_zero, Mmult, Mplus, get_vec, Csum.
+       bdestruct (y =? col); bdestruct (y =? e); bdestruct (col =? e); 
+         bdestruct (e =? e); bdestruct (0 =? 0); try lia; try lca. 
+       rewrite H0. 
+       rewrite H2. lca.
+Qed.
+
+
+Lemma row_add_each_row_add : forall {n m} (row e : nat) (S : Matrix n m) (as' : Vector n),
+  row <> e -> (forall y, as' row y = C0) ->
+              row_add_each row as' S = 
+              row_add (row_add_each row (make_row_zero e as') S) e row (as' e 0).
+Proof. intros.
+       prep_matrix_equality.
+       unfold row_add_each, row_add, make_row_zero, Mmult, Mplus, get_row, Csum.
+       bdestruct (x =? row); bdestruct (x =? e); bdestruct (row =? e); 
+         bdestruct (e =? e); bdestruct (0 =? 0); try lia; try lca. 
+       rewrite H0. 
+       rewrite H2. lca.
+Qed.
+
+
+(* must use make_col_zero here instead of just as' col 0 = C0, since def requires stronger supp *)
+Lemma col_add_each_inv : forall {n m} (col : nat) (as' : Matrix 1 m) (T : Matrix n m),
+  T = col_add_each col (make_col_zero col (-C1 .* as')) 
+                   (col_add_each col (make_col_zero col as') T).
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold col_add_each, make_col_zero, Mmult, Mplus, get_vec, scale.
+       simpl. bdestruct (y =? col); bdestruct (col =? col); try lia; try lca. 
+Qed.
+
+Lemma row_add_each_inv : forall {n m} (row : nat) (as' : Vector n) (T : Matrix n m),
+  T = row_add_each row (make_row_zero row (-C1 .* as')) 
+                   (row_add_each row (make_row_zero row as') T).
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold row_add_each, make_row_zero, Mmult, Mplus, get_row, scale.
+       simpl. bdestruct (x =? row); bdestruct (row =? row); try lia; try lca. 
+Qed.
+
+
+(* we can show that we get from col_XXX to row_XXX via transposing *)
+
+Lemma get_vec_transpose : forall {n m} (A : Matrix n m) (i : nat),
+  (get_vec i A)⊤ = get_row i (A⊤).
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold get_vec, get_row, transpose. 
+       easy.
+Qed.
+
+Lemma get_row_transpose : forall {n m} (A : Matrix n m) (i : nat),
+  (get_row i A)⊤ = get_vec i (A⊤).
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold get_vec, get_row, transpose. 
+       easy.
+Qed.
+
+Lemma col_swap_transpose : forall {n m} (A : Matrix n m) (x y : nat),
+  (col_swap A x y)⊤ = row_swap (A⊤) x y.
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold row_swap, col_swap, transpose. 
+       easy. 
+Qed.
+
+Lemma row_swap_transpose : forall {n m} (A : Matrix n m) (x y : nat),
+  (row_swap A x y)⊤ = col_swap (A⊤) x y.
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold row_swap, col_swap, transpose. 
+       easy. 
+Qed.
+
+Lemma col_scale_transpose : forall {n m} (A : Matrix n m) (x : nat) (a : C),
+  (col_scale A x a)⊤ = row_scale (A⊤) x a.
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold row_scale, col_scale, transpose. 
+       easy. 
+Qed.
+
+Lemma row_scale_transpose : forall {n m} (A : Matrix n m) (x : nat) (a : C),
+  (row_scale A x a)⊤ = col_scale (A⊤) x a.
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold row_scale, col_scale, transpose. 
+       easy. 
+Qed.
+
+Lemma col_add_transpose : forall {n m} (A : Matrix n m) (col to_add : nat) (a : C),
+  (col_add A col to_add a)⊤ = row_add (A⊤) col to_add a.
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold row_add, col_add, transpose. 
+       easy. 
+Qed.
+
+Lemma row_add_transpose : forall {n m} (A : Matrix n m) (row to_add : nat) (a : C),
+  (row_add A row to_add a)⊤ = col_add (A⊤) row to_add a.
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold row_add, col_add, transpose. 
+       easy. 
+Qed.
+
+Lemma col_add_many_transpose : forall {n m} (A : Matrix n m) (col : nat) (as' : Vector m),
+  (col_add_many col as' A)⊤ = row_add_many col (as'⊤) (A⊤).
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold row_add_many, col_add_many, transpose. 
+       bdestruct (x =? col); try easy. 
+       apply Csum_simplify; try easy.
+       unfold gen_new_vec, gen_new_row, get_vec, get_row, scale.
+       do 2 rewrite Msum_Csum.
+       apply Csum_eq_bounded; intros. 
+       easy. 
+Qed.
+
+Lemma row_add_many_transpose : forall {n m} (A : Matrix n m) (row : nat) (as' : Matrix 1 n),
+  (row_add_many row as' A)⊤ = col_add_many row (as'⊤) (A⊤).
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold row_add_many, col_add_many, transpose. 
+       bdestruct (y =? row); try easy. 
+       apply Csum_simplify; try easy.
+       unfold gen_new_vec, gen_new_row, get_vec, get_row, scale.
+       do 2 rewrite Msum_Csum.
+       apply Csum_eq_bounded; intros. 
+       easy. 
+Qed.
+
+Lemma col_add_each_transpose : forall {n m} (A : Matrix n m) (col : nat) (as' : Matrix 1 m),
+  (col_add_each col as' A)⊤ = row_add_each col (as'⊤) (A⊤).
+Proof. intros. 
+       unfold row_add_each, col_add_each. 
+       rewrite Mplus_transpose.
+       rewrite Mmult_transpose. 
+       rewrite get_vec_transpose. 
+       easy.
+Qed.
+
+Lemma row_add_each_transpose : forall {n m} (A : Matrix n m) (row : nat) (as' : Vector n),
+  (row_add_each row as' A)⊤ = col_add_each row (as'⊤) (A⊤).
+Proof. intros. 
+       unfold row_add_each, col_add_each. 
+       rewrite Mplus_transpose.
+       rewrite Mmult_transpose. 
+       rewrite get_row_transpose. 
+       easy.
+Qed.
 
 Lemma swap_preserves_mul_lt : forall {n m o} (A : Matrix n m) (B : Matrix m o) (x y : nat),
   x < y -> x < m -> y < m -> A × B = (col_swap A x y) × (row_swap B x y).
@@ -2025,14 +2660,12 @@ Proof. intros.
 Qed.        
 
 
-
-
 Lemma col_add_preserves_mul_lt : forall {n m o} (A : Matrix n m) (B : Matrix m o) 
                                                 (x y : nat) (a : C),
    x < y -> x < m -> y < m -> A × (row_add B y x a) = (col_add A x y a) × B.
 Proof. intros.  
        prep_matrix_equality. 
-       unfold Mmult.  
+       unfold Mmult.   
        bdestruct (x <? m); try lia.
        rewrite (le_plus_minus x m); try lia.       
        do 2 rewrite Csum_sum.
@@ -2088,6 +2721,205 @@ Proof. intros. bdestruct (x <? y).
            rewrite col_swap_diff_order.
            apply col_add_preserves_mul_lt; lia. 
 Qed.
+
+
+(* used for the below induction where basically we may have to go from n to (n + 2) *)
+(* might want to move this somewhere else. cool technique though! Maybe coq already has something like this  *) 
+Definition skip_count (skip i : nat) : nat :=
+  if (i <? skip) then i else S i.
+
+
+Lemma skip_count_le : forall (skip i : nat),
+  i <= skip_count skip i.
+Proof. intros; unfold skip_count. 
+       bdestruct (i <? skip); lia.
+Qed.
+
+Lemma skip_count_not_skip : forall (skip i : nat),
+  skip <> skip_count skip i. 
+Proof. intros; unfold skip_count. 
+       bdestruct (i <? skip); try lia. 
+Qed.
+
+
+Lemma skip_count_mono : forall (skip i1 i2 : nat),
+  i1 < i2 -> skip_count skip i1 < skip_count skip i2.
+Proof. intros; unfold skip_count. 
+       bdestruct (i1 <? skip); bdestruct (i2 <? skip); try lia. 
+Qed.
+
+
+
+Lemma cam_ca_switch : forall {n m} (T : Matrix n m) (as' : Vector m) (col to_add : nat) (c : C),
+  as' col 0 = C0 -> to_add <> col -> 
+  col_add (col_add_many col as' T) col to_add c = 
+  col_add_many col as' (col_add T col to_add c).
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold col_add, col_add_many.
+       bdestruct (y =? col); try lia; try easy.
+       repeat rewrite <- Cplus_assoc.
+       apply Csum_simplify; try easy.
+       bdestruct (to_add =? col); try lia.
+       rewrite Cplus_comm.
+       apply Csum_simplify; try easy. 
+       unfold gen_new_vec.
+       do 2 rewrite Msum_Csum.
+       apply Csum_eq_bounded; intros. 
+       unfold get_vec, scale; simpl.
+       bdestruct (x0 =? col); try lca. 
+       rewrite H4, H; lca.
+Qed.
+
+
+
+Lemma col_add_many_preserves_mul_some : forall (n m o e col : nat) 
+                                               (A : Matrix n m) (B : Matrix m o) (v : Vector m),
+  WF_Matrix v -> (skip_count col e) < m -> col < m -> 
+  (forall i : nat, (skip_count col e) < i -> v i 0 = C0) -> v col 0 = C0 ->
+  A × (row_add_each col v B) = (col_add_many col v A) × B.  
+Proof. induction e as [| e].
+       - intros.
+         destruct m; try easy.
+         rewrite (col_add_many_col_add col (skip_count col 0) _ _); try easy.
+         rewrite <- (col_add_many_0 col A (make_row_zero (skip_count col 0) v)).
+         rewrite (row_add_each_row_add col (skip_count col 0) _ _); try easy.
+         rewrite <- (row_add_each_0 col B (make_row_zero (skip_count col 0) v)).
+         apply col_add_preserves_mul; try easy.
+         apply mat_equiv_eq; auto with wf_db.
+         unfold mat_equiv; intros. 
+         destruct j; try lia. 
+         unfold make_row_zero.
+         bdestruct (i =? skip_count col 0); try lia; try easy. 
+         destruct col; destruct i; try easy.
+         rewrite H2; try easy. unfold skip_count in *. 
+         bdestruct (0 <? 0); lia. 
+         rewrite H2; try easy.
+         unfold skip_count in *. simpl; lia. 
+         all : try apply skip_count_not_skip.
+         intros. destruct y; try easy.
+         apply H; lia. 
+         unfold mat_equiv, make_row_zero; intros. 
+         destruct j; try lia. 
+         bdestruct (i =? skip_count col 0); try lia; try easy. 
+         destruct col; try easy.
+         destruct i; try easy.
+         rewrite H2; try easy. 
+         unfold skip_count in *; simpl in *; lia. 
+         rewrite H2; try easy.
+         unfold skip_count in *; simpl in *; lia. 
+       - intros. 
+         destruct m; try easy.
+         rewrite (col_add_many_col_add col (skip_count col (S e)) _ _); try easy.
+         rewrite (row_add_each_row_add col (skip_count col (S e)) _ _); try easy.
+         rewrite col_add_preserves_mul; try easy.
+         rewrite cam_ca_switch. 
+         rewrite IHe; try easy; auto with wf_db.
+         assert (p : e < S e). lia. 
+         apply (skip_count_mono col) in p.
+         lia. 
+         intros.
+         unfold make_row_zero.
+         bdestruct (i =? skip_count col (S e)); try easy. 
+         unfold skip_count in *. 
+         bdestruct (e <? col); bdestruct (S e <? col); try lia. 
+         all : try (apply H2; lia). 
+         bdestruct (i =? col); bdestruct (S e =? col); try lia. 
+         rewrite H8; apply H3.
+         apply H2. lia. 
+         unfold make_row_zero.
+         bdestruct (col =? skip_count col (S e)); try easy.
+         unfold make_row_zero.
+         bdestruct (col =? skip_count col (S e)); try easy.
+         assert (H4 := skip_count_not_skip). auto.
+         all : try apply skip_count_not_skip.
+         intros. 
+         destruct y; try easy.
+         apply H; lia. 
+Qed.
+
+
+
+Lemma col_add_many_preserves_mul: forall (n m o col : nat) 
+                                               (A : Matrix n m) (B : Matrix m o) (v : Vector m),
+  WF_Matrix v -> col < m -> v col 0 = C0 ->
+  A × (row_add_each col v B) = (col_add_many col v A) × B.  
+Proof. intros. 
+       destruct m; try easy.
+       destruct m.
+       - assert (H' : v = Zero).
+         apply mat_equiv_eq; auto with wf_db.
+         unfold mat_equiv; intros. 
+         destruct i; destruct j; destruct col; try lia; easy.
+         rewrite <- col_add_many_0, <- row_add_each_0; try easy.
+         rewrite H'; easy.
+       - apply (col_add_many_preserves_mul_some _ _ _ m col); try easy.
+         unfold skip_count.
+         bdestruct (m <? col); lia. 
+         intros. 
+         unfold skip_count in H2.
+         bdestruct (m <? col). 
+         bdestruct (col =? (S m)); try lia. 
+         bdestruct (i =? (S m)). 
+         rewrite H5, <- H4. apply H1.
+         apply H; lia. 
+         apply H; lia. 
+Qed.
+
+(* we can now prove this much more easily using transpose *)
+Lemma col_add_each_preserves_mul: forall (n m o col : nat) (A : Matrix n m) 
+                                                         (B : Matrix m o) (v : Matrix 1 m),
+  WF_Matrix v -> col < m -> v 0 col = C0 ->
+  A × (row_add_many col v B) = (col_add_each col v A) × B.  
+Proof. intros. 
+       assert (H' : ((B⊤) × (row_add_each col (v⊤) (A⊤)))⊤ = 
+                               ((col_add_many col (v⊤) (B⊤)) × (A⊤))⊤).  
+       rewrite col_add_many_preserves_mul; auto with wf_db; try easy.
+       do 2 rewrite Mmult_transpose in H'. 
+       rewrite row_add_each_transpose in H'. 
+       rewrite col_add_many_transpose in H'. 
+       repeat rewrite transpose_involutive in H'.
+       easy. 
+Qed.
+
+
+Lemma col_swap_mult_r : forall {n} (A : Square n) (x y : nat),
+  x < n -> y < n -> WF_Matrix A -> 
+  col_swap A x y = A × (row_swap (I n) x y).
+Proof. intros.
+       assert (H2 := (swap_preserves_mul A (row_swap (I n) x y) x y)).
+       rewrite <- (Mmult_1_r _ _ (col_swap A x y)); auto with wf_db.
+       rewrite H2; try easy.
+       rewrite <- (row_swap_inv (I n) x y).
+       reflexivity. 
+Qed.
+
+Lemma col_scale_mult_r : forall {n} (A : Square n) (x : nat) (a : C),
+  WF_Matrix A -> 
+  col_scale A x a = A × (row_scale (I n) x a).
+Proof. intros. 
+       rewrite scale_preserves_mul.
+       rewrite Mmult_1_r; auto with wf_db. 
+Qed.
+
+
+Lemma col_add_many_mult_r : forall {n} (A : Square n) (v : Vector n) (col : nat),
+  WF_Matrix A -> WF_Matrix v -> col < n -> v col 0 = C0 ->
+  col_add_many col v A = A × (row_add_each col v (I n)).
+Proof. intros. 
+       rewrite col_add_many_preserves_mul; try easy.
+       rewrite Mmult_1_r; auto with wf_db.
+Qed.
+
+
+Lemma col_add_each_mult_r : forall {n} (A : Square n) (v : Matrix 1 n) (col : nat),
+  WF_Matrix A -> WF_Matrix v -> col < n -> v 0 col = C0 ->
+  col_add_each col v A = A × (row_add_many col v (I n)).
+Proof. intros. 
+       rewrite col_add_each_preserves_mul; try easy.
+       rewrite Mmult_1_r; auto with wf_db.
+Qed.
+
 
 
 Lemma reduce_append_split : forall {n m} (T : Matrix n (S m)), 
@@ -2148,6 +2980,7 @@ Proof. intros.
        rewrite H'; easy.
 Qed.
 
+
 Lemma split : forall {n m} (T : Matrix n (S m)), 
   T = smash (get_vec 0 T) (reduce_col T 0).
 Proof. intros. 
@@ -2159,7 +2992,6 @@ Proof. intros.
        simpl. assert (H' : y - 0 = y). lia. 
        rewrite H'; easy.
 Qed.
-
 
 
 (* We can now show that matrix_equivalence is decidable *)
@@ -2230,6 +3062,94 @@ Proof. induction m as [| m']. intros.
 Qed.
  
 
+(* we can also now prove some useful lemmas about nonzero vectors *)
+Lemma last_zero_simplification : forall {n : nat} (v : Vector n),
+  WF_Matrix v -> v (n - 1) 0 = C0 -> v = reduce_vecn v.
+Proof. intros. unfold reduce_vecn.
+       prep_matrix_equality.
+       bdestruct (x <? (n - 1)).
+       - easy.
+       - unfold WF_Matrix in H.
+         destruct H1.
+         + destruct y. 
+           * rewrite H0, H. reflexivity.
+             left. nia. 
+           * rewrite H. rewrite H. reflexivity.
+             right; nia. right; nia.
+         + rewrite H. rewrite H. reflexivity.
+           left. nia. left. nia.
+Qed.
+
+
+Lemma zero_reduce : forall {n : nat} (v : Vector (S n)) (x : nat),
+  WF_Matrix v -> (v = Zero <-> (reduce_row v x) = Zero /\ v x 0 = C0).
+Proof. intros. split.    
+       - intros. rewrite H0. split.
+         + prep_matrix_equality. unfold reduce_row. 
+           bdestruct (x0 <? x); easy. 
+         + easy.
+       - intros [H0 H1]. 
+         prep_matrix_equality.
+         unfold Zero.
+         bdestruct (x0 =? x).
+         + rewrite H2. 
+           destruct y; try easy.          
+           apply H; lia.
+         + bdestruct (x0 <? x). 
+           * assert (H' : (reduce_row v x) x0 y = C0). 
+             { rewrite H0. easy. }
+             unfold reduce_row in H'.
+             bdestruct (x0 <? x); try lia; try easy.
+           * destruct x0; try lia. 
+             assert (H'' : (reduce_row v x) x0 y = C0). 
+             { rewrite H0. easy. }
+             unfold reduce_row in H''.
+             bdestruct (x0 <? x); try lia. 
+             rewrite <- H''. easy.
+Qed.
+  
+
+Lemma nonzero_vec_nonzero_elem : forall {n} (v : Vector n),
+  WF_Matrix v -> v <> Zero -> exists x, v x 0 <> C0.
+Proof. induction n as [| n']. 
+       - intros. 
+         assert (H' : v = Zero).
+         { prep_matrix_equality.
+           unfold Zero.
+           unfold WF_Matrix in H.
+           apply H.
+           left. lia. }
+         easy.
+       - intros.   
+         destruct (Ceq_dec (v n' 0) C0). 
+         + destruct (vec_equiv_dec (reduce_row v n') Zero). 
+           * assert (H' := H). 
+             apply (zero_reduce _ n') in H'.
+             destruct H'.
+             assert (H' : v = Zero). 
+             { apply H2.
+               split. 
+               apply mat_equiv_eq; auto with wf_db.
+               easy. }
+             easy.             
+           * assert (H1 : exists x, (reduce_row v n') x 0 <> C0).
+             { apply IHn'. 
+               assert (H1' := (@WF_reduce_row (S n') 1 n')).
+               rewrite easy_sub in *.
+               apply H1'; try lia; try easy.
+               unfold not in *. intros. apply n. 
+               rewrite H1. easy. }
+             destruct H1. 
+             exists x. 
+             rewrite (last_zero_simplification v); try easy.
+             rewrite rvn_is_rr_n.
+             all : rewrite easy_sub.
+             apply H1. 
+             apply e.
+         + exists n'. 
+           apply n.
+Qed.
+
 (***********************************************************)
 (* Defining linear independence, and proving lemmas etc... *)
 (***********************************************************)
@@ -2252,6 +3172,33 @@ Proof. unfold not, linearly_dependent, linearly_independent in *.
 Qed.
 
 
+Lemma lin_indep_vec : forall {n} (v : Vector n), 
+  WF_Matrix v -> v <> Zero -> linearly_independent v.
+Proof. intros. 
+       unfold linearly_independent.
+       intros. 
+       assert (H' : v × a = (a 0 0) .* v).
+       { apply mat_equiv_eq; auto with wf_db.
+         unfold Mmult, scale, mat_equiv. 
+         intros. simpl. 
+         destruct j; try lia; lca. }
+       assert (H1' := H).
+       apply nonzero_vec_nonzero_elem in H1'; try easy.
+       destruct H1' as [x H1'].
+       destruct (Ceq_dec (a 0 0) C0).
+       + prep_matrix_equality. 
+         destruct x0. destruct y.
+         rewrite e; easy.
+         all : apply H1; lia.
+       + assert (H'' : ((a 0 0) .* v) x 0 = C0).
+         { rewrite <- H'. rewrite H2; easy. }
+         unfold scale in H''. 
+         assert (H3 : (a 0 0 * v x 0)%C <> C0).
+         { apply Cmult_neq_0; easy. }
+         easy. 
+Qed.
+
+
 Definition e_i {n : nat} (i : nat) : Vector n :=
   fun x y => (if (x =? i) && (x <? n) && (y =? 0) then C1 else C0). 
 
@@ -2262,6 +3209,8 @@ Proof. unfold WF_Matrix, e_i.
        bdestruct (x =? i); bdestruct (x <? n); bdestruct (y =? 0); try lia; easy.
        bdestruct (x =? i); bdestruct (x <? n); bdestruct (y =? 0); try lia; easy.
 Qed.
+
+Hint Resolve WF_e_i : wf_db.
 
 Lemma I_is_eis : forall {n} (i : nat),
   get_vec i (I n) = e_i i. 
@@ -2520,6 +3469,13 @@ Proof. intros.
        apply WF_row_swap; easy.
 Qed.
 
+Lemma lin_indep_swap_conv : forall {n m} (T : Matrix n m) (x y : nat),
+  x < m -> y < m -> linearly_independent (col_swap T x y) -> linearly_independent T.
+Proof. intros. 
+       rewrite (col_swap_inv T x y).
+       apply lin_indep_swap; easy.
+Qed.
+
 
 Lemma lin_indep_scale : forall {n m} (T : Matrix n m) (x : nat) (c : C),
   c <> C0 -> linearly_independent T -> linearly_independent (col_scale T x c).
@@ -2535,6 +3491,14 @@ Proof. intros.
        bdestruct (x0 =? x);
        lca. 
        apply WF_row_scale; easy.
+Qed.
+
+
+Lemma lin_indep_scale_conv : forall {n m} (T : Matrix n m) (x : nat) (c : C),
+  c <> C0 -> linearly_independent (col_scale T x c) -> linearly_independent T.
+Proof. intros. 
+       rewrite (col_scale_inv T x c); try easy.
+       apply lin_indep_scale; try apply nonzero_div_nonzero; easy.
 Qed.
 
 
@@ -2556,22 +3520,182 @@ Qed.
 
 
 
-Lemma lin_indep_col_add_many : forall (n m col size : nat) (T : Matrix n m) (as' : Vector size),
-  size <= col -> col < m -> linearly_independent T -> 
-  linearly_independent (col_add_many col size as' T).
-Proof. induction size.
+
+Lemma lin_indep_col_add_many_some : forall (e n m col : nat) (T : Matrix n m) (as' : Vector m),
+  (skip_count col e) < m -> col < m -> 
+  (forall i : nat, (skip_count col e) < i -> as' i 0 = C0) -> as' col 0 = C0 ->
+  linearly_independent T -> linearly_independent (col_add_many col as' T).
+Proof. induction e as [| e].
        - intros. 
-         assert (H3 : col_add_many col 0 as' T = T).
-         { unfold col_add_many.
-           prep_matrix_equality.
-           bdestruct (y =? col); try easy.
-           unfold gen_new_vec.
-           simpl. lca. }
-         rewrite H3; easy.
+         rewrite (col_add_many_col_add _ (skip_count col 0)); 
+           try lia; try easy.  
+         apply lin_indep_add; try lia.
+         apply skip_count_not_skip.
+         assert (H' : (col_add_many col (make_row_zero (skip_count col 0) as') T) = T).
+         { prep_matrix_equality. 
+           unfold col_add_many, make_row_zero, skip_count, gen_new_vec, scale in *. 
+           bdestruct (y =? col); try lia; try easy.
+           rewrite <- Cplus_0_l.
+           rewrite Cplus_comm.
+           apply Csum_simplify; try easy.
+           rewrite Msum_Csum.
+           apply Csum_0_bounded; intros. 
+           destruct col; simpl in *. 
+           bdestruct (x0 =? 1); try lca. 
+           destruct x0; try rewrite H2; try rewrite H1; try lca; try lia. 
+           destruct x0; try lca; rewrite H1; try lca; lia. }
+         rewrite H'; easy.
+         apply skip_count_not_skip.
        - intros. 
-         rewrite gnv_iterated_add; try lia.
-         apply lin_indep_add; try lia. 
-         apply IHsize; try lia; easy.
+         rewrite (col_add_many_col_add _ (skip_count col (S e))); 
+           try lia; try easy.
+         apply lin_indep_add; try lia.
+         apply skip_count_not_skip.
+         apply IHe; try lia; try easy; auto with wf_db. 
+         assert (H' : e < S e). lia. 
+         apply (skip_count_mono col) in H'.
+         lia. 
+         intros. 
+         unfold skip_count, make_row_zero in *. 
+         bdestruct (e <? col); bdestruct (S e <? col); try lia.
+         bdestruct (i =? S e); try easy; try apply H1; try lia. 
+         bdestruct (i =? S e); bdestruct (i =? S (S e)); try lia; try easy. 
+         bdestruct (S e =? col); try lia. rewrite H7, H9. apply H2.
+         apply H1; lia. 
+         bdestruct (i =? S e); bdestruct (i =? S (S e)); try lia; try easy. 
+         apply H1; lia. 
+         unfold make_row_zero, skip_count.
+         bdestruct (S e <? col); try lia; bdestruct (col =? S e); bdestruct (col =? S (S e)); 
+           try lia; try easy.
+         apply skip_count_not_skip.
+Qed.
+
+
+Lemma lin_indep_col_add_many : forall (n m col : nat) (T : Matrix n m) (as' : Vector m),
+  col < m -> linearly_independent T -> 
+  linearly_independent (col_add_many col (make_row_zero col as') T).
+Proof. intros. 
+       destruct m; try lia. 
+       destruct m.
+       - assert (H' : make_row_zero col as' == Zero).
+         { unfold mat_equiv; intros. 
+           destruct col; destruct i; destruct j; try lia. 
+           unfold make_row_zero. 
+           easy. }
+         rewrite <- col_add_many_0; easy. 
+       - rewrite (col_add_many_mat_equiv _ _ _ (make_WF (make_row_zero col as')));
+           try apply mat_equiv_make_WF.
+         bdestruct (col =? S m).
+         + apply (lin_indep_col_add_many_some m); try lia; try easy.
+           unfold skip_count. bdestruct (m <? col); lia. 
+           intros. 
+           unfold skip_count in H2; rewrite H1 in H2. 
+           bdestruct (m <? S m); try lia. 
+           unfold make_row_zero, make_WF. 
+           bdestruct (i <? S (S m)); bdestruct (0 <? 1); try lia; try easy.
+           bdestruct (i =? S m); try lia. 
+           rewrite H6, H1. 
+           bdestruct (S m =? S m); easy.
+           unfold make_row_zero, make_WF. 
+           bdestruct (col =? col); bdestruct (col <? S (S m)); try lia; auto. 
+         + apply (lin_indep_col_add_many_some m); try lia; try easy.
+           unfold skip_count.
+           bdestruct (m <? col); try lia. 
+           intros. unfold make_WF, make_row_zero.
+           unfold skip_count in H2.
+           bdestruct (m <? col); try lia. 
+           bdestruct (i <? S (S m)); try lia; try easy.
+           unfold make_row_zero, make_WF. 
+           bdestruct (col =? col); bdestruct (col <? S (S m)); try lia; auto. 
+Qed.
+
+
+
+Lemma lin_indep_col_add_each_some : forall (e n m col : nat) (as' : Matrix 1 m) (T : Matrix n m),
+  WF_Matrix as' -> (skip_count col e) < m -> col < m -> 
+  (forall i : nat, (skip_count col e) < i -> as' 0 i = C0) -> as' 0 col = C0 ->
+  linearly_independent T -> linearly_independent (col_add_each col as' T).
+Proof. induction e as [| e].
+       - intros.
+         rewrite (col_add_each_col_add _ (skip_count col 0)); try lia. 
+         apply lin_indep_add; try lia.
+         assert (H' := skip_count_not_skip col 0). auto.
+         assert (H' : (make_col_zero (skip_count col 0) as') = Zero).
+         { apply mat_equiv_eq; auto with wf_db.
+           unfold mat_equiv; intros. 
+           unfold make_col_zero, skip_count in *.
+           destruct i; try lia. 
+           destruct col; simpl in *. 
+           all : destruct j; try easy; simpl. 
+           destruct j; try easy; simpl.  
+           all : apply H2; lia. }
+         rewrite H'. 
+         rewrite <- col_add_each_0; easy. 
+         apply skip_count_not_skip.
+         intros x. destruct x; try easy.
+         apply H; lia.
+       - intros.  
+         rewrite (col_add_each_col_add _ (skip_count col (S e))); try lia. 
+         apply lin_indep_add; try lia.
+         assert (H' := skip_count_not_skip col (S e)). auto.
+         apply IHe; try lia; try easy; auto with wf_db. 
+         assert (H' : e < S e). lia. 
+         apply (skip_count_mono col) in H'.
+         lia. 
+         intros. 
+         unfold skip_count, make_col_zero in *. 
+         bdestruct (e <? col); bdestruct (S e <? col); try lia.
+         bdestruct (i =? S e); try easy; try apply H2; try lia. 
+         bdestruct (i =? S e); bdestruct (i =? S (S e)); try lia; try easy. 
+         bdestruct (S e =? col); try lia. rewrite H8, H10. apply H3.
+         apply H2; lia. 
+         bdestruct (i =? S e); bdestruct (i =? S (S e)); try lia; try easy. 
+         apply H2; lia. 
+         unfold make_col_zero, skip_count.
+         bdestruct (S e <? col); try lia; bdestruct (col =? S e); bdestruct (col =? S (S e)); 
+           try lia; try easy.
+         assert (H' := skip_count_not_skip col (S e)). auto.
+         intros. destruct x; try easy.
+         apply H; lia.
+Qed.
+       
+        
+         
+Lemma lin_indep_col_add_each : forall (n m col : nat) (as' : Matrix 1 (S m)) 
+                                          (T : Matrix n (S m)),
+  col < (S m) -> WF_Matrix as' -> linearly_independent T -> 
+  linearly_independent (col_add_each col (make_col_zero col as') T).
+Proof. intros. 
+       destruct m.
+       - assert (H' : make_col_zero col as' = Zero).
+         { apply mat_equiv_eq; auto with wf_db.
+           unfold mat_equiv; intros. 
+           destruct col; destruct i; destruct j; try lia. 
+           unfold make_col_zero. 
+           easy. }
+         rewrite H'. 
+         rewrite <- col_add_each_0; easy. 
+       - bdestruct (col =? S m).
+         + apply (lin_indep_col_add_each_some m); try lia; try easy; auto with wf_db.
+           unfold skip_count. bdestruct (m <? col); lia. 
+           intros. 
+           unfold make_col_zero. 
+           bdestruct (i =? col); try lia; try easy.
+           rewrite H2 in H3; unfold skip_count in H3.
+           bdestruct (m <? S m); try lia. 
+           rewrite H0; try lia; easy.
+           unfold make_col_zero. 
+           bdestruct (col =? col); try lia; easy.
+         + apply (lin_indep_col_add_each_some m); try lia; try easy; auto with wf_db.
+           unfold skip_count.
+           bdestruct (m <? col); try lia. 
+           intros. unfold make_col_zero. 
+           bdestruct (i =? col); try lia; try easy.
+           unfold skip_count in H3.
+           bdestruct (m <? col); try lia. 
+           apply H0; lia. 
+           unfold make_col_zero. 
+           bdestruct (col =? col); try lia; easy.
 Qed.
 
 
@@ -2594,6 +3718,14 @@ Proof. unfold linearly_dependent in *.
        bdestruct (x0 =? x); bdestruct (x0 =? y); easy. 
 Qed.
  
+
+Lemma lin_dep_swap_conv : forall {n m} (T : Matrix n m) (x y : nat),
+  x < m -> y < m -> linearly_dependent (col_swap T x y) -> linearly_dependent T.
+Proof. intros. 
+       rewrite (col_swap_inv T x y).
+       apply lin_dep_swap; easy.
+Qed.
+
 
 Lemma lin_dep_scale : forall {n m} (T : Matrix n m) (x : nat) (c : C),
   linearly_dependent T -> linearly_dependent (col_scale T x c).
@@ -2631,6 +3763,14 @@ Proof. intros.
 Qed.
 
 
+Lemma lin_dep_scale_conv : forall {n m} (T : Matrix n m) (x : nat) (c : C),
+  c <> C0 -> linearly_dependent (col_scale T x c) -> linearly_dependent T. 
+Proof. intros. 
+       rewrite (col_scale_inv T x c); try easy.
+       apply lin_dep_scale; easy. 
+Qed.
+
+
 Lemma lin_dep_add : forall {n m} (T : Matrix n m) (x y : nat) (c : C),
   x <> y -> x < m -> y < m -> linearly_dependent T -> linearly_dependent (col_add T x y c).
 Proof. intros.
@@ -2649,35 +3789,411 @@ Proof. intros.
 Qed.
 
 
-
-Lemma lin_dep_col_add_many : forall (n m col size : nat) (T : Matrix n m) (as' : Vector size),
-  size <= col -> col < m -> linearly_dependent T -> 
-  linearly_dependent (col_add_many col size as' T).
-Proof. induction size.
+Lemma lin_dep_col_add_many_some : forall (e n m col : nat) (T : Matrix n m) (as' : Vector m),
+  (skip_count col e) < m -> col < m -> 
+  (forall i : nat, (skip_count col e) < i -> as' i 0 = C0) -> as' col 0 = C0 ->
+  linearly_dependent T -> linearly_dependent (col_add_many col as' T).
+Proof. induction e as [| e].
        - intros. 
-         assert (H3 : col_add_many col 0 as' T = T).
-         { unfold col_add_many.
-           prep_matrix_equality.
-           bdestruct (y =? col); try easy.
-           unfold gen_new_vec.
-           simpl. lca. }
-         rewrite H3; easy.
+         rewrite (col_add_many_col_add _ (skip_count col 0)); 
+           try lia; try easy.  
+         apply lin_dep_add; try lia.
+         apply skip_count_not_skip.
+         assert (H' : (col_add_many col (make_row_zero (skip_count col 0) as') T) = T).
+         { prep_matrix_equality. 
+           unfold col_add_many, make_row_zero, skip_count, gen_new_vec, scale in *. 
+           bdestruct (y =? col); try lia; try easy.
+           rewrite <- Cplus_0_l.
+           rewrite Cplus_comm.
+           apply Csum_simplify; try easy.
+           rewrite Msum_Csum.
+           apply Csum_0_bounded; intros. 
+           destruct col; simpl in *. 
+           bdestruct (x0 =? 1); try lca. 
+           destruct x0; try rewrite H2; try rewrite H1; try lca; try lia. 
+           destruct x0; try lca; rewrite H1; try lca; lia. }
+         rewrite H'; easy.
+         apply skip_count_not_skip.
        - intros. 
-         rewrite gnv_iterated_add; try lia.
-         apply lin_dep_add; try lia. 
-         apply IHsize; try lia; easy.
+         rewrite (col_add_many_col_add _ (skip_count col (S e))); 
+           try lia; try easy.
+         apply lin_dep_add; try lia.
+         apply skip_count_not_skip.
+         apply IHe; try lia; try easy; auto with wf_db. 
+         assert (H' : e < S e). lia. 
+         apply (skip_count_mono col) in H'.
+         lia. 
+         intros. 
+         unfold skip_count, make_row_zero in *. 
+         bdestruct (e <? col); bdestruct (S e <? col); try lia.
+         bdestruct (i =? S e); try easy; try apply H1; try lia. 
+         bdestruct (i =? S e); bdestruct (i =? S (S e)); try lia; try easy. 
+         bdestruct (S e =? col); try lia. rewrite H7, H9. apply H2.
+         apply H1; lia. 
+         bdestruct (i =? S e); bdestruct (i =? S (S e)); try lia; try easy. 
+         apply H1; lia. 
+         unfold make_row_zero, skip_count.
+         bdestruct (S e <? col); try lia; bdestruct (col =? S e); bdestruct (col =? S (S e)); 
+           try lia; try easy.
+         apply skip_count_not_skip.
 Qed.
 
 
-Lemma lin_dep_col_add_many_conv : forall (n m col size : nat) (T : Matrix n m) (as' : Vector size),
-  size <= col -> col < m -> linearly_dependent (col_add_many col size as' T) ->
+Lemma lin_dep_col_add_many : forall (n m col : nat) (T : Matrix n m) (as' : Vector m),
+  col < m -> as' col 0 = C0 -> linearly_dependent T -> 
+  linearly_dependent (col_add_many col as' T).
+Proof. intros. 
+       destruct m; try lia. 
+       destruct m.
+       - assert (H' : as' == Zero).
+         { unfold mat_equiv; intros. 
+           destruct col; destruct i; destruct j; try lia. 
+           easy. }
+         rewrite <- col_add_many_0; easy. 
+       - rewrite (col_add_many_mat_equiv _ _ _ (make_WF as'));
+           try apply mat_equiv_make_WF.
+         bdestruct (col =? S m).
+         + apply (lin_dep_col_add_many_some m); try lia; try easy.
+           unfold skip_count. bdestruct (m <? col); lia. 
+           intros. 
+           unfold skip_count in H3; rewrite H2 in H3. 
+           bdestruct (m <? S m); try lia. 
+           unfold make_WF. 
+           bdestruct (i <? S (S m)); bdestruct (0 <? 1); try lia; try easy.
+           bdestruct (i =? S m); try lia. 
+           rewrite H7, <- H2; easy.
+           unfold make_WF. 
+           bdestruct (col =? col); bdestruct (col <? S (S m)); try lia; auto. 
+         + apply (lin_dep_col_add_many_some m); try lia; try easy.
+           unfold skip_count.
+           bdestruct (m <? col); try lia. 
+           intros. unfold make_WF.
+           unfold skip_count in H3.
+           bdestruct (m <? col); try lia. 
+           bdestruct (i <? S (S m)); try lia; try easy.
+           unfold make_WF. 
+           bdestruct (col =? col); bdestruct (col <? S (S m)); try lia; auto. 
+Qed.
+
+
+Lemma lin_dep_col_add_many_conv : forall (n m col : nat) (T : Matrix n m) (as' : Vector m),
+  col < m -> as' col 0 = C0 -> 
+  linearly_dependent (col_add_many col as' T) ->
   linearly_dependent T.
 Proof. intros. 
-       rewrite (col_add_many_inv T col size as'); try easy.
-       apply lin_dep_col_add_many; easy.
+       rewrite (col_add_many_inv T col as'); try easy.
+       apply lin_dep_col_add_many; try easy. 
+       unfold scale; rewrite H0.
+       lca. 
 Qed.
 
 
+Lemma lin_dep_col_add_each_some : forall (e n m col : nat) (as' : Matrix 1 m) (T : Matrix n m),
+  WF_Matrix as' -> (skip_count col e) < m -> col < m -> 
+  (forall i : nat, (skip_count col e) < i -> as' 0 i = C0) -> as' 0 col = C0 ->
+  linearly_dependent T -> linearly_dependent (col_add_each col as' T).
+Proof. induction e as [| e].
+       - intros.
+         rewrite (col_add_each_col_add _ (skip_count col 0)); try lia. 
+         apply lin_dep_add; try lia.
+         assert (H' := skip_count_not_skip col 0). auto.
+         assert (H' : (make_col_zero (skip_count col 0) as') = Zero).
+         { apply mat_equiv_eq; auto with wf_db.
+           unfold mat_equiv; intros. 
+           unfold make_col_zero, skip_count in *.
+           destruct i; try lia. 
+           destruct col; simpl in *. 
+           all : destruct j; try easy; simpl. 
+           destruct j; try easy; simpl.  
+           all : apply H2; lia. }
+         rewrite H'. 
+         rewrite <- col_add_each_0; easy. 
+         assert (H' := skip_count_not_skip col 0). auto.
+         intros. destruct x; try easy.
+         apply H; lia.
+       - intros.  
+         rewrite (col_add_each_col_add _ (skip_count col (S e))); try lia. 
+         apply lin_dep_add; try lia.
+         assert (H' := skip_count_not_skip col (S e)). auto.
+         apply IHe; try lia; try easy; auto with wf_db. 
+         assert (H' : e < S e). lia. 
+         apply (skip_count_mono col) in H'.
+         lia. 
+         intros. 
+         unfold skip_count, make_col_zero in *. 
+         bdestruct (e <? col); bdestruct (S e <? col); try lia.
+         bdestruct (i =? S e); try easy; try apply H2; try lia. 
+         bdestruct (i =? S e); bdestruct (i =? S (S e)); try lia; try easy. 
+         bdestruct (S e =? col); try lia. rewrite H8, H10. apply H3.
+         apply H2; lia. 
+         bdestruct (i =? S e); bdestruct (i =? S (S e)); try lia; try easy. 
+         apply H2; lia. 
+         unfold make_col_zero, skip_count.
+         bdestruct (S e <? col); try lia; bdestruct (col =? S e); bdestruct (col =? S (S e)); 
+           try lia; try easy.
+         apply skip_count_not_skip.
+         intros. destruct x; try easy.
+         apply H; lia.
+Qed.
+       
+        
+         
+Lemma lin_dep_col_add_each : forall (n m col : nat) (as' : Matrix 1 (S m)) 
+                                          (T : Matrix n (S m)),
+  col < (S m) -> WF_Matrix as' -> linearly_dependent T -> 
+  linearly_dependent (col_add_each col (make_col_zero col as') T).
+Proof. intros. 
+       destruct m.
+       - assert (H' : make_col_zero col as' = Zero).
+         { apply mat_equiv_eq; auto with wf_db.
+           unfold mat_equiv; intros. 
+           destruct col; destruct i; destruct j; try lia. 
+           unfold make_col_zero. 
+           easy. }
+         rewrite H'. 
+         rewrite <- col_add_each_0; easy. 
+       - bdestruct (col =? S m).
+         + apply (lin_dep_col_add_each_some m); try lia; try easy; auto with wf_db.
+           unfold skip_count. bdestruct (m <? col); lia. 
+           intros. 
+           unfold make_col_zero. 
+           bdestruct (i =? col); try lia; try easy.
+           rewrite H2 in H3; unfold skip_count in H3.
+           bdestruct (m <? S m); try lia. 
+           rewrite H0; try lia; easy.
+           unfold make_col_zero. 
+           bdestruct (col =? col); try lia; easy.
+         + apply (lin_dep_col_add_each_some m); try lia; try easy; auto with wf_db.
+           unfold skip_count.
+           bdestruct (m <? col); try lia. 
+           intros. unfold make_col_zero. 
+           bdestruct (i =? col); try lia; try easy.
+           unfold skip_count in H3.
+           bdestruct (m <? col); try lia. 
+           apply H0; lia. 
+           unfold make_col_zero. 
+           bdestruct (col =? col); try lia; easy.
+Qed.
+
+
+
+Lemma lin_dep_col_add_each_conv : forall (n m col : nat) (as' : Matrix 1 (S m)) 
+                                          (T : Matrix n (S m)),
+  col < (S m) -> WF_Matrix as' -> 
+  linearly_dependent (col_add_each col (make_col_zero col as') T) ->
+  linearly_dependent T.
+Proof. intros. 
+       rewrite (col_add_each_inv col as').
+       apply lin_dep_col_add_each; auto with wf_db.
+Qed.
+
+
+Lemma lin_dep_gen_elem : forall {m n} (T : Matrix n (S m)),
+  WF_Matrix T -> linearly_dependent T -> 
+  (exists i, i < (S m) /\ 
+             (exists v : Vector m, WF_Matrix v /\ 
+                 @Mmult n m 1 (reduce_col T i) v = (-C1) .* (get_vec i T))). 
+Proof. intros. 
+       unfold linearly_dependent in H.
+       destruct H0 as [a [H1 [H2 H3]]].
+       assert (H4 := H1).
+       apply nonzero_vec_nonzero_elem in H4; try easy.
+       destruct H4 as [x H4].
+       exists x.
+       bdestruct (x <? S m).
+       - split; try easy.
+         exists ( (/ (a x 0)) .* (reduce_row a x)).
+         split. rewrite easy_sub.
+         apply WF_scale.
+         assert (H' := (@WF_reduce_row (S m) 1 x a)).
+         rewrite easy_sub in *.
+         apply H'; easy.
+         apply mat_equiv_eq; auto with wf_db.
+         apply WF_mult.
+         assert (H' := (@WF_reduce_col n (S m) x T)).
+         rewrite easy_sub in *.
+         apply H'; try lia; try easy.
+         rewrite easy_sub in *.
+         apply WF_scale.
+         assert (H' := (@WF_reduce_row (S m) 1 x a)).
+         rewrite easy_sub in *.
+         apply H'; try lia; try easy.
+         rewrite easy_sub.
+         rewrite Mscale_mult_dist_r.  
+         unfold mat_equiv; intros. 
+         unfold Mmult, scale.
+         assert (H' : (Csum (fun y : nat => reduce_col T x i y * reduce_row a x y j) m +
+                       (a x 0) * get_vec x T i j = @Zero n 1 i j)%C).
+         { rewrite <- H3. unfold Mmult.
+           assert (H'' : m = x + (m - x)). lia. 
+           rewrite H''. 
+           rewrite Csum_sum.
+           rewrite <- H''. 
+           assert (H2' : S m = x + S (m - x)). lia. 
+           rewrite H2'. 
+           rewrite Csum_sum.
+           rewrite <- Csum_extend_l.
+           rewrite <- Cplus_assoc.
+           apply Csum_simplify. 
+           apply Csum_eq_bounded.
+           intros. unfold reduce_col, reduce_row. 
+           bdestruct (x0 <? x); try lia; easy.
+           rewrite Cplus_comm.
+           apply Csum_simplify. 
+           unfold get_vec.
+           bdestruct (j =? 0); try lia. 
+           assert (p0 : x + 0 = x). lia. 
+           rewrite p0, H7; lca.
+           apply Csum_eq_bounded.
+           intros. 
+           unfold reduce_col, reduce_row.
+           bdestruct (x + x0 <? x); try lia.
+           assert (p1 : (1 + (x + x0)) = (x + S x0)). lia. 
+           rewrite p1. easy. }
+         assert (H1' : (Csum (fun y : nat => reduce_col T x i y * reduce_row a x y j) m +
+                       (a x 0) * get_vec x T i j + (a x 0) * (- (get_vec x T i j)) = 
+                       (- (a x 0)) * get_vec x T i j)%C).
+         { rewrite H'. lca. }
+         rewrite <- Cplus_assoc in H1'.
+         rewrite <- Cmult_plus_distr_l in H1'.
+         rewrite Cplus_opp_r in H1'.
+         rewrite Cmult_0_r, Cplus_0_r in H1'.
+         rewrite H1'. 
+         rewrite Cmult_assoc. 
+         rewrite <- Copp_mult_distr_r.
+         rewrite Cinv_l; easy. 
+       - assert (H' : a x 0 = C0).
+         apply H1; try lia.
+         easy. 
+Qed.
+
+
+Lemma gt_dim_lindep_ind_step1 : forall {n m} (T : Matrix (S n) (S m)) (col : nat),
+  WF_Matrix T -> col <= m -> get_vec col T = @e_i (S n) 0 -> 
+  linearly_dependent (reduce_row (reduce_col T col) 0) -> linearly_dependent T.
+Proof. intros.  
+       apply (lin_dep_col_add_each_conv _ _  col (-C1 .* (get_row 0 T))); 
+         auto with wf_db; try lia.
+       unfold linearly_dependent in *.
+       destruct H2 as [a [H3 [H4 H5]]]. 
+       repeat rewrite easy_sub in *.
+       exists (row_wedge a (@Zero 1 1) col).
+       split. 
+       - rewrite easy_sub in *.
+         auto with wf_db.
+       - split. 
+         + unfold not in *. 
+           intros. apply H4. 
+           prep_matrix_equality.
+           bdestruct (x <? col).
+           assert (H' : (row_wedge a Zero col) x y = C0 ).
+           { rewrite H2. easy. }
+           unfold row_wedge in *. 
+           bdestruct (x <? col); try lia. easy. 
+           assert (H' : (row_wedge a Zero col) (S x) y = C0 ).
+           { rewrite H2. easy. }
+           unfold row_wedge in *.
+           bdestruct (S x <? col); bdestruct (S x =? col); try lia. 
+           rewrite easy_sub in *; easy. 
+         + repeat rewrite easy_sub in *.
+           apply mat_equiv_eq; auto with wf_db.
+           apply WF_mult; auto with wf_db.
+           unfold mat_equiv; intros. 
+           assert (H' : (get_vec col T) i 0 = @e_i (S n) 0 i 0).
+           { rewrite H1. easy. }  
+           unfold col_add_each, make_col_zero, get_row, Mmult, Mplus, get_vec, 
+           scale, row_append, row_wedge.
+           destruct i.  
+           * unfold get_vec, e_i in H'; simpl in H'. 
+             rewrite H'. unfold Zero. 
+             apply Csum_0_bounded. 
+             intros; simpl.  
+             bdestruct (x =? col); bdestruct (x <? col); try lia; lca. 
+           * unfold get_vec, e_i in H'; simpl in H'. 
+             assert (H0' : (reduce_row (reduce_col T col) 0 × a) i j = @Zero (S n) 1 (S i) j).
+             repeat rewrite easy_sub in *; rewrite H5. easy.
+             rewrite <- H0'.
+             unfold Mmult, reduce_row, reduce_col.
+             repeat rewrite easy_sub in *.
+             assert (p : S m = col + (S m - col)). lia.
+             rewrite p.
+             rewrite Csum_sum.
+             assert (p1 : S m - col = S (m - col)). lia. 
+             rewrite p1. 
+             rewrite <- Csum_extend_l. 
+             simpl. bdestruct (col + 0 =? col); bdestruct (col + 0 <? col); try lia. 
+             assert (p2 : m = col + (m - col)). lia.
+             rewrite p2.
+             rewrite Csum_sum.
+             rewrite <- p2.
+             apply Csum_simplify.
+             apply Csum_eq_bounded; intros. 
+             bdestruct (x <? col); bdestruct (x =? col); try lia.
+             rewrite H'. lca. 
+             rewrite <- Cplus_0_l.
+             apply Csum_simplify; try lca.
+             apply Csum_eq_bounded; intros.
+             bdestruct (col + S x <? col); bdestruct (col + S x =? col); 
+               bdestruct (col + x <? col); try lia. 
+             assert (p4 : col + S x - 1 = col + x). lia. 
+             assert (p5 : S (col + x) = col + S x). lia.  
+             rewrite H', p4, p5. lca. 
+Qed.             
+             
+
+
+Lemma gt_dim_lindep_ind_step2 : forall {n m} (T : Matrix (S n) (S m)) 
+                                       (v : Vector (S m)) (col : nat),
+  WF_Matrix T -> col < S m -> v col 0 = C0 ->
+  reduce_col (reduce_row T 0) col × (reduce_row v col) = 
+                     - C1 .* get_vec col (reduce_row T 0) -> 
+  linearly_dependent (reduce_row (reduce_col T col) 0) -> linearly_dependent T.
+Proof. intros. 
+       assert (H' := @col_add_many_cancel n (S m) (reduce_row T 0) v col).
+       assert (H0' : forall i : nat, @col_add_many n (S m) col v  (reduce_row T 0) i col = C0).
+       { repeat rewrite easy_sub in *; apply H'; try easy. }
+       repeat rewrite easy_sub in *.
+       apply (lin_dep_col_add_many_conv _ _ col _ v); try easy.
+       destruct (Ceq_dec ((col_add_many col v T) 0 col) C0).
+       - apply (zero_vec_lin_dep _ col); try lia. 
+         prep_matrix_equality. unfold get_vec.
+         destruct y; try easy; simpl. 
+         destruct x; try easy. unfold Zero.
+         rewrite <- (H0' x).
+         unfold col_add_many, reduce_row. 
+         bdestruct (col =? col); bdestruct (x <? 0); try lia. 
+         apply Csum_simplify. 
+         easy. unfold gen_new_vec.
+         do 2 rewrite Msum_Csum.
+         apply Csum_eq_bounded; intros. 
+         unfold scale, get_vec; lca.  
+       - apply (lin_dep_scale_conv _ col (/ (col_add_many col v T 0 col))); 
+           try apply nonzero_div_nonzero; try easy.
+         apply (gt_dim_lindep_ind_step1 _ col); try lia; auto with wf_db.
+         apply mat_equiv_eq; auto with wf_db.
+         unfold mat_equiv; intros. 
+         unfold get_vec, e_i.
+         bdestruct (j =? 0); bdestruct (i =? 0); bdestruct (i <? S n); 
+           try lia; simpl. 
+         + unfold col_scale. bdestruct (col =? col); try lia. 
+           rewrite H7. rewrite Cinv_l; easy.
+         + unfold col_scale. bdestruct (col =? col); try lia. 
+           destruct i; try easy.
+           assert (r : col_add_many col v T (S i) col = 
+                       col_add_many col v (reduce_row T 0) i col).
+           { unfold reduce_row, col_add_many, gen_new_vec, get_vec, scale.
+             bdestruct (col =? col); bdestruct (i <? 0); try lia. 
+             apply Csum_simplify; try easy.
+             do 2 rewrite Msum_Csum. 
+             apply Csum_eq_bounded; intros. 
+             bdestruct (i <? 0); try lia; easy. }
+           rewrite r. 
+           rewrite easy_sub in *. 
+           rewrite (H0' i); lca. 
+         + rewrite col_scale_reduce_col_same; try easy.
+           rewrite col_add_many_reduce_col_same. 
+           repeat rewrite easy_sub in *. easy.
+Qed.
 
 Lemma gt_dim_lindep : forall {m n} (T : Matrix n m),
   n < m -> WF_Matrix T -> linearly_dependent T.
@@ -2713,155 +4229,360 @@ Proof. induction m as [| m'].
              assert (H1' := (@WF_reduce_row (S n') (S m'))).
              rewrite easy_sub in *.
              apply H1'; try lia; easy. }
-           unfold linearly_dependent in H'.
-           destruct H' as [a [H2 [H3 H4]]].
-             apply WF_reduce_row.
-             apply lin_dep_col_append_n.
-
-
-
-
-Lemma WF_reduce_col : forall {n m} (col : nat) (A : Matrix n m),
-  col < m -> WF_Matrix A -> WF_Matrix (reduce_col A col).
-Proof. unfold WF_Matrix, reduce_col. intros. 
-       bdestruct (y <? col). 
-       - destruct H1 as [H1 | H1].   
-
-reduce_append_split 
-
-
-
-           Admitted.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Lemma col_swap_mult_r : forall {n} (A : Square n) (x y : nat),
-  x < n -> y < n -> WF_Matrix A -> A × (row_swap (I n) x y) = (col_swap A x y).
-Proof. intros.
-       assert (H2 := (swap_preserves_mul A (row_swap (I n) x y) x y)).
-       rewrite <- (Mmult_1_r _ _ (col_swap A x y)); auto with wf_db.
-       rewrite H2; try easy.
-       rewrite <- (row_swap_inv (I n) x y).
-       reflexivity. 
+           apply lin_dep_gen_elem in H'. 
+           destruct H' as [i [H2 H3]].
+           destruct H3 as [v [H3 H4]]. 
+           * apply (gt_dim_lindep_ind_step2 _ (row_wedge v (@Zero 1 1) i) i); try easy.
+             unfold row_wedge.
+             bdestruct (i <? i); bdestruct (i =? i); try lia; easy.
+             rewrite row_wedge_reduce_row_same. 
+             repeat rewrite easy_sub in *; easy.
+             assert (H' := (IHm' n' (reduce_row (reduce_col T i) 0))).
+             repeat rewrite easy_sub in *.
+             apply H'; try lia. 
+             assert (H1' := (@WF_reduce_row (S n') m')).
+             rewrite easy_sub in *; apply H1'; try lia. 
+             assert (H2' := (@WF_reduce_col (S n') (S m'))).
+             rewrite easy_sub in *; apply H2'; try lia; easy. 
+           * apply WF_reduce_row; try lia; easy.
 Qed.
-      
 
 
+Definition pad {n : nat} (A : Square n) : Square (S n) :=
+  col_wedge (row_wedge A Zero 0) (e_i 0) 0.
 
-Lemma scale_preserves_mul : forall {n m o} (A : Matrix n m) (B : Matrix m o) (x : nat) (a : C),
-  A × (row_scale B x a) = (col_scale A x a) × B.
+Lemma pad_conv : forall {n : nat} (A : Square n) (i j : nat),
+  (pad A) (S i) (S j) = A i j.
+Proof. intros.
+       unfold pad, col_wedge, row_wedge, e_i.
+       bdestruct (S j <? 0); bdestruct (S j =? 0); try lia.
+       bdestruct (S i <? 0); bdestruct (S i =? 0); try lia.
+       do 2 rewrite easy_sub.
+       easy.
+Qed.
+
+Lemma WF_pad : forall {n : nat} (A : Square n),
+  WF_Matrix A <-> WF_Matrix (pad A).
+Proof. unfold WF_Matrix, pad. split.
+       - intros. 
+         unfold col_wedge, row_wedge, e_i.
+         bdestruct (y <? 0); bdestruct (y =? 0); try lia. 
+         destruct H0; try lia. 
+         bdestruct (x =? 0); bdestruct (x <? n); try lia; try easy.
+         destruct y; try lia. 
+         rewrite easy_sub. 
+         bdestruct (x <? 0); bdestruct (x =? 0); try lia; try easy. 
+         destruct x; try lia. 
+         rewrite easy_sub.
+         apply H; lia. 
+       - intros. 
+         unfold col_wedge, row_wedge, e_i in H.
+         rewrite <- (H (S x) (S y)); try lia. 
+         bdestruct (S y <? 0); bdestruct (S y =? 0); try lia. 
+         bdestruct (S x =? 0); bdestruct (S x <? 0); try lia; try easy.
+         do 2 rewrite easy_sub; easy.
+Qed.
+
+Lemma pad_mult : forall {n : nat} (A B : Square n),
+  pad (A × B) = (pad A) × (pad B).
 Proof. intros. 
        prep_matrix_equality. 
-       unfold Mmult. 
-       apply Csum_eq_bounded.
+       unfold pad, Mmult, col_wedge, row_wedge, e_i.
+       bdestruct (y <? 0); bdestruct (y =? 0); bdestruct (x <? 0); 
+         bdestruct (x =? 0); try lia; try easy.
+       bdestruct (x <? S n).
+       rewrite <- Csum_extend_l. simpl. 
+       rewrite <- (Cplus_0_l C1).
+       rewrite Cplus_comm.
+       apply Csum_simplify; try lca. 
+       rewrite Csum_0_bounded; try easy.
+       intros. lca. 
+       simpl. 
+       rewrite Csum_0_bounded; try easy.
+       destruct n; try lca. 
        intros. 
-       unfold col_scale, row_scale.
-       bdestruct (x1 =? x).
-       - rewrite Cmult_assoc.
-         lca. 
-       - reflexivity. 
-Qed.        
-
-
-
-
-Lemma col_add_preserves_mul_lt : forall {n m o} (A : Matrix n m) (B : Matrix m o) 
-                                                (x y : nat) (a : C),
-   x < y -> x < m -> y < m -> A × (row_add B y x a) = (col_add A x y a) × B.
-Proof. intros.  
+       bdestruct (x0 =? 0); try lca. 
+       rewrite Csum_0_bounded; try easy.
+       intros. bdestruct (x0 <? 0); bdestruct (x0 =? 0); try lia; lca. 
+       rewrite Csum_0_bounded; try easy.
+       intros. bdestruct (x0 <? 0); bdestruct (x0 =? 0); try lia; lca. 
+       rewrite <- Csum_extend_l. simpl. 
+       rewrite Cmult_0_l, Cplus_0_l.
+       apply Csum_eq_bounded. 
+       intros. 
+       assert (H' : x0 - 0 = x0). lia.
+       rewrite H'. easy. 
+Qed.
+ 
+Lemma pad_I : forall (n : nat), pad (I n) = I (S n).
+Proof. intros. 
+       unfold pad, I, col_wedge, row_wedge, e_i.
        prep_matrix_equality. 
-       unfold Mmult.  
-       bdestruct (x <? m); try lia.
-       rewrite (le_plus_minus x m); try lia.       
-       do 2 rewrite Csum_sum.
-       apply Csum_simplify. 
-       apply Csum_eq_bounded.
-       intros. 
-       unfold row_add, col_add.
-       bdestruct (x1 =? y); bdestruct (x1 =? x); try lia; easy. 
-       destruct (m - x) as [| x'] eqn:E; try lia. 
-       do 2 rewrite <- Csum_extend_l.
-       rewrite Cplus_comm. 
-       rewrite (Cplus_comm (col_add A x y a x0 (x + 0)%nat * B (x + 0)%nat y0)%C _).
-       bdestruct ((y - x - 1) <? x'); try lia.  
-       rewrite (le_plus_minus (y - x - 1) x'); try lia. 
-       do 2 rewrite Csum_sum.
-       do 2 rewrite <- Cplus_assoc.
-       apply Csum_simplify. 
-       apply Csum_eq_bounded.
-       intros. 
-       unfold row_add, col_add.
-       bdestruct (x + S x1 =? y); bdestruct (x + S x1 =? x); try lia; easy. 
-       destruct (x' - (y - x - 1)) as [| x''] eqn:E1; try lia. 
-       do 2 rewrite <- Csum_extend_l.
-       rewrite Cplus_comm. 
-       rewrite (Cplus_comm _ (col_add A x y a x0 (x + 0)%nat * B (x + 0)%nat y0)%C).
-       do 2 rewrite Cplus_assoc.
-       apply Csum_simplify. 
-       unfold row_add, col_add.
-       do 2 rewrite <- plus_n_O.
-       bdestruct (x =? y); bdestruct (x =? x); 
-         bdestruct (x + S (y - x - 1) =? y); bdestruct (x + S (y - x - 1) =? x); try lia. 
-       rewrite H6. lca. 
-       apply Csum_eq_bounded.
-       intros. 
-       unfold row_add, col_add.
-       bdestruct (x + S (y - x - 1 + S x1) =? y); 
-         bdestruct (x + S (y - x - 1 + S x1) =? x); try lia; easy. 
+       bdestruct (y <? 0); bdestruct (y =? 0); bdestruct (x <? 0); bdestruct (x <? S n);
+         bdestruct (x =? 0); bdestruct (x =? y); bdestruct (x - 1 =? y - 1); 
+         bdestruct (x - 1 <? n); try lia; try easy.
 Qed.
 
-Lemma col_add_preserves_mul : forall {n m o} (A : Matrix n m) (B : Matrix m o) 
-                                             (x y : nat) (a : C),
-   x < m -> y < m -> A × (row_add B y x a) = (col_add A x y a) × B.
-Proof. intros. bdestruct (x <? y).
-       - apply col_add_preserves_mul_lt; easy.
-       - destruct H1.
-         + rewrite col_add_double, row_add_double. 
-           apply scale_preserves_mul.
-         + rewrite (swap_preserves_mul A _ y (S m0)); try easy.
-           rewrite (swap_preserves_mul _ B (S m0) y); try easy.
-           rewrite col_add_swap.
-           rewrite row_add_swap.
-           rewrite row_swap_diff_order.
-           rewrite col_swap_diff_order.
-           apply col_add_preserves_mul_lt; lia. 
+
+Lemma padded : forall {n : nat} (A : Square (S n)),
+  (forall (i j : nat), (i = 0 \/ j = 0) /\ i <> j -> A i j = C0) -> A 0 0 = C1 ->
+  exists a : Square n, pad a = A.
+Proof. intros.  
+       exists (reduce A 0 0).
+       unfold pad, reduce, col_wedge, row_wedge, e_i.
+       prep_matrix_equality. 
+       bdestruct (y <? 0); bdestruct (y =? 0); bdestruct (x <? 0); bdestruct (x =? 0);
+         try lia. 
+       rewrite H4, H2, H0. easy.
+       rewrite H; try lia.
+       destruct x; try lia. auto. 
+       rewrite H; try lia; easy. 
+       destruct x; destruct y; try lia. 
+       do 2 rewrite easy_sub in *.
+       bdestruct (x <? 0); bdestruct (y <? 0); try lia. 
+       easy.
 Qed.
 
 
 
+Lemma lin_indep_pad : forall {n : nat} (A : Square n),
+  linearly_independent (pad A) -> linearly_independent A.
+Proof. unfold linearly_independent.
+       intros. 
+       assert (H2 : (pad A) × (row_wedge a Zero 0) = Zero).
+       { prep_matrix_equality. 
+         destruct x. unfold Mmult. 
+         unfold Zero. apply Csum_0_bounded. 
+         intros.
+         unfold pad, row_wedge, col_wedge, e_i.
+         bdestruct (x <? 0); bdestruct (x =? 0); try lia. lca. 
+         lca.
+         assert (p : @Zero (S n) 1 (S x) y = C0).
+         easy.
+         assert (H2' : (A × a) x y = C0). 
+         rewrite H1; easy.
+         rewrite p. 
+         rewrite <- H2'.
+         unfold Mmult. rewrite <- Csum_extend_l.  
+         rewrite <- Cplus_0_l.
+         apply Csum_simplify.
+         unfold pad, row_wedge, col_wedge, e_i.
+         bdestruct (x <? 0); bdestruct (x =? 0); try lia. 
+         rewrite H3; simpl. lca. 
+         rewrite easy_sub. lca. 
+         apply Csum_eq_bounded; intros. 
+         rewrite pad_conv.
+         unfold row_wedge.
+         rewrite easy_sub. 
+         easy. }
+       apply H in H2.
+       prep_matrix_equality. 
+       assert (H3 : row_wedge a Zero 0 (S x) y = C0).
+       rewrite H2. easy.
+       unfold Zero. rewrite <- H3.
+       unfold row_wedge. 
+       rewrite easy_sub.
+       easy.
+       apply WF_row_wedge; try lia; easy.
+Qed.   
+         
+
+Lemma lin_indep_ind_step1 : forall {n} (A : Square (S n)), 
+  WF_Matrix A -> linearly_independent A -> 
+  (exists B : Square (S n), WF_Matrix B /\ linearly_independent (A × B) /\
+                            (exists i, i < (S n) /\ get_vec i (A × B) = e_i 0)).
+Proof. intros. 
+       assert (H1 : WF_Matrix (reduce_row A 0)).
+       { assert (H1' := (@WF_reduce_row (S n) (S n))).
+         rewrite easy_sub in *.
+         apply H1'; try lia; easy. }
+       assert (H2 : linearly_dependent (reduce_row A 0)).
+       { apply gt_dim_lindep; try lia. 
+         apply H1. }
+       apply lin_dep_gen_elem in H2; try easy.
+       destruct H2 as [i [H2 H3]].
+       destruct H3 as [v [H3 H4]].
+       apply (lin_indep_col_add_many (S n) (S n) i A (row_wedge v Zero i)) in H0; try easy.
+       destruct (Ceq_dec ((col_add_many i (make_row_zero i (row_wedge v Zero i)) A) 0 i) C0).
+       - assert (H5 : forall i0 : nat, 
+                   col_add_many i (row_wedge v Zero i) (reduce_row A 0) i0 i = C0).
+         apply (col_add_many_cancel (reduce_row A 0) (row_wedge v Zero i) i); try easy.
+         unfold row_wedge. 
+         bdestruct (i <? i); bdestruct (i =? i); try lia; easy. 
+         rewrite row_wedge_reduce_row_same. 
+         rewrite easy_sub in *.
+         easy. 
+         assert (H6: get_vec i (col_add_many i (make_row_zero i (row_wedge v Zero i)) A) = Zero).
+         { apply mat_equiv_eq; auto with wf_db.
+           unfold mat_equiv; intros. 
+           destruct j; try lia.
+           unfold get_vec; simpl. 
+           assert (H6' : (make_row_zero i (row_wedge v Zero i)) = (row_wedge v Zero i)).
+           { unfold make_row_zero, row_wedge. 
+             prep_matrix_equality. 
+             bdestruct (x <? i); bdestruct (x =? i); try lia; easy. }
+           rewrite H6' in *.
+           destruct i0.
+           rewrite e; easy.
+           rewrite col_add_many_reduce_row in H5.
+           assert (p : (@Zero (S n) 1 (S i0) 0) = C0). easy.  
+           rewrite p.
+           rewrite <- (H5 i0).
+           unfold reduce_row.
+           bdestruct (i0 <? 0); try lia. 
+           easy. }
+         apply zero_vec_lin_dep in H6; try easy.
+         apply lindep_implies_not_linindep in H6.
+         easy. 
+       - assert (H5 : (make_row_zero i (row_wedge v Zero i)) = (row_wedge v Zero i)).
+           { unfold make_row_zero, row_wedge. 
+             prep_matrix_equality.  
+             bdestruct (x <? i); bdestruct (x =? i); try lia; easy. }
+         rewrite H5 in *.
+         apply (lin_indep_scale (col_add_many i (row_wedge v Zero i) A) i
+                 (/ col_add_many i (row_wedge v Zero i) A 0 i)) in H0.
+         assert (H6 : forall i0 : nat, 
+                   col_add_many i (row_wedge v Zero i) (reduce_row A 0) i0 i = C0).
+         apply (col_add_many_cancel (reduce_row A 0) (row_wedge v Zero i) i); try easy.
+         unfold row_wedge.  
+         bdestruct (i <? i); bdestruct (i =? i); try lia; easy. 
+         rewrite row_wedge_reduce_row_same. 
+         rewrite easy_sub in *.
+         easy. 
+         rewrite col_add_many_reduce_row in H6. 
+         exists ((row_add_each i (row_wedge v Zero i) (I (S n))) × 
+                  (row_scale (I (S n)) i 
+                  (/ (col_add_many i (row_wedge v Zero i) A 0 i)))).
+         split. apply WF_mult; auto with wf_db.
+         apply WF_row_add_each; auto with wf_db.
+         apply WF_row_wedge; auto with wf_db; lia.
+         rewrite <- Mmult_assoc.
+         rewrite <- col_add_many_mult_r; try easy.
+         rewrite <- col_scale_mult_r; try easy.
+         split; try easy.
+         exists i. split; try easy.
+         apply mat_equiv_eq; auto with wf_db.
+         unfold mat_equiv; intros. 
+         destruct j; try lia. 
+         unfold get_vec, col_scale.
+         bdestruct (i =? i); simpl; try lia.  
+         destruct i0.
+         rewrite Cinv_l; try easy.
+         assert (H10 : col_add_many i (row_wedge v Zero i) A (S i0) i = C0).
+         rewrite <- (H6 i0).
+         unfold reduce_row.
+         bdestruct (i0 <? 0); try lia; easy.
+         rewrite H10. lca. 
+         apply WF_col_add_many; auto with wf_db.
+         apply WF_row_wedge; auto with wf_db; lia.
+         unfold row_wedge.
+         bdestruct (i <? i); bdestruct (i =? i); try lia; easy. 
+         apply nonzero_div_nonzero; easy.
+Qed.         
 
 
+Lemma lin_indep_ind_step2 : forall {n} (A : Square (S n)), 
+  WF_Matrix A -> linearly_independent A -> (exists i, i < (S n) /\ get_vec i A = e_i 0) ->
+  (exists B : Square (S n), WF_Matrix B /\ linearly_independent (A × B) /\
+                            (exists a : Square n, pad a = (A × B))).
+Proof. intros.
+       destruct H1 as [i [H1 H2]].
+       apply (lin_indep_swap A 0 i) in H0; try lia; try easy.
+       apply (lin_indep_col_add_each _ _ 0 
+                           (-C1 .* (get_row 0 (col_swap A 0 i))) (col_swap A 0 i)) in H0; try lia.
+       exists ((row_swap (I (S n)) 0 i) × (row_add_many 0 
+                                (make_col_zero 0 (-C1 .* (get_row 0 (col_swap A 0 i)))) 
+                                (I (S n)))).
+       split. 
+       apply WF_mult. 
+       apply WF_row_swap; try lia; auto with wf_db.
+       apply WF_row_add_many; try lia; auto with wf_db.
+       rewrite <- Mmult_assoc. 
+       rewrite <- col_swap_mult_r; try lia; try easy.
+       rewrite <- col_add_each_mult_r; try lia; try easy.
+       split; try easy.
+       apply padded; intros. 
+       destruct H3 as [H3 H4].
+       destruct H3. 
+       + unfold col_add_each, make_col_zero, get_row, col_swap, 
+         Mplus, Mmult, get_vec, scale.
+         rewrite H3 in *.
+         bdestruct (j =? 0); try lia. 
+         assert (H' : (get_vec i A) 0 0 = C1).
+         { rewrite H2. easy. }
+         simpl. bdestruct (j =? i); try lia. 
+         all : unfold get_vec in H'; simpl in H'.
+         all : rewrite H'; lca. 
+       + unfold col_add_each, make_col_zero, get_row, col_swap, 
+         Mplus, Mmult, get_vec, scale.
+         rewrite H3 in *; simpl. 
+         destruct i0; try lia.
+         assert (H' : (get_vec i A) (S i0) 0 = C0).
+         { rewrite H2. easy. }
+         unfold get_vec in H'; simpl in H'. 
+         rewrite H'; lca. 
+       + unfold col_add_each, make_col_zero, get_row, col_swap, 
+         Mplus, Mmult, get_vec, scale; simpl.
+         assert (H' : (get_vec i A) 0 0 = C1).
+         { rewrite H2. easy. }
+         unfold get_vec in H'; simpl in H'.
+         rewrite H'; lca.
+       + apply WF_col_swap; try lia; easy. 
+       + apply WF_make_col_zero.
+         apply WF_scale. 
+         apply WF_get_row.
+         apply WF_col_swap; try lia; easy.
+       + apply WF_scale. 
+         apply WF_get_row.
+         apply WF_col_swap; try lia; easy.
+Qed.    
 
 
+Theorem lin_ind_implies_invertible_r : forall {n} (A : Square n),
+  WF_Matrix A -> linearly_independent A -> 
+  (exists B, WF_Matrix B /\ A × B = I n).
+Proof. induction n as [| n'].
+       - intros.  
+         exists Zero. split; auto with wf_db.
+         rewrite Mmult_0_r.
+         apply mat_equiv_eq; auto with wf_db. 
+         unfold mat_equiv. lia. 
+       - intros. apply lin_indep_ind_step1 in H0; try easy.
+         destruct H0 as [B1 [H0 [H1 H2]]].
+         destruct H2 as [i [H2 H3]].
+         apply lin_indep_ind_step2 in H1; auto with wf_db.
+         destruct H1 as [B2 [H1 [H4 H5]]].
+         destruct H5 as [a H5].
+         rewrite <- H5 in H4.
+         apply lin_indep_pad in H4.
+         apply IHn' in H4.
+         destruct H4 as [B3 [H6 H7]].
+         exists (B1 × B2 × (pad B3)).
+         split. apply WF_mult. 
+         apply WF_mult; easy.
+         apply WF_pad in H6; easy.
+         do 2 rewrite <- Mmult_assoc. 
+         rewrite <- H5.
+         rewrite <- pad_mult.
+         rewrite H7, pad_I; easy.
+         apply WF_pad. 
+         rewrite H5. 
+         auto with wf_db.
+         exists i; split; try lia. 
+         easy.
+Qed.
 
 
-
-
-
-
-
-Theorem linind_implies_invertible_r : forall {n} (A : Square n),
-  linearly_independent A -> (exists B, WF_Matrix B /\ A × B = I n).
-Proof. Admitted.
-
-
+         
 
 (* Inverses of square matrices *)
 
 Definition Minv {n : nat} (A B : Square n) : Prop := A × B = I n /\ B × A = I n.
+
+
+Definition invertible {n : nat} (A : Square n) : Prop :=
+  exists B, Minv A B.
+
 
 Lemma Minv_unique : forall (n : nat) (A B C : Square n), 
                       WF_Matrix A -> WF_Matrix B -> WF_Matrix C ->
@@ -2880,30 +4601,36 @@ Lemma Minv_symm : forall (n : nat) (A B : Square n), Minv A B -> Minv B A.
 Proof. unfold Minv; intuition. Qed.
 
 (* The left inverse of a square matrix is also its right inverse *)
-Lemma Minv_flip : forall (n : nat) (A B : Square n), WF_Matrix A -> A × B = I n -> B × A = I n.
+Lemma Minv_flip : forall (n : nat) (A B : Square n), 
+  WF_Matrix A -> WF_Matrix B ->  
+  A × B = I n -> B × A = I n.
 Proof. intros.   
-       assert (H3 := H0).
-       apply invertible_l_implies_linind in H0.
-       apply linind_implies_invertible_r in H0.
-       destruct H0 as [A' [H1 H2]].
+       assert (H3 := H1).
+       apply invertible_l_implies_linind in H1.
+       apply lin_ind_implies_invertible_r in H1; try easy.
+       destruct H1 as [A' [H2 H4]].
        assert (H' : (A × B) × A' = A').
        { rewrite H3. apply Mmult_1_l; easy. }
        rewrite Mmult_assoc in H'.
-       rewrite H2 in H'.
+       rewrite H4 in H'.
        rewrite Mmult_1_r in H'; try easy.
        rewrite H'; easy.
 Qed.
 
 
-Lemma Minv_left : forall (n : nat) (A B : Square n), WF_Matrix A -> A × B = I n -> Minv A B.
+Lemma Minv_left : forall (n : nat) (A B : Square n), 
+    WF_Matrix A -> WF_Matrix B -> 
+    A × B = I n -> Minv A B.
 Proof.
-  intros n A B H H0. 
+  intros n A B H H0 H1. 
   unfold Minv. split; trivial.
   apply Minv_flip; 
   assumption.
 Qed.
 
-Lemma Minv_right : forall (n : nat) (A B : Square n), WF_Matrix B -> B × A = I n -> Minv A B.
+Lemma Minv_right : forall (n : nat) (A B : Square n), 
+    WF_Matrix A -> WF_Matrix B -> 
+    B × A = I n -> Minv A B.
 Proof.
   intros n A B H H0. 
   unfold Minv. split; trivial.
@@ -2912,6 +4639,22 @@ Proof.
 Qed.
 
 
+Lemma lin_indep_invertible : forall {n : nat} (A : Square n),
+  WF_Matrix A -> (linearly_independent A <-> invertible A).
+Proof. intros; split.
+       - intros. 
+         assert (H1 := H).
+         apply lin_ind_implies_invertible_r in H; try easy.
+         destruct H as [B [H H2]].
+         unfold invertible.
+         exists B. unfold Minv.
+         split; try easy.
+         apply Minv_flip in H2; easy.
+       - intros. 
+         destruct H0 as [B [H1 H2]].
+         apply invertible_l_implies_linind in H2.
+         easy.
+Qed.
 
 Lemma div_mod : forall (x y z : nat), (x / y) mod z = (x mod (y * z)) / y.
 Proof.
@@ -3017,105 +4760,6 @@ Lemma kron_mixed_product' : forall (m n n' o p q q' r mp nq or: nat)
   (@kron m o p r (@Mmult m n o A C) (@Mmult p q r B D)).
 Proof. intros. subst. apply kron_mixed_product. Qed.
 
-
-Lemma Mplus_tranpose : forall (m n : nat) (A : Matrix m n) (B : Matrix m n),
-  (A .+ B)⊤ = A⊤ .+ B⊤.
-Proof. reflexivity. Qed.
-
-Lemma Mmult_tranpose : forall (m n o : nat) (A : Matrix m n) (B : Matrix n o),
-      (A × B)⊤ = B⊤ × A⊤.
-Proof.
-  intros m n o A B.
-  unfold Mmult, transpose.
-  prep_matrix_equality.
-  apply Csum_eq.  
-  apply functional_extensionality. intros z.
-  rewrite Cmult_comm.
-  reflexivity.
-Qed.
-
-Lemma kron_transpose : forall (m n o p : nat) (A : Matrix m n) (B : Matrix o p ),
-  (A ⊗ B)⊤ = A⊤ ⊗ B⊤.
-Proof. reflexivity. Qed.
-
-
-Lemma Mplus_adjoint : forall (m n : nat) (A : Matrix m n) (B : Matrix m n),
-  (A .+ B)† = A† .+ B†.
-Proof.  
-  intros m n A B.
-  unfold Mplus, adjoint.
-  prep_matrix_equality.
-  rewrite Cconj_plus_distr.
-  reflexivity.
-Qed.
-
-Lemma Mmult_adjoint : forall {m n o : nat} (A : Matrix m n) (B : Matrix n o),
-      (A × B)† = B† × A†.
-Proof.
-  intros m n o A B.
-  unfold Mmult, adjoint.
-  prep_matrix_equality.
-  rewrite Csum_conj_distr.
-  apply Csum_eq.  
-  apply functional_extensionality. intros z.
-  rewrite Cconj_mult_distr.
-  rewrite Cmult_comm.
-  reflexivity.
-Qed.
-
-Lemma kron_adjoint : forall {m n o p : nat} (A : Matrix m n) (B : Matrix o p),
-  (A ⊗ B)† = A† ⊗ B†.
-Proof. 
-  intros. unfold adjoint, kron. 
-  prep_matrix_equality.
-  rewrite Cconj_mult_distr.
-  reflexivity.
-Qed.
-
-Lemma id_kron : forall (m n : nat),  I m ⊗ I n = I (m * n).
-Proof.
-  intros.
-  unfold I, kron.
-  prep_matrix_equality.
-  bdestruct (x =? y); rename H into Eq; subst.
-  + repeat rewrite <- beq_nat_refl; simpl.
-    destruct n.
-    - simpl.
-      rewrite mult_0_r.
-      bdestruct (y <? 0); try lia.
-      autorewrite with C_db; reflexivity.
-    - bdestruct (y mod S n <? S n). 
-      2: specialize (Nat.mod_upper_bound y (S n)); intros; lia. 
-      rewrite Cmult_1_r.
-      destruct (y / S n <? m) eqn:L1, (y <? m * S n) eqn:L2; trivial.
-      * apply Nat.ltb_lt in L1. 
-        apply Nat.ltb_nlt in L2. 
-        contradict L2. 
-        clear H.
-        (* Why doesn't this lemma exist??? *)
-        destruct m.
-        lia.
-        apply Nat.div_small_iff. 
-        simpl. apply Nat.neq_succ_0. (* `lia` will solve in 8.11+ *)
-        apply Nat.div_small in L1.
-        rewrite Nat.div_div in L1; try lia.
-        rewrite mult_comm.
-        assumption.
-      * apply Nat.ltb_nlt in L1. 
-        apply Nat.ltb_lt in L2. 
-        contradict L1. 
-        apply Nat.div_lt_upper_bound. lia.
-        rewrite mult_comm.
-        assumption.
-  + simpl.
-    bdestruct (x / n =? y / n); simpl; try lca.
-    bdestruct (x mod n =? y mod n); simpl; try lca.
-    destruct n; try lca.    
-    contradict Eq.
-    rewrite (Nat.div_mod x (S n)) by lia.
-    rewrite (Nat.div_mod y (S n)) by lia.
-    rewrite H, H0; reflexivity.
-Qed.
 
 Lemma outer_product_eq : forall m (φ ψ : Matrix m 1),
  φ = ψ -> outer_product φ φ = outer_product ψ ψ.
@@ -3466,7 +5110,7 @@ Ltac restore_dims_rec A :=
                  | Matrix ?m'' ?n'' => constr:(@Mplus m' n' A' B')
                  end
                end
-  | ?c .* ?A => let A' := restore_dims_rec A in 
+  | ?c .* ?AA => let A' := restore_dims_rec A in 
                match type of A' with
                | Matrix ?m' ?n' => constr:(@scale m' n' c A')
                end
