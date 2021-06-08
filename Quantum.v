@@ -1,4 +1,4 @@
-Require Import Psatz.
+Require Import Psatz. 
 Require Import Reals.
 
 Require Export Matrix.
@@ -883,10 +883,10 @@ Proof.
   + destruct H; auto with wf_db.
   + unfold WF_Unitary in *.
     rewrite adjoint_involutive.
-    destruct H as [_ H].
-    apply Minv_left in H as [_ S]. (* NB: admitted lemma *)
-    assumption.
+    destruct H as [H H0].
+    apply Minv_left in H0 as [_ S]; auto with wf_db.
 Qed.
+
 
 Lemma cnot_unitary : WF_Unitary cnot.
 Proof.
@@ -1204,12 +1204,12 @@ Inductive Mixed_State {n} : Matrix n n -> Prop :=
 | Pure_S : forall ρ, Pure_State ρ -> Mixed_State ρ
 | Mix_S : forall (p : R) ρ1 ρ2, 0 < p < 1 -> Mixed_State ρ1 -> Mixed_State ρ2 ->
                                        Mixed_State (p .* ρ1 .+ (1-p)%R .* ρ2).  
-
+ 
 Lemma WF_Pure : forall {n} (ρ : Density n), Pure_State ρ -> WF_Matrix ρ.
 Proof. intros. destruct H as [φ [[WFφ IP1] Eρ]]. rewrite Eρ. auto with wf_db. Qed.
 Hint Resolve WF_Pure : wf_db.
 
-Lemma WF_Mixed : forall {n} (ρ : Density n), Mixed_State ρ -> WF_Matrix ρ.
+Lemma WF_Mixed : forall {n} (ρ : Density n), Mixed_State ρ -> WF_Matrix ρ. 
 Proof. induction 1; auto with wf_db. Qed.
 Hint Resolve WF_Mixed : wf_db.
 
@@ -1224,8 +1224,11 @@ Proof. exists (I  1). split. split. auto with wf_db. solve_matrix. solve_matrix.
 
 Lemma pure_dim1 : forall (ρ : Square 1), Pure_State ρ -> ρ = I  1.
 Proof.
-  intros ρ [φ [[WFφ IP1] Eρ]]. 
-  apply Minv_flip in IP1.
+  intros. 
+  assert (H' := H).
+  apply WF_Pure in H'.
+  destruct H as [φ [[WFφ IP1] Eρ]]. 
+  apply Minv_flip in IP1; auto with wf_db.
   rewrite Eρ; easy.
 Qed.    
                               
@@ -1369,8 +1372,8 @@ Proof.
   + apply pure_dim1; trivial.
   + rewrite IHMixed_State1, IHMixed_State2.
     prep_matrix_equality.
-    lca.
-Qed.  
+    lca. 
+Qed.
 
 (* Useful to be able to normalize vectors *)
 
@@ -1704,6 +1707,7 @@ Proof.
   rewrite <- kron_assoc. Qsimpl.
   repeat rewrite <- kron_assoc.
   reflexivity.
+  all : auto with wf_db.
 Qed.
 
 Lemma swap_two_base : swap_two 2 1 0 = swap.
@@ -1759,6 +1763,7 @@ Proof.
   repeat rewrite (kron_assoc _ q1). 
   Qsimpl.
   reflexivity.
+  all : auto with wf_db.
 Qed.
 
 (* *)
