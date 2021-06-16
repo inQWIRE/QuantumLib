@@ -484,6 +484,24 @@ Proof. intros.
         apply C1_neq_C0; easy.
 Qed.
 
+Lemma eq_neg_implies_0 : forall (c : C), 
+  (-C1 * c)%C = c -> c = C0.
+Proof.  intros. 
+        assert (H' : (- C1 * c + c = c + c)%C).
+        { rewrite H; easy. }
+        assert (H'' : (- C1 * c + c = C0)%C).
+        { lca. }
+        rewrite H'' in H'.
+        assert (H0 : (c + c = C2 * c)%C). lca.  
+        rewrite H0 in H'. 
+        destruct (Ceq_dec c C0); try easy.
+        assert (H1 : C2 <> C0).
+        apply C0_fst_neq.
+        simpl. lra. 
+        assert (H2 : (C2 * c)%C <> C0).
+        apply Cmult_neq_0; try easy.
+        rewrite <- H' in H2. easy.
+Qed.
 
 
 Lemma Cinv_mult_distr : forall c1 c2 : C, c1 <> 0 -> c2 <> 0 -> / (c1 * c2) = / c1 * / c2.

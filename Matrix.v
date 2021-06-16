@@ -609,9 +609,48 @@ Proof. induction m as [| m'].
          replace (m' + 0) with m' by lia. 
          easy.
 Qed.
+         
 
+Lemma Csum_extend_double : forall (n m : nat) (f : nat -> nat -> C),
+  (Csum (fun i => Csum (fun j => f i j) (S m)) (S n)) = 
+  ((Csum (fun i => Csum (fun j => f i j) m) n) + (Csum (fun j => f n j) m) + 
+                      (Csum (fun i => f i m) n) + f n m)%C.
+Proof. intros. 
+       rewrite <- Csum_extend_r.
+       assert (H' : forall a b c d, (a + b + c + d = (a + c) + (b + d))%C). 
+       { intros. lca. }
+       rewrite H'.
+       apply Csum_simplify; try easy.
+       rewrite <- Csum_plus.
+       apply Csum_eq_bounded; intros. 
+       easy.
+Qed.
 
-
+Lemma Csum_rearrange : forall (n : nat) (f g : nat -> nat -> C),
+  (forall x y, x <= y -> f x y = -C1 * g (S y) x)%C ->
+  (forall x y, y <= x -> f (S x) y = -C1 * g y x)%C ->
+  Csum (fun i => Csum (fun j => f i j) n) (S n) = 
+  (-C1 * (Csum (fun i => Csum (fun j => g i j) n) (S n)))%C.
+Proof. induction n as [| n'].
+       - intros. lca. 
+       - intros. 
+         do 2 rewrite Csum_extend_double.
+         rewrite (IHn' f g); try easy.
+         repeat rewrite Cmult_plus_distr_l.
+         repeat rewrite <- Cplus_assoc.
+         apply Csum_simplify; try easy.
+         assert (H' : forall a b c, (a + (b + c) = (a + c) + b)%C). 
+         intros. lca. 
+         do 2 rewrite H'.
+         rewrite <- Cmult_plus_distr_l.
+         do 2 rewrite Csum_extend_r. 
+         do 2 rewrite Csum_mult_l.
+         rewrite Cplus_comm.
+         apply Csum_simplify.
+         all : apply Csum_eq_bounded; intros. 
+         apply H; lia. 
+         apply H0; lia. 
+Qed.
          
 (**********************************)
 (** Proofs about Well-Formedness **)
@@ -2190,6 +2229,74 @@ Proof. intros.
        easy.
 Qed.
 
+Lemma reduce_row_reduce_col : forall {n m} (A : Matrix n m) (i j : nat),
+  reduce_col (reduce_row A i) j = reduce_row (reduce_col A j) i.
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold reduce_col, reduce_row.
+       bdestruct (y <? j); bdestruct (x <? i); try lia; try easy. 
+Qed.
+Lemma reduce_col_swap_01 : forall {n} (A : Square n),
+  reduce_col (reduce_col (col_swap A 0 1) 0) 0 = reduce_col (reduce_col A 0) 0.
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold reduce_col, col_swap.
+       bdestruct (y <? 0); bdestruct (1 + y <? 0); try lia. 
+       bdestruct (1 + (1 + y) =? 0); bdestruct (1 + (1 + y) =? 1); try lia. 
+       easy. 
+Qed.
+
+Lemma reduce_reduce_0 : forall {n} (A : Square n) (x y : nat),
+  x <= y ->
+  (reduce (reduce A x 0) y 0) = (reduce (reduce A (S y) 0) x 0).
+Proof. intros.
+       prep_matrix_equality.
+       unfold reduce. 
+       bdestruct (y0 <? 0); bdestruct (1 + y0 <? 0); try lia. 
+       bdestruct (x0 <? y); bdestruct (x0 <? S y); bdestruct (x0 <? x); 
+         bdestruct (1 + x0 <? S y); bdestruct (1 + x0 <? x); 
+         try lia; try easy.
+Qed.     
+
+
+Lemma col_add_split : forall {n} (A : Square n) (i : nat) (c : C),
+  col_add A 0 i c = col_wedge (reduce_col A 0) (get_vec 0 A .+ c.* get_vec i A) 0.
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold col_add, col_wedge, reduce_col, get_vec, Mplus, scale.
+       bdestruct (y =? 0); try lia; simpl. 
+       rewrite H; easy.
+       replace (S (y - 1)) with y by lia. 
+       easy.
+Qed.
+
+
+Lemma col_swap_col_add_Si : forall {n} (A : Square n) (i j : nat) (c : C),
+  i <> 0 -> i <> j -> col_swap (col_add (col_swap A j 0) 0 i c) j 0 = col_add A j i c.
+Proof. intros. 
+       bdestruct (j =? 0).
+       - rewrite H1.
+         do 2 rewrite col_swap_same; easy.
+       - prep_matrix_equality. 
+         unfold col_swap, col_add.
+         bdestruct (y =? j); bdestruct (j =? j); try lia; simpl. 
+         destruct j; try lia. 
+         bdestruct (i =? S j); bdestruct (i =? 0); try lia.  
+         rewrite H2; easy.
+         bdestruct (y =? 0); bdestruct (j =? 0); try easy. 
+         rewrite H4; easy. 
+Qed.
+
+Lemma col_swap_col_add_0 : forall {n} (A : Square n) (j : nat) (c : C),
+  j <> 0 -> col_swap (col_add (col_swap A j 0) 0 j c) j 0 = col_add A j 0 c.
+Proof. intros. 
+       prep_matrix_equality. 
+       unfold col_swap, col_add.
+       bdestruct (y =? j); bdestruct (j =? j); bdestruct (0 =? j); try lia; simpl. 
+       rewrite H0; easy.
+       bdestruct (y =? 0); bdestruct (j =? 0); try easy. 
+       rewrite H3; easy.
+Qed.
 
 Lemma col_swap_end_reduce_col_hit : forall {n m : nat} (T : Matrix n (S (S m))) (i : nat),
   i <= m -> col_swap (reduce_col T i) m i = reduce_col (col_swap T (S m) (S i)) i.
