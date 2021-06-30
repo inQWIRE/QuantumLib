@@ -353,7 +353,7 @@ Proof. auto with sing_db. Qed.
 
 
 Definition uni_vecType {n : nat} (vt : vecType n) : Prop :=
-  forall A, In A vt -> unitary A.
+  forall A, In A vt -> WF_Unitary A.
 
 
 Lemma univ_I : uni_vecType I'. 
@@ -372,7 +372,7 @@ Qed.
 Lemma univ_Z : uni_vecType Z'. 
 Proof. unfold uni_vecType. intros. 
        apply in_simplify in H; rewrite H. 
-       auto with unit_db.
+       apply σz_unitary.
 Qed.
 
 Lemma univ_I_n : forall (n : nat), uni_vecType (I_n n). 
@@ -385,19 +385,23 @@ Lemma univ_neg : forall (n : nat) (A : vecType n), uni_vecType A -> uni_vecType 
 Proof. unfold uni_vecType in *.
        intros n A H a H1. unfold neg in H1.
        apply in_scale in H1. destruct H1 as [x [H1 H2]].
-       apply H in H1. rewrite H2. unfold unitary.
+       apply H in H1. 
+       destruct H1 as [H1 H3].
+       rewrite H2. split; auto with wf_db. 
        rewrite Mscale_adj.
-       distribute_scale. rewrite H1.
+       distribute_scale. rewrite H3.
        lma. 
 Qed.
 
 Lemma univ_i : forall (n : nat) (A : vecType n), uni_vecType A -> uni_vecType (i A).
 Proof. unfold uni_vecType in *.
-       intros n A H a H1. unfold i in H1.
+       intros n A H a H1. unfold neg in H1.
        apply in_scale in H1. destruct H1 as [x [H1 H2]].
-       apply H in H1. rewrite H2. unfold unitary.
+       apply H in H1. 
+       destruct H1 as [H1 H3].
+       rewrite H2. split; auto with wf_db. 
        rewrite Mscale_adj.
-       distribute_scale. rewrite H1.
+       distribute_scale. rewrite H3.
        lma. 
 Qed.
 
@@ -549,7 +553,7 @@ Proof. intros A. unfold I'. induction A as [| a].
          rewrite sing_concat_into_mul_r.
          rewrite IHA.
          simpl.
-         rewrite Mmult_1_l'.
+         rewrite Mmult_1_l.
          reflexivity.
 Qed.
 

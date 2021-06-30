@@ -1,8 +1,8 @@
-Require Import List.  
-Require Export Complex.
+Require Import List.   
+Require Export Complex. 
 Require Export Matrix.
 Require Export Quantum.
-
+Require Export Polynomial.
 
 (* Some preliminary lemmas/additions to tactics that could be moved to other files *)
 
@@ -986,7 +986,8 @@ Proof. intros.
          unfold make_WF.
          bdestruct (i <? S (S n)); try lia; easy. 
          unfold make_WF.
-         bdestruct (col <? S (S n)); try lia; auto. 
+         bdestruct (col <? S (S n)); try lia; auto.
+         
 Qed.
 
 Lemma Determinant_col_add_each_some : forall (e n col : nat) (as' : Matrix 1 n) (A : Square n),
@@ -1013,7 +1014,7 @@ Proof. induction e as [| e].
          intros x. destruct x; try easy.
          assert (H' := skip_count_not_skip col 0). auto.
          apply H; lia.
-       - intros.  
+       - intros. 
          rewrite (col_add_each_col_add _ (skip_count col (S e))); try lia. 
          rewrite Determinant_col_add; try lia.
          apply IHe; try lia; try easy; auto with wf_db. 
@@ -1068,6 +1069,160 @@ Proof. intros.
            apply H0; right. 
            lia. 
 Qed.
+
+
+Lemma Det_0_lindep : forall {n} (A : Square n), 
+  WF_Matrix A -> Determinant n A = C0 -> linearly_dependent A.
+Proof. induction n as [| n'].
+       - intros. 
+         unfold Determinant in H.
+         assert (H1 := C1_neq_C0).
+         easy.
+       - intros.
+         destruct (gt_dim_lindep (reduce_row A 0)) as [v [H2 [H3 H4]]].
+         lia. 
+         apply WF_reduce_row; try lia; auto.
+         destruct (nonzero_vec_nonzero_elem v) as [x H5]; auto.
+         bdestruct (x <? S n').
+         + apply (lin_dep_col_add_many_conv _ _ x A (make_row_zero x v)); try easy.
+           unfold make_row_zero.
+           bdestruct_all; lca. 
+           rewrite (Determinant_col_add_many _ x _ (make_row_zero x v)) in H0; try easy. 
+
+
+
+
+         bdestruct (x <? S n').
+         - easy.
+
+
+Lemma lin_dep_col_add_many_conv : forall (n m col : nat) (T : Matrix n m) (as' : Vector m),
+  col < m -> as' col 0 = C0 -> 
+  linearly_dependent (col_add_many col as' T) ->
+  linearly_dependent T.
+
+
+Lemma col_add_many_cancel : forall {n m} (T : Matrix n m) (as' : Vector m) (col : nat),
+  col < m -> as' col 0 = C0 ->
+  (reduce_col T col) × (reduce_row as' col) = -C1 .* (get_vec col T) -> 
+  (forall i : nat, (col_add_many col as' T) i col = C0).
+
+
+         Admitted.
+
+
+
+
+
+Lemma Det_neq_0_linindep : forall {n} (A : Square n),
+  WF_Matrix A -> linearly_independent A -> Determinant n A <> C0.
+
+
+
+
+
+(***************************************************)
+(* showing that all matrices have some eigenvector *)
+(***************************************************)
+
+
+Definition good_M {n} (A : Square n) : Prop :=
+  forall (i j k : nat), (A j i <> C0 /\ A k i <> C0 -> j = k). 
+
+
+Lemma good_M_I : forall (n : nat), good_M (I n).
+Proof. unfold good_M, I; intros. 
+       destruct H as [H H0].
+       bdestruct (j =? i); bdestruct (j <? n); try lia; try easy.
+       bdestruct (k =? i); bdestruct (k <? n); try lia; try easy.
+Qed.
+
+
+Lemma good_M_reduce : forall {n} (A : Square n) (x y : nat),
+  good_M A -> good_M (reduce A x y).    
+Proof. unfold good_M; intros.
+       destruct H0 as [H0 H1].
+       unfold reduce in *.
+       bdestruct (j <? x); bdestruct (k <? x); bdestruct (i <? y).
+       - apply (H i j k); auto.
+       - apply (H (1 + i) j k); auto.
+       - assert (H' : j = 1 + k). apply (H i); auto.
+         lia.
+       - assert (H' : j = 1 + k). apply (H (1 +i)); auto.
+         lia.
+       - assert (H' : 1 + j = k). apply (H i); auto.
+         lia.
+       - assert (H' : 1 + j = k). apply (H (1 +i)); auto.
+         lia. 
+       - assert (H' : 1 + j = 1 + k). apply (H i); auto.
+         lia.
+       - assert (H' : 1 + j = 1 + k). apply (H (1 + i)); auto.
+         lia.
+Qed.
+
+
+Lemma connect : forall (n : nat) (A gM : Square (S n)),
+  good_M gM ->
+  exists (p : Polynomial (S n)), (forall c : C, Determinant (S n) (A .+ (-c .* gM)) = eval_P (S n) p c).
+Proof. induction n as [| n'].
+       - intros.
+         exists [A 0 0; - gM 0 0].
+         intros. 
+         unfold eval_P; simpl. 
+         lca. 
+       - intros. 
+         exists [C1]; intros. 
+         rewrite Det_simplify.
+         Admitted.
+
+
+(*
+  Σ^ S (S n')
+  (fun i : nat =>
+   (parity i * (A .+ - c .* gM) i 0 * Determinant (S n') (reduce (A .+ - c .* gM) i 0))%C) =
+  eval_P (S (S n')) [C1] c *)
+
+
+
+
+Lemma connect2 : forall (n : nat) (A : Square (S n)),
+  exists (c : C), Determinant (S n) (A .+ (-c .* I (S n))) = C0.
+Proof. intros. 
+       assert (H' : good_M (I (S n))).
+       apply good_M_I.
+       apply (connect n A) in H'.
+       destruct H' as [p H].
+       assert (H0 : S n > 0). lia.
+       apply (Fundamental_Theorem_Algebra p) in H0.
+       destruct H0 as [c H0].
+       exists c. rewrite <- H0.
+       easy.
+Qed.
+
+
+
+Lemma exists_eigenvector : forall (n : nat) (A : Square (S n)),
+  WF_Matrix A -> 
+  exists (c : C) (v : Vector (S n)), WF_Matrix v /\ v <> Zero /\ A × v = c.* v.
+Proof. intros. 
+       destruct (connect2 n A) as [c H0].
+       apply Det_0_lindep in H0.
+       destruct H0 as [v [H1 [H2 H3]]].
+       exists c, v.
+       split; auto. 
+       split; auto. 
+       rewrite Mmult_plus_distr_r, Mscale_mult_dist_l, Mmult_1_l in H3; auto.
+       assert (H4 : A × v .+ (-c .* v) .+ (c .* v) = (c .* v)).
+       { rewrite H3. lma. }
+       rewrite Mplus_assoc in H4.
+       Search (_ .* ?b .+ _ .* ?b). 
+       rewrite <- Mscale_plus_distr_l in H4. 
+       replace (-c + c)%C with C0 in H4 by lca.
+       rewrite <- H4.
+       lma. 
+       auto with wf_db.
+Qed.
+    
 
 
 (************************************)
@@ -1893,7 +2048,7 @@ Qed.
 
 Theorem onb_out_of_v : forall {n} (v : Vector n),
   WF_Matrix v -> v <> Zero -> 
-  exists S : Matrix n n, WF_Orthonormal S /\ get_vec 0 S = normalize v.
+  exists T : Square n, WF_Orthonormal T /\ get_vec 0 T = normalize v.
 Proof. intros. 
        destruct n as [| n].
        - assert (H' : v = Zero).
@@ -2233,7 +2388,7 @@ Qed.
 (* defining what it means to be diagonalizable *)
 Definition WF_Diagonalizable {n : nat} (A : Square n) : Prop :=
   WF_Matrix A /\ (exists (X X' B: Square n), 
-    WF_Diagonal B /\ X × X' = I n /\ B = X × A × X').
+    WF_Diagonal B /\ WF_Matrix X /\ WF_Matrix X' /\ X × X' = I n /\ B = X × A × X').
 
 Lemma diag_imps_diagble : forall {n} (A : Square n),
   WF_Diagonal A -> WF_Diagonalizable A.
@@ -2242,7 +2397,8 @@ Proof. intros n A [H H0]. unfold WF_Diagonalizable.
        exists (I n), (I n), A. 
        split.
        split; auto. 
-       split.  
+       split; auto with wf_db.
+       split; auto with wf_db.
        rewrite Mmult_1_l; auto with wf_db.  
        rewrite Mmult_1_l; auto with wf_db.  
        rewrite Mmult_1_r; auto with wf_db.  
@@ -2267,18 +2423,35 @@ Lemma diagble_I1 : WF_Diagonal (I 1). Proof. apply diag_I. Qed.
 Lemma diagble_scale : forall {n : nat} (r : C) (A : Square n), 
   WF_Diagonalizable A -> WF_Diagonalizable (r .* A).
 Proof.
-  intros n r A [H H0]. 
+  intros n r A [H H0].  
   split; auto with wf_db.
   do 3 (destruct H0).
-  destruct H0 as [H1 H2]; destruct H2 as [H2 H3].
+  destruct H0 as [H1 [H2 [H3 [H4 H5]]]].
   exists x, x0, (r .* x1); split. 
-  apply diag_scale; apply H1. split.
-  apply H2.
+  apply diag_scale; apply H1. 
+  split; try easy.
+  split; try easy. 
+  split. 
+  apply H4.
   rewrite Mscale_mult_dist_r;
   rewrite Mscale_mult_dist_l.
-  rewrite H3.
+  rewrite H5.
   reflexivity. 
 Qed.
+
+
+Lemma diagble_switch : forall {n : nat} (A B X X' : Square n),
+  WF_Matrix A -> WF_Matrix B -> WF_Matrix X -> WF_Matrix X' -> 
+  X × X' = I n -> B = X × A × X' ->
+  A = X' × B × X.
+Proof. intros. 
+       rewrite H4. 
+       repeat rewrite <- Mmult_assoc. 
+       apply Minv_flip in H3; auto.
+       rewrite H3, Mmult_1_l; auto.
+       rewrite Mmult_assoc. 
+       rewrite H3, Mmult_1_r; auto. 
+Qed.       
 
 
 (***********************************)
@@ -2470,31 +2643,26 @@ Definition Eigenpair {n : nat} (U : Square n) (p : Vector n * C) : Prop :=
   U × (fst p) = (snd p) .* (fst p).
 
 Lemma all_v_eigen_I : forall (n : nat) (v : Vector n),
-   Eigenpair (I n) (v, C1).
-Proof. intros n v. unfold Eigenpair. 
-       simpl. rewrite Mmult_1_l'. lma. 
+   WF_Matrix v -> Eigenpair (I n) (v, C1).
+Proof. intros n v H. unfold Eigenpair. 
+       simpl. rewrite Mmult_1_l. lma. 
+       easy.
 Qed.
 
 
 Lemma diags_have_basis_eigens : forall (n : nat) (U : Square n) (i : nat),
-  (i < n) -> diagonal U -> Eigenpair U (e_i i, U i i).
-Proof. unfold diagonal, Eigenpair, e_i. intros.
+  (i < n) -> WF_Diagonal U -> Eigenpair U (e_i i, U i i).
+Proof. unfold WF_Diagonal, Eigenpair, e_i. intros.
        unfold Mmult, scale.
        prep_matrix_equality.
        eapply Csum_unique. exists i. 
+       destruct H0 as [H0 H1].
        split. apply H.
        split.
        - simpl. bdestruct (x =? i).
-         * rewrite H1. bdestruct (i =? i). 
-           reflexivity. easy. 
-         * simpl.  
-           rewrite H0.
-           rewrite Cmult_0_l, Cmult_0_r. 
-           reflexivity. apply H1.
-       - intros. simpl. bdestruct (x' =? i).
-         * rewrite H2 in H1. easy.
-         * simpl. rewrite Cmult_0_r.
-           reflexivity.
+         * rewrite H2. bdestruct (i =? i); easy.
+         * rewrite H1. lca. lia.  
+       - intros. simpl. bdestruct (x' =? i); try lia; lca.
 Qed.
 
 
@@ -2521,26 +2689,41 @@ Proof. intros.
 Qed.
 
 
-Lemma eig_unit_conv : forall {n} (v : Vector n) (c : C) (U B : Square n),
-  unitary U -> Eigenpair B (U × v, c) -> Eigenpair (U† × B × U) (v, c).  
+
+Lemma eig_unit_invertible : forall {n} (v : Vector n) (c : C) (X X' B : Square n),
+  WF_Matrix v -> WF_Matrix X -> WF_Matrix X' -> X' × X = I n ->  
+  Eigenpair B (X × v, c) -> Eigenpair (X' × B × X) (v, c).  
 Proof. intros. 
        unfold Eigenpair in *; simpl in *.
        do 2 (rewrite Mmult_assoc).
-       rewrite H0.
+       rewrite H3.
+       distribute_scale. 
+       rewrite <- Mmult_assoc.     
+       rewrite H2.
+       rewrite Mmult_1_l; easy.
+Qed.
+
+
+
+Lemma eig_unit_conv : forall {n} (v : Vector n) (c : C) (U B : Square n),
+  WF_Matrix v -> WF_Unitary U -> 
+  Eigenpair B (U × v, c) -> Eigenpair (U† × B × U) (v, c).  
+Proof. intros. 
+       destruct H0 as [H0 H2].
+       unfold Eigenpair in *; simpl in *.
+       do 2 (rewrite Mmult_assoc).
+       rewrite H1.
        rewrite Mscale_mult_dist_r.
-       rewrite <- Mmult_assoc.
-       unfold unitary in H.
-       apply Minv_flip in H.
-       rewrite H.
-       rewrite Mmult_1_l'.
-       reflexivity.
+       rewrite <- Mmult_assoc.     
+       rewrite H2.
+       rewrite Mmult_1_l; easy.
 Qed.
 
 
 
 
 Lemma eig_unit_norm1 : forall {n} (U : Square n) (c : C),
-  unitary U -> (exists v, WF_Matrix v /\ v <> Zero /\ Eigenpair U (v, c)) -> (c * c^* = C1)%C.
+  WF_Unitary U -> (exists v, WF_Matrix v /\ v <> Zero /\ Eigenpair U (v, c)) -> (c * c^* = C1)%C.
 Proof. intros. destruct H0 as [v [H0 [H1 H2]]].
        unfold Eigenpair in H2; simpl in H2. 
        assert (H3 : (U × v)† = (c .* v)†). rewrite H2; easy.
@@ -2549,9 +2732,9 @@ Proof. intros. destruct H0 as [v [H0 [H1 H2]]].
        { rewrite H2, H3; easy. } 
        rewrite Mmult_assoc in H4.
        rewrite <- (Mmult_assoc _ U v) in H4.
-       apply Minv_flip in H.
+       destruct H as [H5 H].       
        rewrite H in H4.
-       rewrite Mmult_1_l' in H4.
+       rewrite Mmult_1_l in H4; auto.
        rewrite Mscale_mult_dist_r in H4.
        rewrite Mscale_mult_dist_l in H4.
        rewrite Mscale_assoc in H4.
@@ -2571,119 +2754,387 @@ Proof. intros. destruct H0 as [v [H0 [H1 H2]]].
 Qed.
 
 
-Lemma lin_ind_has_eigen : forall {n} (X : Square n),
-  (exists X', X × X' = I n) -> exists p, Eigenpair X p /\ fst p <> Zero /\ WF_Matrix (fst p).
+Lemma unit_has_eigen : forall {n} (A : Square (S n)),
+  WF_Unitary A -> 
+  exists (c : C) (v : Vector (S n)),  Eigenpair A (v, c) /\ v <> Zero /\ WF_Matrix v.
+Proof. intros n A [Hwf Hu].
+       apply exists_eigenvector in Hwf.
+       destruct Hwf as [c [v [H [H0 H1]]]].
+       exists c. exists v.
+       split. unfold Eigenpair.
+       simpl; easy.
+       auto.
+Qed.
+
+Lemma unitary_reduction_step1 : forall {n} (A : Square (S n)),
+  WF_Unitary A ->
+  exists X, WF_Unitary X /\
+  (exists c : C, get_vec 0 (X†×A×X) = c .* e_i 0).
+Proof. intros n A [Hwf Hu].
+       apply exists_eigenvector in Hwf.
+       destruct Hwf as [c [v [H [H0 H1]]]]. 
+       assert (H' := H0).
+       apply onb_out_of_v in H0; auto.
+       destruct H0 as [T [H2 H3]].
+       exists T. split. 
+       apply unit_is_orthonormal; easy.
+       exists c.
+       rewrite matrix_by_basis; try lia. 
+       do 2 rewrite Mmult_assoc. 
+       rewrite <- matrix_by_basis, H3; try lia.
+       unfold normalize.
+       rewrite Mscale_mult_dist_r.
+       rewrite H1.
+       distribute_scale.
+       assert (H'' : forall p1 p2 : C, p1 = p2 -> fst p1 = fst p2).
+         intros. rewrite H0; easy.
+       assert (H4 : v = (norm v) .* normalize v).
+       { unfold normalize; distribute_scale.
+         rewrite Cinv_r; try lma. 
+         apply norm_zero_iff_zero in H.
+         unfold not; intros. 
+         apply H'.
+         apply H.
+         unfold RtoC in H0.
+         apply H'' in H0.
+         simpl in H0.
+         easy. }
+       rewrite H4, <- H3.
+       apply unit_is_orthonormal in H2.
+       destruct H2 as [Hwf HTu].
+       rewrite matrix_by_basis; try lia.
+       distribute_scale.
+       rewrite <- Mmult_assoc, HTu. 
+       rewrite <- matrix_by_basis, H3, <- H4; try lia.
+       rewrite Cmult_comm, Cmult_assoc, Cinv_r, Mmult_1_l; auto with wf_db.
+       lma. unfold not;intros. 
+       apply H'.
+       apply norm_zero_iff_zero in H.
+       unfold RtoC in H0.
+       apply H'' in H0; simpl in H0.
+       apply H; easy.
+Qed.
+
+
+(* this proof is horribly long and I feel like theres probably a better way to show this *)
+(* TODO : make this better *) 
+Lemma unitary_reduction_step2 : forall {n} (A : Square (S n)),
+  WF_Unitary A -> 
+  (exists c : C, get_vec 0 A = c .* e_i 0) -> 
+  (forall (i j : nat), (i = 0 \/ j = 0) /\ i <> j -> A i j = C0).
+Proof. intros n A H [c H0] i j H1.    
+       assert (Hc : A 0 0 = c). 
+       { replace (A 0 0) with ((get_vec 0 A) 0 0) by easy.
+         rewrite H0; lca. }
+       assert (H2 : (c * c^*)%C = C1). 
+       { apply (eig_unit_norm1 A); try easy.
+         exists (e_i 0).
+         split.
+         apply WF_e_i.
+         split. unfold not; intros. 
+         apply C1_neq_C0.
+         replace C1 with (@e_i (S n) 0 0 0) by easy.
+         rewrite H2; easy.
+         unfold Eigenpair; simpl. 
+         rewrite <- matrix_by_basis; try easy; lia. }
+       destruct H1 as [[H1 | H1] H3].
+       - apply transpose_unitary in H.
+         apply unit_is_orthonormal in H.
+         destruct H as [Hwf [Ho Hn]].
+         assert (H4 : norm (get_vec 0 A†) = 1%R).
+         { apply Hn; lia. } 
+         unfold norm in H4.
+         apply sqrt_1_unique in H4.
+         replace 1%R with (fst C1) in H4 by easy.
+         apply (c_proj_eq (((get_vec 0 A†) † × get_vec 0 A†) 0 0) C1) in H4.
+         unfold Mmult in H4.
+         rewrite <- Csum_extend_l in H4. 
+         assert (H' : ((get_vec 0 (A) †) † 0 0 * get_vec 0 (A) † 0 0)%C = C1).
+         { unfold get_vec, adjoint. 
+           simpl. rewrite Hc.
+           rewrite Cconj_involutive; easy. }
+         rewrite H' in H4.
+         assert (H'' : forall c : C, (C1 + c = C1 -> -C1 + (C1 + c) = -C1 + C1)%C).
+         { intros. rewrite H; easy. }
+         apply H'' in H4.
+         rewrite Cplus_assoc in H4.
+         replace (-C1 + C1)%C with C0 in H4 by lca. 
+         rewrite Cplus_0_l in H4.
+         rewrite H1 in *.
+         destruct j; try lia. 
+         assert (H5 := Csum_squeeze (fun x : nat => ((get_vec 0 (A) †) † 0 (S x) * 
+                                                get_vec 0 (A) † (S x) 0)%C) n).
+         assert (H5' : forall x : nat,
+       x < n ->
+       fst ((fun x0 : nat => ((get_vec 0 (A) †) † 0 (S x0) * get_vec 0 (A) † (S x0) 0)%C) x) =
+       fst C0).
+         { apply H5. intros. 
+           unfold adjoint, get_vec, Copp. 
+           simpl. 
+           rewrite Ropp_involutive.
+           unfold Rminus.
+           replace (- (snd (A 0%nat (S x)) * - snd (A 0%nat (S x))))%R with 
+               ((snd (A 0%nat (S x)))^2)%R by lra. 
+           replace (fst (A 0%nat (S x)) * fst (A 0%nat (S x)))%R with 
+               ((fst (A 0%nat (S x)))^2)%R by lra. 
+           apply Rplus_le_le_0_compat.
+           all : try apply pow2_ge_0. 
+           rewrite H4; easy. }
+         simpl in H5'.
+         assert (H6 := (H5' j)).
+         bdestruct (j <? n).
+         + apply H6 in H.
+           rewrite Ropp_involutive in H.
+           unfold Rminus in H.
+           replace (- (snd (A 0%nat (S j)) * - snd (A 0%nat (S j))))%R with 
+               ((snd (A 0%nat (S j)))^2)%R in H by lra. 
+           replace (fst (A 0%nat (S j)) * fst (A 0%nat (S j)))%R with 
+               ((fst (A 0%nat (S j)))^2)%R in H by lra. 
+           assert (H7 : Cmod (A 0 (S j)) = 0%R).
+           { unfold Cmod. rewrite H.
+             apply sqrt_0. }
+           apply Cmod_eq_0 in H7; easy.
+         + apply WF_adjoint in Hwf.
+           rewrite adjoint_involutive in Hwf.
+           rewrite Hwf; try lca; lia.
+         + unfold Mmult. 
+           apply Csum_snd_0; intros. 
+           unfold get_vec, adjoint. 
+           simpl. lra. 
+       - rewrite H1. 
+         replace (A i 0) with (get_vec 0 A i 0) by easy. 
+         rewrite H0.
+         destruct i; try lia. 
+         lca. 
+Qed.
+
+
+Lemma unitary_reduction_step3 : forall {n} (A : Square (S n)),
+  WF_Unitary A -> 
+  (forall (i j : nat), (i = 0 \/ j = 0) /\ i <> j -> A i j = C0) ->
+  exists (A' : Square n), WF_Unitary A' /\ pad A' (A 0 0) = A.
+Proof. intros n A [Hwf Hu]. 
+       exists (reduce A 0 0).
+       assert (H' : WF_Matrix (reduce A 0 0)).
+       { apply WF_reduce; try lia; easy. } 
+       split. split.        
+       rewrite easy_sub in *.
+       apply H'.
+       apply mat_equiv_eq; auto with wf_db.
+       apply WF_mult; try apply WF_adjoint.
+       all : rewrite easy_sub in *; try easy.
+       unfold mat_equiv; intros. 
+       assert (H2 : ((A) † × A) (S i) (S j) = (I n) i j).
+       { rewrite Hu. 
+         unfold I.
+         bdestruct_all; try easy. }
+       rewrite <- H2.
+       unfold Mmult.
+       rewrite <- Csum_extend_l.
+       rewrite H, Cmult_0_r, Cplus_0_l.
+       apply Csum_eq_bounded; intros. 
+       unfold adjoint. 
+       unfold reduce.
+       apply Cmult_simplify.
+       all : simpl; try easy.
+       lia. 
+       unfold pad, reduce, col_wedge, row_wedge, scale, e_i.
+       prep_matrix_equality.
+       simpl. 
+       bdestruct_all; simpl. 
+       rewrite H1, H2; lca.
+       3 : { destruct x; destruct y; try lia. 
+             do 2 rewrite easy_sub; easy. }
+       4 : { destruct x; destruct y; try lia. 
+             do 2 rewrite easy_sub; easy. }
+       all : try rewrite (H x y); try lca; try lia. 
+Qed.
+       
+
+Lemma diagble_pad : forall {n} (A : Square n) (c : C),
+  WF_Diagonalizable A -> WF_Diagonalizable (pad A c).
 Proof. Admitted. 
 
-
-Lemma ind_step1 : forall {n} (A : Square (n + 1)),
-  WF_Matrix A -> unitary A -> 
-  exists X, unitary X /\
-  (forall x, x <> 0 -> (X†×A×X) x 0 = C0).
-Proof. intros. 
-       assert (H' : exists p, Eigenpair A p /\ fst p <> Zero /\ WF_Matrix (fst p)).  
-       { apply lin_ind_has_eigen. exists A†. apply H0. }
-       destruct H'; destruct H1 as [H1 H2]; destruct H2 as [H2 H3]; destruct x.
-       simpl in *.
-       assert (H' : exists x, m x 0 <> C0). 
-       { apply nonzero_vec_nonzero_elem.
-         apply H3. apply H2. }
-
-
-Lemma nonzero_vec_nonzero_elem : forall {n} (v : Vector n),
-  WF_Matrix v -> v <> Zero -> exists x, v x 0 <> C0.
-
-
-       exists (v_to_onb m). split. 
-       - apply onb_unit. 
-         apply H3. apply H2.
-       - intros x H4. 
-         rewrite <- (get_vec_conv x 0 _).
-         rewrite matrix_by_basis.
-         rewrite Mmult_assoc.
-         rewrite <- matrix_by_basis.
-         assert (H' : get_vec 0 (v_to_onb m) = normalize m /\ orthonormal (v_to_onb m)).
-         { apply gram_schmidt_ver. apply H2. }
-         destruct H' as [H5 H6].
-         rewrite H5.
-         unfold normalize.
-         rewrite Mmult_assoc.
-         rewrite Mscale_mult_dist_r. 
-         unfold Eigenpair in H1; simpl in H1.
-         rewrite H1. rewrite Mscale_assoc.
-         rewrite Cmult_comm.
-         rewrite <- Mscale_assoc.
-         rewrite Mscale_mult_dist_r. 
-         assert (H' : (v_to_onb m) † × (/ norm m .* m) = @e_i (n+1) 0).
-         { apply (inverse_is_valid (v_to_onb m) _ (e_i 0) _). 
-           apply unit_is_orthonormal in H6; 
-           unfold unitary in H6. apply H6.
-           apply WF_onb. apply H3.
-           rewrite <- matrix_by_basis.
-           rewrite H5. reflexivity. 
-           apply WF_onb. apply H3. }
-         rewrite H'.
-         unfold scale, e_i.
-         bdestruct (x =? 0).
-         + rewrite H7 in H4. easy.
-         + simpl. rewrite Cmult_0_r.
-           reflexivity.
-         + apply WF_onb. apply H3.
-         + apply WF_mult. apply WF_mult.
-           apply WF_adjoint. apply WF_onb. apply H3.
-           apply H. apply WF_onb. apply H3.
-Qed.           
-
-
-       
-Lemma ind_step2 : forall {n} (A : Square (n + 1)),
-  WF_Matrix A -> unitary A -> 
-  exists X, unitary X /\ @unitary n (reduce (X†×A×X) 0 0) /\ 
-  (forall x y, (x = 0 \/ y = 0) /\ x <> y -> (X†×A×X) x y = C0).
-Admitted. 
 
 
 (* Now, we build up the main important theorem *)
 Theorem unit_implies_diagble : forall {n} (A : Square n),
-  WF_Matrix A -> unitary A -> diagonalizable A.
+  WF_Unitary A -> WF_Diagonalizable A.
 Proof. induction n as [| n']. 
-       - intros. assert (H' : A = Zero).
-         { unfold Zero; unfold WF_Matrix in H.
-           prep_matrix_equality.
-           rewrite H. easy.
-           left. apply le_0_n. } 
-         rewrite H'. 
+       - intros A [H H0]. 
+         apply WF0_Zero_l in H. 
+         rewrite H. 
          apply diagble_Zero.
-       - intros. unfold unitary in H0.
-         assert (H' : exists p, Eigenpair A p /\ fst p <> Zero).  
-Admitted. 
+       - intros A H. 
+         assert (H0 := H).
+         apply unitary_reduction_step1 in H.
+         destruct H as [X [H1 [c H2]]].
+         assert (H3 : WF_Unitary ((X) † × A × X)).
+         { do 2 try apply Mmult_unitary.
+           apply transpose_unitary.
+           all : easy. }
+         assert (H4 : (forall (i j : nat), (i = 0 \/ j = 0) /\ i <> j -> ((X) † × A × X) i j = C0)).
+         { apply unitary_reduction_step2; try easy. 
+           exists c. easy. }
+         apply unitary_reduction_step3 in H3; try easy.
+         destruct H3 as [A' [H5 H6]].
+         assert (H7 : WF_Diagonalizable ((X) † × A × X)).
+         apply IHn' in H5.
+         { rewrite <- H6. 
+           apply diagble_pad.
+           easy. }
+         destruct H7 as [Hwf Hd].
+         split. 
+         destruct H0; easy.
+         destruct Hd as [X0 [X0' [B [H7 [H8 [H9 [H10 H11]]]]]]].
+         exists (X0 × (X) †).
+         exists (X × X0').
+         exists B.
+         destruct H1 as [H1wf H1u].
+         split; try easy.
+         split; auto with wf_db.
+         split; auto with wf_db.
+         rewrite Mmult_assoc.
+         rewrite <- (Mmult_assoc X †).
+         rewrite H1u.
+         rewrite Mmult_1_l; try easy.
+         split; try easy.
+         rewrite H11.
+         repeat rewrite Mmult_assoc.
+         easy.
+Qed.
 
 
+(************************************************************************************)
+(* Showing that certain types of matrices are equal when their eigenpairs are equal *)
+(************************************************************************************)
 
-
-
-
-(* we want to prove *)
 
 Definition eq_eigs {n : nat} (U1 U2 : Square n) : Prop := 
   forall p, Eigenpair U1 p -> Eigenpair U2 p. 
 
 
-(* this is the main lemma we will need to assume *)
-Lemma eq_eigs_implies_eq : forall {n} (U1 U2 : Square n),
-  unitary U1 -> unitary U2 -> eq_eigs U1 U2 -> U1 = U2.
-Proof. Admitted.
+Lemma eq_eigs_implies_eq_diag : forall {n} (D1 D2 : Square n),
+  WF_Diagonal D1 -> WF_Diagonal D2 -> eq_eigs D1 D2 -> D1 = D2.
+Proof. intros n D1 D2 [H1wf H1d] [H2wf H2d] H. 
+       assert (H2 : forall x, x < n -> D1 x x = D2 x x).
+       { intros.
+         assert (H1 := H0).
+         apply (diags_have_basis_eigens n D1 x) in H1.
+         apply H in H1.
+         unfold Eigenpair in H1; simpl in H1.
+         assert (H' : (D1 x x .* @e_i n x) x 0 = D1 x x).
+         { unfold scale, e_i.
+           bdestruct_all; lca. }
+         rewrite <- H', <- H1. 
+         unfold Mmult. 
+         apply (Csum_unique (D2 x x)). 
+         exists x. split; try easy.
+         split. unfold e_i. 
+         bdestruct_all; lca.
+         intros. 
+         unfold e_i; bdestruct_all; lca.
+         split; auto. }
+       apply mat_equiv_eq; auto.
+       unfold mat_equiv; intros. 
+       bdestruct (i =? j).
+       - rewrite H3, H2; try lia; easy. 
+       - rewrite H1d, H2d; try lia; easy.
+Qed.
+         
 
+Lemma diagble_eigenpairs_transfer : forall {n} (A B X X' : Square n),
+  WF_Matrix A -> WF_Diagonal B -> WF_Matrix X -> WF_Matrix X' ->
+  A = X' × B × X -> X × X' = I n ->
+  (forall x, x < n -> Eigenpair A (X' × (e_i x), B x x)).
+Proof. intros. 
+       destruct H0 as [Hwf Hu].
+       unfold Eigenpair; simpl.
+       rewrite <- Mmult_assoc. 
+       rewrite H3.
+       do 2 rewrite Mmult_assoc. 
+       rewrite <- (Mmult_assoc X), H4, Mmult_1_l; auto with wf_db.
+       assert (H' := (diags_have_basis_eigens n B)).
+       apply H' in H5. 
+       unfold Eigenpair in H5; simpl in H5. 
+       rewrite Mmult_assoc, H5. 
+       distribute_scale; easy.
+       split; auto.
+Qed.   
 
-Theorem eigs_eq_gate : forall {n} (U1 U2 : Square n),
-  unitary U1 -> unitary U2 -> (U1 = U2 <-> eq_eigs U1 U2).
-Proof. intros. split.
-       - intros H'; rewrite H'; easy.
-       - apply eq_eigs_implies_eq.
-         apply H. apply H0.
+Lemma eq_eigs_implies_eq_diagble : forall {n} (D1 D2 : Square n),
+  WF_Diagonalizable D1 -> WF_Diagonalizable D2 -> eq_eigs D1 D2 -> D1 = D2.
+Proof. intros n D1 D2 [H1wf H1d] [H2wf H2d] H. 
+       destruct H1d as [X1 [X1' [B1 [[Hb1wf Hb1u] [H12 [H13 [H14 H15]]]]]]].
+       destruct H2d as [X2 [X2' [B2 [[Hb2wf Hb2u] [H22 [H23 [H24 H25]]]]]]].
+       apply diagble_switch in H15; apply diagble_switch in H25; auto.
+       assert (H0 : D1 × X1' = X1' × B1).
+       { rewrite H15.
+         repeat rewrite Mmult_assoc.
+         rewrite H14, Mmult_1_r; auto. }
+       assert (H1 : D2 × X2' = X2' × B2).
+       { rewrite H25.
+         repeat rewrite Mmult_assoc.
+         rewrite H24, Mmult_1_r; auto. }
+       assert (H2 : forall i, i < n -> Eigenpair D1 (X1' × (e_i i), B1 i i)).
+       { apply (diagble_eigenpairs_transfer D1 B1 X1 X1'); auto. 
+         split; auto. }
+       assert (H3 : forall i, i < n -> Eigenpair D2 (X1' × (e_i i), B1 i i)).
+       { intros. apply H. apply H2; easy. }
+       assert (H4 : forall i, i < n -> Eigenpair (X1 × D1 × X1') (e_i i, B1 i i)).
+       { intros. apply eig_unit_invertible; auto with wf_db. }
+       assert (H5 : forall i, i < n -> Eigenpair (X1 × D2 × X1') (e_i i, B1 i i)).
+       { intros. apply eig_unit_invertible; auto with wf_db. }
+       assert (H6 : forall i, i < n -> (X1 × D1 × X1' × e_i i = X1 × D2 × X1' × e_i i)).
+       { intros. 
+         unfold Eigenpair in *; simpl in *.
+         rewrite H4, H5; easy. }
+       assert (H7 : X1 × D1 × X1' = X1 × D2 × X1').
+       { apply det_by_get_vec.
+         intros. 
+         bdestruct (i <? n).
+         - rewrite matrix_by_basis.
+           rewrite matrix_by_basis. 
+           apply H6. 
+           all : easy. 
+         - assert (H' : forall (A : Square n) (i : nat), i >= n -> WF_Matrix A -> 
+                                                  get_vec i A = @Zero n 1).  
+           { intros. 
+             unfold get_vec. 
+             prep_matrix_equality. 
+             bdestruct_all; try easy.
+             rewrite H9; try lia; easy. }
+           rewrite H'; auto with wf_db.
+           rewrite H'; auto with wf_db. }
+       assert (H8 : X1' × (X1 × D1 × X1') × X1= X1' × (X1 × D2 × X1') × X1).
+       { rewrite H7; easy. }
+       repeat rewrite Mmult_assoc in H8.
+       apply Minv_flip in H14; auto. 
+       rewrite H14 in H8.
+       do 2 rewrite Mmult_1_r in H8; auto. 
+       do 2 rewrite <- Mmult_assoc in H8.
+       rewrite H14 in H8.
+       do 2 rewrite Mmult_1_l in H8; auto. 
 Qed.
 
 
+
+Lemma eq_eigs_implies_eq_unit : forall {n} (U1 U2 : Square n),
+  WF_Unitary U1 -> WF_Unitary U2 -> eq_eigs U1 U2 -> U1 = U2.
+Proof. intros. 
+       apply unit_implies_diagble in H.
+       apply unit_implies_diagble in H0.
+       apply eq_eigs_implies_eq_diagble; auto. 
+Qed.
+
+
+Theorem eigs_eq_gate : forall {n} (U1 U2 : Square n),
+  WF_Unitary U1 -> WF_Unitary U2 -> (U1 = U2 <-> eq_eigs U1 U2).
+Proof. intros. split.
+       - intros H'; rewrite H'; easy.
+       - apply eq_eigs_implies_eq_unit.
+         apply H. apply H0.
+Qed.
 
 
 
@@ -2736,84 +3187,4 @@ Qed.
 
 
 Hint Resolve EigenXp EigenXm EigenZ0 EigenZ1 EigenXXB all_v_eigen_I : eig_db.
-
-
-(***********************************************************)
-(* Important lemmas about eigenvectors of unitary matrices *)
-(***********************************************************)
-
-Fixpoint list_eq {X : Type} (l1 l2 : list X) : Prop :=
-  match l1 with
-  | [] => l2 = []
-  | h1 :: l1' => 
-      match l2 with
-      | [] => False
-      | h2 :: l2' => h1 = h2 /\ list_eq l1' l2'
-      end
-  end.
-
-Lemma list_eq_same : forall {X} (ls : list X),
-  list_eq ls ls. 
-Proof. induction ls as [| h].
-       * easy.
-       * easy.
-Qed.
-
-Lemma list_eq_implies_eq : forall {X} (l1 l2 : list X),
-  list_eq l1 l2 -> l1 = l2.
-Proof. induction l1 as [| h1].
-       - easy.
-       - intros. destruct l2 as [| h2].
-         * easy.
-         * simpl in H; destruct H as [H1 H2].
-           apply IHl1 in H2. 
-           rewrite H1, H2; reflexivity.
-Qed.
-
-Lemma list_eq_is_eq : forall {X} (l1 l2 : list X),
-  l1 = l2 <-> list_eq l1 l2.  
-Proof. intros. split. 
-       - intros H; rewrite H; apply list_eq_same.
-       - apply list_eq_implies_eq.
-Qed.
-
-
-Definition det2 (U : Square 2) : C := 
-  ((U 0%nat 0%nat) * (U 1%nat 1%nat)) - 
-  ((U 0%nat 1%nat) * (U 1%nat 0%nat)).
-
-(* must figure out a good way to do this... *) 
-Definition sqrtC (c : C) : C :=
-  sqrt (fst c).
-
-
-Definition quad_solver (a b c : C) : list C :=
-  [(-b + sqrtC (b^2 - 4%C * a * c)) / (2*a) ; 
-   (-b - sqrtC (b^2 - 4%C * a * c)) / (2*a)].
-
-
-Definition get_eig_vals (U : Square 2) : list C :=
-  quad_solver 1 (- (U 0%nat 0%nat + U 1%nat 1%nat)) (det2 U).
-
-Lemma helper : sqrtC 4 = 2.
-Proof. unfold sqrtC. simpl. apply c_proj_eq. simpl. 
-       assert (H : 2%R ^2 = 4%R). { simpl. lca. } 
-       unfold RtoC in H. apply sqrt_lem_1. lra. lra. lra. easy. 
-Qed.
-
-Lemma evs_σx : get_eig_vals σx = [C1 ; - C1].
-Proof. unfold get_eig_vals. 
-       unfold det2. 
-       unfold quad_solver.
-       apply list_eq_is_eq.
-       simpl. Csimpl. 
-       assert (H: (- 0 * - 0 - 4 * (0 - 1)) = 4).
-       { lca. }
-       rewrite H; rewrite helper. 
-       split.
-       - lca. 
-       - split. lca. easy. 
-Qed.
-
-
 
