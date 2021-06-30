@@ -553,6 +553,23 @@ Proof.
       lra.
 Qed.      
 
+Lemma Csum_squeeze : forall (f : nat -> C) (n : nat), 
+  (forall x, (0 <= fst (f x)))%R -> Csum f n = C0 ->
+  (forall x, (x < n)%nat -> fst (f x) = fst C0).
+Proof. intros. 
+       assert (H2 : (forall x, (x < n)%nat -> (fst (f x) <= 0)%R)).
+       { intros. 
+         replace 0%R with (fst (C0)) by easy.
+         rewrite <- H0.
+         apply Csum_member_le; try easy. }
+       assert (H3 : forall r : R, (r <= 0 -> 0 <= r -> r = 0)%R). 
+       intros. lra. 
+       simpl. 
+       apply H3.
+       apply H2; easy.
+       apply H.
+Qed.
+
 
 Lemma Csum_snd_0 : forall n f, (forall x, snd (f x) = 0) -> snd (Csum f n) = 0.       
 Proof. intros. induction n.
@@ -587,26 +604,21 @@ Local Open Scope nat_scope.
 Lemma Csum_double_sum : forall (f : nat -> nat -> C) (n m : nat),
     Csum (fun x => (Csum (fun y => f x y) n)) m = Csum (fun z => f (z / n) (z mod n)) (n * m).
 Proof. induction m as [| m'].
-       - replace (n * 0) with 0 by lia.
+       - rewrite Nat.mul_0_r.
          easy.
-       - replace (n * (S m')) with ((n * m') + n) by lia.
+       - rewrite Nat.mul_succ_r.
          rewrite <- Csum_extend_r.
          rewrite Csum_sum.
          apply Csum_simplify; try easy.
          apply Csum_eq_bounded; intros.
-         replace (n * m') with (m' * n) by lia.
+         rewrite mult_comm.
          rewrite Nat.div_add_l; try lia. 
-         replace (m' * n + x) with (x + m' * n) by lia.
+         rewrite (plus_comm (m' * n)).
          rewrite Nat.mod_add; try lia.
-         assert (H' : n <> 0). lia.
-         assert (H'' := H').
-         assert (H0 := H).
-         apply (Nat.mod_small_iff x n) in H'.
-         apply (Nat.div_small_iff x n) in H''.
-         apply H' in H.
-         apply H'' in H0.
-         rewrite H, H0.
-         replace (m' + 0) with m' by lia. 
+         destruct (Nat.mod_small_iff x n) as [_ HD]; try lia.
+         destruct (Nat.div_small_iff x n) as [_ HA]; try lia.
+         rewrite HD, HA; try lia.
+         rewrite Nat.add_0_r.
          easy.
 Qed.
          
@@ -3350,6 +3362,7 @@ Proof. unfold not, linearly_dependent, linearly_independent in *.
 Qed.
 
 
+
 Lemma lin_indep_vec : forall {n} (v : Vector n), 
   WF_Matrix v -> v <> Zero -> linearly_independent v.
 Proof. intros. 
@@ -4437,11 +4450,13 @@ Proof. induction m as [| m'].
 Qed.
 
 
-Definition pad {n : nat} (A : Square n) : Square (S n) :=
-  col_wedge (row_wedge A Zero 0) (e_i 0) 0.
 
-Lemma pad_conv : forall {n : nat} (A : Square n) (i j : nat),
-  (pad A) (S i) (S j) = A i j.
+
+Definition pad {n : nat} (A : Square n) (c : C) : Square (S n) :=
+  col_wedge (row_wedge A Zero 0) (c .* e_i 0) 0.
+
+Lemma pad_conv : forall {n : nat} (A : Square n) (c : C) (i j : nat),
+  (pad A c) (S i) (S j) = A i j.
 Proof. intros.
        unfold pad, col_wedge, row_wedge, e_i.
        bdestruct (S j <? 0); bdestruct (S j =? 0); try lia.
@@ -4450,14 +4465,15 @@ Proof. intros.
        easy.
 Qed.
 
-Lemma WF_pad : forall {n : nat} (A : Square n),
-  WF_Matrix A <-> WF_Matrix (pad A).
+Lemma WF_pad : forall {n : nat} (A : Square n) (c : C),
+  WF_Matrix A <-> WF_Matrix (pad A c).
 Proof. unfold WF_Matrix, pad. split.
        - intros. 
-         unfold col_wedge, row_wedge, e_i.
+         unfold col_wedge, row_wedge, e_i, scale.
          bdestruct (y <? 0); bdestruct (y =? 0); try lia. 
          destruct H0; try lia. 
          bdestruct (x =? 0); bdestruct (x <? n); try lia; try easy.
+         lca.  
          destruct y; try lia. 
          rewrite easy_sub. 
          bdestruct (x <? 0); bdestruct (x =? 0); try lia; try easy. 
@@ -4472,16 +4488,16 @@ Proof. unfold WF_Matrix, pad. split.
          do 2 rewrite easy_sub; easy.
 Qed.
 
-Lemma pad_mult : forall {n : nat} (A B : Square n),
-  pad (A × B) = (pad A) × (pad B).
+Lemma pad_mult : forall {n : nat} (A B : Square n) (c1 c2 : C),
+  pad (A × B) (c1 * c2)%C = (pad A c1) × (pad B c2).
 Proof. intros. 
        prep_matrix_equality. 
-       unfold pad, Mmult, col_wedge, row_wedge, e_i.
+       unfold pad, Mmult, col_wedge, row_wedge, e_i, scale.
        bdestruct (y <? 0); bdestruct (y =? 0); bdestruct (x <? 0); 
          bdestruct (x =? 0); try lia; try easy.
        bdestruct (x <? S n).
        rewrite <- Csum_extend_l. simpl. 
-       rewrite <- (Cplus_0_l C1).
+       rewrite <- (Cplus_0_l (c1 * c2 * C1)).
        rewrite Cplus_comm.
        apply Csum_simplify; try lca. 
        rewrite Csum_0_bounded; try easy.
@@ -4491,40 +4507,40 @@ Proof. intros.
        destruct n; try lca. 
        intros. 
        bdestruct (x0 =? 0); try lca. 
-       rewrite Csum_0_bounded; try easy.
+       rewrite Csum_0_bounded; try lca.       
        intros. bdestruct (x0 <? 0); bdestruct (x0 =? 0); try lia; lca. 
-       rewrite Csum_0_bounded; try easy.
+       rewrite Csum_0_bounded; try lca.
        intros. bdestruct (x0 <? 0); bdestruct (x0 =? 0); try lia; lca. 
        rewrite <- Csum_extend_l. simpl. 
-       rewrite Cmult_0_l, Cplus_0_l.
+       rewrite Cmult_0_r, Cplus_0_l.
        apply Csum_eq_bounded. 
        intros. 
-       assert (H' : x0 - 0 = x0). lia.
-       rewrite H'. easy. 
+       rewrite Nat.sub_0_r.
+       easy. 
 Qed.
  
-Lemma pad_I : forall (n : nat), pad (I n) = I (S n).
+Lemma pad_I : forall (n : nat), pad (I n) C1 = I (S n).
 Proof. intros. 
-       unfold pad, I, col_wedge, row_wedge, e_i.
+       unfold pad, I, col_wedge, row_wedge, e_i, scale.
        prep_matrix_equality. 
        bdestruct (y <? 0); bdestruct (y =? 0); bdestruct (x <? 0); bdestruct (x <? S n);
          bdestruct (x =? 0); bdestruct (x =? y); bdestruct (x - 1 =? y - 1); 
-         bdestruct (x - 1 <? n); try lia; try easy.
+         bdestruct (x - 1 <? n); try lia; try lca.
 Qed.
 
 
-Lemma padded : forall {n : nat} (A : Square (S n)),
-  (forall (i j : nat), (i = 0 \/ j = 0) /\ i <> j -> A i j = C0) -> A 0 0 = C1 ->
-  exists a : Square n, pad a = A.
+Lemma padded : forall {n : nat} (A : Square (S n)) (c : C),
+  (forall (i j : nat), (i = 0 \/ j = 0) /\ i <> j -> A i j = C0) -> A 0 0 = c ->
+  exists a : Square n, pad a c = A.
 Proof. intros.  
        exists (reduce A 0 0).
-       unfold pad, reduce, col_wedge, row_wedge, e_i.
+       unfold pad, reduce, col_wedge, row_wedge, e_i, scale.
        prep_matrix_equality. 
        bdestruct (y <? 0); bdestruct (y =? 0); bdestruct (x <? 0); bdestruct (x =? 0);
          try lia. 
-       rewrite H4, H2, H0. easy.
+       rewrite H4, H2, H0. lca. 
        rewrite H; try lia.
-       destruct x; try lia. auto. 
+       destruct x; try lia. lca. 
        rewrite H; try lia; easy. 
        destruct x; destruct y; try lia. 
        do 2 rewrite easy_sub in *.
@@ -4534,16 +4550,16 @@ Qed.
 
 
 
-Lemma lin_indep_pad : forall {n : nat} (A : Square n),
-  linearly_independent (pad A) -> linearly_independent A.
+Lemma lin_indep_pad : forall {n : nat} (A : Square n) (c : C),
+  linearly_independent (pad A c) -> linearly_independent A.
 Proof. unfold linearly_independent.
        intros. 
-       assert (H2 : (pad A) × (row_wedge a Zero 0) = Zero).
+       assert (H2 : (pad A c) × (row_wedge a Zero 0) = Zero).
        { prep_matrix_equality. 
          destruct x. unfold Mmult. 
          unfold Zero. apply Csum_0_bounded. 
          intros.
-         unfold pad, row_wedge, col_wedge, e_i.
+         unfold pad, row_wedge, col_wedge, e_i, scale.
          bdestruct (x <? 0); bdestruct (x =? 0); try lia. lca. 
          lca.
          assert (p : @Zero (S n) 1 (S x) y = C0).
@@ -4665,7 +4681,7 @@ Qed.
 Lemma lin_indep_ind_step2 : forall {n} (A : Square (S n)), 
   WF_Matrix A -> linearly_independent A -> (exists i, i < (S n) /\ get_vec i A = e_i 0) ->
   (exists B : Square (S n), WF_Matrix B /\ linearly_independent (A × B) /\
-                            (exists a : Square n, pad a = (A × B))).
+                            (exists a : Square n, pad a C1 = (A × B))).
 Proof. intros.
        destruct H1 as [i [H1 H2]].
        apply (lin_indep_swap A 0 i) in H0; try lia; try easy.
@@ -4738,15 +4754,16 @@ Proof. induction n as [| n'].
          apply lin_indep_pad in H4.
          apply IHn' in H4.
          destruct H4 as [B3 [H6 H7]].
-         exists (B1 × B2 × (pad B3)).
+         exists (B1 × B2 × (pad B3 C1)).
          split. apply WF_mult. 
          apply WF_mult; easy.
-         apply WF_pad in H6; easy.
+         apply (WF_pad B3 C1). easy.
          do 2 rewrite <- Mmult_assoc. 
          rewrite <- H5.
          rewrite <- pad_mult.
+         rewrite Cmult_1_l.
          rewrite H7, pad_I; easy.
-         apply WF_pad. 
+         apply (WF_pad a C1). 
          rewrite H5. 
          auto with wf_db.
          exists i; split; try lia. 
@@ -4797,7 +4814,6 @@ Proof. intros.
        rewrite Mmult_1_r in H'; try easy.
        rewrite H'; easy.
 Qed.
-
 
 Lemma Minv_left : forall (n : nat) (A B : Square n), 
     WF_Matrix A -> WF_Matrix B -> 

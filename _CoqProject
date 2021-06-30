@@ -6,6 +6,7 @@ Heisenberg.v
 Matrix.v
 Monad.v
 Monoid.v
+Polynomial.v
 Prelim.v
 Quantum.v
 RealAux.v
