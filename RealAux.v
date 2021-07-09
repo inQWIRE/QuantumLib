@@ -6,6 +6,7 @@ Require Import Psatz.
 (** Relevant lemmas from Rcomplements.v. **)
 (******************************************)
 
+
 Open Scope R_scope.
 
 Lemma Rle_minus_l : forall a b c,(a - c <= b <-> a <= b + c). Proof. intros. lra. Qed.

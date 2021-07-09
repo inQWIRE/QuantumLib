@@ -1,8 +1,9 @@
-Require Import List.   
+Require Import List.    
 Require Export Complex. 
 Require Export Matrix.
 Require Export Quantum.
 Require Export Polynomial.
+
 
 (* Some preliminary lemmas/additions to tactics that could be moved to other files *)
 
@@ -1084,38 +1085,16 @@ Proof. induction n as [| n'].
          apply WF_reduce_row; try lia; auto.
          destruct (nonzero_vec_nonzero_elem v) as [x H5]; auto.
          bdestruct (x <? S n').
-         + apply (lin_dep_col_add_many_conv _ _ x A (make_row_zero x v)); try easy.
+         + Admitted.
+           (*
+           apply (lin_dep_col_add_many_conv _ _ x A (make_row_zero x v)); try easy.
            unfold make_row_zero.
            bdestruct_all; lca. 
            rewrite (Determinant_col_add_many _ x _ (make_row_zero x v)) in H0; try easy. 
+            *)
+          
 
 
-
-
-         bdestruct (x <? S n').
-         - easy.
-
-
-Lemma lin_dep_col_add_many_conv : forall (n m col : nat) (T : Matrix n m) (as' : Vector m),
-  col < m -> as' col 0 = C0 -> 
-  linearly_dependent (col_add_many col as' T) ->
-  linearly_dependent T.
-
-
-Lemma col_add_many_cancel : forall {n m} (T : Matrix n m) (as' : Vector m) (col : nat),
-  col < m -> as' col 0 = C0 ->
-  (reduce_col T col) × (reduce_row as' col) = -C1 .* (get_vec col T) -> 
-  (forall i : nat, (col_add_many col as' T) i col = C0).
-
-
-         Admitted.
-
-
-
-
-
-Lemma Det_neq_0_linindep : forall {n} (A : Square n),
-  WF_Matrix A -> linearly_independent A -> Determinant n A <> C0.
 
 
 
@@ -2953,10 +2932,28 @@ Qed.
 
 Lemma diagble_pad : forall {n} (A : Square n) (c : C),
   WF_Diagonalizable A -> WF_Diagonalizable (pad A c).
-Proof. Admitted. 
+Proof. intros n A c [H [X [X' [B [[Hwf Hd] [H1 [H2 [H3 H4]]]]]]]].
+       split. apply WF_pad; auto.
+       exists (pad X C1), (pad X' C1), (pad B c).
+       split. split; try (apply WF_pad; auto).
+       - intros.
+         destruct i; destruct j; try lia;
+           unfold pad, col_wedge, row_wedge, scale, e_i;
+           bdestruct_all; try easy; try lca.
+         do 2 rewrite easy_sub.
+         apply Hd; lia.
+         apply Hd; lia. 
+       - split; try (apply WF_pad; auto).
+         split; try (apply WF_pad; auto).
+         split. 
+         rewrite <- pad_mult, H3, Cmult_1_r, pad_I.
+         easy.
+         do 2 rewrite <- pad_mult.
+         rewrite <- H4, Cmult_1_r, Cmult_1_l.
+         easy.
+Qed.         
 
-
-
+         
 (* Now, we build up the main important theorem *)
 Theorem unit_implies_diagble : forall {n} (A : Square n),
   WF_Unitary A -> WF_Diagonalizable A.
@@ -3011,7 +3008,7 @@ Qed.
 
 
 Definition eq_eigs {n : nat} (U1 U2 : Square n) : Prop := 
-  forall p, Eigenpair U1 p -> Eigenpair U2 p. 
+  forall p, WF_Matrix (fst p) -> (Eigenpair U1 p -> Eigenpair U2 p). 
 
 
 Lemma eq_eigs_implies_eq_diag : forall {n} (D1 D2 : Square n),
@@ -3034,6 +3031,7 @@ Proof. intros n D1 D2 [H1wf H1d] [H2wf H2d] H.
          bdestruct_all; lca.
          intros. 
          unfold e_i; bdestruct_all; lca.
+         simpl. auto with wf_db.
          split; auto. }
        apply mat_equiv_eq; auto.
        unfold mat_equiv; intros. 
@@ -3080,7 +3078,8 @@ Proof. intros n D1 D2 [H1wf H1d] [H2wf H2d] H.
        { apply (diagble_eigenpairs_transfer D1 B1 X1 X1'); auto. 
          split; auto. }
        assert (H3 : forall i, i < n -> Eigenpair D2 (X1' × (e_i i), B1 i i)).
-       { intros. apply H. apply H2; easy. }
+       { intros. apply H. simpl. 
+         auto with wf_db. apply H2; easy. }
        assert (H4 : forall i, i < n -> Eigenpair (X1 × D1 × X1') (e_i i, B1 i i)).
        { intros. apply eig_unit_invertible; auto with wf_db. }
        assert (H5 : forall i, i < n -> Eigenpair (X1 × D2 × X1') (e_i i, B1 i i)).
