@@ -45,7 +45,7 @@ Notation vecType n := (list (Square n)).
 
 
 Definition singVecType {n : nat} (v : Vector n) (U : Square n) : Prop :=
-  exists λ, Eigenpair U (v, λ).
+  WF_Matrix v /\ exists λ, Eigenpair U (v, λ).
 
 
 Definition vecHasType {n : nat} (v : Vector n) (ts: vecType n) : Prop := 
@@ -356,6 +356,18 @@ Definition uni_vecType {n : nat} (vt : vecType n) : Prop :=
   forall A, In A vt -> WF_Unitary A.
 
 
+Lemma uni_vecType_cons : forall {n : nat} (a : Square n) (A : vecType n),
+  uni_vecType (a :: A) -> WF_Unitary a /\ uni_vecType A.
+Proof. intros.
+       split. 
+       - apply H.
+         left; easy.
+       - unfold uni_vecType in *.
+         intros.
+         apply H.
+         right; easy.
+Qed.
+  
 Lemma univ_I : uni_vecType I'. 
 Proof. unfold uni_vecType. intros. 
        apply in_simplify in H; rewrite H. 
@@ -546,25 +558,27 @@ Proof. intros n A B C. induction A as [| a].
          reflexivity.
 Qed.
 
-Lemma mul_I_l : forall (A : vecType 2), I' *' A = A.
-Proof. intros A. unfold I'. induction A as [| a].
+Lemma mul_I_l : forall (A : vecType 2), uni_vecType A -> I' *' A = A.
+Proof. intros A H. unfold I'. induction A as [| a].
        - reflexivity.
        - rewrite (cons_conc _ a A). 
          rewrite sing_concat_into_mul_r.
-         rewrite IHA.
+         apply uni_vecType_cons in H.
+         destruct H as [[H _] H0].
+         rewrite IHA; try easy.
          simpl.
-         rewrite Mmult_1_l.
-         reflexivity.
+         rewrite Mmult_1_l; easy.
 Qed.
 
-Lemma mul_I_r : forall (A : vecType 2), A *' I' = A.
-Proof. intros A. unfold I'. induction A as [| a].
+Lemma mul_I_r : forall (A : vecType 2), uni_vecType A -> A *' I' = A.
+Proof. intros A H. unfold I'. induction A as [| a].
        - reflexivity.
        - rewrite cons_into_mul_l.
-         rewrite IHA.
+         apply uni_vecType_cons in H.
+         destruct H as [[H _] H0].
+         rewrite IHA; try easy.
          simpl.
-         rewrite Mmult_1_r'.
-         reflexivity.
+         rewrite Mmult_1_r; try easy.
 Qed.
   
 Lemma Xsqr : X' *' X' = I'.
@@ -730,22 +744,25 @@ Hint Rewrite  mul_sing mul_nil_r mul_I_l mul_I_r Xsqr Zsqr ZmulX neg_inv scale_d
 
 
 Lemma tensor_1_l : forall (n : nat) (A : vecType n),
-  [I 1] ⊗' A = A. 
-Proof. induction A as [| h].
+  uni_vecType A -> [I 1] ⊗' A = A. 
+Proof. intros. induction A as [| h].
        - easy. 
-       - simpl in *. 
-         rewrite kron_1_l'.
-         rewrite IHA.
-         easy. 
+       - simpl in *.
+         apply uni_vecType_cons in H.
+         destruct H as [[H _] H0].
+         rewrite kron_1_l; try easy.
+         rewrite IHA; try easy.
 Qed.
 
 
-Lemma big_tensor_1_l : forall (n m : nat) (A : vecType n), (@big_tensor m []) ⊗' A = A.
+Lemma big_tensor_1_l : forall (n m : nat) (A : vecType n),
+  uni_vecType A -> (@big_tensor m []) ⊗' A = A.
 Proof. intros.
-       assert (H : forall m, (@big_tensor m []) = [I 1]).
+       assert (H' : forall m, (@big_tensor m []) = [I 1]).
        { easy. }
-       rewrite H.
+       rewrite H'.
        apply tensor_1_l.
+       easy.
 Qed.
 
    
@@ -787,43 +804,51 @@ Qed.
 
 
 Lemma sing_tensor_assoc : forall (m n o : nat) (a : Square m) (b : Square n) (C : vecType o),
-    ([a] ⊗' [b]) ⊗' C = [a] ⊗' ([b] ⊗' C). 
-Proof. intros m n o a b C. induction C as [| c].
+   WF_Matrix a -> WF_Matrix b -> uni_vecType C ->
+   ([a] ⊗' [b]) ⊗' C = [a] ⊗' ([b] ⊗' C). 
+Proof. intros m n o a b C H H0 H1. induction C as [| c].
        - simpl. reflexivity. 
        - rewrite (cons_conc _ c C).
+         apply uni_vecType_cons in H1.
+         destruct H1 as [H1 H2].
          rewrite (sing_concat_into_tensor_r n o b [c] C).
          do 2 (rewrite tensor_sing).
          rewrite (sing_concat_into_tensor_r _ o _ [c] C).
          rewrite (sing_concat_into_tensor_r _ _ a _ _).
-         rewrite <- IHC.
+         rewrite <- IHC; auto.
          do 3 (rewrite tensor_sing).
-         rewrite kron_assoc.
-         reflexivity.
+         rewrite kron_assoc; auto.
+         destruct H1; auto. 
 Qed.
 
+
 Lemma sing_tensor_assoc2 : forall (m n o: nat) (a : Square m) (B : vecType n) (C : vecType o),
-    ([a] ⊗' B) ⊗' C = [a] ⊗' (B ⊗' C). 
-Proof. intros m n o a B C. induction B as [| b].
+  WF_Matrix a -> uni_vecType B -> uni_vecType C ->
+  ([a] ⊗' B) ⊗' C = [a] ⊗' (B ⊗' C). 
+Proof. intros m n o a B C H H0 H1. induction B as [| b].
        - simpl. reflexivity. 
        - rewrite (cons_conc _ b B).
+         apply uni_vecType_cons in H0.
+         destruct H0 as [[H0 _] H2].
          rewrite sing_concat_into_tensor_r. 
          do 2 (rewrite concat_into_tensor_l).
          rewrite sing_concat_into_tensor_r.
-         rewrite sing_tensor_assoc.
-         rewrite IHB.
-         reflexivity.
+         rewrite sing_tensor_assoc; auto.
+         rewrite IHB; auto. 
 Qed.         
 
 
 Theorem tensor_assoc : forall (m n o: nat) (A : vecType m) (B : vecType n) (C : vecType o),  
+  uni_vecType A -> uni_vecType B -> uni_vecType C -> 
   A ⊗' (B ⊗' C) = (A ⊗' B) ⊗' C. 
-Proof. intros m n o A B C. induction A as [| a].
+Proof. intros m n o A B C H H0 H1. induction A as [| a].
        - simpl. reflexivity. 
        - rewrite cons_conc.
-         do 3 (rewrite concat_into_tensor_l). 
-         rewrite IHA.
-         rewrite sing_tensor_assoc2.
-         reflexivity.
+         apply uni_vecType_cons in H.
+         destruct H as [[H _] H2].
+         do 3 (rewrite concat_into_tensor_l); auto. 
+         rewrite IHA; auto. 
+         rewrite sing_tensor_assoc2; auto. 
 Qed.
 
 
@@ -976,25 +1001,26 @@ Qed.
 
 
 Lemma decompose_tensor : forall (A B : vecType 2),
-    Singleton A ->
-    Singleton B ->
+    Singleton A -> uni_vecType A ->
+    Singleton B -> uni_vecType B ->
     A ⊗' B = (A ⊗' I') *' (I' ⊗' B).
 Proof.
   intros.
   rewrite mul_tensor_dist;  auto with sing_db.
   rewrite mul_I_l, mul_I_r. 
-  easy.
+  all : easy.  
 Qed.
 
 Lemma decompose_tensor_mult_l : forall (A B : vecType 2),
-    Singleton A ->
-    Singleton B ->
+    Singleton A -> 
+    Singleton B -> 
     (A *' B) ⊗' I' = (A ⊗' I') *' (B ⊗' I').
 Proof.
   intros.
   rewrite mul_tensor_dist; auto with sing_db.
   rewrite mul_I_l.
   easy.
+  auto with univ_db.
 Qed.
 
 Lemma decompose_tensor_mult_r : forall (A B : vecType 2),
@@ -1004,6 +1030,7 @@ Proof.
   rewrite mul_tensor_dist; auto with sing_db.
   rewrite mul_I_l.
   easy.
+  auto with univ_db.
 Qed.
 
 (*********************)
@@ -1026,7 +1053,7 @@ Axiom has_type_subset_conv : forall {n} (t1s t2s : vecType n),
 *)
 
 Definition eq_vecType {n} (T1 T2 : vecType n) := 
-  (forall v, v :' T1 <-> v :' T2).
+  (forall v, WF_Matrix v -> (v :' T1 <-> v :' T2)).
 
 
 Infix "≡" := eq_vecType (at level 70, no associativity) : heisenberg_scope.
@@ -1040,7 +1067,8 @@ Qed.
 Lemma eq_vecType_sym : forall {n} (A B : vecType n), A ≡ B -> B ≡ A.
 Proof. intros n A B H. 
        unfold eq_vecType in *; intros v.
-       split. apply H. apply H.
+       split. 
+       all : apply H; easy. 
 Qed.
 
 Lemma eq_vecType_trans : forall {n} (A B C : vecType n),
@@ -1049,8 +1077,8 @@ Proof.
   intros n A B C HAB HBC.
   unfold eq_vecType in *.
   split. 
-  - intros. apply HBC; apply HAB; apply H.
-  - intros. apply HAB; apply HBC; apply H.
+  - intros. apply HBC; auto; apply HAB; auto; apply H.
+  - intros. apply HAB; auto; apply HBC; auto; apply H.
 Qed.
 
 
@@ -1105,15 +1133,16 @@ Proof. intros n A.
        intros v; split.
        - apply has_type_subset.
          auto with sub_db.
-       - intros H.
+       - intros H0.
          unfold vecHasType; intros A0.
          simpl.
          intros [H1 | H1'].
          + rewrite <- H1.
-           unfold singVecType.
+           unfold singVecType in *.
+           split; auto.
            exists C1.
            auto with eig_db.
-         + apply H; apply H1'.
+         + apply H0; apply H1'.
 Qed.
 
        
@@ -1166,14 +1195,14 @@ Ltac normalize_mul :=
   repeat (
       try rewrite <- (mul_assoc _ X' Z' _);
       autorewrite with mul_db tensor_db;
-      try rewrite mul_assoc).
+      try rewrite mul_assoc); auto with sing_db; auto with univ_db.
 
-Lemma Ysqr : Y' *' Y' = I'. Proof. normalize_mul; auto with sing_db. Qed.
-Lemma XmulZ : X' *' Z' = - Z' *' X'. Proof. normalize_mul; auto with sing_db. Qed.
-Lemma XmulY : X' *' Y' = i Z'. Proof. normalize_mul; auto with sing_db. Qed.
-Lemma YmulX : Y' *' X' = -i Z'. Proof. normalize_mul; auto with sing_db. Qed.
-Lemma ZmulY : Z' *' Y' = -i X'. Proof. normalize_mul; auto with sing_db. Qed.
-Lemma YmulZ : Y' *' Z' = i X'. Proof. normalize_mul; auto with sing_db. Qed.
+Lemma Ysqr : Y' *' Y' = I'. Proof. normalize_mul. Qed.
+Lemma XmulZ : X' *' Z' = - Z' *' X'. Proof. normalize_mul. Qed.
+Lemma XmulY : X' *' Y' = i Z'. Proof. normalize_mul. Qed.
+Lemma YmulX : Y' *' X' = -i Z'. Proof. normalize_mul. Qed.
+Lemma ZmulY : Z' *' Y' = -i X'. Proof. normalize_mul. Qed.
+Lemma YmulZ : Y' *' Z' = i X'. Proof. normalize_mul. Qed.
 
 
 (* some more lemmas about specific vectors *)
@@ -1182,11 +1211,11 @@ Lemma YmulZ : Y' *' Z' = i X'. Proof. normalize_mul; auto with sing_db. Qed.
 (* note that vecHasType_is_vecHasType' makes this nice since       *)
 (* vecHasType' works well with singletons as opposed to vecHasType *)
 Ltac solveType := apply vecHasType_is_vecHasType'; 
-                  simpl; unfold singVecType; apply kill_true;
+                  simpl; unfold singVecType; apply kill_true; split; auto with wf_db; 
                   try (exists C1; auto with eig_db; easy);
                   try (exists (Copp C1); auto with eig_db).
 
-Lemma all_hastype_I : forall (v : Vector 2), v :' I'.
+Lemma all_hastype_I : forall (v : Vector 2), WF_Matrix v -> v :' I'.
 Proof. intros. solveType. 
 Qed.
   
@@ -1274,36 +1303,38 @@ Qed.
 
 
 Lemma sgt'_implies_sgt : forall {n} (U : Square n) (g : vecType n * vecType n),
-  unitary U -> Singleton (fst g) -> (uni_vecType (fst g) /\ uni_vecType (snd g)) ->
+  WF_Unitary U -> Singleton (fst g) -> (uni_vecType (fst g) /\ uni_vecType (snd g)) ->
   singGateType' U g -> singGateType U g.
 Proof. intros n U g H H0 [Hf Hs] H1. 
        apply singleton_simplify in H0; destruct H0.
        unfold singGateType' in H1. 
        unfold singGateType. intros A B HA HB.  
        unfold uni_vecType in *.
-       assert (H': eq_eigs A (U† × B × U)).
-       { intros p H2. destruct p.
-         apply eig_unit_conv. apply H.
+       assert (H': eq_eigs A (U† × B × U)). 
+       { intros p H2 H3. destruct p.
+         apply eig_unit_conv; try easy.  
          unfold pairHasType in H1.
          rewrite H0 in *.
          apply (H1 m c). 
+         unfold pairHasType.
          intros. 
-         apply in_simplify in H3. 
+         apply in_simplify in H4. 
          apply in_simplify in HA. 
-         rewrite H3; rewrite <- HA.
-         apply H2.
+         rewrite H4, <- HA.
+         apply H3.
          apply HB. }
-       apply eq_eigs_implies_eq in H'.
+       apply eq_eigs_implies_eq_unit in H'.
        rewrite H'.
        do 2 (rewrite <- Mmult_assoc).
-       rewrite H.
-       rewrite Mmult_1_l'.
+       destruct H as [Hwf Hu].
+       apply Minv_flip in Hu; auto with wf_db. 
+       rewrite Hu, Mmult_1_l.
        reflexivity.
-       apply Hf. apply HA.
-       apply unit_mult. apply unit_mult. 
-       apply unit_adjoint. apply H.
-       apply Hs. apply HB.
-       apply H.
+       destruct (Hs B) as [Haa _]; auto. 
+       apply Hf; auto.
+       apply Mmult_unitary; auto. 
+       apply Mmult_unitary; auto.
+       apply transpose_unitary; auto.  
 Qed.
 
 
@@ -1356,24 +1387,29 @@ Notation "U [ A ]" := (gateApp U A) (at level 0) : heisenberg_scope.
 
 
 Lemma type_is_app : forall (n: nat) (U A B : Square n),
-  unitary U -> unitary A -> unitary B ->
+  WF_Unitary U -> WF_Unitary A -> WF_Unitary B ->
   (U ::' ([A] → [B])  <-> U[A] = B).
-Proof. intros n U A B Hu Ha Hb. split.
+Proof. intros n U A B [Huwf Hu] [Hawf Ha] [Hbwf Hb]. split.
        - simpl. intros [H _]. 
          apply sgt'_implies_sgt in H.
          unfold singGateType in H; unfold gateApp. 
          simpl in H. rewrite (H A B). 
          rewrite Mmult_assoc.
-         rewrite Hu. apply Mmult_1_r'.
+         apply Minv_flip in Hu; try easy.
+         rewrite Hu. apply Mmult_1_r; auto.
+         apply transpose_unitary; auto.
+         split; auto. 
          left. easy. left. easy.
-         apply Hu.
+         split; auto. 
          easy.
          unfold uni_vecType.
          simpl. split.
          + intros A' [Ha' | F].
-           rewrite <- Ha'; apply Ha. easy.
+           rewrite <- Ha'. split; auto. 
+           easy.
          + intros B' [Hb' | F].
-           rewrite <- Hb'; apply Hb. easy.
+           rewrite <- Hb'. split; auto. 
+           easy.
        - intros. apply kill_true. 
          apply sgt_implies_sgt'.
          easy.
@@ -1384,10 +1420,10 @@ Proof. intros n U A B Hu Ha Hb. split.
          rewrite H0, H1.
          rewrite <- H.
          rewrite Mmult_assoc.
-         apply Minv_flip in Hu.
          rewrite Hu.
          rewrite Mmult_assoc. 
-         rewrite Mmult_1_r'; reflexivity. 
+         rewrite Mmult_1_r; 
+         auto. 
 Qed.
 
 
@@ -1461,39 +1497,38 @@ Proof. intros n. assert (H : n ⨂' I' = [n ⨂ I 2]).
 Qed.
 
 
-Lemma Types_I : forall {n} (p : Square n), p ::' [I n] → [I n].
+Lemma Types_I : forall {n} (p : Square n), WF_Matrix p -> p ::' [I n] → [I n].
 Proof. intros. 
        apply kill_true.
        apply sgt_implies_sgt'.
        easy.
        unfold singGateType. 
        intros.
-       apply in_simplify in H. 
-       apply in_simplify in H0.
-       rewrite H, H0.
-       rewrite Mmult_1_r', Mmult_1_l'.
-       reflexivity.
+       apply in_simplify in H0. 
+       apply in_simplify in H1.
+       rewrite H0, H1.
+       rewrite Mmult_1_r, Mmult_1_l; auto.
 Qed.
 
 (* Note that this doesn't restrict # of qubits referenced by p. *)
-Lemma TypesI1 : forall (p : Square 2), p ::' I' → I'.
+Lemma TypesI1 : forall (p : Square 2), WF_Matrix p -> p ::' I' → I'.
 Proof. intros p. unfold I'. 
        apply Types_I.
 Qed.
 
 
-Lemma TypesI2 : forall (p : Square 4), p ::' I' ⊗' I' → I' ⊗' I'.
-Proof. intros p.
-       assert (H: I' ⊗' I' = [I 4]).
+Lemma TypesI2 : forall (p : Square 4), WF_Matrix p -> p ::' I' ⊗' I' → I' ⊗' I'.
+Proof. intros p H.
+       assert (H0 : I' ⊗' I' = [I 4]).
        { simpl. rewrite id_kron. easy. }
-       rewrite H.
-       apply Types_I.
+       rewrite H0.
+       apply Types_I; auto.
 Qed.
 
 
-Lemma TypesIn : forall (n : nat) (p : Square (2^n)), p ::' n ⨂' I' → n ⨂' I'.
-Proof. intros n p. rewrite In_eq_Itensor. 
-       apply (@Types_I (2^n) p).
+Lemma TypesIn : forall (n : nat) (p : Square (2^n)), WF_Matrix p -> p ::' n ⨂' I' → n ⨂' I'.
+Proof. intros n p H. rewrite In_eq_Itensor. 
+       apply (@Types_I (2^n) p); auto.
 Qed.      
 
 
@@ -1677,7 +1712,7 @@ Qed.
 
 Lemma arrow_mul : forall {n} (p : Square n) (A A' B B' : vecType n),
     Singleton A -> Singleton B ->
-    unitary p ->
+    WF_Unitary p ->
     uni_vecType A -> uni_vecType A' ->
     uni_vecType B -> uni_vecType B' ->
     p ::' A → A' ->
@@ -1713,7 +1748,6 @@ Proof. intros n p A A' B B' Hsa Hsb Hup Hua Hua' Hub Hub' [Ha _] [Hb _].
        apply Hup. apply Hsa'.
        split. apply Hua. apply Hua'.
 Qed.
-
 
 
 
@@ -1836,7 +1870,7 @@ Definition prog_smpl_app (prg_len : nat) (U : Square 2) (bit : nat) : Square (2^
 
 
 Lemma unit_prog_smpl_app : forall (prg_len : nat) (U : Square 2) (bit : nat),
-  unitary U -> unitary (prog_smpl_app prg_len U bit). 
+  WF_Unitary U -> WF_Unitary (prog_smpl_app prg_len U bit). 
 Proof. intros.  
        unfold prog_smpl_app.
        destruct (bit <? prg_len) eqn:E; auto with unit_db.
@@ -1863,9 +1897,10 @@ Definition prog_ctrl_app (prg_len : nat) (U : Square 2) (ctrl targ : nat) : Squa
 
 
 Lemma unit_proj : forall (n : nat) (U : Square 2),
-  n <> 0 -> unitary U -> unitary (∣0⟩⟨0∣ ⊗ I (2^n) .+ ∣1⟩⟨1∣ ⊗ I (2^(n - 1)) ⊗ U).
+  n <> 0 -> WF_Unitary U -> WF_Unitary (∣0⟩⟨0∣ ⊗ I (2^n) .+ ∣1⟩⟨1∣ ⊗ I (2^(n - 1)) ⊗ U).
 Proof. intros.
-       unfold unitary.
+       destruct H0 as [Huwf H0].
+       split; auto with wf_db.
        rewrite Mplus_adjoint.
        rewrite kron_adjoint.
        assert (H1 : ∣0⟩⟨0∣  † = ∣0⟩⟨0∣). 
@@ -1898,19 +1933,16 @@ Proof. intros.
        rewrite H4. rewrite Mmult_1_l; try auto with wf_db.
        assert (H4' : ∣1⟩⟨1∣ × ∣1⟩⟨1∣ = ∣1⟩⟨1∣). { lma'. }
        rewrite H4'. rewrite Mmult_1_l; try auto with wf_db.
-       do 2 (rewrite kron_assoc). 
+       rewrite kron_assoc; auto with wf_db. 
        rewrite H2'.
-       do 2 (rewrite kron_mixed_product).
+       rewrite kron_mixed_product; auto with wf_db.
+       rewrite kron_assoc; auto with wf_db. 
+       rewrite H2'. rewrite kron_mixed_product; auto with wf_db.
        assert (H5 : ∣1⟩⟨1∣ × ∣0⟩⟨0∣ = Zero). { lma'. }
        assert (H5' : ∣0⟩⟨0∣ × ∣1⟩⟨1∣ = Zero). { lma'. }
-       rewrite H5, H5'.
-       do 2 (rewrite kron_0_l). 
-       rewrite Mplus_0_l.
-       rewrite kron_assoc.
-       rewrite H0.
-       rewrite id_kron.
-       rewrite H2'. 
-       rewrite Mplus_0_r.
+       rewrite H5, H5', kron_0_l, kron_0_l, H0, Mplus_0_r, Mplus_0_l.  
+       rewrite kron_assoc, id_kron; auto with wf_db.
+       replace (2^ (n - 1) * 2) with (2^n) by lia. 
        rewrite <- kron_plus_distr_r.
        assert (H6 : ∣0⟩⟨0∣ .+ ∣1⟩⟨1∣ = I 2). { lma'. }
        rewrite H6.
@@ -1920,10 +1952,11 @@ Qed.
 
 
 Lemma unit_proj2 : forall (n : nat) (U : Square 2),
-  n <> 0 -> unitary U -> 
-  unitary (I (2 ^ n) ⊗ ∣0⟩⟨0∣ .+ U ⊗ I (2 ^ (n - 1)) ⊗ ∣1⟩⟨1∣).
+  n <> 0 -> WF_Unitary U -> 
+  WF_Unitary (I (2 ^ n) ⊗ ∣0⟩⟨0∣ .+ U ⊗ I (2 ^ (n - 1)) ⊗ ∣1⟩⟨1∣).
 Proof. intros. 
-       unfold unitary.
+       destruct H0 as [Huwf H0]. 
+       split; auto with wf_db.
        rewrite Mplus_adjoint.
        rewrite kron_adjoint.
        assert (H1 : ∣0⟩⟨0∣  † = ∣0⟩⟨0∣). 
@@ -1980,42 +2013,31 @@ Qed.
 
 
 Lemma unit_prog_ctrl_app : forall (prg_len : nat) (U : Square 2) (ctrl targ : nat),
-  unitary U -> unitary (prog_ctrl_app prg_len U ctrl targ). 
+  WF_Unitary U -> WF_Unitary (prog_ctrl_app prg_len U ctrl targ). 
 Proof. intros.
        unfold prog_ctrl_app.
-       destruct (ctrl =? targ) eqn:E3.
+       bdestruct (ctrl =? targ).
        - rewrite andb_false_r.
          auto with unit_db.
-       - destruct (ctrl <? prg_len) eqn:E1;
-         destruct (targ <? prg_len) eqn:E2;
-         simpl; auto with unit_db.
-         destruct (ctrl <? targ) eqn:E4.
-         + rewrite (easy_pow5 ctrl targ _). 
-           apply unit_kron.
-           apply unit_kron.
-           auto with unit_db.
+       - bdestruct (ctrl <? prg_len);
+         bdestruct (targ <? prg_len);
+         simpl; try lia; auto with unit_db.
+         bdestruct (ctrl <? targ).
+         + rewrite (easy_pow5 ctrl targ _); try easy.
+           apply kron_unitary.
+           apply kron_unitary; auto with unit_db.
            apply unit_proj; try easy.
            intro.  
-           apply Nat.ltb_lt in E4.
            nia. 
-           auto with unit_db.
-           apply Nat.ltb_lt in E2; 
-           assumption. 
-           apply Nat.ltb_lt in E4; 
-           assumption.
-         + rewrite (easy_pow5' targ ctrl _).
-           apply unit_kron.
-           apply unit_kron.
+           auto with unit_db. 
+         + rewrite (easy_pow5' targ ctrl _); try easy.
+           apply kron_unitary.
+           apply kron_unitary; auto with unit_db.
            auto with unit_db.
            apply unit_proj2; try easy. 
-           intro. 
-           assert (H' : targ < ctrl). 
-           { apply easy_ltb3; easy. }
-           nia. 
+           intro. lia.
            auto with unit_db.
-           apply Nat.ltb_lt in E1; 
-           assumption. 
-           apply easy_ltb3; easy. 
+           lia. 
 Qed.
 
 

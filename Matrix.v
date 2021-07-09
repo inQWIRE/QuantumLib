@@ -3362,6 +3362,25 @@ Proof. unfold not, linearly_dependent, linearly_independent in *.
 Qed.
 
 
+Lemma not_lindep_implies_linindep : forall {n m} (T : Matrix n m),
+  not (linearly_dependent T) -> linearly_independent T.
+Proof. unfold not, linearly_dependent, linearly_independent in *.
+       intros. 
+       destruct (vec_equiv_dec a Zero).
+       - apply mat_equiv_eq; auto with wf_db.
+       - assert (H2 : (exists a : Vector m, WF_Matrix a /\ a <> Zero /\ T × a = Zero)).
+         { exists a.
+           split; auto. 
+           split; try easy.  
+           unfold not; intros. 
+           apply n0.
+           rewrite H2.
+           easy. }
+         apply H in H2.
+         easy.
+Qed.
+
+
 
 Lemma lin_indep_vec : forall {n} (v : Vector n), 
   WF_Matrix v -> v <> Zero -> linearly_independent v.

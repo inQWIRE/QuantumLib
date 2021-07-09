@@ -7,6 +7,7 @@ Require Export List.
 
 Export ListNotations.
 
+
 (* Boolean notations, lemmas *)
 
 Notation "¬ b" := (negb b) (at level 10).
