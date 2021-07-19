@@ -4,9 +4,12 @@ Require Import Program.
 Require Export Complex.
 Require Export Matrix.
 Require Import List.
+
+
+(*
 Require Export CoRN.fta.FTA. 
 Require Export CoRN.coq_reals.Rreals_iso.
-
+*)
 
 
 (* polynomial represented by a list of coeficients and a degree*)
@@ -26,7 +29,7 @@ Definition eval_P (n : nat) (p : Polynomial n) (x : Complex.C):=
 
 
 
-
+(*
 
 Definition CtoCC (c : Complex.C) : CC_set := Build_CC_set (RasIR (fst c)) (RasIR (snd c)). 
 Definition CCtoC (c : CC_set) : Complex.C := (IRasR (Re c), IRasR (Im c)).
@@ -42,6 +45,7 @@ Proof. intros.
 Qed.
 
 
+(*
 Lemma CCasCasCC_id : forall (x : CC_set), (CtoCC (CCtoC x) = x).
 Proof. intros.
        unfold CtoCC, CCtoC.
@@ -49,16 +53,10 @@ Proof. intros.
        do 2 rewrite RasIRasR_id.
        rewrite surjective_pairing.
        easy. 
-Qed.
+Qed. *)
 
-
+*)
        
-
-Lemma poly_cornpoly_conv : forall {n : nat} (p : Polynomial n),
-  WF_Poly p -> exists (p' : CCX), 
-
-
-
 
 Theorem Fundamental_Theorem_Algebra : forall {n : nat} (p : Polynomial n),
   (n > 0)%nat -> (exists c : (R * R), eval_P n p c = C0).
