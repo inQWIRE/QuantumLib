@@ -2140,7 +2140,7 @@ Proof. intros. induction ls as [| h].
 Qed.
 
 
-Hint Resolve σx_unitary σy_unitary σx_unitary P_unitary H_unitary T_unitary : unit_db.
+Hint Resolve σx_unitary σy_unitary σz_unitary P_unitary H_unitary T_unitary : unit_db.
 Hint Resolve cnot_unitary notc_unitary id_unitary Mmult_unitary kron_unitary transpose_unitary unit_scale unit_big_kron: unit_db.
 
 

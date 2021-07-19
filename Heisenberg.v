@@ -454,8 +454,19 @@ Proof. unfold uni_vecType in *.
        auto with unit_db.
 Qed.
 
-
-
+Lemma univ_tensor_list : forall (n : nat) (A : list (vecType n)),
+  (forall a, In a A -> uni_vecType a) -> uni_vecType (⨂' A).
+Proof. intros. 
+       induction A as [| h].
+       - simpl.
+         replace [I 1] with (I_n 1) by auto. 
+         apply univ_I_n.
+       - simpl. 
+         apply univ_tensor.
+         apply (H h); left; auto. 
+         apply IHA; intros. 
+         apply H; right; auto.
+Qed.
 
 Hint Resolve univ_I univ_X univ_Z univ_I_n univ_neg univ_i univ_mul univ_tensor : univ_db.
 
@@ -2043,53 +2054,78 @@ Qed.
 
 
 Lemma big_tensor_simpl : forall {n m} (A : vecTypeT n) (B : vecTypeT m) (a : vecType 2),
-    ⨂' (A ++ [a] ++ B) = (⨂' A) ⊗' a ⊗' (⨂' B).
+  (forall a, In a A -> uni_vecType a) -> (forall b, In b B -> uni_vecType b) 
+  -> uni_vecType a ->
+  ⨂' (A ++ [a] ++ B) = (⨂' A) ⊗' a ⊗' (⨂' B).
 Proof. induction A as [| h].
        - intros.
-         rewrite big_tensor_1_l.
-         reflexivity. 
-       - intros. simpl. 
+         apply univ_tensor_list in H0.
+         rewrite big_tensor_1_l; auto with univ_db.
+       - intros. simpl.  
          rewrite cons_conc. 
-         rewrite IHA. 
-         assert (H: forall (n : nat), 2^n + (2^n + 0) = 2 * 2^n). { nia. }
-         repeat (rewrite H). 
-         rewrite <- tensor_assoc.
+         rewrite IHA; auto with univ_db.
+         assert (H': forall (n : nat), 2^n + (2^n + 0) = 2 * 2^n). { nia. }
+         repeat (rewrite H'). 
+         rewrite <- tensor_assoc; auto with univ_db.
          rewrite length_change.
          reflexivity.
+         apply H; left; auto. 
+         apply univ_tensor_list; auto.
+         all : intros; try (apply H; right; easy). 
+         apply univ_tensor_list in H0.
+         auto with univ_db.
 Qed.
 
 
 
 Lemma nth_tensor_inc : forall (n len : nat) (A : vecTypeT len),
-    n < len -> WF_vtt A -> ⨂' A = (⨂' (firstn n A)) ⊗' (nth n A I') ⊗' (⨂' (skipn (S n) A)).
+  (forall a, In a A -> uni_vecType a) -> 
+  n < len -> WF_vtt A -> ⨂' A = (⨂' (firstn n A)) ⊗' (nth n A I') ⊗' (⨂' (skipn (S n) A)).
 Proof. intros. 
        rewrite <- (@big_tensor_simpl n (len - n) (firstn n A) (skipn (S n) A) (nth n A I')).
        rewrite <- nth_inc.
        reflexivity. 
-       rewrite H0.
+       rewrite H1.
        assumption. 
+       all : intros; apply H.
+       - rewrite <- (firstn_skipn n).
+         apply in_or_app.
+         auto. 
+       - rewrite <- (firstn_skipn (S n)).
+         apply in_or_app.
+         auto. 
+       - apply nth_In.
+         rewrite H1; auto.
 Qed.
 
 
 Lemma switch_tensor_inc : forall (n len : nat) (A : vecTypeT len) (x : vecType 2),
-    n < len -> WF_vtt A -> ⨂' (switch A x n) = (⨂' (firstn n A)) ⊗' x ⊗' (⨂' (skipn (S n) A)).
+  (forall a, In a A -> uni_vecType a) -> uni_vecType x ->
+  n < len -> WF_vtt A -> ⨂' (switch A x n) = (⨂' (firstn n A)) ⊗' x ⊗' (⨂' (skipn (S n) A)).
 Proof. intros. 
-       rewrite <- (@big_tensor_simpl n (len - n) (firstn n A) (skipn (S n) A) x).
+       rewrite <- (@big_tensor_simpl n (len - n) (firstn n A) (skipn (S n) A) x); auto.
        rewrite <- switch_inc.
        reflexivity. 
-       rewrite H0.
+       rewrite H2.
        assumption. 
+       all : intros; apply H.
+       - rewrite <- (firstn_skipn n).
+         apply in_or_app.
+         auto. 
+       - rewrite <- (firstn_skipn (S n)).
+         apply in_or_app.
+         auto. 
 Qed.
-
 
 
 Lemma sgt'_reduce_smpl : forall {n m : nat} (u : Square 2) (a b : vecType 2) 
                                 (A : vecType n) (B : vecType m),
-    Singleton A -> Singleton B -> Singleton a -> Singleton b ->
-    unitary u -> uni_vecType a -> uni_vecType b ->
-    singGateType' u (a, b) -> 
-    singGateType' ((I n) ⊗ u ⊗ (I m)) (A ⊗' a ⊗' B, A ⊗' b ⊗' B).  
-Proof. intros n m u a b A B HSA HSB HSa HSb Huu Hua Hub Hsgt.
+  Singleton A -> Singleton B -> Singleton a -> Singleton b ->
+  WF_Unitary u -> uni_vecType a -> uni_vecType b ->
+  uni_vecType A -> uni_vecType B ->
+  singGateType' u (a, b) -> 
+  singGateType' ((I n) ⊗ u ⊗ (I m)) (A ⊗' a ⊗' B, A ⊗' b ⊗' B).  
+Proof. intros n m u a b A B HSA HSB HSa HSb Huu Hua Hub HuA HuB Hsgt.
        apply singleton_simplify in HSA;
        destruct HSA as [A' HSA];
        apply singleton_simplify in HSB;
@@ -2110,25 +2146,27 @@ Proof. intros n m u a b A B HSA HSB HSa HSb Huu Hua Hub Hsgt.
        rewrite kron_assoc. 
        assert (H' : m + (m + 0) = 2 * m). { nia. }
        assert (H'' : (n * 2) * m = n * (2 * m)). { nia. } 
-       repeat (rewrite H'). 
-       repeat (rewrite H'').
+       repeat (rewrite H'). repeat (rewrite H'').
        do 4 (rewrite kron_mixed_product).  
-       do 2 (rewrite Mmult_1_l').
-       do 2 (rewrite Mmult_1_r').
+       repeat rewrite Mmult_1_l, Mmult_1_r.
        rewrite (Hsgt a' b'); 
        try easy; 
        try (left; easy).
+       all : auto with wf_db; 
+         try (apply HuB; left; auto); try (apply HuA; left; auto).
+       apply Huu.
 Qed.
 
 
 Lemma tensor_smpl : forall (prg_len bit : nat) (g : Square 2) 
                            (A : vecTypeT prg_len) (a : vecType 2),
+    (forall a : vecType 2, In a A -> uni_vecType a) ->
     Singleton (⨂' A) -> Singleton a ->
-    unitary g -> uni_vecType (nth bit A I') -> uni_vecType a ->
+    WF_Unitary g -> uni_vecType (nth bit A I') -> uni_vecType a ->
     bit < prg_len -> WF_vtt A -> 
     g ::' ((nth bit A I') → a) ->
     (prog_smpl_app prg_len g bit) ::'  A →' (switch A a bit).
-Proof. intros prg_len bit g A a SA Sa Hug Hunb Hua Hbpl Hwf H. 
+Proof. intros prg_len bit g A a Huvt SA Sa Hug Hunb Hua Hbpl Hwf H. 
        simpl. 
        rewrite (nth_tensor_inc bit prg_len A); try easy.
        rewrite (switch_tensor_inc bit prg_len A a); try easy. 
@@ -2139,9 +2177,8 @@ Proof. intros prg_len bit g A a SA Sa Hug Hunb Hua Hbpl Hwf H.
        repeat (rewrite switch_len).
        unfold WF_vtt in Hwf. 
        rewrite Hwf in *.
-       repeat (rewrite (easy_pow3 prg_len bit)); try easy. 
-       apply Nat.ltb_lt in Hbpl.
-       rewrite Hbpl.
+       repeat (rewrite (easy_pow3 prg_len bit)); try easy.  
+       bdestruct (bit <? prg_len); try lia. 
        apply sgt'_reduce_smpl; try easy.
        apply (S_tensor_subset _ A _). 
        apply SA. apply firstn_subset.
@@ -2149,12 +2186,26 @@ Proof. intros prg_len bit g A a SA Sa Hug Hunb Hua Hbpl Hwf H.
        apply SA. apply skipn_subset.
        apply (S_big_tensor_conv _ A _).
        apply SA. apply nth_In.
-       rewrite Hwf; apply Nat.ltb_lt; assumption.
-       destruct H as [H _].
-       apply H.
-       rewrite Hwf. nia. 
+       rewrite Hwf; assumption.
+       destruct H as [H _].  
+       - assert (H' : forall a : vecType 2, In a (firstn bit A) -> uni_vecType a).
+         { intros; apply Huvt.
+           rewrite <- (firstn_skipn bit).
+           apply in_or_app; auto. }
+         apply univ_tensor_list in H'.
+         rewrite firstn_length_le in H'.
+         auto. rewrite Hwf; nia. 
+       - assert (H' : forall a : vecType 2, In a (skipn (S bit) A) -> uni_vecType a).
+         { intros; apply Huvt.
+           rewrite <- (firstn_skipn (S bit)).
+           apply in_or_app; auto. }
+         apply univ_tensor_list in H'.
+         rewrite skipn_length, Hwf in H'.
+         replace ((prg_len - bit) - 1) with (prg_len - (S bit)) by lia.
+         auto.  
+       - apply H.
+       - rewrite Hwf; lia. 
 Qed.
-
 
 
 Lemma tensor_ctrl : forall (prg_len ctrl targ : nat) (g : Square 2) 
@@ -2163,6 +2214,7 @@ Lemma tensor_ctrl : forall (prg_len ctrl targ : nat) (g : Square 2)
     (prog_ctrl_app prg_len g ctrl targ) ::'  A →' switch (switch A a ctrl) b targ.
 Proof. Admitted.
            
+
 
 Lemma CX_is_CNOT : (∣0⟩⟨0∣ ⊗ (I 2) .+ ∣1⟩⟨1∣ ⊗ σx) = cnot. 
 Proof. lma'. 
@@ -2178,8 +2230,9 @@ Qed.
 
 Hint Resolve WF_CZ : wf_db.
 
-Lemma unit_CZ : unitary CZ. 
-Proof. lma'. Qed.
+Lemma unit_CZ : WF_Unitary CZ. 
+Proof. split; auto with wf_db. 
+       lma'. Qed.
 
 
 Hint Resolve unit_CZ : unit_db.
@@ -2191,21 +2244,17 @@ Lemma adj_ctrlX_is_cnot : forall (prg_len ctrl : nat),
   prog_ctrl_app prg_len σx ctrl (1 + ctrl) = 
   I (2^ctrl) ⊗ cnot ⊗ I (2^(prg_len - ctrl - 2)).
 Proof. intros; unfold prog_ctrl_app.
-       rewrite easy_ltb. rewrite easy_sub. 
-       assert (H' : (∣0⟩⟨0∣ ⊗ I (2 ^ 1) .+ ∣1⟩⟨1∣ ⊗ I (2 ^ (1 - 1)) ⊗ σx) = cnot).
-       { lma'. }
-       rewrite H'. rewrite easy_sub2. 
-       assert (H'' : ctrl < prg_len). { nia. }
-       apply Nat.ltb_lt in H.
-       apply Nat.ltb_lt in H''.
-       rewrite H, H''.
+       bdestruct_all. 
+       replace (1 + ctrl - ctrl) with 1 by lia. 
        simpl. 
-       assert (H''' : forall n, n =? S n = false). 
-       { induction n.
-         - easy. 
-         - easy. }
-       rewrite H'''.
-       reflexivity.
+       assert (H' : (∣0⟩⟨0∣ ⊗ I 2 .+ ∣1⟩⟨1∣ ⊗ I 1 ⊗ σx) = cnot).
+       { lma'. }
+       assert (H'' : forall (n m : nat) (a b : Square n) (c d : Square m), 
+                  a = b -> c = d -> a ⊗ c = b ⊗ d).
+       { intros. rewrite H4, H5; easy. }
+       replace (prg_len - ctrl - 2) with (prg_len - S ctrl - 1) by lia.
+       apply H''; try easy.
+       apply H''; try easy.
 Qed.
 
 
@@ -2310,308 +2359,3 @@ Definition superdense := bell00 ; encode; decode.
 
 
 
-Ltac is_I A :=
-  match A with
-  | I' => idtac
-  end.
-
-
-Ltac type_check_base :=
-  repeat apply cap_intro;
-  repeat eapply SeqTypes; (* will automatically unfold compound progs *)
-  repeat match goal with
-         | |- Singleton ?A        => tryif is_evar A then fail else auto with sing_db
-         | |- unitary ?A          => tryif is_evar A then fail else auto with unit_db
-         | |- uni_vecType ?A      => tryif is_evar A then fail else auto with univ_db
-         | |- (∣0⟩⟨0∣ ⊗ I 2 .+ ∣1⟩⟨1∣ ⊗ σx) ::' _      => rewrite CX_is_CNOT
-         | |- ?g ::' ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
-         | |- ?g ::' - ?A → ?B    => apply arrow_neg
-         | |- ?g ::' i ?A → ?B    => apply arrow_i
-         | |- context[?A ⊗' ?B]  => progress (autorewrite with tensor_db)
-         | |- (prog_smpl_app ?n ?g ?m) ::' ?T => eapply (tensor_smpl n m _ _ _)
-         | |- (prog_ctrl_app ?n ?g ?m ?o) ::' ?T => eapply (tensor_ctrl n m o _ _ _)
-         | |- ?g ::' ?A ⊗' ?B → _  => tryif (is_I A + is_I B) then fail else
-             rewrite (decompose_tensor A B) by (auto 50 with sing_db)
-         | |- ?g ::' ?A → ?B      => tryif is_evar A then fail else
-             solve [eauto with base_types_db]
-         | |- ?B = ?B'          => tryif has_evar B then fail else
-            (repeat rewrite mul_tensor_dist);
-            (repeat normalize_mul);
-            (repeat rewrite <- i_tensor_dist_l);
-            (repeat rewrite <- neg_tensor_dist_l);
-            autorewrite with mul_db;
-            try reflexivity
-         | |- ?n <> ?m => nia
-         | |- ?n < ?m => nia
-         end.
-
-
-Ltac type_check_base1 :=
-  repeat match goal with
-         | |- Singleton ?A        => tryif is_evar A then fail else auto with sing_db
-         | |- unitary ?A          => tryif is_evar A then fail else auto with unit_db
-         | |- uni_vecType ?A      => tryif is_evar A then fail else auto with univ_db
-         | |- WF_vtt ?A           => (try easy)
-         | |- (∣0⟩⟨0∣ ⊗ I 2 .+ ∣1⟩⟨1∣ ⊗ σx) ::' _      => rewrite CX_is_CNOT
-         | |- ?g ::' ?A → ?B      => tryif is_evar B then fail else eapply eq_arrow_r
-         | |- ?g ::' - ?A → ?B    => apply arrow_neg
-         | |- ?g ::' i ?A → ?B    => apply arrow_i
-         | |- context[?A ⊗' ?B]  => progress (autorewrite with tensor_db)
-         | |- (prog_smpl_app ?n ?g ?m) ::' ?T => eapply (tensor_smpl n m _ _ _)
-         | |- (prog_ctrl_app ?n ?g ?m ?o) ::' ?T => eapply (tensor_ctrl n m o _ _ _)
-         | |- ?g ::' ?A ⊗' ?B → _  => tryif (is_I A + is_I B) then fail else
-             rewrite (decompose_tensor A B) by (auto 50 with sing_db)
-         | |- ?g ::' ?A → ?B      => tryif is_evar A then fail else
-             solve [eauto with base_types_db]
-         | |- ?B = ?B'          => tryif has_evar B then fail else
-            (repeat rewrite mul_tensor_dist);
-            (repeat normalize_mul);
-            (repeat rewrite <- i_tensor_dist_l);
-            (repeat rewrite <- neg_tensor_dist_l);
-            autorewrite with mul_db;
-            try reflexivity
-         | |- ?n <> ?m => nia
-         | |- ?n < ?m => nia
-         end.
-
-
-Ltac type_check_base' :=
-  match goal with
-  | |- prog_smpl_app (?n) H' (?m) ::' ?T => eapply (tensor_smpl ?n _ _ _ _)
-  end.
-
-
-Lemma superdenseTypesQPL : superdense ::' (Z'' '⊗' Z'' '⊗' Z'' '⊗' Z'' →'
-                                           I'' '⊗' I'' '⊗' Z'' '⊗' Z'').
-Proof. repeat eapply SeqTypes.
-       eapply (tensor_smpl 4 2 _ _ _).
-       easy. 
-       7: { solve [eauto with base_types_db]. }
-       auto with sing_db.
-       auto with unit_db.
-       auto with univ_db.
-       auto with univ_db.
-       nia. 
-       easy. 
-       eapply (tensor_ctrl 4 2 3 _ _ _).
-       rewrite CX_is_CNOT.
-       rewrite decompose_tensor.
-       eapply eq_arrow_r.
-       apply arrow_mul.
-       auto with sing_db.
-       auto with sing_db.
-       auto with unit_db.
-       auto with univ_db.
-       4: { solve [eauto with base_types_db]. }
-       auto with univ_db.
-       auto with univ_db.
-       2: { solve [eauto with base_types_db]. }
-       auto with univ_db.
-       rewrite mul_tensor_dist.
-       reflexivity.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       eapply (tensor_ctrl 4 0 2 _ _ _).
-       rewrite decompose_tensor.
-       eapply eq_arrow_r.
-       apply arrow_mul.
-       auto with sing_db.
-       auto with sing_db.
-       auto with unit_db.
-       auto with univ_db.
-       4: { solve [eauto with base_types_db]. }
- 
-       auto with univ_db.
-       auto 20 with univ_db.
-
-
-       apply univ_tensor.
-       auto with univ_db. 
-       apply univ_mul.     (* What happens here??? *) 
-       auto with univ_db.
-       auto with univ_db.
-       2: { Opaque mul. simpl nth.  
-            rewrite decompose_tensor_mult_r.
-            apply arrow_mul.
-            auto with sing_db.
-            auto with sing_db.
-            auto with unit_db.
-            auto with univ_db.
-            4: { solve [eauto with base_types_db]. }
-            4: { solve [eauto with base_types_db]. }
-            auto with univ_db.
-            auto with univ_db.
-            auto with univ_db. }
-       auto with univ_db.
-       rewrite mul_tensor_dist.
-       rewrite mul_tensor_dist.
-       reflexivity. 
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       eapply (tensor_ctrl 4 1 2 _ _ _).
-       rewrite CX_is_CNOT.
-       rewrite decompose_tensor.
-       eapply eq_arrow_r.
-       apply arrow_mul.
-       auto with sing_db.
-       auto with sing_db.
-       auto with unit_db.
-       auto with univ_db.
-       4: { solve [eauto with base_types_db]. }
-       auto with univ_db.
-       apply univ_tensor.
-       auto with univ_db.
-       apply univ_mul. 
-       auto with univ_db. 
-       auto with univ_db. 
-       2: { simpl nth. 
-            rewrite decompose_tensor_mult_r.
-            apply arrow_mul. 
-            auto with sing_db.
-            auto with sing_db.
-            auto with unit_db.
-            auto with univ_db.
-            4: { solve [eauto with base_types_db]. }
-            4: { rewrite decompose_tensor_mult_r.
-                 apply arrow_mul. 
-                 auto with sing_db.
-                 auto with sing_db.
-                 auto with unit_db.
-                 auto with univ_db.
-                 4: { solve [eauto with base_types_db]. }
-                 4: { solve [eauto with base_types_db]. }
-                 auto with univ_db.
-                 auto with univ_db.
-                 auto with univ_db. }
-            auto with univ_db.
-            auto with univ_db.
-            auto with univ_db. }
-       auto with univ_db.
-       rewrite mul_tensor_dist.
-       rewrite mul_tensor_dist.
-       rewrite mul_tensor_dist.
-       reflexivity.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       eapply (tensor_ctrl 4 2 3 _ _ _).
-       rewrite CX_is_CNOT.
-       rewrite decompose_tensor.
-       eapply eq_arrow_r.
-       apply arrow_mul.
-       auto with sing_db.
-       auto with sing_db.
-       auto with unit_db.
-       apply univ_tensor.
-       apply univ_mul.
-       auto with univ_db.
-       auto with univ_db.
-       auto with univ_db.
-       4: { simpl nth. 
-            Admitted. (*
-            rewrite Mmult_1_l'.  
-            assert (H : [σx × σz] = X' *' Z'). { reflexivity. }
-            rewrite H.     
-            rewrite decompose_tensor_mult_l.                                
-            apply arrow_mul.
-            auto with sing_db.
-            auto with sing_db.
-            auto with unit_db.
-            auto with univ_db.
-            4: { solve [eauto with base_types_db]. }
-            4: { solve [eauto with base_types_db]. }
-            auto with univ_db.
-            auto with univ_db.
-            auto with univ_db. 
-            auto with sing_db.
-            auto with sing_db. }
-       auto with univ_db.
-       apply univ_tensor.
-       auto with univ_db.
-       apply univ_mul.
-       auto with univ_db.
-       auto with univ_db.
-       2: { simpl nth. 
-            assert (H : [σx × σz] = X' *' Z'). { reflexivity. }
-            rewrite H.     
-            rewrite decompose_tensor_mult_r.   
-            apply arrow_mul. 
-            auto with sing_db.
-            auto with sing_db.
-            auto with unit_db.
-            auto with univ_db.
-            4: { solve [eauto with base_types_db]. }
-            4: { solve [eauto with base_types_db]. }
-            auto with univ_db.
-            auto with univ_db.
-            auto with univ_db. }
-       auto with univ_db.
-       rewrite mul_tensor_dist.
-       rewrite mul_tensor_dist.
-       rewrite mul_tensor_dist.
-       reflexivity. 
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       auto with sing_db.
-       eapply eq_arrow_r.
-       eapply (tensor_smpl 4 2 _ _ _).
-       auto with sing_db.
-       7: { apply arrow_mul.
-            auto with sing_db.
-            auto with sing_db.
-            auto with unit_db.
-            auto with univ_db.
-            4: { apply arrow_mul. 
-                 auto with sing_db.
-                 auto with sing_db.
-                 auto with unit_db.
-                 auto with univ_db.
-                 4: { solve [eauto with base_types_db]. }
-                 4: { solve [eauto with base_types_db]. }
-                 auto with univ_db.
-                 auto with univ_db.
-                 auto with univ_db. }
-            auto with univ_db.
-            auto with univ_db. 
-            2: { apply arrow_mul. 
-                 auto with sing_db.
-                 auto with sing_db.
-                 auto with unit_db.
-                 auto with univ_db.
-                 4: { solve [eauto with base_types_db]. }
-                 4: { solve [eauto with base_types_db]. }
-                 auto with univ_db.
-                 auto with univ_db.
-                 auto with univ_db. }
-            auto with univ_db. }
-       auto with sing_db.
-       auto with unit_db.
-       apply univ_mul.
-       auto with univ_db.
-       auto with univ_db.
-       auto with univ_db.
-       nia. 
-       easy. 
-       (repeat rewrite mul_tensor_dist).
-         (repeat normalize_mul).
-         (repeat rewrite <- i_tensor_dist_l);
-         (repeat rewrite <- neg_tensor_dist_l);
-         autorewrite with mul_db;
-         try reflexivity.
-Qed. *)
