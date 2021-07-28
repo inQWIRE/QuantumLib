@@ -129,6 +129,13 @@ Proof. induction n as [| n'].
 Qed.
 
 
+Lemma zipWith_cons : forall {X Y Z : Type} (f : X -> Y -> Z) (a : X) (b : Y) (A : list X) (B : list Y),
+  zipWith f (a :: A) (b :: B) = (f a b) :: (zipWith f A B).
+Proof. intros. 
+       unfold zipWith. simpl. 
+       unfold uncurry. 
+       simpl. easy. 
+Qed.
 
 
 Fixpoint first_n (n : nat) : list nat :=
