@@ -2207,18 +2207,16 @@ Proof. intros prg_len bit g A a Huvt SA Sa Hug Hunb Hua Hbpl Hwf H.
        - rewrite Hwf; lia. 
 Qed.
 
-
-Lemma tensor_ctrl : forall (prg_len ctrl targ : nat) (g : Square 2) 
-                           (A : vecTypeT prg_len) (a b : vecType 2),
-    (∣0⟩⟨0∣ ⊗ (I 2) .+ ∣1⟩⟨1∣ ⊗ g) ::' ((nth ctrl A I') ⊗' (nth targ A I') → a ⊗' b) ->
-    (prog_ctrl_app prg_len g ctrl targ) ::'  A →' switch (switch A a ctrl) b targ.
-Proof. Admitted.
            
-
 
 Lemma CX_is_CNOT : (∣0⟩⟨0∣ ⊗ (I 2) .+ ∣1⟩⟨1∣ ⊗ σx) = cnot. 
 Proof. lma'. 
 Qed.
+
+Lemma CX_is_NOTC : ((Matrix.I 2) ⊗ ∣0⟩⟨0∣ .+ σx ⊗ ∣1⟩⟨1∣) = notc. 
+Proof. lma'. 
+Qed.
+
 
 Definition CZ := (∣0⟩⟨0∣ ⊗ (I 2) .+ ∣1⟩⟨1∣ ⊗ σz).
 
@@ -2258,27 +2256,153 @@ Proof. intros; unfold prog_ctrl_app.
 Qed.
 
 
+Lemma adj_ctrlX_is_notc : forall (prg_len targ : nat),
+  1 + targ < prg_len ->
+  prog_ctrl_app prg_len σx (1 + targ) targ = 
+  I (2^targ) ⊗ notc ⊗ I (2^(prg_len - targ - 2)).
+Proof. intros; unfold prog_ctrl_app.
+       bdestruct_all. 
+       replace (1 + targ - targ) with 1 by lia. 
+       simpl. 
+       assert (H' : (I 2 ⊗ ∣0⟩⟨0∣ .+ σx ⊗ I 1 ⊗ ∣1⟩⟨1∣) = notc).
+       { lma'. }
+       assert (H'' : forall (n m : nat) (a b : Square n) (c d : Square m), 
+                  a = b -> c = d -> a ⊗ c = b ⊗ d).
+       { intros. rewrite H4, H5; easy. }
+       replace (prg_len - targ - 2) with (prg_len - S targ - 1) by lia.
+       apply H''; try easy.
+       apply H''; try easy.
+Qed.
+
+
 Lemma adj_ctrlX_is_cnot1 : prog_ctrl_app 2 σx 0 1 = cnot.
-Proof. assert (H : cnot = I (2^0) ⊗ cnot ⊗ I (2^0)).
-       { lma'. } 
-       rewrite H.
-       rewrite adj_ctrlX_is_cnot.
-       assert (H' : (2 - 0 - 2) = 0).
-       { nia. }
-       rewrite H'. reflexivity.
-       nia. 
+Proof. rewrite adj_ctrlX_is_cnot; try lia. 
+       rewrite Nat.sub_0_r, Nat.sub_diag, Nat.pow_0_r.
+       rewrite kron_1_l, kron_1_r; auto with wf_db.
 Qed.
 
 
-Lemma ctrlX_is_notc1 : prog_ctrl_app 2 σx 1 0 = notc.
-Proof. lma'. unfold prog_ctrl_app. simpl.
-       apply WF_kron. reflexivity. reflexivity.
-       apply WF_kron. reflexivity. reflexivity.
-       auto with wf_db.
-       apply WF_plus; auto with wf_db.
-       auto with wf_db.
+Lemma adj_ctrlX_is_notc1 : prog_ctrl_app 2 σx 1 0 = notc.
+Proof. rewrite adj_ctrlX_is_notc; try lia. 
+       rewrite Nat.sub_0_r, Nat.sub_diag, Nat.pow_0_r.
+       rewrite kron_1_l, kron_1_r; auto with wf_db.
 Qed.
 
+
+
+(* switched order of 2 by 2 kron products. *) 
+(* Useful for showing that effect of cnot on a ⊗ b *) 
+Definition switch_kron_order (A : Square 4) : Square 4 :=
+  fun x y => 
+  match (x, y) with
+  | (0, 0) => A 0 0
+  | (0, 1) => A 0 2
+  | (0, 2) => A 0 1
+  | (0, 3) => A 0 3
+  | (1, 0) => A 2 0
+  | (1, 1) => A 2 2
+  | (1, 2) => A 2 1
+  | (1, 3) => A 2 3
+  | (2, 0) => A 1 0
+  | (2, 1) => A 1 2
+  | (2, 2) => A 1 1
+  | (2, 3) => A 1 3
+  | (3, 0) => A 3 0
+  | (3, 1) => A 3 2
+  | (3, 2) => A 3 1
+  | (3, 3) => A 3 3
+  | _ => C0
+  end.
+
+Lemma WF_sko : forall A, WF_Matrix (switch_kron_order A).
+Proof. unfold WF_Matrix; intros. 
+       destruct H.
+       - do 4 (destruct x; try lia); easy.   
+       - do 4 (destruct y; try lia). 
+         do 4 (destruct x; try easy).
+Qed.
+
+Hint Resolve WF_sko : wf_db.
+
+Lemma sko_twice_id : forall (A : Square 4), 
+    WF_Matrix A -> switch_kron_order (switch_kron_order A) = A.
+Proof. intros.
+       apply mat_equiv_eq; auto with wf_db.
+       unfold mat_equiv. intros. 
+       unfold switch_kron_order. 
+       do 4 (destruct i0; 
+             try (do 4 (destruct j; try lca); lia)).
+       lia.
+Qed.
+
+
+Lemma Mmult_sko : forall (A B : Square 4), switch_kron_order (A × B) = 
+                                      switch_kron_order A × switch_kron_order B.
+Proof. intros.
+       apply mat_equiv_eq; auto with wf_db.
+       unfold mat_equiv. intros. 
+       unfold switch_kron_order, Mmult. 
+       do 4 (destruct i0; 
+             try (do 4 (destruct j; try lca); lia)).
+Qed.
+
+
+Lemma Mplus_sko : forall (A B : Square 4), switch_kron_order (A .+ B) = 
+                                      switch_kron_order A .+ switch_kron_order B.
+Proof. intros.
+       apply mat_equiv_eq; auto with wf_db.
+       unfold mat_equiv. intros. 
+       unfold switch_kron_order, Mplus. 
+       do 4 (destruct i0; 
+             try (do 4 (destruct j; try lca); lia)).
+Qed.
+
+Lemma kron_sko_verify : forall (a b : Square 2),
+  WF_Matrix a -> WF_Matrix b ->
+  switch_kron_order (a ⊗ b) = b ⊗ a.
+Proof. intros. 
+       apply mat_equiv_eq; auto with wf_db.
+       unfold mat_equiv. intros. 
+       unfold switch_kron_order, kron.
+       do 4 (destruct i0; 
+             try (do 4 (destruct j; try lca); lia)).
+       lia. 
+Qed.
+
+Lemma notc_sko_cnot : switch_kron_order cnot = notc.
+Proof. rewrite <- CX_is_NOTC, <- CX_is_CNOT.
+       rewrite Mplus_sko, kron_sko_verify, kron_sko_verify; auto with wf_db.
+Qed.
+
+Lemma cnot_sko_notc : switch_kron_order notc = cnot.
+Proof. rewrite <- CX_is_NOTC, <- CX_is_CNOT.
+       rewrite Mplus_sko, kron_sko_verify, kron_sko_verify; auto with wf_db.
+Qed.
+
+
+Lemma notc_conv : forall (a a' b b' : Square 2),
+  WF_Matrix a -> WF_Matrix a' -> WF_Matrix b -> WF_Matrix b' ->
+  notc × (a ⊗ b) = (a' ⊗ b') × notc ->
+  cnot × (b ⊗ a) = (b' ⊗ a') × cnot.
+Proof. intros. 
+       assert (H4: forall a a', a = a' -> switch_kron_order a = switch_kron_order a').
+       { intros. rewrite H4; easy. }
+       apply H4 in H3.
+       do 2 rewrite Mmult_sko, kron_sko_verify in H3; auto.
+       rewrite cnot_sko_notc in H3; easy. 
+Qed.
+
+Lemma cnot_conv : forall (a a' b b' : Square 2),
+  WF_Matrix a -> WF_Matrix a' -> WF_Matrix b -> WF_Matrix b' ->
+  cnot × (a ⊗ b) = (a' ⊗ b') × cnot ->
+  notc × (b ⊗ a) = (b' ⊗ a') × notc.
+Proof. intros. 
+       assert (H4: forall a a', a = a' -> switch_kron_order a = switch_kron_order a').
+       { intros. rewrite H4; easy. }
+       apply H4 in H3.
+       do 2 rewrite Mmult_sko, kron_sko_verify in H3; auto.
+       rewrite notc_sko_cnot in H3; easy. 
+Qed.
 
 
 Ltac solve_gate_type :=
