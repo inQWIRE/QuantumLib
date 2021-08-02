@@ -268,6 +268,10 @@ Inductive Cap_vt {n} : vType n -> Prop :=
 | G_cvt : forall tt : TType n, Cap_vt (G _ tt)
 | Cap_cvt : forall T1 T2 : vType n, Cap_vt T1 -> Cap_vt T2 -> Cap_vt (Cap _ T1 T2). 
 
+Lemma sing_implies_cap : forall {n} (T : vType n),
+  Sing_vt T -> Cap_vt T.
+Proof. intros. inversion H; apply G_cvt. Qed.
+
 (* we also use a bool version of Cap_vt for matching *)
 Fixpoint Cap_vt_bool {n} (A : vType n) : bool :=
   match A with
@@ -394,7 +398,7 @@ Proof. intros.
        destruct A; destruct B; easy.
 Qed.
 
-Hint Resolve SI SX SZ S_scale S_neg S_i S_mul S_tensor : wfvt_db.
+Hint Resolve sing_implies_cap SI SX SZ S_scale S_neg S_i S_mul S_tensor : wfvt_db.
 
 Lemma SY : Sing_vt Y.
 Proof. rewrite Y_is_iXZ. auto with wfvt_db. Qed.
@@ -786,12 +790,9 @@ Proof. easy. Qed.
 
 Definition vecPair (prg_len : nat) := (Vector (2^prg_len) * C)%type.
 
-Definition vecHasType {prg_len : nat} (p : vecPair prg_len) (T : vType prg_len) :=
-  match (Cap_vt_bool T) with 
-  | false => False
-  | true => pairHasType p (translate_vecType T)
-  end. 
-
+Inductive vecHasType {prg_len : nat} : vecPair prg_len -> vType prg_len -> Prop :=
+| VHT : forall vp T, Cap_vt T -> pairHasType vp (translate_vecType T) ->
+                vecHasType vp T.
   
 
 Notation "p ;' T" := (vecHasType p T) (at level 61, no associativity).
@@ -800,34 +801,33 @@ Notation "p ;' T" := (vecHasType p T) (at level 61, no associativity).
 
 Lemma cap_elim_l_vec : forall {n} (v : vecPair n) (A B : vType n), v ;' A ∩ B -> v ;' A.
 Proof. intros. 
-       unfold vecHasType in *.
-       simpl Cap_vt_bool in H.
+       inversion H; inversion H0.
+       apply VHT; try easy.
        simpl translate_vecType in *.
-       destruct (Cap_vt_bool A).
-       destruct (Cap_vt_bool B).
-       do 2 (rewrite ite_conv in H).
+       apply Cap_vt_conv in H6;
+         apply Cap_vt_conv in H7.
+       rewrite H6, H7 in H1.
+       simpl in H1.
        apply (Heisenberg.cap_elim_l_pair _ _ (translate_vecType B)).
        assumption.
-       rewrite andb_false_r in H; easy.
-       easy. 
 Qed.       
 
 
 Lemma cap_elim_r_vec : forall {n} (v : vecPair n) (A B : vType n), v ;' A ∩ B -> v ;' B.
 Proof. intros. 
-       unfold vecHasType in *.
-       simpl Cap_vt_bool in H.
+       inversion H; inversion H0.
+       apply VHT; try easy.
        simpl translate_vecType in *.
-       destruct (Cap_vt_bool A).
-       destruct (Cap_vt_bool B).
-       do 2 (rewrite ite_conv in H).
+       apply Cap_vt_conv in H6;
+         apply Cap_vt_conv in H7.
+       rewrite H6, H7 in H1.
+       simpl in H1.
        apply (Heisenberg.cap_elim_r_pair _ (translate_vecType A) _).
        assumption.
-       rewrite andb_false_r in H; easy.
-       easy. 
 Qed.      
 
 
+Hint Resolve cap_elim_l_vec cap_elim_r_vec : subtype_db.
 
 
 (***************************************************************************)
@@ -945,7 +945,8 @@ Proof. easy. Qed.
 
 
 Lemma neg_inv : forall (n : nat) (A : vType n), WFS_vType A -> - - A = A.
-Proof. intros n A [H H0]. 
+Proof. intros n A H. 
+       inversion H.
        destruct A; try easy.
        simpl. 
        unfold gScaleT. 
@@ -957,11 +958,13 @@ Lemma neg_dist_l : forall (n : nat) (A B : vType n),
   WFS_vType A -> WFS_vType B -> 
   -A .* B = - (A .* B).
 Proof. intros. 
+       inversion H; inversion H0.
        destruct A; destruct B; try easy. 
        destruct t; destruct t0; simpl. 
-       destruct H; destruct H0.
-       unfold WF_vType, WF_TType in *; simpl in *.
-       rewrite H1, H2.
+       inversion H2; inversion H5.
+       inversion H8; inversion H10.
+       simpl in *.
+       rewrite H11, H13.
        bdestruct_all; try easy.
        unfold gScaleT.
        repeat rewrite cMul_assoc.
@@ -972,12 +975,14 @@ Qed.
 Lemma neg_dist_r : forall (n : nat) (A B : vType n), 
   WFS_vType A -> WFS_vType B -> 
   A .* (-B) = - (A .* B).
-Proof. intros.  
+Proof. intros. 
+       inversion H; inversion H0.
        destruct A; destruct B; try easy. 
        destruct t; destruct t0; simpl. 
-       destruct H; destruct H0.
-       unfold WF_vType, WF_TType in *; simpl in *.
-       rewrite H1, H2.
+       inversion H2; inversion H5.
+       inversion H8; inversion H10.
+       simpl in *.
+       rewrite H11, H13.
        bdestruct_all; try easy.
        unfold gScaleT.
        rewrite <- cMul_assoc, (cMul_comm c).
@@ -989,8 +994,7 @@ Qed.
 Lemma i_sqr : forall (n : nat) (A : vType n), i (i A) = -A.
 Proof. intros. 
        induction A; try easy. 
-       - destruct t. simpl. 
-         unfold translate; simpl. 
+       - destruct t. simpl.          
          destruct c; easy.
        - simpl. unfold i in *.
          simpl. 
@@ -1002,11 +1006,12 @@ Lemma i_dist_l : forall (n : nat) (A B : vType n),
   WFS_vType A -> WFS_vType B -> 
   i A .* B = i (A .* B).
 Proof. intros. 
+       inversion H; inversion H0.
        destruct A; destruct B; try easy. 
        destruct t; destruct t0; simpl. 
-       destruct H; destruct H0.
-       unfold WF_vType, WF_TType in *; simpl in *.
-       rewrite H1, H2.
+       inversion H2; inversion H5.
+       inversion H8; inversion H10.
+       simpl in *.   
        bdestruct_all; try easy.
        unfold gScaleT.
        repeat rewrite cMul_assoc.
@@ -1017,12 +1022,14 @@ Qed.
 Lemma i_dist_r : forall (n : nat) (A B : vType n), 
   WFS_vType A -> WFS_vType B -> 
   A .* i B = i (A .* B).
-Proof. intros.
+Proof. intros. 
+       inversion H; inversion H0.
        destruct A; destruct B; try easy. 
        destruct t; destruct t0; simpl. 
-       destruct H; destruct H0.
-       unfold WF_vType, WF_TType in *; simpl in *.
-       rewrite H1, H2.
+       inversion H2; inversion H5.
+       inversion H8; inversion H10.
+       simpl in *.
+       rewrite H11, H13.
        bdestruct_all; try easy.
        unfold gScaleT.
        rewrite <- cMul_assoc, (cMul_comm c).
@@ -1035,7 +1042,6 @@ Lemma i_neg_comm : forall (n : nat) (A : vType n), i (-A) = -i A.
 Proof. intros.
        induction A; try easy. 
        - destruct t. simpl. 
-         unfold translate; simpl. 
          destruct c; easy.
        - simpl. unfold i in *.
          simpl. 
@@ -1063,13 +1069,12 @@ Lemma neg_tensor_dist_l : forall {n m} (A : vType n) (B : vType m),
   WFS_vType A -> WFS_vType B -> 
   -A .⊗ B = - (A .⊗ B).
 Proof. intros.
+       inversion H; inversion H0.
        destruct A; destruct B; try easy. 
        destruct t; destruct t0; simpl. 
-       destruct H; destruct H0.
-       unfold translate; simpl.
-       unfold WF_vType, WF_TType in *; simpl in *.
-       rewrite H1, H2.
-       bdestruct_all. simpl. 
+       inversion H2; inversion H5.
+       inversion H8; inversion H10.
+       bdestruct_all; try easy; simpl. 
        destruct c; destruct c0; easy. 
 Qed.
 
@@ -1077,14 +1082,13 @@ Qed.
 Lemma neg_tensor_dist_r : forall {n m} (A : vType n) (B : vType m), 
   WFS_vType A -> WFS_vType B -> 
   A .⊗ (-B) = - (A .⊗ B).
-Proof. intros.
+Proof. intros. 
+       inversion H; inversion H0.
        destruct A; destruct B; try easy. 
        destruct t; destruct t0; simpl. 
-       destruct H; destruct H0.
-       unfold translate; simpl.
-       unfold WF_vType, WF_TType in *; simpl in *.
-       rewrite H1, H2.
-       bdestruct_all. simpl. 
+       inversion H2; inversion H5.
+       inversion H8; inversion H10.
+       bdestruct_all; try easy; simpl. 
        destruct c; destruct c0; easy. 
 Qed.
 
@@ -1093,13 +1097,12 @@ Lemma i_tensor_dist_l : forall {n m} (A : vType n) (B : vType m),
   WFS_vType A -> WFS_vType B -> 
   i A .⊗ B = i (A .⊗ B).
 Proof. intros.
+       inversion H; inversion H0.
        destruct A; destruct B; try easy. 
        destruct t; destruct t0; simpl. 
-       destruct H; destruct H0.
-       unfold translate; simpl.
-       unfold WF_vType, WF_TType in *; simpl in *.
-       rewrite H1, H2.
-       bdestruct_all. simpl. 
+       inversion H2; inversion H5.
+       inversion H8; inversion H10.
+       bdestruct_all; try easy; simpl. 
        destruct c; destruct c0; easy. 
 Qed.
 
@@ -1108,13 +1111,12 @@ Lemma i_tensor_dist_r : forall {n m} (A : vType n) (B : vType m),
   WFS_vType A -> WFS_vType B -> 
   A .⊗ i B = i (A .⊗ B).
 Proof. intros.
+       inversion H; inversion H0.
        destruct A; destruct B; try easy. 
        destruct t; destruct t0; simpl. 
-       destruct H; destruct H0.
-       unfold translate; simpl.
-       unfold WF_vType, WF_TType in *; simpl in *.
-       rewrite H1, H2.
-       bdestruct_all. simpl. 
+       inversion H2; inversion H5.
+       inversion H8; inversion H10.
+       bdestruct_all; try easy; simpl. 
        destruct c; destruct c0; easy. 
 Qed.
 
@@ -1131,9 +1133,10 @@ Lemma mul_tensor_dist : forall {n m} (A C : vType n) (B D : vType m),
   (A .⊗ B) .* (C .⊗ D) = (A .* C) .⊗ (B .* D).
 Proof. intros.
        destruct A; destruct B; destruct C; destruct D; try easy.
+       inversion H; inversion H0; inversion H1; inversion H2.
+       inversion H4; inversion H7; inversion H10; inversion H13.       
+       inversion H16; inversion H18; inversion H20; inversion H22.       
        unfold mul, tensor. 
-       destruct H; destruct H0; destruct H1; destruct H2.
-       unfold WF_vType in *.
        rewrite gMulT_gTensorT_dist; easy. 
 Qed.
 
@@ -1206,19 +1209,9 @@ Inductive progHasSingType {prg_len : nat} : prog -> vType prg_len -> vType prg_l
   progHasSingType p T1 T2.
 (* should use two cons for PHT, one for arrow one for cap *)
 
-Definition progHasSingType {prg_len : nat} (p : prog) (T1 T2 : vType prg_len) : Prop :=
-  match (Cap_vt_bool T1) && (Cap_vt_bool T2) with 
-  | false => False
-  | true => (translate_prog prg_len p) ::' [(translate_vecType T1, translate_vecType T2)]
-  end. 
-
-
-Fixpoint progHasType {prg_len : nat} (p : prog) (T : vType prg_len) : Prop :=
-  match T with 
-  | Arrow _ v1 v2 => progHasSingType p v1 v2
-  | Cap _ v1 v2 => progHasType p v1 /\ progHasType p v2
-  | _ => False
-  end. 
+Inductive progHasType {prg_len : nat} : prog -> vType prg_len -> Prop :=
+| Arrow_pht : forall p T1 T2, progHasSingType p T1 T2 -> progHasType p (Arrow _ T1 T2)
+| Cap_pht : forall p T1 T2, progHasType p T1 -> progHasType p T2 -> progHasType p (Cap _ T1 T2).
 
   
 
@@ -1283,14 +1276,14 @@ Qed.
 
 Hint Rewrite Ssimp Hsimp Isimp Xsimp Zsimp Ysimp adj_ctrlX_is_cnot1 kron_simp : simp_db.
 
-
-Ltac solve_ground_type := simpl; unfold progHasSingType; simpl;
+Ltac solve_ground_type := repeat (apply Cap_pht); try apply Arrow_pht; 
+                          try apply PHST; try apply G_cvt; simpl; 
                           autorewrite with simp_db;
                           repeat split;
                           repeat (apply sgt_implies_sgt'; try easy; 
                                   apply singleton_simplify2;
                                   unfold translate; simpl; auto with id_db).
-                          
+
 
 Lemma HTypes : H' 0 :' (X → Z) ∩ (Z → X).
 Proof. solve_ground_type. Qed.
@@ -1298,35 +1291,42 @@ Proof. solve_ground_type. Qed.
 
 Lemma HTypes_not : ~ (H' 0 :' (X → X)).
 Proof. solve_ground_type. unfold not. 
-       intros. destruct H.
-       apply sgt'_implies_sgt in H.
-       unfold singGateType in H.
+       intros. 
+       inversion H; inversion H2. 
+       simpl in H6.
+       destruct H6 as [H6 _].
+       apply sgt'_implies_sgt in H6.
+       unfold singGateType in H6.
        assert (H' : hadamard × σx = σx × hadamard). 
-       { apply H. left; easy. left; easy. }
+       { autorewrite with simp_db in H6. 
+         apply H6. left; easy. left; easy. }
        assert (H'' : forall (m1 m2 : Square 2), m1 = m2 -> m1 1%nat 0%nat = m2 1%nat 0%nat). 
-       { intros. rewrite H1. reflexivity. }
+       { intros. rewrite H10. reflexivity. }
        apply H'' in H'. 
        unfold Mmult in H'. simpl in H'.
-       assert (H1 : C0 + C1 * (C1 / √ 2) + C0 * (C1 / √ 2) = (C1 / √ 2)). { lca. }
-       assert (H2 : C0 + C1 / √ 2 * C0 + Copp (C1 / √ 2) * C1 =  Copp (C1 / √ 2)). { lca. }
-       rewrite H1, H2 in H'.
+       replace (C0 + C1 * (C1 / √ 2) + C0 * (C1 / √ 2)) with (C1 / √ 2) in H' by lca. 
+       replace (C0 + C1 / √ 2 * C0 + Copp (C1 / √ 2) * C1) with (Copp (C1 / √ 2)) in H' by lca. 
        unfold Cdiv in H'.
        rewrite Copp_mult_distr_l in H'.
-       assert (H3 : forall c1 c2 , (c1 = c2 -> c1 * √ 2 = c2 * √ 2)%C). 
-       { intros. rewrite H3. easy. }
-       apply H3 in H'.
+       assert (H10 : forall c1 c2 , (c1 = c2 -> c1 * √ 2 = c2 * √ 2)%C). 
+       { intros. rewrite H10. easy. }
+       apply H10 in H'.
        do 2 (rewrite <- Cmult_assoc in H').
        rewrite (Cinv_l (√ 2)) in H'.
        do 2 (rewrite Cmult_1_r in H').
-       assert (H4: forall {X} (p1 p2 : X * X), p1 = p2 -> fst p1 = fst p2). 
-       { intros. rewrite H4. easy. }
-       apply H4 in H'. simpl in H'.
+       assert (H11: forall {X} (p1 p2 : X * X), p1 = p2 -> fst p1 = fst p2). 
+       { intros. rewrite H11. easy. }
+       apply H11 in H'. simpl in H'.
        lra. 
        apply C0_fst_neq. simpl. 
        apply sqrt_neq_0_compat. 
        lra. 
-       auto with unit_db.
+       autorewrite with simp_db; auto with unit_db.
        auto with sing_db.
+       simpl.   
+       unfold translate; simpl.
+       rewrite Mscale_1_l, kron_1_r.
+       replace [σx] with X' by easy. 
        auto with univ_db.
 Qed.
 
@@ -1354,20 +1354,15 @@ Lemma SeqTypes : forall {n} (g1 g2 : prog) (A B C : vType n),
   g1 :' A → B ->
   g2 :' B → C ->
   (g1 ;; g2) :' A → C.
-Proof. intros.  
-       simpl in *. 
-       unfold progHasSingType in *.
-       destruct (Cap_vt_bool A).
-       destruct (Cap_vt_bool B).
-       destruct (Cap_vt_bool C).
-       rewrite ite_conv in *.
+Proof. intros.
+       inversion H; inversion H0.
+       apply Arrow_pht.
+       inversion H3; inversion H7.
+       apply PHST; try easy.
        simpl translate_prog. 
        rewrite (@fgt_conv (2^n) _ _ _). 
-       apply (Heisenberg.SeqTypes (translate_prog n g1) _  _ (translate_vecType B) _).
-       rewrite <- (@fgt_conv (2^n) _ _ _); apply H.
-       rewrite <- (@fgt_conv (2^n) _ _ _); apply H0.
-       rewrite andb_false_r in H0; easy.
-       easy. easy.       
+       apply (Heisenberg.SeqTypes (translate_prog n g1) _  _ (translate_vecType B) _);
+       rewrite <- (@fgt_conv (2^n) _ _ _); try easy. 
 Qed.
 
 
@@ -1375,27 +1370,22 @@ Lemma seq_assoc : forall {n} (g1 g2 g3 : prog) (T : vType n),
     g1 ;; (g2 ;; g3) :' T <-> (g1 ;; g2) ;; g3 :' T.
 Proof. induction T as [| | |]; try easy. 
        - simpl. split. 
-         intros [H1 H2].
-         split. 
-         apply IHT1; apply H1.
-         apply IHT2; apply H2.
-         intros [H1 H2].
-         split. 
-         apply IHT1; apply H1.
-         apply IHT2; apply H2.
-       - simpl. unfold progHasSingType. 
-         destruct (Cap_vt_bool T1 && Cap_vt_bool T2).
-         simpl translate_prog.
-         apply Heisenberg.seq_assoc.
+         all : intros; 
+         inversion H;
+         apply Cap_pht; try apply IHT1; try apply IHT2; easy.
+       - split; intros; 
+         inversion H; inversion H2; 
+         apply Arrow_pht; apply PHST; 
+         simpl translate_prog;
+         try apply Heisenberg.seq_assoc;
          easy.  
 Qed.
 
 
 (* Note that this doesn't restrict # of qubits referenced by p. *)
 Lemma TypesI : forall (p : prog), p :' I → I.
-Proof. intros. simpl. 
-       unfold progHasSingType. 
-       rewrite ite_conv.
+Proof. intros. 
+       apply Arrow_pht; apply PHST; auto with wfvt_db. 
        rewrite Itrans.
        rewrite fgt_conv.
        apply Heisenberg.TypesI1.
@@ -1405,14 +1395,12 @@ Qed.
   
 
 Lemma TypesI2 : forall (p : prog), p :' I .⊗ I → I .⊗ I.
-Proof. intros. simpl. 
-       unfold progHasSingType. 
-       rewrite ite_conv.
-       unfold translate_vecType. 
-       rewrite ite_conv. 
-       autorewrite with simp_db. 
-       simpl translate_P.
-       rewrite fgt_conv.
+Proof. intros.  
+       apply Arrow_pht; apply PHST; auto with wfvt_db.
+       assert (H' : translate_vecType (I .⊗ I) = I' ⊗' I').
+       { simpl; unfold translate; simpl. 
+         rewrite Mscale_1_l, kron_1_r; easy. }
+       rewrite H'.
        apply Heisenberg.TypesI2.
        apply (unit_prog 2 p).
 Qed.
@@ -1425,44 +1413,34 @@ Hint Resolve TypesI TypesI2 : base_types_db.
 
 (* Subtyping rules *)
 Lemma cap_elim_l : forall {n} (g : prog) (A B : vType n), g :' A ∩ B -> g :' A.
-Proof. intros. simpl in H.
-       easy. 
-Qed.
+Proof. intros. inversion H; easy. Qed.
 
 Lemma cap_elim_r : forall {n} (g : prog) (A B : vType n), g :' A ∩ B -> g :' B.
-Proof. intros. simpl in H.
-       easy. 
-Qed.
+Proof. intros. inversion H; easy. Qed.
 
 Lemma cap_intro : forall {n} (g : prog) (A B : vType n), g :' A -> g :' B -> g :' A ∩ B.
-Proof. intros. simpl. 
-       easy. 
+Proof. intros. apply Cap_pht; easy.
 Qed.
 
 Lemma cap_arrow : forall {n} (g : prog) (A B C : vType n),
   g :' (A → B) ∩ (A → C) ->
   g :' A → (B ∩ C).
-Proof. intros. simpl in *. 
-       unfold progHasSingType in *.
-       destruct (Cap_vt_bool A).
-       simpl Cap_vt_bool.
-       destruct (Cap_vt_bool B) eqn:E1.
-       destruct (Cap_vt_bool C) eqn:E2.
-       destruct H as [H1 H2].       
-       rewrite ite_conv.
-       rewrite fgt_conv.
+Proof. intros. 
+       inversion H; inversion H3; inversion H4.
+       inversion H7; inversion H11.
+       apply Arrow_pht. 
+       apply PHST; try apply Cap_cvt; auto.
+       rewrite fgt_conv in *.
        assert (H' : translate_vecType (Cap _ B C) = 
                     (translate_vecType B) ++ (translate_vecType C)). 
-       { simpl. rewrite E1, E2. easy. }
+       { simpl. 
+         apply Cap_vt_conv in H14.
+         apply Cap_vt_conv in H20.
+         rewrite H14, H20; easy. }
        rewrite H'.
        apply Heisenberg.cap_arrow.
-       simpl in *. split.
-       destruct H1. apply H.
-       split. destruct H2. apply H.
-       easy. 
-       rewrite andb_false_r in H; easy. 
-       rewrite andb_false_r in H; easy. 
-       easy. 
+       simpl in *. split; auto.
+       apply H15.
 Qed.
 
 
@@ -1473,24 +1451,14 @@ Lemma arrow_sub : forall {n} g (A A' B B' : vType n),
   (forall r, r ;' B -> r ;' B') ->
   g :' A → B ->
   g :' A' → B'.
-Proof. intros. simpl in *.
-       unfold progHasSingType in *.
-       unfold vecHasType in *.
-       apply Cap_vt_conv in H.
-       apply Cap_vt_conv in H0.
-       destruct (Cap_vt_bool A);
-       destruct (Cap_vt_bool B);
-       destruct (Cap_vt_bool A');
-       destruct (Cap_vt_bool B');
-       try easy. 
-       rewrite ite_conv in *.
-       rewrite fgt_conv in *.
-       apply (Heisenberg.arrow_sub _ (translate_vecType A) _ (translate_vecType B) _).
-       apply H1.
-       apply H2.
-       apply H3.
+Proof. intros. 
+       apply Arrow_pht; apply PHST; auto. 
+       inversion H3; inversion H6.
+       apply (Heisenberg.arrow_sub _ (translate_vecType A) _ (translate_vecType B) _); try easy.
+       all : intros; apply VHT in H14; auto. 
+       apply H1 in H14; inversion H14; easy.
+       apply H2 in H14; inversion H14; easy.
 Qed.
-
 
 
 Hint Resolve cap_elim_l cap_elim_r cap_intro cap_arrow arrow_sub : subtype_db.
@@ -1499,45 +1467,38 @@ Lemma cap_elim : forall {n} g (A B : vType n), g :' A ∩ B -> g :' A /\ g :' B.
 Proof. eauto with subtype_db. Qed.
 
 
-(* Full explicit proof (due to changes to arrow_sub) *)
-Lemma cap_arrow_distributes'' : forall {n} g (A A' B B' : vType n),
-  g :' (A → A') ∩ (B → B') ->
-  g :' (A ∩ B) → (A' ∩ B').
-Proof.
-  intros. simpl in H.
-  unfold progHasSingType in H.
-  destruct (Cap_vt_bool A) eqn:E1;
-  destruct (Cap_vt_bool B) eqn:E2;
-  destruct (Cap_vt_bool A') eqn:E3;
-  destruct (Cap_vt_bool B') eqn:E4;
-  try easy.
-  destruct H as [H H0].
-  rewrite ite_conv in H;
-  rewrite ite_conv in H0.
-  apply cap_arrow.
-  apply cap_intro.
-  - eapply arrow_sub; intros;
-    repeat(try split; 
-           try (apply Cap_vt_conv); 
-           try assumption).
-    + eapply cap_elim_l_vec. apply H1.
-    + apply H1.
-    + simpl; unfold progHasSingType. 
-      rewrite E1, E3.
-      rewrite ite_conv.
-      assumption.
-  - eapply arrow_sub; intros;
-    repeat(try split; 
-           try (apply Cap_vt_conv); 
-           try assumption).
-    + eapply cap_elim_r_vec. apply H1.
-    + apply H1.
-    + simpl; unfold progHasSingType. 
-      rewrite E2, E4.
-      rewrite ite_conv.
-      assumption.
+Lemma input_cap_l : forall {n} g (A A' B : vType n), 
+  Cap_vt A' ->  g :' A → B -> g :' (A ∩ A') → B. 
+Proof. intros. 
+       inversion H0; inversion H3.
+       apply (arrow_sub g A (A ∩ A') B B); auto. 
+       apply Cap_cvt; auto.
+       intros. 
+       eauto with subtype_db.
 Qed.
 
+Lemma input_cap_r : forall {n} g (A A' B : vType n), 
+  Cap_vt A' ->  g :' A → B -> g :' (A' ∩ A) → B. 
+Proof. intros. 
+       inversion H0; inversion H3.
+       apply (arrow_sub g A (A' ∩ A) B B); auto. 
+       apply Cap_cvt; auto.
+       intros. 
+       eauto with subtype_db.
+Qed.
+
+(* Full explicit proof (due to changes to arrow_sub) *)
+Lemma cap_arrow_distributes : forall {n} g (A A' B B' : vType n),
+  g :' (A → A') ∩ (B → B') ->
+  g :' (A ∩ B) → (A' ∩ B').
+Proof. intros.       
+       inversion H.
+       apply cap_arrow; apply Cap_pht. 
+       - inversion H4; inversion H7.
+         apply input_cap_l; easy. 
+       - inversion H3; inversion H7.
+         apply input_cap_r; easy. 
+Qed.
 
 
 
@@ -1576,11 +1537,57 @@ Lemma smpl_prog_H_ver : smpl_prog H'. Proof. left. easy. Qed.
 Lemma smpl_prog_S_ver : smpl_prog S'. Proof. right. left. easy. Qed.
 Lemma smpl_prog_T_ver : smpl_prog T'. Proof. right. right. easy. Qed.
 
-
 Hint Resolve smpl_prog_H_ver smpl_prog_S_ver smpl_prog_T_ver : wfvt_db.
 
 
+Lemma prog_smpl_inc_reduce : forall (p : nat -> prog) (prg_len bit : nat),
+  smpl_prog p ->
+  translate_prog (s prg_len) (p (s bit)) = (Matrix.I 2) ⊗ translate_prog prg_len (p bit).
+Proof. intros.    
+       destruct H.
+       - do 2 (rewrite H). 
+         simpl. 
+         unfold prog_smpl_app.
+         bdestruct_all.
+         replace (s prg_len - s bit - 1) with (prg_len - bit - 1) by lia. 
+         rewrite Nat.pow_succ_r', <- id_kron.
+         repeat (rewrite kron_assoc; auto with wf_db).
+         restore_dims.
+         easy. 
+         rewrite id_kron, Nat.pow_succ_r'.
+         easy.
+       - destruct H.
+         + do 2 (rewrite H). 
+           simpl. 
+           unfold prog_smpl_app.
+           bdestruct_all.
+           replace (s prg_len - s bit - 1) with (prg_len - bit - 1) by lia. 
+           rewrite Nat.pow_succ_r', <- id_kron.
+           repeat (rewrite kron_assoc; auto with wf_db).
+           restore_dims.
+           easy. 
+           rewrite id_kron, Nat.pow_succ_r'.
+           easy.
+         + do 2 (rewrite H). 
+           simpl. 
+           unfold prog_smpl_app.
+           bdestruct_all.
+           replace (s prg_len - s bit - 1) with (prg_len - bit - 1) by lia. 
+           rewrite Nat.pow_succ_r', <- id_kron.
+           repeat (rewrite kron_assoc; auto with wf_db).
+           restore_dims.
+           easy. 
+           rewrite id_kron, Nat.pow_succ_r'.
+           easy.
+Qed.
 
+
+
+
+
+(*****************)
+(* Tensor lemmas *)
+(*****************)
 
 Lemma tensor_smpl_base : forall (prg_len : nat) (p : nat -> prog)
                            (a b : vType 1) (A : vType prg_len),
@@ -1590,26 +1597,27 @@ Lemma tensor_smpl_base : forall (prg_len : nat) (p : nat -> prog)
   (p 0) :' a → b ->
   (p 0) :' a .⊗ A → b .⊗ A. 
 Proof. intros. 
-       destruct H; destruct H0; destruct H1.
+       inversion H; inversion H0; inversion H1.
        destruct a; destruct b; destruct A; try easy.
-       simpl in *.
-       unfold progHasSingType in *. 
-       rewrite ite_conv in *.
+       inversion H3; inversion H15. 
+       apply Arrow_pht; apply PHST; auto with wfvt_db.
        rewrite fgt_conv in *. 
        simpl translate_vecType in *.
        replace (s prg_len) with (1 + prg_len) by lia. 
-       rewrite translate_kron, translate_kron; try easy. 
-       destruct H2.
+       rewrite translate_kron, translate_kron; try easy.
+       all : try (inversion H5; inversion H8; inversion H11;
+                  inversion H24; inversion H26; inversion H28; easy).
+       destruct H2. 
        - rewrite H2 in *.
          unfold translate_prog in *.
          simpl in *. 
-         apply kill_true; destruct H3.
-         apply sgt'_implies_sgt in H3; auto. 
+         apply kill_true; destruct H19.
+         apply sgt'_implies_sgt in H19; auto. 
          apply sgt_implies_sgt'; try easy. 
          unfold singGateType in *.
-         intros. simpl in H3.
-         simpl in H8; simpl in H9.
-         destruct H8; destruct H9; try easy.
+         intros. simpl in H19.
+         simpl in H24; simpl in H25.
+         destruct H24; destruct H25; try easy.
          unfold prog_smpl_app in *. 
          bdestruct_all.
          bdestruct (0 <? 1); try lia. 
@@ -1617,60 +1625,60 @@ Proof. intros.
          replace (2 ^ 0) with 1 in * by easy.
          replace (s prg_len - 0 - 1) with prg_len by lia. 
          rewrite kron_1_l, kron_1_r in *; auto with wf_db.
-         rewrite <- H8, <- H9.
+         rewrite <- H24, <- H25.
          restore_dims. 
          do 2 rewrite kron_mixed_product.
          replace (2^1) with 2 by easy. 
-         rewrite (H3 (translate t) (translate t0)); auto. 
-         rewrite Mmult_1_r, Mmult_1_l; try easy. 
-         all : try (apply unit_TType; easy). 
+         rewrite (H19 (translate t) (translate t0)); auto. 
+         rewrite Mmult_1_r, Mmult_1_l; try easy.
+         all : inversion H11; try (apply unit_TType; easy). 
          apply (unit_prog_smpl_app 1 _ 0); auto with unit_db. 
-         split; simpl. 
+         split; simpl.  
          all : unfold uni_vecType; intros. 
-         all : unfold In in H8; destruct H8; try easy; rewrite <- H8.
-         apply unit_TType in H4; easy.
-         apply unit_TType in H5; easy.
+         all : unfold In in H26; destruct H26; try easy; rewrite <- H26.
+         inversion H5; apply unit_TType in H28; easy.
+         inversion H8; apply unit_TType in H28; easy.
        - destruct H2. 
          + rewrite H2 in *.
-         unfold translate_prog in *.
-         simpl in *. 
-         apply kill_true; destruct H3.
-         apply sgt'_implies_sgt in H3; auto. 
-         apply sgt_implies_sgt'; try easy. 
-         unfold singGateType in *.
-         intros. simpl in H3.
-         simpl in H8; simpl in H9.
-         destruct H8; destruct H9; try easy.
-         unfold prog_smpl_app in *. 
-         bdestruct_all.
-         bdestruct (0 <? 1); try lia. 
-         replace (1 - 0 - 1) with 0 in * by lia. 
-         replace (2 ^ 0) with 1 in * by easy.
-         replace (s prg_len - 0 - 1) with prg_len by lia. 
-         rewrite kron_1_l, kron_1_r in *; auto with wf_db.
-         rewrite <- H8, <- H9.
-         restore_dims. 
-         do 2 rewrite kron_mixed_product.
-         replace (2^1) with 2 by easy. 
-         rewrite (H3 (translate t) (translate t0)); auto. 
-         rewrite Mmult_1_r, Mmult_1_l; try easy. 
-         all : try (apply unit_TType; easy). 
-         apply (unit_prog_smpl_app 1 _ 0); auto with unit_db. 
-         split; simpl. 
-         all : unfold uni_vecType; intros. 
-         all : unfold In in H8; destruct H8; try easy; rewrite <- H8.
-         apply unit_TType in H4; easy.
-         apply unit_TType in H5; easy.
+           unfold translate_prog in *.
+           simpl in *. 
+           apply kill_true; destruct H19.
+           apply sgt'_implies_sgt in H19; auto. 
+           apply sgt_implies_sgt'; try easy. 
+           unfold singGateType in *.
+           intros. simpl in H19.
+           simpl in H24; simpl in H25.
+           destruct H24; destruct H25; try easy.
+           unfold prog_smpl_app in *. 
+           bdestruct_all.
+           bdestruct (0 <? 1); try lia. 
+           replace (1 - 0 - 1) with 0 in * by lia. 
+           replace (2 ^ 0) with 1 in * by easy.
+           replace (s prg_len - 0 - 1) with prg_len by lia. 
+           rewrite kron_1_l, kron_1_r in *; auto with wf_db.
+           rewrite <- H24, <- H25.
+           restore_dims. 
+           do 2 rewrite kron_mixed_product.
+           replace (2^1) with 2 by easy. 
+           rewrite (H19 (translate t) (translate t0)); auto. 
+           rewrite Mmult_1_r, Mmult_1_l; try easy.
+           all : inversion H11; try (apply unit_TType; easy). 
+           apply (unit_prog_smpl_app 1 _ 0); auto with unit_db. 
+           split; simpl. 
+           all : unfold uni_vecType; intros. 
+           all : unfold In in H26; destruct H26; try easy; rewrite <- H26.
+           inversion H5; apply unit_TType in H28; easy.
+           inversion H8; apply unit_TType in H28; easy.
        + rewrite H2 in *.
          unfold translate_prog in *.
          simpl in *. 
-         apply kill_true; destruct H3.
-         apply sgt'_implies_sgt in H3; auto. 
+         apply kill_true; destruct H19.
+         apply sgt'_implies_sgt in H19; auto. 
          apply sgt_implies_sgt'; try easy. 
          unfold singGateType in *.
-         intros. simpl in H3.
-         simpl in H8; simpl in H9.
-         destruct H8; destruct H9; try easy.
+         intros. simpl in H19.
+         simpl in H24; simpl in H25.
+         destruct H24; destruct H25; try easy.
          unfold prog_smpl_app in *. 
          bdestruct_all.
          bdestruct (0 <? 1); try lia. 
@@ -1678,19 +1686,19 @@ Proof. intros.
          replace (2 ^ 0) with 1 in * by easy.
          replace (s prg_len - 0 - 1) with prg_len by lia. 
          rewrite kron_1_l, kron_1_r in *; auto with wf_db.
-         rewrite <- H8, <- H9.
+         rewrite <- H24, <- H25.
          restore_dims. 
          do 2 rewrite kron_mixed_product.
          replace (2^1) with 2 by easy. 
-         rewrite (H3 (translate t) (translate t0)); auto. 
-         rewrite Mmult_1_r, Mmult_1_l; try easy. 
-         all : try (apply unit_TType; easy). 
+         rewrite (H19 (translate t) (translate t0)); auto. 
+         rewrite Mmult_1_r, Mmult_1_l; try easy.
+         all : inversion H11; try (apply unit_TType; easy). 
          apply (unit_prog_smpl_app 1 _ 0); auto with unit_db. 
          split; simpl. 
          all : unfold uni_vecType; intros. 
-         all : unfold In in H8; destruct H8; try easy; rewrite <- H8.
-         apply unit_TType in H4; easy.
-         apply unit_TType in H5; easy.
+         all : unfold In in H26; destruct H26; try easy; rewrite <- H26.
+         inversion H5; apply unit_TType in H28; easy.
+         inversion H8; apply unit_TType in H28; easy.
 Qed.
 
 
@@ -1702,7 +1710,37 @@ Lemma tensor_smpl_inc : forall (prg_len bit : nat) (p : nat -> prog)
   smpl_prog p -> 
   (p bit) :' A → A' ->
   (p (s bit)) :' a .⊗ A → a .⊗ A'.
-Proof. Admitted. 
+Proof. intros.
+       inversion H; inversion H0; inversion H1.
+       destruct a; destruct A; destruct A'; try easy.
+       inversion H3; inversion H15.
+       apply Arrow_pht; apply PHST; auto with wfvt_db.
+       simpl in *. 
+       destruct H19; split; try easy. 
+       apply sgt'_implies_sgt in H19; auto. 
+       apply sgt_implies_sgt'; try easy. 
+       replace (s prg_len) with (1 + prg_len) by lia. 
+       inversion H5; inversion H8; inversion H11;
+       inversion H25; inversion H27; inversion H29.
+       rewrite translate_kron, translate_kron; try easy.
+       unfold singGateType in *.
+       intros. 
+       simpl in *.
+       destruct H36; destruct H37; try easy.
+       rewrite <- H36, <- H37, prog_smpl_inc_reduce; auto. 
+       restore_dims.
+       do 2 rewrite kron_mixed_product.
+       rewrite (H19 _ (translate t1)).
+       replace 2 with (2^1) in * by easy.
+       rewrite Mmult_1_l, Mmult_1_r; auto.
+       all : try (apply unit_TType; easy). 
+       all : try (left; easy). 
+       apply unit_prog.
+       split; simpl.
+       all : apply univ_TType. 
+       inversion H8; easy.
+       inversion H11; easy.
+Qed.
 
 
 
@@ -1712,7 +1750,50 @@ Lemma tensor_ctrl_base : forall (prg_len : nat)
   WFS_vType A ->
   CNOT 0 1 :' (a .⊗ b → a' .⊗ b') ->
   CNOT 0 1 :' (a .⊗ b .⊗ A → a' .⊗ b' .⊗ A).
-Proof. Admitted. 
+Proof. intros. 
+       inversion H; inversion H0; inversion H1; inversion H2; inversion H3.
+       destruct a; destruct b; try easy. 
+       destruct a'; destruct b'; destruct A; try easy.
+       inversion H4; inversion H22. 
+       apply Arrow_pht; apply PHST; auto with wfvt_db.
+       simpl in *.
+       destruct H26; split; try easy. 
+       apply sgt'_implies_sgt in H26; auto. 
+       apply sgt_implies_sgt'; try easy. 
+       unfold singGateType in *.
+       intros. 
+       simpl in *.
+       destruct H31; destruct H32; try easy.
+       rewrite <- H31, <- H32. 
+       rewrite (translate_kron t1), (translate_kron t2), 
+               (translate_kron t), (translate_kron t0). 
+       restore_dims.
+       rewrite <- kron_assoc.
+       rewrite <- kron_assoc.
+       rewrite adj_ctrlX_is_cnot; try lia. 
+       rewrite Nat.pow_0_r, Nat.sub_0_r, kron_1_l; auto with wf_db.
+       replace (s (s prg_len) - 2) with prg_len by lia. 
+       restore_dims.
+       do 2 (rewrite kron_mixed_product).
+       rewrite adj_ctrlX_is_cnot1 in H26. 
+       rewrite (H26 _ (translate t1 ⊗ translate t2)).
+       rewrite Mmult_1_l, Mmult_1_r; auto.  
+       all : inversion H6; inversion H9; inversion H12; inversion H15; inversion H18.
+       all : try (apply unit_TType; easy). 
+       all : try (left; apply translate_kron). 
+       all : inversion H34; inversion H36; inversion H38; inversion H40; inversion H42.
+       all : try easy.
+       all : destruct t2; destruct t0; destruct t3; simpl in *. 
+       all : try (bdestruct_all; simpl; rewrite app_length; lia). 
+       replace 4 with (2^2) by easy. 
+       apply unit_prog_ctrl_app; auto with unit_db.
+       destruct t; destruct t1.
+       inversion H32; simpl in *.
+       bdestruct_all; simpl.  
+       replace 4 with (2^2) by easy.  
+       split; apply univ_TType; apply WF_tt; simpl. 
+       all : rewrite app_length; lia. 
+Qed.
 
 
 Lemma tensor_ctrl_base_inv :  forall (prg_len : nat)
@@ -1721,7 +1802,52 @@ Lemma tensor_ctrl_base_inv :  forall (prg_len : nat)
   WFS_vType A ->
   CNOT 0 1 :' (b .⊗ a → b' .⊗ a') ->
   CNOT 1 0 :' (a .⊗ b .⊗ A → a' .⊗ b' .⊗ A).
-Proof. Admitted. 
+Proof. intros. 
+       inversion H; inversion H0; inversion H1; inversion H2; inversion H3.
+       destruct a; destruct b; try easy. 
+       destruct a'; destruct b'; destruct A; try easy.
+       inversion H4; inversion H22.  
+       inversion H6; inversion H9; inversion H12; inversion H15; inversion H18. 
+       inversion H31; inversion H33; inversion H35; inversion H37; inversion H39.
+       apply Arrow_pht; apply PHST; auto with wfvt_db.
+       simpl in *.
+       destruct H26; split; try easy. 
+       apply sgt'_implies_sgt in H26; auto. 
+       apply sgt_implies_sgt'; try easy. 
+       unfold singGateType in *.
+       intros. 
+       simpl in *.
+       destruct H51; destruct H52; try easy.
+       rewrite <- H51, <- H52. 
+       rewrite (translate_kron t1), (translate_kron t2), 
+               (translate_kron t), (translate_kron t0); auto.
+       restore_dims.
+       do 2 (rewrite <- kron_assoc; try apply WF_Matrix_TType; auto).
+       rewrite adj_ctrlX_is_notc; try lia. 
+       rewrite Nat.pow_0_r, Nat.sub_0_r, kron_1_l; auto with wf_db.
+       replace (s (s prg_len) - 2) with prg_len by lia. 
+       restore_dims.
+       do 2 (rewrite kron_mixed_product).
+       rewrite adj_ctrlX_is_cnot1 in H26. 
+       rewrite (cnot_conv _ (translate t2) _ (translate t1)); 
+         try apply WF_Matrix_TType; auto.
+       rewrite Mmult_1_l, Mmult_1_r; try apply WF_Matrix_TType; auto.  
+       all : replace 2 with (2^1) by easy. 
+       all : try (apply WF_Matrix_TType; auto).
+       rewrite (H26 _ (translate t2 ⊗ translate t1)); auto. 
+       all : try (left; apply translate_kron). 
+       all : try easy. 
+       all : destruct t2; destruct t0; destruct t3; simpl in *. 
+       all : try (bdestruct_all; simpl; rewrite app_length; lia). 
+       replace 4 with (2^2) by easy. 
+       apply unit_prog_ctrl_app; auto with unit_db.
+       destruct t; destruct t1.
+       simpl in *.
+       bdestruct_all; simpl.  
+       replace 4 with (2^2) by easy. 
+       split; apply univ_TType; apply WF_tt; simpl. 
+       all : rewrite app_length; lia. 
+Qed.
 
 Lemma tensor_ctrl_inc : forall (prg_len ctrl targ : nat) 
                           (a : vType 1) (A A' : vType prg_len),
@@ -1755,7 +1881,39 @@ Lemma tensor_ctrl_comm : forall (a b a' b' : vType 1),
   WFS_vType a -> WFS_vType a' -> WFS_vType b -> WFS_vType b' ->
   CNOT 0 1 :' a .⊗ b → a' .⊗ b' ->
   CNOT 1 0 :' b .⊗ a → b' .⊗ a'.
-Proof. Admitted.
+Proof. intros. 
+       inversion H; inversion H0; inversion H1; inversion H2.
+       inversion H3; inversion H18.
+       destruct a; destruct a'; destruct b; destruct b'; try easy. 
+       apply Arrow_pht; apply PHST; auto with wfvt_db.
+       simpl in *.
+       destruct H22; split; try easy. 
+       apply sgt'_implies_sgt in H22; auto. 
+       apply sgt_implies_sgt'; try easy. 
+       replace (s 1) with (1 + 1) by lia. 
+       rewrite translate_kron, translate_kron; try easy.
+       unfold singGateType in *.
+       intros. 
+       simpl in *.
+       destruct H27; destruct H28; try easy.
+       rewrite <- H27, <- H28, adj_ctrlX_is_notc1. 
+       inversion H5; inversion H8; inversion H11; inversion H14.
+       apply cnot_conv.
+       all : replace 2 with (2^1) by easy.
+       all : try (apply unit_TType; easy). 
+       rewrite adj_ctrlX_is_cnot1 in H22. 
+       apply H22.
+       all : try (left; apply translate_kron; try easy). 
+       all : inversion H5; inversion H8; inversion H11; inversion H14.
+       all : try (inversion H30; inversion H32; inversion H34; inversion H36; easy). 
+       inversion H28; easy. 
+       all : replace (s (s (2^1))) with (2^2) by easy. 
+       apply unit_prog_ctrl_app; auto with unit_db.
+       destruct t; destruct t0; destruct t1; destruct t2.
+       inversion H28; inversion H30; inversion H32; inversion H34. 
+       split; apply univ_TType; apply WF_tt; simpl in *. 
+       all : bdestruct_all; simpl; rewrite app_length; lia. 
+Qed.
 
 (***************)
 (* Arrow rules *)
