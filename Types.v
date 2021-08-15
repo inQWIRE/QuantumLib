@@ -132,7 +132,7 @@ Proof. intros.
        destruct g; simpl; auto with wf_db.
 Qed.
 
-
+Hint Resolve WF_Matrix_Pauli : wf_db.
 
 (* Here we define a gMul to give Coef followed by a gMul to give the actual type *)
 (* this allows for an easy zip in gMulT *)
@@ -214,35 +214,40 @@ Inductive vType (n : nat) : Type :=
   | Arrow : vType n -> vType n -> vType n
   | Err : vType n.
 
+Arguments G {n}.
+Arguments Cap {n}.
+Arguments Arrow {n}.
+Arguments Err {n}.
+
 
 (* you cannot multiply intersection or arrow types (for now) 
    so any of these options returns Err *)
 Definition mul {n} (A B : vType n) : vType n :=
   match A with
-  | G _ a =>
+  | G a =>
     match B with
-    | G _ b => G n (gMulT a b)
-    | _ => Err n
+    | G b => G (gMulT a b)
+    | _ => Err
     end
-  | _ => Err n
+  | _ => Err
   end.
                                        
 Definition tensor {n m} (A : vType n) (B : vType m) : vType (n + m) :=
   match A with
-  | G _ a =>
+  | G a =>
     match B with
-    | G _ b => G (n + m) (gTensorT a b)
-    | _ => Err (n + m)
+    | G b => G (gTensorT a b)
+    | _ => Err 
     end
-  | _ => Err (n + m)
+  | _ => Err
   end.
 
 (* since scaling intersections makes sense, we allow this *)
 Fixpoint scale {n} (c : Coef) (A : vType n) : vType n :=
   match A with
-  | G _ a => G n (gScaleT c a)
-  | Cap _ g1 g2 => Cap n (scale c g1) (scale c g2)
-  | _ => Err n
+  | G a => G (gScaleT c a)
+  | Cap g1 g2 => Cap (scale c g1) (scale c g2)
+  | _ => Err
   end.
 
 
@@ -253,8 +258,8 @@ Infix ".⊗" := tensor (at level 51, right associativity).
 
 
 
-Notation "A → B" := (Arrow _ A B) (at level 60, no associativity).
-Notation "A ∩ B" := (Cap _ A B) (at level 60, no associativity).
+Notation "A → B" := (Arrow A B) (at level 60, no associativity).
+Notation "A ∩ B" := (Cap A B) (at level 60, no associativity).
 
 (******************************************************************************)
 (* Defining different types of vTypes to ensure WF and Singleton translations *)
@@ -262,11 +267,11 @@ Notation "A ∩ B" := (Cap _ A B) (at level 60, no associativity).
 
 
 Inductive Sing_vt {n} : vType n -> Prop :=
-| G_svt : forall tt : TType n, Sing_vt (G _ tt). 
+| G_svt : forall tt : TType n, Sing_vt (G tt). 
 
 Inductive Cap_vt {n} : vType n -> Prop :=
-| G_cvt : forall tt : TType n, Cap_vt (G _ tt)
-| Cap_cvt : forall T1 T2 : vType n, Cap_vt T1 -> Cap_vt T2 -> Cap_vt (Cap _ T1 T2). 
+| G_cvt : forall tt : TType n, Cap_vt (G tt)
+| Cap_cvt : forall T1 T2 : vType n, Cap_vt T1 -> Cap_vt T2 -> Cap_vt (Cap T1 T2). 
 
 Lemma sing_implies_cap : forall {n} (T : vType n),
   Sing_vt T -> Cap_vt T.
@@ -275,8 +280,8 @@ Proof. intros. inversion H; apply G_cvt. Qed.
 (* we also use a bool version of Cap_vt for matching *)
 Fixpoint Cap_vt_bool {n} (A : vType n) : bool :=
   match A with
-  | G _ _ => true
-  | Cap _ v1 v2 => Cap_vt_bool v1 && Cap_vt_bool v2
+  | G _ => true
+  | Cap v1 v2 => Cap_vt_bool v1 && Cap_vt_bool v2
   | _ => false
   end.
 
@@ -301,11 +306,11 @@ Proof. intros. split.
 Qed.         
 
 Inductive Sing_gt {n} : vType n -> Prop :=
-| Arrow_sgt : forall T1 T2 : vType n, Cap_vt T1 -> Cap_vt T2 -> Sing_gt (Arrow _ T1 T2). 
+| Arrow_sgt : forall T1 T2 : vType n, Cap_vt T1 -> Cap_vt T2 -> Sing_gt (Arrow T1 T2). 
 
 Inductive Cap_gt {n} : vType n -> Prop :=
 | Arrow_cgt : forall T : vType n, Sing_gt T -> Cap_gt T
-| Cap_cgt : forall T1 T2 : vType n, Cap_gt T1 -> Cap_gt T2 -> Cap_gt (Cap _ T1 T2).
+| Cap_cgt : forall T1 T2 : vType n, Cap_gt T1 -> Cap_gt T2 -> Cap_gt (Cap T1 T2).
 
 
 Fixpoint translate_vecType {n} (A : vType n) : vecType (2^n) := 
@@ -313,8 +318,8 @@ Fixpoint translate_vecType {n} (A : vType n) : vecType (2^n) :=
   | false => []
   | true => 
     match A with
-    | G _ g => [translate g]
-    | Cap _ v1 v2 => translate_vecType v1 ++ translate_vecType v2
+    | G g => [translate g]
+    | Cap v1 v2 => translate_vecType v1 ++ translate_vecType v2
     | _ => []
     end
   end.
@@ -327,16 +332,16 @@ Qed.
 
 
 Lemma sing_vt_simplify : forall {n} (A : vType n),
-  Sing_vt A -> (exists a, A = G n a).
+  Sing_vt A -> (exists a, A = G a).
 Proof. intros. destruct A; try easy.
        - exists t. reflexivity. 
 Qed. 
 
 
-Definition I : vType 1 := G 1 (p_1, [gI]).
-Definition X : vType 1 := G 1 (p_1, [gX]).
-Definition Y : vType 1 := G 1 (p_1, [gY]).
-Definition Z : vType 1 := G 1 (p_1, [gZ]).
+Definition I : vType 1 := G (p_1, [gI]).
+Definition X : vType 1 := G (p_1, [gX]).
+Definition Y : vType 1 := G (p_1, [gY]).
+Definition Z : vType 1 := G (p_1, [gZ]).
 
 Lemma Itrans : translate_vecType I = I'.
 Proof. simpl. 
@@ -415,9 +420,9 @@ Inductive WF_TType {len : nat} : TType len -> Prop :=
 | WF_tt : forall tt : TType len, length (snd tt) = len -> WF_TType tt.
 
 Inductive WF_vType {n} : vType n -> Prop :=
-| WF_G : forall tt : TType n, WF_TType tt -> WF_vType (G _ tt)
-| WF_Cap : forall T1 T2 : vType n, WF_vType T1 -> WF_vType T2 -> WF_vType (Cap _ T1 T2)
-| WF_Arrow : forall T1 T2 : vType n, WF_vType T1 -> WF_vType T2 -> WF_vType (Arrow _ T1 T2).
+| WF_G : forall tt : TType n, WF_TType tt -> WF_vType (G tt)
+| WF_Cap : forall T1 T2 : vType n, WF_vType T1 -> WF_vType T2 -> WF_vType (Cap T1 T2)
+| WF_Arrow : forall T1 T2 : vType n, WF_vType T1 -> WF_vType T2 -> WF_vType (Arrow T1 T2).
 
 
 Lemma WF_I : WF_vType I. Proof. apply WF_G; easy. Qed.
@@ -510,6 +515,8 @@ Proof. intros. destruct A.
        rewrite map_nth.
        apply WF_Matrix_Pauli. 
 Qed.
+
+Hint Resolve WF_Matrix_TType : wf_db.
 
 (*************)
 (* WFS types *)
@@ -799,7 +806,7 @@ Notation "p ;' T" := (vecHasType p T) (at level 61, no associativity).
 
 
 
-Lemma cap_elim_l_vec : forall {n} (v : vecPair n) (A B : vType n), v ;' A ∩ B -> v ;' A.
+Lemma cap_elim_l_vec : forall {n} (v : vecPair n) (A B : vType n), v ;' (A ∩ B) -> v ;' A.
 Proof. intros. 
        inversion H; inversion H0.
        apply VHT; try easy.
@@ -1210,8 +1217,8 @@ Inductive progHasSingType {prg_len : nat} : prog -> vType prg_len -> vType prg_l
 (* should use two cons for PHT, one for arrow one for cap *)
 
 Inductive progHasType {prg_len : nat} : prog -> vType prg_len -> Prop :=
-| Arrow_pht : forall p T1 T2, progHasSingType p T1 T2 -> progHasType p (Arrow _ T1 T2)
-| Cap_pht : forall p T1 T2, progHasType p T1 -> progHasType p T2 -> progHasType p (Cap _ T1 T2).
+| Arrow_pht : forall p T1 T2, progHasSingType p T1 T2 -> progHasType p (Arrow T1 T2)
+| Cap_pht : forall p T1 T2, progHasType p T1 -> progHasType p T2 -> progHasType p (Cap T1 T2).
 
   
 
@@ -1431,7 +1438,7 @@ Proof. intros.
        apply Arrow_pht. 
        apply PHST; try apply Cap_cvt; auto.
        rewrite fgt_conv in *.
-       assert (H' : translate_vecType (Cap _ B C) = 
+       assert (H' : translate_vecType (Cap B C) = 
                     (translate_vecType B) ++ (translate_vecType C)). 
        { simpl. 
          apply Cap_vt_conv in H14.
@@ -1541,379 +1548,339 @@ Hint Resolve smpl_prog_H_ver smpl_prog_S_ver smpl_prog_T_ver : wfvt_db.
 
 
 Lemma prog_smpl_inc_reduce : forall (p : nat -> prog) (prg_len bit : nat),
-  smpl_prog p ->
-  translate_prog (s prg_len) (p (s bit)) = (Matrix.I 2) ⊗ translate_prog prg_len (p bit).
+  smpl_prog p -> bit < prg_len ->
+  translate_prog prg_len (p bit) = 
+  (Matrix.I (2^bit)) ⊗ translate_prog 1 (p 0) ⊗ (Matrix.I (2^(prg_len - bit - 1))).
 Proof. intros.    
        destruct H.
        - do 2 (rewrite H). 
          simpl. 
          unfold prog_smpl_app.
          bdestruct_all.
-         replace (s prg_len - s bit - 1) with (prg_len - bit - 1) by lia. 
-         rewrite Nat.pow_succ_r', <- id_kron.
-         repeat (rewrite kron_assoc; auto with wf_db).
-         restore_dims.
-         easy. 
-         rewrite id_kron, Nat.pow_succ_r'.
-         easy.
+         rewrite Nat.sub_0_r, Nat.sub_diag, 
+                 Nat.pow_0_r, kron_1_l, kron_1_r; auto with wf_db.
        - destruct H.
          + do 2 (rewrite H). 
            simpl. 
            unfold prog_smpl_app.
            bdestruct_all.
-           replace (s prg_len - s bit - 1) with (prg_len - bit - 1) by lia. 
-           rewrite Nat.pow_succ_r', <- id_kron.
-           repeat (rewrite kron_assoc; auto with wf_db).
-           restore_dims.
-           easy. 
-           rewrite id_kron, Nat.pow_succ_r'.
-           easy.
+           rewrite Nat.sub_0_r, Nat.sub_diag, 
+                   Nat.pow_0_r, kron_1_l, kron_1_r; auto with wf_db.
          + do 2 (rewrite H). 
            simpl. 
            unfold prog_smpl_app.
            bdestruct_all.
-           replace (s prg_len - s bit - 1) with (prg_len - bit - 1) by lia. 
-           rewrite Nat.pow_succ_r', <- id_kron.
-           repeat (rewrite kron_assoc; auto with wf_db).
-           restore_dims.
-           easy. 
-           rewrite id_kron, Nat.pow_succ_r'.
-           easy.
+           rewrite Nat.sub_0_r, Nat.sub_diag, 
+                   Nat.pow_0_r, kron_1_l, kron_1_r; auto with wf_db.
+Qed.
+
+
+Lemma prog_ctrl_reduce : forall (prg_len ctrl targ : nat),
+  translate_prog (s prg_len) (CNOT (s ctrl) (s targ)) = 
+  (Matrix.I 2) ⊗ translate_prog prg_len (CNOT ctrl targ).
+Proof. intros.    
+       unfold translate_prog, prog_ctrl_app.
+       bdestruct_all; simpl.
+       all : try (rewrite id_kron, Nat.add_0_r, double_mult; easy).
+       - replace (2 ^ ctrl + (2 ^ ctrl + 0)) with (2 * 2^ctrl) by lia. 
+         rewrite <- id_kron.
+         repeat rewrite kron_assoc; auto with wf_db.  
+         repeat rewrite Nat.add_0_r. repeat rewrite double_mult.
+         replace 2 with (2^1) by easy. 
+         repeat rewrite <- Nat.pow_add_r. 
+         replace (ctrl + ((1 + (targ - ctrl)) + (prg_len - targ - 1))) with prg_len by lia; 
+         easy. 
+       - replace (2 ^ targ + (2 ^ targ + 0)) with (2 * 2^targ) by lia. 
+         rewrite <- id_kron.
+         repeat rewrite kron_assoc; auto with wf_db.  
+         repeat rewrite Nat.add_0_r. repeat rewrite double_mult.
+         replace 2 with (2^1) by easy. 
+         repeat rewrite <- Nat.pow_add_r. 
+         replace (targ + (((ctrl - targ) + 1) + (prg_len - ctrl - 1))) with prg_len by lia;
+         easy. 
 Qed.
 
 
 
-
-
-(*****************)
-(* Tensor lemmas *)
-(*****************)
-
-Lemma tensor_smpl_base : forall (prg_len : nat) (p : nat -> prog)
-                           (a b : vType 1) (A : vType prg_len),
-  WFS_vType a -> WFS_vType b -> 
-  WFS_vType A -> 
-  smpl_prog p -> 
-  (p 0) :' a → b ->
-  (p 0) :' a .⊗ A → b .⊗ A. 
+Lemma WF_helper : forall (l : list Pauli) (i : nat),
+  WF_Matrix (nth i (map translate_P l) Zero).
 Proof. intros. 
-       inversion H; inversion H0; inversion H1.
-       destruct a; destruct b; destruct A; try easy.
-       inversion H3; inversion H15. 
-       apply Arrow_pht; apply PHST; auto with wfvt_db.
-       rewrite fgt_conv in *. 
-       simpl translate_vecType in *.
-       replace (s prg_len) with (1 + prg_len) by lia. 
-       rewrite translate_kron, translate_kron; try easy.
-       all : try (inversion H5; inversion H8; inversion H11;
-                  inversion H24; inversion H26; inversion H28; easy).
-       destruct H2. 
-       - rewrite H2 in *.
-         unfold translate_prog in *.
-         simpl in *. 
-         apply kill_true; destruct H19.
-         apply sgt'_implies_sgt in H19; auto. 
-         apply sgt_implies_sgt'; try easy. 
-         unfold singGateType in *.
-         intros. simpl in H19.
-         simpl in H24; simpl in H25.
-         destruct H24; destruct H25; try easy.
-         unfold prog_smpl_app in *. 
-         bdestruct_all.
-         bdestruct (0 <? 1); try lia. 
-         replace (1 - 0 - 1) with 0 in * by lia. 
-         replace (2 ^ 0) with 1 in * by easy.
-         replace (s prg_len - 0 - 1) with prg_len by lia. 
-         rewrite kron_1_l, kron_1_r in *; auto with wf_db.
-         rewrite <- H24, <- H25.
-         restore_dims. 
-         do 2 rewrite kron_mixed_product.
-         replace (2^1) with 2 by easy. 
-         rewrite (H19 (translate t) (translate t0)); auto. 
-         rewrite Mmult_1_r, Mmult_1_l; try easy.
-         all : inversion H11; try (apply unit_TType; easy). 
-         apply (unit_prog_smpl_app 1 _ 0); auto with unit_db. 
-         split; simpl.  
-         all : unfold uni_vecType; intros. 
-         all : unfold In in H26; destruct H26; try easy; rewrite <- H26.
-         inversion H5; apply unit_TType in H28; easy.
-         inversion H8; apply unit_TType in H28; easy.
-       - destruct H2. 
-         + rewrite H2 in *.
-           unfold translate_prog in *.
-           simpl in *. 
-           apply kill_true; destruct H19.
-           apply sgt'_implies_sgt in H19; auto. 
-           apply sgt_implies_sgt'; try easy. 
-           unfold singGateType in *.
-           intros. simpl in H19.
-           simpl in H24; simpl in H25.
-           destruct H24; destruct H25; try easy.
-           unfold prog_smpl_app in *. 
-           bdestruct_all.
-           bdestruct (0 <? 1); try lia. 
-           replace (1 - 0 - 1) with 0 in * by lia. 
-           replace (2 ^ 0) with 1 in * by easy.
-           replace (s prg_len - 0 - 1) with prg_len by lia. 
-           rewrite kron_1_l, kron_1_r in *; auto with wf_db.
-           rewrite <- H24, <- H25.
-           restore_dims. 
-           do 2 rewrite kron_mixed_product.
-           replace (2^1) with 2 by easy. 
-           rewrite (H19 (translate t) (translate t0)); auto. 
-           rewrite Mmult_1_r, Mmult_1_l; try easy.
-           all : inversion H11; try (apply unit_TType; easy). 
-           apply (unit_prog_smpl_app 1 _ 0); auto with unit_db. 
-           split; simpl. 
-           all : unfold uni_vecType; intros. 
-           all : unfold In in H26; destruct H26; try easy; rewrite <- H26.
-           inversion H5; apply unit_TType in H28; easy.
-           inversion H8; apply unit_TType in H28; easy.
-       + rewrite H2 in *.
-         unfold translate_prog in *.
-         simpl in *. 
-         apply kill_true; destruct H19.
-         apply sgt'_implies_sgt in H19; auto. 
-         apply sgt_implies_sgt'; try easy. 
-         unfold singGateType in *.
-         intros. simpl in H19.
-         simpl in H24; simpl in H25.
-         destruct H24; destruct H25; try easy.
-         unfold prog_smpl_app in *. 
-         bdestruct_all.
-         bdestruct (0 <? 1); try lia. 
-         replace (1 - 0 - 1) with 0 in * by lia. 
-         replace (2 ^ 0) with 1 in * by easy.
-         replace (s prg_len - 0 - 1) with prg_len by lia. 
-         rewrite kron_1_l, kron_1_r in *; auto with wf_db.
-         rewrite <- H24, <- H25.
-         restore_dims. 
-         do 2 rewrite kron_mixed_product.
-         replace (2^1) with 2 by easy. 
-         rewrite (H19 (translate t) (translate t0)); auto. 
-         rewrite Mmult_1_r, Mmult_1_l; try easy.
-         all : inversion H11; try (apply unit_TType; easy). 
-         apply (unit_prog_smpl_app 1 _ 0); auto with unit_db. 
-         split; simpl. 
-         all : unfold uni_vecType; intros. 
-         all : unfold In in H26; destruct H26; try easy; rewrite <- H26.
-         inversion H5; apply unit_TType in H28; easy.
-         inversion H8; apply unit_TType in H28; easy.
+       destruct (nth_in_or_default i0 (map translate_P l) Zero).
+       - apply in_map_iff in i1.
+         destruct i1 as [x [H H0]].
+         rewrite <- H.
+         apply WF_Matrix_Pauli.
+       - rewrite e. easy. 
+Qed.
+
+Lemma WF_helper2 : forall {bit} (l : list Pauli), 
+  length l = bit ->
+  @WF_Matrix (2^ bit) (2^ bit) (⨂ map translate_P l).
+Proof. intros; subst.
+       assert (H' := (WF_big_kron _ _ (map translate_P l) Zero)).
+       rewrite map_length in H'.
+       apply H'.
+       intros; apply WF_helper.
+Qed.
+
+Hint Resolve WF_helper WF_helper2 : wf_db.
+
+(* TODO : remove since in Matrix.v *)
+Lemma kron_simplify : forall (n m o p : nat) (a b : Matrix n m) (c d : Matrix o p), 
+    a = b -> c = d -> a ⊗ c = b ⊗ d.
+Proof. intros; subst; easy. 
 Qed.
 
 
 
-Lemma tensor_smpl_inc : forall (prg_len bit : nat) (p : nat -> prog)
-                          (a : vType 1) (A A' : vType prg_len),
-  WFS_vType a ->
-  WFS_vType A -> WFS_vType A' -> 
-  smpl_prog p -> 
-  (p bit) :' A → A' ->
-  (p (s bit)) :' a .⊗ A → a .⊗ A'.
-Proof. intros.
-       inversion H; inversion H0; inversion H1.
-       destruct a; destruct A; destruct A'; try easy.
-       inversion H3; inversion H15.
-       apply Arrow_pht; apply PHST; auto with wfvt_db.
-       simpl in *. 
-       destruct H19; split; try easy. 
-       apply sgt'_implies_sgt in H19; auto. 
-       apply sgt_implies_sgt'; try easy. 
-       replace (s prg_len) with (1 + prg_len) by lia. 
-       inversion H5; inversion H8; inversion H11;
-       inversion H25; inversion H27; inversion H29.
-       rewrite translate_kron, translate_kron; try easy.
-       unfold singGateType in *.
-       intros. 
-       simpl in *.
-       destruct H36; destruct H37; try easy.
-       rewrite <- H36, <- H37, prog_smpl_inc_reduce; auto. 
-       restore_dims.
-       do 2 rewrite kron_mixed_product.
-       rewrite (H19 _ (translate t1)).
-       replace 2 with (2^1) in * by easy.
-       rewrite Mmult_1_l, Mmult_1_r; auto.
-       all : try (apply unit_TType; easy). 
-       all : try (left; easy). 
-       apply unit_prog.
-       split; simpl.
-       all : apply univ_TType. 
-       inversion H8; easy.
-       inversion H11; easy.
-Qed.
-
-
-
-Lemma tensor_ctrl_base : forall (prg_len : nat) 
-                           (a b a' b' : vType 1) (A : vType prg_len),
-  WFS_vType a -> WFS_vType a' -> WFS_vType b -> WFS_vType b' ->
-  WFS_vType A ->
-  CNOT 0 1 :' (a .⊗ b → a' .⊗ b') ->
-  CNOT 0 1 :' (a .⊗ b .⊗ A → a' .⊗ b' .⊗ A).
+Lemma tensor_smpl_ground : forall (prg_len bit : nat) (p : nat -> prog)
+                             (l : list Pauli) (a : Pauli) (c1 c2 : Coef),
+    smpl_prog p -> bit < prg_len ->
+    prg_len = length l -> 
+    (p 0) :' @G 1 (p_1, [nth bit l gI]) → @G 1 (c2, [a])  ->
+    (p bit) :'  @G prg_len (c1, l) → @G prg_len (cMul c1 c2, switch l a bit).
 Proof. intros. 
-       inversion H; inversion H0; inversion H1; inversion H2; inversion H3.
-       destruct a; destruct b; try easy. 
-       destruct a'; destruct b'; destruct A; try easy.
-       inversion H4; inversion H22. 
-       apply Arrow_pht; apply PHST; auto with wfvt_db.
-       simpl in *.
-       destruct H26; split; try easy. 
-       apply sgt'_implies_sgt in H26; auto. 
+       inversion H2; inversion H5; subst.
+       apply Arrow_pht; apply PHST; try apply G_cvt.
+       simpl in *. destruct H9; split; try easy. 
        apply sgt_implies_sgt'; try easy. 
-       unfold singGateType in *.
-       intros. 
-       simpl in *.
-       destruct H31; destruct H32; try easy.
-       rewrite <- H31, <- H32. 
-       rewrite (translate_kron t1), (translate_kron t2), 
-               (translate_kron t), (translate_kron t0). 
-       restore_dims.
-       rewrite <- kron_assoc.
-       rewrite <- kron_assoc.
-       rewrite adj_ctrlX_is_cnot; try lia. 
-       rewrite Nat.pow_0_r, Nat.sub_0_r, kron_1_l; auto with wf_db.
-       replace (s (s prg_len) - 2) with prg_len by lia. 
-       restore_dims.
-       do 2 (rewrite kron_mixed_product).
-       rewrite adj_ctrlX_is_cnot1 in H26. 
-       rewrite (H26 _ (translate t1 ⊗ translate t2)).
-       rewrite Mmult_1_l, Mmult_1_r; auto.  
-       all : inversion H6; inversion H9; inversion H12; inversion H15; inversion H18.
-       all : try (apply unit_TType; easy). 
-       all : try (left; apply translate_kron). 
-       all : inversion H34; inversion H36; inversion H38; inversion H40; inversion H42.
-       all : try easy.
-       all : destruct t2; destruct t0; destruct t3; simpl in *. 
-       all : try (bdestruct_all; simpl; rewrite app_length; lia). 
-       replace 4 with (2^2) by easy. 
+       apply sgt'_implies_sgt in H1; try easy. 
+       unfold singGateType in *; intros; simpl in *.
+       destruct H4; destruct H6; try easy. 
+       rewrite <- H4, <- H6. 
+       unfold translate in *; simpl in *.  
+       rewrite (nth_inc bit l gI); auto.
+       repeat rewrite map_app.  
+       rewrite <- (nth_inc bit l gI); auto. 
+       rewrite switch_inc; auto.
+       repeat rewrite map_app.
+       repeat rewrite big_kron_app; try (intros; apply WF_helper).
+       repeat rewrite app_length.
+       repeat rewrite map_length.
+       rewrite firstn_length_le, skipn_length; try lia.
+       do 4 rewrite Nat.pow_add_r.
+       do 2 rewrite <- Mscale_kron_dist_r, <- Mscale_kron_dist_l. 
+       rewrite prog_smpl_inc_reduce; auto.
+       rewrite kron_assoc; auto with wf_db.
+       replace (length l - bit - 1) with (length l - s bit) by lia. 
+       repeat rewrite (kron_mixed_product' _ _ _ _ _ _ _ _ (2 ^ (length l))); 
+         try (simpl; lia).         
+       apply kron_simplify.
+       rewrite Mmult_1_l, Mmult_1_r; try easy; try apply WF_helper2.
+       all : try (apply firstn_length_le; lia).
+       repeat rewrite (kron_mixed_product' _ _ _ _ _ _ _ _ ((2^1) * (2^(length l - s bit)))); 
+         try (simpl; lia).  
+       apply kron_simplify. simpl. 
+       rewrite Mscale_mult_dist_r, (H1 _ (translate_coef c2 .* (translate_P a ⊗ Matrix.I 1))%M).
+       rewrite Mscale_mult_dist_l, Mscale_assoc, <- translate_coef_cMul, Mscale_mult_dist_l; easy.
+       all : try (left; try rewrite Mscale_1_l; easy).
+       assert (H' := (WF_big_kron _ _ (map translate_P (skipn (s bit) l)))).
+       rewrite map_length, skipn_length in H'; try lia. 
+       rewrite Mmult_1_l, Mmult_1_r; try easy.
+       all : try apply (H' Zero); intros. 
+       all : try apply WF_helper.
+       all : try (simpl length; do 2 rewrite <- Nat.pow_add_r; apply pow_components; lia).  
+       apply unit_prog. 
+       all : try (rewrite <- map_app; apply WF_helper). 
+       rewrite <- (Nat.pow_1_r 2); apply unit_prog.
+       simpl; split; apply (@univ_TType 1); apply WF_tt; easy. 
+Qed.
+
+
+
+
+Lemma tensor_ctrl_zero : forall (l : list Pauli) (prg_len targ : nat)
+                           (a b : Pauli) (c1 c2 : Coef),
+    targ < prg_len -> 0 <> targ -> 
+    prg_len = length l -> 
+    (CNOT 0 1) :' @G 2 (p_1, (nth 0 l gI) :: [nth targ l gI]) → @G 2 (c2, a :: [b])  ->
+    (CNOT 0 targ) :'  @G prg_len (c1, l) → 
+                         @G prg_len (cMul c1 c2, switch (switch l a 0) b targ).
+Proof. intros. destruct targ; try easy.
+       inversion H2; inversion H5; subst. 
+       apply Arrow_pht; apply PHST; try apply G_cvt.
+       destruct l; try easy.
+       simpl in *. destruct H9; split; try easy.
+       apply sgt_implies_sgt'; try easy. 
+       apply sgt'_implies_sgt in H1; try easy. 
+       unfold singGateType in *; intros; simpl in *.
+       destruct H4; destruct H6; try easy. 
+       rewrite <- H4, <- H6.
+       unfold translate in *; simpl in *. 
+       bdestruct (targ <? length l); try lia. 
+       rewrite (nth_inc targ l gI); auto.
+       repeat rewrite map_app.  
+       rewrite <- (nth_inc targ l gI); auto.
+       rewrite switch_inc; auto.
+       repeat rewrite map_app.
+       repeat rewrite big_kron_app; try (intros; apply WF_helper).
+       repeat rewrite app_length.
+       repeat rewrite map_length.
+       rewrite firstn_length_le, skipn_length; try lia.
+       do 4 rewrite Nat.pow_add_r.
+       do 3 rewrite Nat.add_0_r, double_mult. 
+       do 2 rewrite <- Mscale_kron_dist_l.
+       unfold prog_ctrl_app; bdestruct_all; rewrite ite_conv.
+       rewrite Nat.pow_0_r, mult_1_l, kron_1_l; auto with wf_db.
+       repeat rewrite <- kron_assoc. 
+       replace (length (cons (nth targ l gI) nil)) with 1 by easy. 
+       replace (length (cons b nil)) with 1 by easy. 
+       replace (s (length l) - s targ - 1) with (length l - s targ) by lia. 
+       rewrite Nat.pow_1_r. 
+       assert (H' : ((2 * 2^targ) * 2) = (2 * 2 ^ (S targ - 0))). 
+       { rewrite <- (Nat.pow_1_r 2).
+         repeat rewrite <- Nat.pow_add_r.
+         rewrite (Nat.pow_1_r 2).
+         apply pow_components; try lia. } 
+       rewrite H'. 
+       assert (H'' : 2 * 2^(length l) = 
+                   ((2 * 2^(s targ - 0))) * (2 ^ ((length l) - s targ))).
+      { replace 2 with (2^1) by easy.
+        repeat rewrite <- Nat.pow_add_r.
+        apply pow_components; try lia. } 
+      rewrite H''.
+      do 2 rewrite (kron_mixed_product).
+      rewrite Mmult_1_l, Mmult_1_r. 
+      apply kron_simplify; try easy. 
+      rewrite adj_ctrlX_is_cnot1 in H1.
+      simpl; rewrite Nat.add_0_r, double_mult, Nat.sub_0_r, kron_1_r.
+      rewrite Nat.add_0_r, double_mult.
+      replace (2 * (2 * 2^targ)) with (2 * 2^targ * 2) by lia. 
+      apply cnot_conv_inc; auto with wf_db.
+      all : try (apply WF_helper2; apply firstn_length_le; lia).
+      distribute_scale.
+      rewrite (H1 _ (translate_coef c2 .* (translate_P a ⊗ (translate_P b ⊗ Matrix.I 1)))%M); 
+        try left; try easy. 
+      rewrite kron_1_r, Mscale_mult_dist_l, Mscale_assoc, translate_coef_cMul.
+      distribute_scale; easy.
+      rewrite kron_1_r, Mscale_1_l; easy. 
+      all : try apply WF_kron; try lia. 
+      all : try (apply WF_helper2); try easy. 
+      all : try apply skipn_length.
+      all : try apply WF_kron; try lia; auto with wf_db. 
+      all : try (apply firstn_length_le; lia).
+      all : intros; try (rewrite <- map_app; apply WF_helper). 
+      rewrite adj_ctrlX_is_cnot1; auto with unit_db.
+      simpl; split; apply (@univ_TType 2); apply WF_tt; easy. 
+Qed.
+
+
+
+Lemma tensor_targ_zero : forall (l : list Pauli) (prg_len ctrl : nat)
+                             (a b : Pauli) (c1 c2 : Coef),
+    ctrl < prg_len -> ctrl <> 0 -> 
+    prg_len = length l -> 
+    (CNOT 0 1) :' @G 2 (p_1, (nth ctrl l gI) :: [nth 0 l gI]) → @G 2 (c2, a :: [b])  ->
+    (CNOT ctrl 0) :'  @G prg_len (c1, l) → 
+                         @G prg_len (cMul c1 c2, switch (switch l a ctrl) b 0).
+Proof. Admitted. 
+
+
+Lemma tensor_ctrl_reduce : forall (l1 l2 : list Pauli) (prg_len ctrl targ : nat)
+                             (a : Pauli) (c1 c2 : Coef),
+  prg_len = length l1 -> prg_len = length l2 -> 
+  (CNOT ctrl targ) :' @G prg_len (c1, l1) → @G prg_len (c2, l2)  ->
+  (CNOT (s ctrl) (s targ)) :' @G (s prg_len) (c1, a :: l1) → @G (s prg_len) (c2, a :: l2).
+Proof. intros. 
+       inversion H1; inversion H4; subst. 
+       apply Arrow_pht; apply PHST; try apply G_cvt.
+       rewrite prog_ctrl_reduce.
+       simpl in *. destruct H8; split; try easy.
+       apply sgt_implies_sgt'; try easy. 
+       apply sgt'_implies_sgt in H; try easy. 
+       unfold singGateType in *; intros; simpl in *.
+       destruct H3; destruct H5; try easy. 
+       rewrite <- H3, <- H5.
+       unfold translate in *; simpl in *. 
+       do 2 rewrite map_length, Nat.add_0_r, double_mult, <- Mscale_kron_dist_r.
+       rewrite <- H0.
+       do 2 rewrite kron_mixed_product. 
+       rewrite (H _ (translate_coef c2 .* (⨂ map translate_P l2))%M);
+         try (left; easy). 
+       rewrite Mmult_1_r, Mmult_1_l; auto with wf_db.
        apply unit_prog_ctrl_app; auto with unit_db.
-       destruct t; destruct t1.
-       inversion H32; simpl in *.
-       bdestruct_all; simpl.  
-       replace 4 with (2^2) by easy.  
-       split; apply univ_TType; apply WF_tt; simpl. 
-       all : rewrite app_length; lia. 
+       simpl; split; apply (@univ_TType (length l1)); apply WF_tt; easy. 
 Qed.
 
 
-Lemma tensor_ctrl_base_inv :  forall (prg_len : nat)
-                                (a b a' b' : vType 1) (A : vType prg_len),
-  WFS_vType a -> WFS_vType a' -> WFS_vType b -> WFS_vType b' ->
-  WFS_vType A ->
-  CNOT 0 1 :' (b .⊗ a → b' .⊗ a') ->
-  CNOT 1 0 :' (a .⊗ b .⊗ A → a' .⊗ b' .⊗ A).
+Lemma tensor_ctrl_ground : forall (l : list Pauli) (prg_len ctrl targ : nat)
+                             (a b : Pauli) (c1 c2 : Coef),
+    ctrl < prg_len -> targ < prg_len -> ctrl <> targ -> 
+    prg_len = length l -> 
+    (CNOT 0 1) :' @G 2 (p_1, (nth ctrl l gI) :: [nth targ l gI]) → @G 2 (c2, a :: [b])  ->
+    (CNOT ctrl targ) :'  @G prg_len (c1, l) → 
+                         @G prg_len (cMul c1 c2, switch (switch l a ctrl) b targ).
+Proof. induction l.  
+       - intros; subst; simpl in *; lia. 
+       - intros. 
+         destruct ctrl; try (apply tensor_ctrl_zero; auto).
+         destruct targ; try (apply tensor_targ_zero; auto). 
+         subst; simpl in *. 
+         apply tensor_ctrl_reduce; auto. 
+         do 2 rewrite switch_len; easy. 
+         apply IHl; auto; lia.  
+Qed.
+
+
+(****************)
+(* tensor rules *)
+(****************)
+
+
+Definition nth_vType {n} (bit : nat) (A : vType n) : vType 1 :=
+  match A with 
+  | G g => G (p_1, [nth bit (snd g) gI])         
+  | _ => Err
+  end. 
+
+
+Definition switch_vType {n} (A : vType n) (a : vType 1) (bit : nat) : vType n :=
+  match A with 
+  | G g =>
+    match a with
+    | G g0 => G (cMul (fst g) (fst g0), switch (snd g) (hd gI (snd g0))  bit)
+    | _ => Err
+    end
+  | _ => Err
+  end.
+
+
+
+Lemma tensor_smpl : forall (prg_len bit : nat) (p : nat -> prog)
+                           (A : vType prg_len) (a : vType 1),
+    WFS_vType a -> WFS_vType A -> 
+    smpl_prog p -> bit < prg_len ->
+    (p 0) :' (nth_vType bit A) → a ->
+    (p bit) :'  A → (switch_vType A a bit).
 Proof. intros. 
-       inversion H; inversion H0; inversion H1; inversion H2; inversion H3.
-       destruct a; destruct b; try easy. 
-       destruct a'; destruct b'; destruct A; try easy.
-       inversion H4; inversion H22.  
-       inversion H6; inversion H9; inversion H12; inversion H15; inversion H18. 
-       inversion H31; inversion H33; inversion H35; inversion H37; inversion H39.
-       apply Arrow_pht; apply PHST; auto with wfvt_db.
-       simpl in *.
-       destruct H26; split; try easy. 
-       apply sgt'_implies_sgt in H26; auto. 
-       apply sgt_implies_sgt'; try easy. 
-       unfold singGateType in *.
-       intros. 
-       simpl in *.
-       destruct H51; destruct H52; try easy.
-       rewrite <- H51, <- H52. 
-       rewrite (translate_kron t1), (translate_kron t2), 
-               (translate_kron t), (translate_kron t0); auto.
-       restore_dims.
-       do 2 (rewrite <- kron_assoc; try apply WF_Matrix_TType; auto).
-       rewrite adj_ctrlX_is_notc; try lia. 
-       rewrite Nat.pow_0_r, Nat.sub_0_r, kron_1_l; auto with wf_db.
-       replace (s (s prg_len) - 2) with prg_len by lia. 
-       restore_dims.
-       do 2 (rewrite kron_mixed_product).
-       rewrite adj_ctrlX_is_cnot1 in H26. 
-       rewrite (cnot_conv _ (translate t2) _ (translate t1)); 
-         try apply WF_Matrix_TType; auto.
-       rewrite Mmult_1_l, Mmult_1_r; try apply WF_Matrix_TType; auto.  
-       all : replace 2 with (2^1) by easy. 
-       all : try (apply WF_Matrix_TType; auto).
-       rewrite (H26 _ (translate t2 ⊗ translate t1)); auto. 
-       all : try (left; apply translate_kron). 
-       all : try easy. 
-       all : destruct t2; destruct t0; destruct t3; simpl in *. 
-       all : try (bdestruct_all; simpl; rewrite app_length; lia). 
-       replace 4 with (2^2) by easy. 
-       apply unit_prog_ctrl_app; auto with unit_db.
-       destruct t; destruct t1.
-       simpl in *.
-       bdestruct_all; simpl.  
-       replace 4 with (2^2) by easy. 
-       split; apply univ_TType; apply WF_tt; simpl. 
-       all : rewrite app_length; lia. 
+       inversion H; inversion H0; subst. 
+       inversion H5; inversion H8; subst; try easy. 
+       destruct tt; destruct tt0; simpl. 
+       inversion H6; inversion H10; subst.  
+       apply tensor_smpl_ground; auto; simpl in *.
+       do 2 (destruct l; try easy).
 Qed.
 
-Lemma tensor_ctrl_inc : forall (prg_len ctrl targ : nat) 
-                          (a : vType 1) (A A' : vType prg_len),
-  WFS_vType a -> 
-  WFS_vType A -> WFS_vType A' ->
-  CNOT ctrl targ :' (A → A') ->
-  CNOT (s ctrl) (s targ) :' a .⊗ A → a .⊗ A'.
-Proof. Admitted.
 
 
-Lemma tensor_ctrl_inc_l : forall (prg_len ctrl : nat) 
-                            (a a' b : vType 1) (A A' : vType prg_len),
-  WFS_vType a -> WFS_vType a' -> WFS_vType b ->  
-  WFS_vType A -> WFS_vType A' ->
-  CNOT ctrl 0 :' (a .⊗ A → a' .⊗ A') ->
-  CNOT (s ctrl) 0 :' a .⊗ b .⊗ A → a' .⊗ b .⊗ A'.
-Proof. Admitted.
 
-
-Lemma tensor_ctrl_inc_r : forall (prg_len targ : nat) 
-                            (a a' b : vType 1) (A A' : vType prg_len),
-  WFS_vType a -> WFS_vType a' -> WFS_vType b ->  
-  WFS_vType A -> WFS_vType A' ->
-  CNOT 0 targ :' (a .⊗ A → a' .⊗ A') ->
-  CNOT 0 (s targ) :' a .⊗ b .⊗ A → a' .⊗ b .⊗ A'.
-Proof. Admitted.
-
-
-(* For flipping CNOTs. *)
-Lemma tensor_ctrl_comm : forall (a b a' b' : vType 1),
-  WFS_vType a -> WFS_vType a' -> WFS_vType b -> WFS_vType b' ->
-  CNOT 0 1 :' a .⊗ b → a' .⊗ b' ->
-  CNOT 1 0 :' b .⊗ a → b' .⊗ a'.
+Lemma tensor_ctrl : forall (prg_len ctrl targ : nat)   
+                           (A : vType prg_len) (a b : vType 1),
+  WFS_vType A -> WFS_vType a -> WFS_vType b -> 
+  ctrl < prg_len -> targ < prg_len -> ctrl <> targ -> 
+  (CNOT 0 1) :' (nth_vType ctrl A) .⊗ (nth_vType targ A) → a .⊗ b ->
+  (CNOT ctrl targ) :'  A → switch_vType (switch_vType A a ctrl) b targ.
 Proof. intros. 
-       inversion H; inversion H0; inversion H1; inversion H2.
-       inversion H3; inversion H18.
-       destruct a; destruct a'; destruct b; destruct b'; try easy. 
-       apply Arrow_pht; apply PHST; auto with wfvt_db.
-       simpl in *.
-       destruct H22; split; try easy. 
-       apply sgt'_implies_sgt in H22; auto. 
-       apply sgt_implies_sgt'; try easy. 
-       replace (s 1) with (1 + 1) by lia. 
-       rewrite translate_kron, translate_kron; try easy.
-       unfold singGateType in *.
-       intros. 
-       simpl in *.
-       destruct H27; destruct H28; try easy.
-       rewrite <- H27, <- H28, adj_ctrlX_is_notc1. 
-       inversion H5; inversion H8; inversion H11; inversion H14.
-       apply cnot_conv.
-       all : replace 2 with (2^1) by easy.
-       all : try (apply unit_TType; easy). 
-       rewrite adj_ctrlX_is_cnot1 in H22. 
-       apply H22.
-       all : try (left; apply translate_kron; try easy). 
-       all : inversion H5; inversion H8; inversion H11; inversion H14.
-       all : try (inversion H30; inversion H32; inversion H34; inversion H36; easy). 
-       inversion H28; easy. 
-       all : replace (s (s (2^1))) with (2^2) by easy. 
-       apply unit_prog_ctrl_app; auto with unit_db.
-       destruct t; destruct t0; destruct t1; destruct t2.
-       inversion H28; inversion H30; inversion H32; inversion H34. 
-       split; apply univ_TType; apply WF_tt; simpl in *. 
-       all : bdestruct_all; simpl; rewrite app_length; lia. 
+       inversion H; inversion H0; inversion H1; subst.
+       inversion H7; inversion H10; inversion H13; subst; try easy. 
+       destruct tt; destruct tt0; destruct tt1; simpl. 
+       inversion H8; inversion H14; inversion H16; subst. 
+       rewrite cMul_assoc.
+       apply tensor_ctrl_ground; auto; simpl in *.
+       rewrite H17, H19 in H5; simpl in H5.
+       do 2 (destruct l0; destruct l1; try easy).
 Qed.
+
 
 (***************)
 (* Arrow rules *)
@@ -1926,31 +1893,21 @@ Lemma arrow_mul : forall {n} g (A A' B B' : vType n),
     g :' A → A' ->
     g :' B → B' ->
     g :' A .* B → A' .* B'.
-Proof. intros; simpl in *.
-       assert (H' : Sing_vt A). { apply H. }
-       assert (H0' : Sing_vt B). { apply H1. }
-       assert (H1' : Sing_vt A'). { apply H0. }
-       assert (H2' : Sing_vt B'). { apply H2. } 
-       apply sing_vt_simplify in H'; destruct H';
-       apply sing_vt_simplify in H0'; destruct H0';
-       apply sing_vt_simplify in H1'; destruct H1';
-       apply sing_vt_simplify in H2'; destruct H2'; try easy.
-       unfold progHasSingType in *. 
-       rewrite H5, H6, H7, H8 in *.
-       simpl Cap_vt_bool in *. 
-       rewrite ite_conv in *.
-       rewrite translate_vecType_mMult; try easy.
-       rewrite translate_vecType_mMult; try easy.
+Proof. intros; simpl in *.       
+       inversion H3; inversion H4; inversion H7; inversion H11; 
+       inversion H; inversion H0; inversion H1; inversion H2; subst. 
+       apply Arrow_pht; apply PHST; auto with wfvt_db.
+       destruct A; destruct A'; destruct B; destruct B'; try easy. 
+       do 2 (rewrite translate_vecType_mMult; try easy).
        rewrite fgt_conv.
        apply Heisenberg.arrow_mul; 
        try (apply unit_prog);
        try (apply unit_vType); try easy.
-       apply H. apply H0. apply H1. apply H2.
 Qed. 
   
 
 Lemma mul_simp : forall (a b : Pauli),
-  G 1 (gMul_Coef a b, [gMul_base a b]) = G 1 (p_1, [a]) .* G 1 (p_1, [b]). 
+  @G 1 (gMul_Coef a b, [gMul_base a b]) = @G 1 (p_1, [a]) .* @G 1 (p_1, [b]). 
 Proof. intros. 
        simpl. 
        destruct a; destruct b; try easy. 
@@ -1958,30 +1915,28 @@ Qed.
 
 
 Lemma arrow_mul_1 : forall g (a a' b b' : Pauli),
-    g :' G 1 (p_1, [a]) → G 1 (p_1, [a']) ->
-    g :' G 1 (p_1, [b]) → G 1 (p_1, [b']) ->
-    g :' G 1 (gMul_Coef a b, [gMul_base a b]) → G 1 (gMul_Coef a' b', [gMul_base a' b']).
+    g :' @G 1 (p_1, [a]) → @G 1 (p_1, [a']) ->
+    g :' @G 1 (p_1, [b]) → @G 1 (p_1, [b']) ->
+    g :' @G 1 (gMul_Coef a b, [gMul_base a b]) → @G 1 (gMul_Coef a' b', [gMul_base a' b']).
 Proof. intros. 
        do 2 rewrite mul_simp. 
-       apply arrow_mul; easy.
+       apply arrow_mul; try easy; apply WFS; try apply G_svt. 
+       all : apply WF_G; apply WF_tt; easy. 
 Qed.
 
 
 
 Lemma arrow_scale : forall {n} (p : prog) (A A' : vType n) (c : Coef),
   p :' A → A' -> p :' (scale c A) → (scale c A').
-Proof. intros. simpl in *. 
-       unfold progHasSingType in *.
-       do 2 (rewrite Cap_vt_scale).
-       destruct (Cap_vt_bool A && Cap_vt_bool A'); try easy.
+Proof. intros. 
+       inversion H; inversion H2; subst.
+       apply Cap_vt_conv in H4; apply Cap_vt_conv in H5.
+       apply Arrow_pht; apply PHST; auto with wfvt_db. 
+       all : try (apply Cap_vt_conv; rewrite Cap_vt_scale; easy).
        rewrite fgt_conv in *.
        do 2 (rewrite translate_vecType_scale).
-       apply Heisenberg.arrow_scale.
-       destruct c; try simpl; try nonzero.
-       apply C0_fst_neq. unfold Copp. 
-       simpl. lra. 
-       apply C0_snd_neq. unfold Copp.
-       simpl. lra. apply H.
+       apply Heisenberg.arrow_scale; try easy.
+       apply translate_coef_nonzero.
 Qed.
 
 
@@ -2047,6 +2002,47 @@ Ltac expand_prog := match goal with
                     end.
 
 (* Reduces to sequence of H, S and CNOT *)
+
+
+
+Lemma CZTypes : CZ 0 1 :' (X .⊗ I → X .⊗ Z) ∩ (I .⊗ X → Z .⊗ X) ∩
+                          (Z .⊗ I → Z .⊗ I) ∩ (I .⊗ Z → I .⊗ Z).
+Proof. repeat apply cap_intro;
+         expand_prog.
+       apply tensor_smpl; auto with wfvt_db.
+       2 : solve [eauto with base_types_db].
+       auto with wfvt_db.
+       expand_prog. 
+       solve [eauto with base_types_db].
+       eapply eq_arrow_r.
+       apply tensor_smpl; auto with wfvt_db.
+       2 : solve [eauto with base_types_db].
+       auto with wfvt_db.
+       easy. 
+       apply tensor_smpl; auto with wfvt_db.
+       2 : solve [eauto with base_types_db].
+       auto with wfvt_db.
+
+       
+
+
+apply 
+       
+
+
+
+
+       rewrite (decompose_tensor) by (auto 50 with wfvt_db).
+       eapply eq_arrow_r.
+       apply arrow_mul.
+
+       apply tensor_ctrl_base.
+       solve [eauto with base_types_db].
+       
+Qed.
+
+
+
 Ltac type_check_base :=
   repeat apply cap_intro;
   repeat expand_prog; (* will automatically unfold compound progs *)
@@ -2072,7 +2068,7 @@ Ltac type_check_base :=
          | |- S' (s _) :' ?T     => apply tensor_smpl_inc
          | |- S' 0 :' ?T         => apply tensor_smpl_base
          | |- T' (s _) :' ?T     => apply tensor_smpl_inc
-         | |- T' 0 :' ?T         => apply tensor_smpl_base
+         | |- T' 0 :' ?T         => apply 4tensor_smpl_base
          | |- ?g :' ?A .⊗ ?B → _  => tryif (is_I A + is_I B) then fail else
              rewrite (decompose_tensor A B) by (auto 50 with wfvt_db)
          | |- ?g :' ?A → ?B      => tryif is_evar A then fail else

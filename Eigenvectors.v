@@ -200,6 +200,20 @@ Proof. induction n as [| n'].
          simpl. rewrite IHn'. easy.
 Qed.
          
+Lemma switch_switch_diff : forall {X : Type} (n m : nat) (ls : list X) (a b : X), 
+  n <> m ->
+  switch (switch ls a n) b m = switch (switch ls b m) a n.
+Proof. induction n as [| n'].
+       - intros. 
+         destruct m; destruct ls; easy. 
+       - intros. 
+         destruct m; try (destruct ls; easy). 
+         destruct ls; try easy. 
+         simpl. 
+         rewrite IHn'; try easy.
+         bdestruct (n' =? m); lia. 
+Qed.
+
 Lemma switch_base : forall {X : Type} (ls : list X) (x : X),
     ls <> [] -> switch ls x 0 = x :: (skipn 1 ls).
 Proof. intros. 
@@ -242,8 +256,6 @@ Proof. induction sn as [| sn'].
 Qed.
 
 
- 
-
 Lemma switch_inc_helper : forall {X : Type} (n : nat) (l1 l2 : list X) (x : X),
     length l1 = n -> 
     switch (l1 ++ l2) x n = l1 ++ switch l2 x 0.
@@ -274,7 +286,6 @@ Proof. intros.
        reflexivity. 
        nia.  
 Qed.
-
 
 
 
@@ -363,6 +374,11 @@ Qed.
 
 
 
+
+
+
+
+
 Lemma length_change : forall {X : Type} (A B : list X) (x : X),
   2 ^ (length (A ++ [x] ++ B)) = (2 ^ (length A)) * (2 * (2 ^ (length B))).
 Proof. intros. 
@@ -371,6 +387,8 @@ Proof. intros.
        rewrite easy_pow.
        reflexivity. 
 Qed.
+
+
 
 
 (* a similar lemma to the one defined by Coq, but better for our purposes *)
