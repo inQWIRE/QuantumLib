@@ -2405,6 +2405,103 @@ Proof. intros.
 Qed.
 
 
+Lemma kron_breakdown1 : forall (a a' b b' : Square 2),
+  WF_Matrix a -> WF_Matrix a' -> WF_Matrix b -> WF_Matrix b' ->
+  a ⊗ b = a' ⊗ b' -> 
+  (forall i j k l : nat, ((a i j) * (b k l) = (a' i j) * (b' k l))%C).
+Proof. intros a a' b b' H H0 H1 H2 H3 i j k l.  
+       bdestruct (i <? 2); bdestruct (j <? 2); bdestruct (k <? 2); bdestruct (l <? 2);
+         try (rewrite H, H0; try (left; easy); try (right; easy); lca);
+         try (rewrite H1, H2; try (left; easy); try (right; easy); lca).
+       assert (H' : (a ⊗ b) (k + i*2) (l + j*2) = (a' ⊗ b') (k + i*2) (l + j*2)).
+       rewrite H3; easy. 
+       unfold kron in H'. 
+       do 2 rewrite Nat.div_add, Nat.mod_add, Nat.div_small, Nat.mod_small in H'; auto.
+Qed.
+
+
+Lemma kron_breakdown2 : forall (a a' b b' c c' d d' : Square 2),
+  WF_Matrix a -> WF_Matrix a' -> WF_Matrix b -> WF_Matrix b' ->
+  WF_Matrix c -> WF_Matrix c' -> WF_Matrix d -> WF_Matrix d' ->
+  a ⊗ b .+ c ⊗ d = a' ⊗ b' .+ c' ⊗ d' -> 
+  (forall i j k l : nat, ((a i j) * (b k l) + (c i j) * (d k l) = 
+                          (a' i j) * (b' k l) + (c' i j) * (d' k l))%C).
+Proof. intros a a' b b' c c' d d' H H0 H1 H2 H3 H4 H5 H6 H7 i j k l.  
+       bdestruct (i <? 2); bdestruct (j <? 2); bdestruct (k <? 2); bdestruct (l <? 2);
+         try (rewrite H, H0, H3, H4; try (left; easy); try (right; easy); lca);
+         try (rewrite H1, H2, H5, H6; try (left; easy); try (right; easy); lca).
+       assert (H' : (a ⊗ b .+ c ⊗ d) (k + i*2) (l + j*2) = 
+                    (a' ⊗ b' .+ c' ⊗ d') (k + i*2) (l + j*2)).
+       rewrite H7; easy. 
+       unfold kron, Mplus in H'. 
+       do 2 rewrite Nat.div_add, Nat.mod_add, Nat.div_small, Nat.mod_small in H'; auto.
+Qed.
+
+
+Lemma kron_rearrange1 : forall {n} (a a' b b' : Square 2) (C C' : Square n),
+  WF_Matrix a -> WF_Matrix a' -> WF_Matrix b -> WF_Matrix b' ->
+  WF_Matrix C ->
+  a ⊗ b = a' ⊗ b' -> C = C' ->
+  a ⊗ C ⊗ b = a' ⊗ C' ⊗ b'.
+Proof. intros; subst.
+       prep_matrix_equality. 
+       unfold kron.
+       rewrite Cmult_comm, Cmult_assoc. 
+       rewrite (Cmult_comm _ (b' _ _)), Cmult_assoc. 
+       apply Cmult_simplify; try easy. 
+       rewrite Cmult_comm, (Cmult_comm (b' _ _)).
+       apply kron_breakdown1; auto. 
+Qed.
+
+
+
+
+Lemma kron_rearrange2 : forall {n} (a a' b b' c c' d d' : Square 2) (C : Square n),
+  WF_Matrix a -> WF_Matrix a' -> WF_Matrix b -> WF_Matrix b' -> 
+  WF_Matrix c -> WF_Matrix c' -> WF_Matrix d -> WF_Matrix d' ->
+  WF_Matrix C -> 
+  a ⊗ b .+ c ⊗ d = a' ⊗ b' .+ c' ⊗ d' ->
+  a ⊗ C ⊗ b .+ c ⊗ C ⊗ d = a' ⊗ C ⊗ b' .+ c' ⊗ C ⊗ d'.
+Proof. intros. 
+       apply mat_equiv_eq; auto with wf_db.
+       unfold mat_equiv, kron, Mplus; intros i j H9 H10. 
+       rewrite Cmult_comm, (Cmult_comm _ (d _ _)), 
+               (Cmult_comm _ (b' _ _)), (Cmult_comm _ (d' _ _)). 
+       do 4 rewrite Cmult_assoc.
+       do 2 rewrite <- Cmult_plus_distr_r.
+       apply Cmult_simplify; try easy.
+       rewrite (Cmult_comm (b _ _)), (Cmult_comm (b' _ _)), 
+               (Cmult_comm (d _ _)), (Cmult_comm (d' _ _)).
+       apply kron_breakdown2; easy.
+Qed.
+       
+Lemma cnot_conv_inc : forall {n} (a a' b b' : Square 2) (C C' : Square (2^n)),
+  WF_Matrix a -> WF_Matrix a' -> WF_Matrix b -> WF_Matrix b' ->
+  WF_Matrix C -> 
+  cnot × (a ⊗ b) = (a' ⊗ b') × cnot -> C = C' ->
+  @Mmult (2 * 2^n * 2) (2 * 2^n * 2) (2 * 2^n * 2) 
+         (∣0⟩⟨0∣ ⊗ Matrix.I (2 * 2 ^ n) .+ ∣1⟩⟨1∣ ⊗ Matrix.I (2 ^ n) ⊗ σx) (a ⊗ C ⊗ b) =
+  (a' ⊗ C' ⊗ b') × (∣0⟩⟨0∣ ⊗ Matrix.I (2 * 2 ^ n) .+ ∣1⟩⟨1∣ ⊗ Matrix.I (2 ^ n) ⊗ σx).
+Proof. intros; subst.
+       do 2 replace (2 * (2 * 2^n)) with (2 * 2^n * 2) by lia.
+       rewrite Mmult_plus_distr_r, Mmult_plus_distr_l.
+       replace (2 * 2 ^ n) with (2 ^ n * 2) by lia. 
+       rewrite <- id_kron.
+       rewrite <- kron_assoc; auto with wf_db.
+       repeat rewrite kron_mixed_product.
+       replace (2 ^ n * 2) with (2 * 2 ^ n) by lia. 
+       repeat rewrite kron_mixed_product.
+       rewrite Mmult_1_l, Mmult_1_r; auto.
+       assert (H' : cnot = ∣0⟩⟨0∣ ⊗ Matrix.I 2 .+ ∣1⟩⟨1∣ ⊗ σx).
+       { lma'. }
+       rewrite H' in H4.
+       rewrite Mmult_plus_distr_r, Mmult_plus_distr_l in H4.
+       repeat rewrite kron_mixed_product in H4.
+       apply kron_rearrange2; auto with wf_db.
+Qed.
+
+
+
 Ltac solve_gate_type :=
   repeat match goal with
          | |- singGateType' ?U ?g /\ _ => split
