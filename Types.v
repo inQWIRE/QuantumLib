@@ -1628,9 +1628,7 @@ Hint Resolve WF_helper WF_helper2 : wf_db.
 (* TODO : remove since in Matrix.v *)
 Lemma kron_simplify : forall (n m o p : nat) (a b : Matrix n m) (c d : Matrix o p), 
     a = b -> c = d -> a ⊗ c = b ⊗ d.
-Proof. intros; subst; easy. 
-Qed.
-
+Proof. Admitted.
 
 
 Lemma tensor_smpl_ground : forall (prg_len bit : nat) (p : nat -> prog)
@@ -1729,7 +1727,7 @@ Proof. intros. destruct targ; try easy.
        rewrite Nat.pow_1_r. 
        assert (H' : ((2 * 2^targ) * 2) = (2 * 2 ^ (S targ - 0))). 
        { rewrite <- (Nat.pow_1_r 2).
-         repeat rewrite <- Nat.pow_add_r.
+         repeat rewrite <- Nat.pow_add_r. 
          rewrite (Nat.pow_1_r 2).
          apply pow_components; try lia. } 
        rewrite H'. 
@@ -1765,7 +1763,6 @@ Proof. intros. destruct targ; try easy.
 Qed.
 
 
-
 Lemma tensor_targ_zero : forall (l : list Pauli) (prg_len ctrl : nat)
                              (a b : Pauli) (c1 c2 : Coef),
     ctrl < prg_len -> ctrl <> 0 -> 
@@ -1773,7 +1770,74 @@ Lemma tensor_targ_zero : forall (l : list Pauli) (prg_len ctrl : nat)
     (CNOT 0 1) :' @G 2 (p_1, (nth ctrl l gI) :: [nth 0 l gI]) → @G 2 (c2, a :: [b])  ->
     (CNOT ctrl 0) :'  @G prg_len (c1, l) → 
                          @G prg_len (cMul c1 c2, switch (switch l a ctrl) b 0).
-Proof. Admitted. 
+Proof. intros. destruct ctrl; try easy.
+       inversion H2; inversion H5; subst. 
+       apply Arrow_pht; apply PHST; try apply G_cvt.
+       destruct l; try easy.
+       simpl in *. destruct H9; split; try easy.
+       apply sgt_implies_sgt'; try easy. 
+       apply sgt'_implies_sgt in H1; try easy. 
+       unfold singGateType in *; intros; simpl in *.
+       destruct H4; destruct H6; try easy. 
+       rewrite <- H4, <- H6.
+       unfold translate in *; simpl in *. 
+       bdestruct (ctrl <? length l); try lia. 
+       rewrite (nth_inc ctrl l gI); auto.
+       repeat rewrite map_app.  
+       rewrite <- (nth_inc ctrl l gI); auto.
+       rewrite switch_inc; auto.
+       repeat rewrite map_app.
+       repeat rewrite big_kron_app; try (intros; apply WF_helper).
+       repeat rewrite app_length.
+       repeat rewrite map_length.
+       rewrite firstn_length_le, skipn_length; try lia.
+       do 4 rewrite Nat.pow_add_r.
+       do 3 rewrite Nat.add_0_r, double_mult. 
+       do 2 rewrite <- Mscale_kron_dist_l.
+       unfold prog_ctrl_app; bdestruct_all; rewrite ite_conv.
+       rewrite Nat.pow_0_r, mult_1_l, kron_1_l; auto with wf_db.
+       repeat rewrite <- kron_assoc. 
+       replace (length (cons (nth ctrl l gI) nil)) with 1 by easy. 
+       replace (length (cons b nil)) with 1 by easy. 
+       replace (s (length l) - s ctrl - 1) with (length l - s ctrl) by lia. 
+       rewrite Nat.pow_1_r. 
+       assert (H' : ((2 * 2^ctrl) * 2) = (2 * 2 ^ (S ctrl - 0))). 
+       { rewrite <- (Nat.pow_1_r 2).
+         repeat rewrite <- Nat.pow_add_r.
+         rewrite (Nat.pow_1_r 2).
+         apply pow_components; try lia. } 
+       rewrite H'. 
+       assert (H'' : 2 * 2^(length l) = 
+                   ((2 * 2^(s ctrl - 0))) * (2 ^ ((length l) - s ctrl))).
+      { replace 2 with (2^1) by easy.
+        repeat rewrite <- Nat.pow_add_r.
+        apply pow_components; try lia. } 
+      rewrite H''.
+      rewrite (mult_comm 2 _).
+      do 2 rewrite (kron_mixed_product).
+      rewrite Mmult_1_l, Mmult_1_r. 
+      apply kron_simplify; try easy. 
+      rewrite adj_ctrlX_is_cnot1 in H1.
+      simpl; rewrite Nat.add_0_r, double_mult, Nat.sub_0_r, kron_1_r.
+      rewrite Nat.add_0_r, double_mult.
+      replace (2 * (2 * 2^ctrl)) with (2 * 2^ctrl * 2) by lia. 
+      apply notc_conv_inc; auto with wf_db.
+      all : try (apply WF_helper2; apply firstn_length_le; lia).
+      distribute_scale.
+      rewrite (H1 _ (translate_coef c2 .* (translate_P a ⊗ (translate_P b ⊗ Matrix.I 1)))%M); 
+        try left; try easy. 
+      rewrite kron_1_r, kron_1_r, Mscale_mult_dist_l, Mscale_assoc, translate_coef_cMul.
+      distribute_scale; easy.
+      rewrite kron_1_r, Mscale_1_l; easy. 
+      all : try apply WF_kron; try lia. 
+      all : try (apply WF_helper2); try easy. 
+      all : try apply skipn_length.
+      all : try apply WF_kron; try lia; auto with wf_db. 
+      all : try (apply firstn_length_le; lia).
+      all : intros; try (rewrite <- map_app; apply WF_helper). 
+      rewrite adj_ctrlX_is_cnot1; auto with unit_db.
+      simpl; split; apply (@univ_TType 2); apply WF_tt; easy. 
+Qed.
 
 
 Lemma tensor_ctrl_reduce : forall (l1 l2 : list Pauli) (prg_len ctrl targ : nat)
@@ -1843,6 +1907,36 @@ Definition switch_vType {n} (A : vType n) (a : vType 1) (bit : nat) : vType n :=
     end
   | _ => Err
   end.
+
+
+
+Lemma WFS_nth_vType : forall {n} (A : vType n) (bit : nat),
+  WFS_vType A -> WFS_vType (nth_vType bit A).
+Proof. intros.
+       inversion H; subst. 
+       destruct A; try easy.
+       apply WFS.
+       apply G_svt.
+       apply WF_G; apply WF_tt.
+       easy. 
+Qed.       
+
+
+Lemma WFS_switch_vType : forall {n} (A : vType n) (a : vType 1) (bit : nat),
+  WFS_vType A -> WFS_vType a -> WFS_vType (switch_vType A a bit).
+Proof. intros.
+       inversion H; inversion H0; subst. 
+       destruct A; destruct a; try easy.
+       apply WFS.
+       apply G_svt.
+       apply WF_G; apply WF_tt.
+       simpl. rewrite switch_len.
+       inversion H2; inversion H6; 
+       easy. 
+Qed.       
+
+
+Hint Resolve WFS_nth_vType WFS_switch_vType : wfvt_db.
 
 
 
@@ -2004,15 +2098,28 @@ Ltac expand_prog := match goal with
 (* Reduces to sequence of H, S and CNOT *)
 
 
+Ltac  solve_smpl := apply tensor_smpl;
+                    try (solve [eauto with base_types_db]); auto with wfvt_db.
+
+
+Ltac  solve_ctrl := apply tensor_ctrl;
+                    try (solve [eauto with base_types_db]); auto with wfvt_db.
+
 
 Lemma CZTypes : CZ 0 1 :' (X .⊗ I → X .⊗ Z) ∩ (I .⊗ X → Z .⊗ X) ∩
                           (Z .⊗ I → Z .⊗ I) ∩ (I .⊗ Z → I .⊗ Z).
 Proof. repeat apply cap_intro;
-         expand_prog.
+         repeat expand_prog.
+       solve_smpl.
+       solve_ctrl.
+       eapply eq_arrow_r.
+       solve_smpl.
+       easy. 
+       simpl.
+       
        apply tensor_smpl; auto with wfvt_db.
        2 : solve [eauto with base_types_db].
        auto with wfvt_db.
-       expand_prog. 
        solve [eauto with base_types_db].
        eapply eq_arrow_r.
        apply tensor_smpl; auto with wfvt_db.
