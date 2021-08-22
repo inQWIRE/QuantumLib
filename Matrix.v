@@ -1,4 +1,4 @@
-Require Import Psatz.
+Require Import Psatz. 
 Require Import String.
 Require Import Program.
 Require Export Complex.
@@ -7,7 +7,6 @@ Require Import List.
 
 (* TODO: Use matrix equality everywhere, declare equivalence relation *)
 (* TODO: Make all nat arguments to matrix lemmas implicit *)
-
 
 (*******************************************)
 (** Matrix Definitions and Infrastructure **)
@@ -2764,8 +2763,7 @@ Lemma row_add_swap : forall {n m : nat} (S : Matrix n m) (x y : nat) (a : C),
 Proof. intros. 
        prep_matrix_equality. 
        unfold row_swap, row_add.
-       bdestruct (x0 =? x); bdestruct (y =? x);
-         bdestruct (x0 =? y); bdestruct (x =? x); try lia; easy. 
+       bdestruct_all; easy.
 Qed.
 
 
@@ -2787,14 +2785,43 @@ Proof. intros.
        lca. easy. 
 Qed.
 
-
-
 Lemma mat_equiv_make_WF : forall {n m} (T : Matrix n m),
   T == make_WF T.
 Proof. unfold make_WF, mat_equiv; intros. 
        bdestruct (i <? n); bdestruct (j <? m); try lia; easy.
 Qed.
 
+Lemma eq_make_WF : forall {n m} (T : Matrix n m),
+  WF_Matrix T -> T = make_WF T.
+Proof. intros. 
+       apply mat_equiv_eq; auto with wf_db.
+       apply mat_equiv_make_WF.
+Qed.
+
+
+Lemma col_swap_make_WF : forall {n m} (T : Matrix n m) (x y : nat),
+  x < m -> y < m -> col_swap (make_WF T) x y = make_WF (col_swap T x y).
+Proof. intros.
+       unfold make_WF, col_swap. 
+       prep_matrix_equality.
+       bdestruct_all; try easy. 
+Qed.
+
+Lemma col_scale_make_WF : forall {n m} (T : Matrix n m) (x : nat) (c : C),
+  col_scale (make_WF T) x c = make_WF (col_scale T x c).
+Proof. intros.
+       unfold make_WF, col_scale. 
+       prep_matrix_equality.
+       bdestruct_all; try easy; lca. 
+Qed.
+
+Lemma col_add_make_WF : forall {n m} (T : Matrix n m) (x y : nat) (c : C),
+  x < m -> y < m -> col_add (make_WF T) x y c = make_WF (col_add T x y c).
+Proof. intros.
+       unfold make_WF, col_add. 
+       prep_matrix_equality.
+       bdestruct_all; try easy; lca. 
+Qed.
 
 Lemma Mmult_make_WF : forall {n m o} (A : Matrix n m) (B : Matrix m o),
   make_WF A × make_WF B = make_WF (A × B).
@@ -3236,7 +3263,7 @@ Proof. intros.
 Qed.        
 
 
-Lemma col_add_preserves_mul_lt : forall {n m o} (A : Matrix n m) (B : Matrix m o) 
+Lemma add_preserves_mul_lt : forall {n m o} (A : Matrix n m) (B : Matrix m o) 
                                                 (x y : nat) (a : C),
    x < y -> x < m -> y < m -> A × (row_add B y x a) = (col_add A x y a) × B.
 Proof. intros.  
@@ -3281,11 +3308,11 @@ Proof. intros.
          bdestruct (x + S (y - x - 1 + S x1) =? x); try lia; easy. 
 Qed.
 
-Lemma col_add_preserves_mul : forall {n m o} (A : Matrix n m) (B : Matrix m o) 
+Lemma add_preserves_mul : forall {n m o} (A : Matrix n m) (B : Matrix m o) 
                                              (x y : nat) (a : C),
    x < m -> y < m -> A × (row_add B y x a) = (col_add A x y a) × B.
 Proof. intros. bdestruct (x <? y).
-       - apply col_add_preserves_mul_lt; easy.
+       - apply add_preserves_mul_lt; easy.
        - destruct H1.
          + rewrite col_add_double, row_add_double. 
            apply scale_preserves_mul.
@@ -3295,7 +3322,7 @@ Proof. intros. bdestruct (x <? y).
            rewrite row_add_swap.
            rewrite row_swap_diff_order.
            rewrite col_swap_diff_order.
-           apply col_add_preserves_mul_lt; lia. 
+           apply add_preserves_mul_lt; lia. 
 Qed.
 
 
@@ -3361,7 +3388,7 @@ Proof. induction e as [| e].
          rewrite <- (col_add_many_0 col A (make_row_zero (skip_count col 0) v)).
          rewrite (row_add_each_row_add col (skip_count col 0) _ _); try easy.
          rewrite <- (row_add_each_0 col B (make_row_zero (skip_count col 0) v)).
-         apply col_add_preserves_mul; try easy.
+         apply add_preserves_mul; try easy.
          apply mat_equiv_eq; auto with wf_db.
          unfold mat_equiv; intros. 
          destruct j; try lia. 
@@ -3388,7 +3415,7 @@ Proof. induction e as [| e].
          destruct m; try easy.
          rewrite (col_add_many_col_add col (skip_count col (S e)) _ _); try easy.
          rewrite (row_add_each_row_add col (skip_count col (S e)) _ _); try easy.
-         rewrite col_add_preserves_mul; try easy.
+         rewrite add_preserves_mul; try easy.
          rewrite cam_ca_switch. 
          rewrite IHe; try easy; auto with wf_db.
          assert (p : e < S e). lia. 
@@ -3478,6 +3505,13 @@ Proof. intros.
        rewrite Mmult_1_r; auto with wf_db. 
 Qed.
 
+Lemma col_add_mult_r : forall {n} (A : Square n) (x y : nat) (a : C),
+  x < n -> y < n -> WF_Matrix A -> 
+  col_add A x y a = A × (row_add (I n) y x a).
+Proof. intros. 
+       rewrite add_preserves_mul; auto.
+       rewrite Mmult_1_r; auto with wf_db. 
+Qed.
 
 Lemma col_add_many_mult_r : forall {n} (A : Square n) (v : Vector n) (col : nat),
   WF_Matrix A -> WF_Matrix v -> col < n -> v col 0 = C0 ->
@@ -3496,6 +3530,47 @@ Proof. intros.
        rewrite Mmult_1_r; auto with wf_db.
 Qed.
 
+
+(* now we prove facts about the ops on (I n) *)
+Lemma col_row_swap_invr_I : forall (n x y : nat), 
+  x < n -> y < n -> col_swap (I n) x y = row_swap (I n) x y.
+Proof. intros. 
+       prep_matrix_equality.
+       unfold col_swap, row_swap, I.
+       bdestruct_all; try easy.
+Qed.
+
+Lemma col_row_scale_invr_I : forall (n x : nat) (c : C), 
+  col_scale (I n) x c = row_scale (I n) x c.
+Proof. intros. 
+       prep_matrix_equality.
+       unfold col_scale, row_scale, I.
+       bdestruct_all; try easy; lca.
+Qed.
+
+Lemma col_row_add_invr_I : forall (n x y : nat) (c : C), 
+  x < n -> y < n -> col_add (I n) x y c = row_add (I n) y x c.
+Proof. intros. 
+       prep_matrix_equality.
+       unfold col_add, row_add, I.
+       bdestruct_all; try easy; try lca.
+Qed.
+
+
+Lemma row_each_col_many_invr_I : forall (n col : nat) (v : Vector n),
+  WF_Matrix v -> col < n -> v col 0 = C0 ->
+  row_add_each col v (I n) = col_add_many col v (I n).  
+Proof. intros. 
+       rewrite <- Mmult_1_r, <- col_add_many_preserves_mul, Mmult_1_l; auto with wf_db. 
+Qed.
+
+
+Lemma row_many_col_each_invr_I : forall (n col : nat) (v : Matrix 1 n),
+  WF_Matrix v -> col < n -> v 0 col = C0 ->
+  row_add_many col v (I n) = col_add_each col v (I n).  
+Proof. intros. 
+       rewrite <- Mmult_1_r, <- col_add_each_preserves_mul, Mmult_1_l; auto with wf_db. 
+Qed.
 
 
 Lemma reduce_append_split : forall {n m} (T : Matrix n (S m)), 
@@ -4140,13 +4215,6 @@ Proof. intros. exists (b - a - 1). lia. Qed.
 
 Lemma lt_ex_diff_r : forall a b, a < b -> exists d, b = a + 1 + d. 
 Proof. intros. exists (b - a - 1). lia. Qed.
-
-Ltac bdestruct_all :=
-  repeat match goal with
-  | |- context[?a <? ?b] => bdestruct (a <? b)
-  | |- context[?a <=? ?b] => bdestruct (a <=? b)                                       
-  | |- context[?a =? ?b] => bdestruct (a =? b)
-  end; try (exfalso; lia).
 
 (* Remove _ < _ from hyps, remove _ - _  from goal *)
 Ltac remember_differences :=

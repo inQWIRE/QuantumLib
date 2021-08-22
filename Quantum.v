@@ -1,7 +1,7 @@
 Require Import Psatz. 
 Require Import Reals.
 
-Require Export Matrix.
+Require Export VecSet.
 
 (* Using our (complex, unbounded) matrices, their complex numbers *)
 

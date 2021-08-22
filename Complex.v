@@ -630,6 +630,12 @@ Proof.
   lra.
 Qed.
 
+Lemma Cconj_simplify : forall (c1 c2 : C), c1^* = c2^* -> c1 = c2.
+Proof. intros. 
+       assert (H1 : c1 ^* ^* = c2 ^* ^*). { rewrite H; easy. }
+       do 2 rewrite Cconj_involutive in H1.   
+       easy. 
+Qed.
 
 (******************)
 (** Square Roots **)
