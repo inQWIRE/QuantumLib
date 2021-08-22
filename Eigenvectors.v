@@ -1,6 +1,6 @@
 Require Import List.     
 Require Export Complex. 
-Require Export Matrix.  
+Require Export VecSet.  
 Require Export Quantum. 
 Require Export Polynomial.
 
@@ -159,7 +159,7 @@ Proof. induction n as [| n'].
 
 
 Lemma connect2 : forall (n : nat) (A : Square (S n)),
-  exists (c : C), Determinant (S n) (A .+ (-c .* I (S n))) = C0.
+  exists (c : C), det_eq_c C0 (S n) (S n) (A .+ (-c .* I (S n))).
 Proof. intros. 
        assert (H' : good_M (I (S n))).
        apply good_M_I.
@@ -168,7 +168,9 @@ Proof. intros.
        assert (H0 : S n > 0). lia.
        apply (Fundamental_Theorem_Algebra p) in H0.
        destruct H0 as [c H0].
-       exists c. rewrite <- H0.
+       exists c. 
+       split; try easy. 
+       rewrite <- H0.
        easy.
 Qed.
 
@@ -179,7 +181,7 @@ Lemma exists_eigenvector : forall (n : nat) (A : Square (S n)),
   exists (c : C) (v : Vector (S n)), WF_Matrix v /\ v <> Zero /\ A × v = c.* v.
 Proof. intros. 
        destruct (connect2 n A) as [c H0].
-       apply Det_0_lindep in H0.
+       apply lin_dep_det_eq_0 in H0; auto with wf_db.
        destruct H0 as [v [H1 [H2 H3]]].
        exists c, v.
        split; auto. 
@@ -188,12 +190,10 @@ Proof. intros.
        assert (H4 : A × v .+ (-c .* v) .+ (c .* v) = (c .* v)).
        { rewrite H3. lma. }
        rewrite Mplus_assoc in H4.
-       Search (_ .* ?b .+ _ .* ?b). 
        rewrite <- Mscale_plus_distr_l in H4. 
        replace (-c + c)%C with C0 in H4 by lca.
        rewrite <- H4.
        lma. 
-       auto with wf_db.
 Qed.
     
 
@@ -254,10 +254,11 @@ Lemma form_basis_ver : forall {n} (v : Vector n) (x : nat),
   linearly_independent (form_basis v x) /\ get_vec x (form_basis v x) = v.
 Proof. intros.
        destruct n; try lia. split.
-       - apply (lin_indep_col_add_many_conv _ _ x _ (-C1 .* (make_row_zero x v))); try easy.
+       - apply (mat_prop_col_add_many_conv _ _ x (-C1 .* (make_row_zero x v))); 
+           try easy; auto with invr_db.
          unfold scale, make_row_zero. 
          bdestruct (x =? x); try lia; lca. 
-         apply (lin_indep_scale_conv _ x (/ (v x 0))).
+         apply (mat_prop_col_scale_conv _ _ x (/ (v x 0))); auto with invr_db.
          apply nonzero_div_nonzero; easy.
          assert (H' : forall A : Square (S n), A = I (S n) -> linearly_independent A).
          { intros. rewrite H3. 
@@ -342,7 +343,8 @@ Proof. intros.
          apply WF_col_swap; try lia; try easy.
          apply WF_form_basis; easy.
          split. 
-         + apply lin_indep_swap; try lia.
+         + apply_mat_prop lin_indep_swap_invr.  
+           apply H3; try lia.
            easy. 
          + rewrite col_swap_diff_order.
            rewrite <- (col_swap_get_vec _ 0 x).
@@ -461,8 +463,6 @@ Proof. intros.
        rewrite sqrt_0.
        easy. 
 Qed.
-
-
 
 
 Definition gram_schmidt_on_v (n m : nat) (v : Vector n) (S : Matrix n m) :=
@@ -616,17 +616,6 @@ Proof. intros.
 Qed.
 
 
-Lemma Cconj_simplify : forall (c1 c2 : C), c1^* = c2^* -> c1 = c2.
-Proof. intros. 
-       assert (H1 : c1 ^* ^* = c2 ^* ^*). { rewrite H; easy. }
-       do 2 rewrite Cconj_involutive in H1.   
-       easy. 
-Qed.
-
-
-
-
-
 
 Lemma get_vec_reduce_append_miss : forall {n m} (T : Matrix n (S m)) (v : Vector n) (i : nat),
   i < m -> get_vec i (col_append (reduce_col T m) v) = get_vec i T.
@@ -659,8 +648,6 @@ Proof. intros.
        rewrite H. bdestruct (y =? 0); easy.
        right. lia. 
 Qed.
-
-
 
 
 Lemma extend_onb_ind_step_part1 : forall {n m} (T : Matrix n (S m)),

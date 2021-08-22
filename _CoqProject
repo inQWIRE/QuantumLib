@@ -9,4 +9,5 @@ Polynomial.v
 Prelim.v
 Quantum.v
 RealAux.v
+VecSet.v
 
