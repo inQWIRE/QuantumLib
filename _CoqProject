@@ -1,5 +1,6 @@
 -R . Top
 
+<<<<<<< HEAD
 Ancilla.v
 Complex.v
 Composition.v
@@ -22,3 +23,17 @@ SemanticLib.v
 Symmetric.v
 TypeChecking.v
 UnitarySemantics.v
+=======
+Complex.v
+Eigenvectors.v
+Heisenberg.v
+Matrix.v
+Monad.v
+Monoid.v
+Polynomial.v
+Prelim.v
+Quantum.v
+RealAux.v
+Types.v
+
+>>>>>>> Heisenberg-Foundations/main
