@@ -1,6 +1,7 @@
 -R . Top
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Ancilla.v
 Complex.v
 Composition.v
@@ -27,6 +28,10 @@ UnitarySemantics.v
 Complex.v
 Eigenvectors.v
 Heisenberg.v
+=======
+Complex.v
+Eigenvectors.v
+>>>>>>> QuantumLib/main
 Matrix.v
 Monad.v
 Monoid.v
@@ -34,6 +39,11 @@ Polynomial.v
 Prelim.v
 Quantum.v
 RealAux.v
+<<<<<<< HEAD
 Types.v
 
 >>>>>>> Heisenberg-Foundations/main
+=======
+VecSet.v
+
+>>>>>>> QuantumLib/main

@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # QWIRE
 
 This is a Coq implementation of the QWIRE quantum programming language, described in the following papers by Jennifer Paykin, Robert Rand, Dong-Ho Lee and Steve Zdancewic:
@@ -72,3 +73,6 @@ Files in this repository
 # Heisenberg-Foundations
 The basics of the Heisenberg representation of quantum computing
 >>>>>>> Heisenberg-Foundations/main
+=======
+# QuantumLib
+>>>>>>> QuantumLib/main
