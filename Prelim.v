@@ -12,7 +12,6 @@ Export ListNotations.
 
 Lemma easy_sub : forall (n : nat), S n - 1 = n. Proof. lia. Qed.
 
-
 Lemma easy_sub3 : forall (n k : nat), n <> 0 -> n + k - 0 - 1 = n - 0 - 1 + k. 
 Proof. intros. 
        destruct n as [| n].
@@ -23,77 +22,6 @@ Qed.
 Lemma easy_sub6 : forall (a c b : nat), 
   b < c -> a < b -> c = (a + S (b - a) + (c - b - 1)).
 Proof. intros. lia. Qed.
-
-
-
-
-Lemma easy_pow : forall (a n m : nat), a^(n + m) = a^n * a^m.
-Proof. intros. induction n as [| n'].
-       - simpl. nia.
-       - simpl. rewrite IHn'. nia.
-Qed.
-Lemma easy_pow2 : forall (a p : nat), p <> 0 -> a^p = a * a ^ (p - 0 - 1). 
-Proof. intros. destruct p as [| p']. easy. simpl. 
-       rewrite Nat.sub_0_r.  easy.
-Qed.
-Lemma easy_pow3 : forall (n m : nat), m < n -> 2^n = (2^m) * 2 * 2^(n - m - 1).
-Proof. intros. 
-       assert (H' : 2^m * 2 = 2^(m + 1)). 
-       { rewrite easy_pow. reflexivity. } 
-       rewrite H'. 
-       rewrite <- easy_pow.
-       assert (H'' : m < n -> m + 1 + (n - m - 1) = n).
-       { nia. }
-       rewrite H''. 
-       reflexivity.
-       assumption. 
-Qed.
-Lemma easy_pow4 : forall (n : nat), (0 >= 2^n) -> False. 
-Proof. intros. induction n as [| n'].
-       - simpl in *. nia.
-       - simpl in *. 
-         assert (H' : forall (a : nat), a + 0 = a). { nia. }
-         rewrite H' in H.
-         assert (H'' : forall (a : nat), a + a >= a). { nia. }
-         apply IHn'.
-         nia. 
-Qed.
-Lemma easy_pow5 : forall (a b c : nat), 
-  b < c -> a < b ->
-  2^c = (2^a * (2^(b - a) + (2^(b - a) + 0))) * 2^(c - b - 1).
-Proof. intros.
-       assert (H' : forall n, 2^n + (2^n + 0) = 2^(S n)).
-       { reflexivity. } 
-       rewrite H'.
-       do 2 (rewrite <- easy_pow).  
-       rewrite <- (easy_sub6 a c b); try easy.
-Qed.
-Lemma easy_pow5' : forall (a b c : nat), 
-  b < c ->  a < b ->
-  2^c = (2^a * (2^(b - a) * 2)) * 2^(c - b - 1).
-Proof. intros.
-       assert (H' : 2 ^ (b - a) * 2 = 2 ^ (b - a) * 2^1).
-       { reflexivity. } 
-       rewrite H'.
-       do 3 (rewrite <- easy_pow).
-       assert (H'' : b - a + 1 = S (b - a)). { nia. }
-       rewrite H''.
-       rewrite <- (easy_sub6 a c b); try easy.
-Qed.
-Lemma easy_pow6 : forall (n : nat), n <> 0 -> 2*2^n = (2*2^(n-1))*2. 
-Proof. destruct n.
-       - easy.
-       - intros. 
-         simpl.  
-         replace (n - 0) with n by lia. 
-         nia. 
-Qed.
-
-Lemma easy_pow6' : forall (n : nat), n <> 0 -> (2^n)*2 = (2*2^(n-1))*2. 
-Proof. intros. rewrite mult_comm.
-       apply easy_pow6; easy.
-Qed.
-
 
 
 (* Boolean notations, lemmas *)
@@ -805,14 +733,13 @@ Qed.
 
 
 
-
 Lemma length_change : forall {X : Type} (A B : list X) (x : X),
   2 ^ (length (A ++ [x] ++ B)) = (2 ^ (length A)) * (2 * (2 ^ (length B))).
 Proof. intros. 
        do 2 (rewrite app_length).
-       simpl. 
-       rewrite easy_pow.
-       reflexivity. 
+       simpl length.
+       rewrite Nat.pow_add_r.
+       easy.
 Qed.
 
 

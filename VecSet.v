@@ -1,6 +1,6 @@
 Require Import Psatz.  
 Require Import Reals.
- 
+  
 Require Export Matrix.
 
 
@@ -70,8 +70,7 @@ Lemma reduce_mul_0 : forall {n} (A : Square (S n)) (v : Vector (S n)),
   get_vec 0 A = @e_i (S n) 0 -> (reduce A 0 0) × (reduce_row v 0) = reduce_row (A × v) 0.
 Proof. intros. 
        prep_matrix_equality. 
-       unfold Mmult, reduce, reduce_row.
-       rewrite easy_sub. 
+       unfold Mmult, reduce, reduce_row. 
        bdestruct (x <? 0); try lia.  
        rewrite <- Csum_extend_l.
        assert (H' : A (1 + x) 0 = C0).
@@ -101,7 +100,6 @@ Proof. intros.
            easy. }
          rewrite H''. rewrite Cmult_0_l. 
          rewrite Cplus_0_r.
-         rewrite easy_sub.
          apply Csum_eq_bounded. 
          intros. bdestruct (x0 <? n); try lia; try easy.
        - rewrite <- Csum_extend_r.
@@ -112,7 +110,6 @@ Proof. intros.
            easy. }
          rewrite H''. rewrite Cmult_0_l. 
          rewrite Cplus_0_r.
-         rewrite easy_sub.
          apply Csum_eq_bounded. 
          intros.
          bdestruct (x0 <? n); try lia; try easy.
@@ -610,18 +607,19 @@ Fixpoint Determinant (n : nat) (A : Square n) : C :=
   | S n' => (Csum (fun i => (parity i) * (A i 0) * (Determinant n' (reduce A i 0)))%C n)
   end.
 
+Arguments Determinant {n}.
 
 Lemma Det_simplify : forall {n} (A : Square (S (S n))),
-  Determinant (S (S n)) A =  
-  (Csum (fun i => (parity i) * (A i 0) * (Determinant (S n) (reduce A i 0)))%C (S (S n))).
+  Determinant A =  
+  (Csum (fun i => (parity i) * (A i 0) * (Determinant (reduce A i 0)))%C (S (S n))).
 Proof. intros. easy. Qed.
 
 
 Lemma Det_simplify_fun : forall {n} (A : Square (S (S (S n)))),
-  (fun i : nat => parity i * A i 0 * Determinant (S (S n)) (reduce A i 0))%C =
+  (fun i : nat => parity i * A i 0 * Determinant (reduce A i 0))%C =
   (fun i : nat => (Csum (fun j => 
            (parity i) * (A i 0) * (parity j) * ((reduce A i 0) j 0) * 
-           (Determinant (S n) (reduce (reduce A i 0) j 0)))%C (S (S n))))%C.
+           (Determinant (reduce (reduce A i 0) j 0)))%C (S (S n))))%C.
 Proof. intros. 
        apply functional_extensionality; intros. 
        rewrite Det_simplify. 
@@ -635,7 +633,6 @@ Lemma reduce_I : forall (n : nat), reduce (I (S n)) 0 0 = I n.
 Proof. intros.
        apply mat_equiv_eq.
        apply WF_reduce; try lia; auto with wf_db.
-       rewrite easy_sub.
        apply WF_I.
        unfold mat_equiv; intros.
        unfold reduce, I.
@@ -643,7 +640,7 @@ Proof. intros.
        easy. 
 Qed.       
 
-Lemma Det_I : forall (n : nat), Determinant n (I n) = C1.
+Lemma Det_I : forall (n : nat), Determinant (I n) = C1.
 Proof. intros.
        induction n as [| n'].
        - easy.
@@ -661,7 +658,7 @@ Proof. intros.
 Qed.
 
 Lemma Det_make_WF : forall (n : nat) (A : Square n),
-  Determinant n A = Determinant n (make_WF A).
+  Determinant A = Determinant (make_WF A).
 Proof. induction n as [| n'].  
        - easy. 
        - intros. 
@@ -678,7 +675,7 @@ Proof. induction n as [| n'].
 Qed.
 
 Lemma Det_Mmult_make_WF_l : forall (n : nat) (A B : Square n),
-  Determinant n (A × B) = Determinant n (make_WF A × B).
+  Determinant (A × B) = Determinant (make_WF A × B).
 Proof. intros. 
        rewrite Det_make_WF, (Det_make_WF _ (make_WF A × B)).
        do 2 rewrite <- Mmult_make_WF.
@@ -686,7 +683,7 @@ Proof. intros.
 Qed.
 
 Lemma Det_Mmult_make_WF_r : forall (n : nat) (A B : Square n),
-  Determinant n (A × B) = Determinant n (A × (make_WF B)).
+  Determinant (A × B) = Determinant (A × (make_WF B)).
 Proof. intros. 
        rewrite Det_make_WF, (Det_make_WF _ (A × make_WF B)).
        do 2 rewrite <- Mmult_make_WF.
@@ -694,7 +691,7 @@ Proof. intros.
 Qed.
 
 Lemma Det_Mmult_make_WF : forall (n : nat) (A B : Square n),
-  Determinant n (A × B) = Determinant n ((make_WF A) × (make_WF B)).
+  Determinant (A × B) = Determinant ((make_WF A) × (make_WF B)).
 Proof. intros. 
        rewrite <- Det_Mmult_make_WF_r, <- Det_Mmult_make_WF_l; easy. 
 Qed.
@@ -711,12 +708,12 @@ Definition M22 : Square 2 :=
   end.
 
 
-Lemma Det_M22 : (Determinant 2 M22) = (Copp (3%R,0%R))%C.
+Lemma Det_M22 : (Determinant M22) = (Copp (3%R,0%R))%C.
 Proof. lca. Qed.
 
 
 Lemma Determinant_scale : forall {n} (A : Square n) (c : C) (col : nat),
-  col < n -> Determinant n (col_scale A col c) = (c * Determinant n A)%C.
+  col < n -> Determinant (col_scale A col c) = (c * Determinant A)%C.
 Proof. induction n.
        + intros. easy.
        + intros. simpl.  
@@ -751,9 +748,9 @@ Qed.
 
 (* some helper lemmas *)
 Lemma Det_diff_1 : forall {n} (A : Square (S (S (S n)))),
-  Determinant (S (S (S n))) (col_swap A 0 1) = 
+  Determinant (col_swap A 0 1) = 
   Csum (fun i => (Csum (fun j => ((A i 1) * (A (skip_count i j) 0) * (parity i) * (parity j) * 
-                             Determinant (S n) (reduce (reduce A i 0) j 0))%C)  
+                             Determinant (reduce (reduce A i 0) j 0))%C)  
                              (S (S n)))) (S (S (S n))).
 Proof. intros. 
        rewrite Det_simplify.
@@ -761,18 +758,18 @@ Proof. intros.
        apply Csum_eq_bounded; intros. 
        apply Csum_eq_bounded; intros. 
        replace (col_swap A 0 1 x 0) with (A x 1) by easy. 
-       assert (H' : @reduce (S (S (S n))) (col_swap A 0 1) x 0 x0 0 = A (skip_count x x0) 0).
+       assert (H' : @reduce (S (S n)) (col_swap A 0 1) x 0 x0 0 = A (skip_count x x0) 0).
        { unfold reduce, col_swap, skip_count. 
          simpl. bdestruct (x0 <? x); try easy. } 
-       rewrite H'. 
-       repeat rewrite easy_sub in *.
+       rewrite H'.    
        apply Cmult_simplify; try easy. 
        lca. 
 Qed.
+
 Lemma Det_diff_2 : forall {n} (A : Square (S (S (S n)))),
-  Determinant (S (S (S n))) A = 
+  Determinant A = 
   Csum (fun i => (Csum (fun j => ((A i 0) * (A (skip_count i j) 1) * (parity i) * (parity j) * 
-                             Determinant (S n) (reduce (reduce A i 0) j 0))%C)  
+                             Determinant (reduce (reduce A i 0) j 0))%C)  
                              (S (S n)))) (S (S (S n))).
 Proof. intros. 
        rewrite Det_simplify.
@@ -780,17 +777,16 @@ Proof. intros.
        apply Csum_eq_bounded; intros. 
        apply Csum_eq_bounded; intros. 
        apply Cmult_simplify; try easy. 
-       assert (H' : @reduce (S (S (S n))) A x 0 x0 0 = A (skip_count x x0) 1).
+       assert (H' : @reduce (S (S n)) A x 0 x0 0 = A (skip_count x x0) 1).
        { unfold reduce, col_swap, skip_count. 
          simpl. bdestruct (x0 <? x); try easy. } 
        rewrite H'. 
-       repeat rewrite easy_sub in *.
        lca. 
 Qed.
   
 
 Lemma Determinant_swap_01 : forall {n} (A : Square n),
-  1 < n -> Determinant n (col_swap A 0 1) = (-C1 * (Determinant n A))%C.
+  1 < n -> Determinant (col_swap A 0 1) = (-C1 * (Determinant A))%C.
 Proof. intros.
        destruct n; try lia.
        destruct n; try lia. 
@@ -815,7 +811,7 @@ Proof. intros.
 Qed.
 
 Lemma Determinant_swap_adj : forall {n} (A : Square n) (i : nat),
-  S i < n -> Determinant n (col_swap A i (S i)) = (-C1 * (Determinant n A))%C.
+  S i < n -> Determinant (col_swap A i (S i)) = (-C1 * (Determinant A))%C.
 Proof. induction n as [| n'].
        - easy.
        - intros. 
@@ -833,7 +829,7 @@ Qed.
 
 
 Lemma Determinant_swap_ik : forall {n} (k i : nat) (A : Square n),
-  i + (S k) < n -> Determinant n (col_swap A i (i + (S k))) = (-C1 * (Determinant n A))%C.
+  i + (S k) < n -> Determinant (col_swap A i (i + (S k))) = (-C1 * (Determinant A))%C.
 Proof. induction k as [| k'].
        - intros. 
          replace (i + 1) with (S i) by lia. 
@@ -849,7 +845,7 @@ Qed.
 
 Lemma Determinant_swap : forall {n} (A : Square n) (i j : nat),
   i < n -> j < n -> i <> j ->
-  Determinant n (col_swap A i j) = (-C1 * (Determinant n A))%C.
+  Determinant (col_swap A i j) = (-C1 * (Determinant A))%C.
 Proof. intros. 
        bdestruct (i <? j); bdestruct (j <? i); try lia. 
        - replace j with (i + (S (j - i - 1))) by lia. 
@@ -861,7 +857,7 @@ Qed.
 
 
 Lemma col_0_Det_0 : forall {n} (A : Square n),
-  (exists i, i < n /\ get_vec i A = Zero) -> Determinant n A = C0.
+  (exists i, i < n /\ get_vec i A = Zero) -> Determinant A = C0.
 Proof. intros n A [i [H H0]].
        destruct n; try easy.
        destruct n.
@@ -887,7 +883,7 @@ Qed.
 Lemma col_same_Det_0 : forall {n} (A : Square n) (i j : nat),
   i < n -> j < n -> i <> j -> 
   get_vec i A = get_vec j A ->
-  Determinant n A = C0.
+  Determinant A = C0.
 Proof. intros. 
        apply eq_neg_implies_0.
        rewrite <- (Determinant_swap _ i j); try easy.
@@ -904,7 +900,7 @@ Qed.
 Lemma col_scale_same_Det_0 : forall {n} (A : Square n) (i j : nat) (c : C),
   i < n -> j < n -> i <> j -> 
   get_vec i A = c .* (get_vec j A) ->
-  Determinant n A = C0.
+  Determinant A = C0.
 Proof. intros. 
        destruct (Ceq_dec c C0).
        - apply col_0_Det_0.
@@ -914,7 +910,7 @@ Proof. intros.
          apply Mscale_0_l.
        - rewrite (col_scale_inv A j c); try easy.
          rewrite Determinant_scale; try easy.
-         assert (H3 : Determinant n (col_scale A j c) = C0).
+         assert (H3 : Determinant (col_scale A j c) = C0).
          { apply (col_same_Det_0 _ i j); try easy.
            prep_matrix_equality.
            unfold get_vec, col_scale. 
@@ -931,8 +927,8 @@ Qed.
 
 
 Lemma Det_col_add_comm : forall {n} (T : Matrix (S n) n) (v1 v2 : Vector (S n)),
-  (Determinant (S n) (col_wedge T v1 0) + Determinant (S n) (col_wedge T v2 0) = 
-   Determinant (S n) (col_wedge T (v1 .+ v2) 0))%C.
+  (Determinant (col_wedge T v1 0) + Determinant (col_wedge T v2 0) = 
+   Determinant (col_wedge T (v1 .+ v2) 0))%C.
 Proof. intros. 
        destruct n; try easy.
        do 3 rewrite Det_simplify.
@@ -948,32 +944,31 @@ Qed.
 
 
 Lemma Determinant_col_add0i : forall {n} (A : Square n) (i : nat) (c : C),
-  i < n -> i <> 0 -> Determinant n (col_add A 0 i c) = Determinant n A.     
+  i < n -> i <> 0 -> Determinant (col_add A 0 i c) = Determinant A.     
 Proof. intros. 
        destruct n; try easy.
        rewrite col_add_split.
        assert (H' := (@Det_col_add_comm n (reduce_col A 0) (get_vec 0 A) (c .* get_vec i A))).
-       rewrite easy_sub in *.
        rewrite <- H'.
-       replace (Determinant (S n) A) with (Determinant (S n) A + C0)%C by lca. 
+       rewrite <- Cplus_0_r.
        apply Cplus_simplify. 
        assert (H1 : col_wedge (reduce_col A 0) (get_vec 0 A) 0 = A).
        { prep_matrix_equality.
          unfold col_wedge, reduce_col, get_vec. 
          destruct y; try easy; simpl.  
          replace (y - 0) with y by lia; easy. }
-       rewrite easy_sub, H1 in *; easy.
+       rewrite H1; easy.
        apply (col_scale_same_Det_0 _ 0 i c); try lia.
        prep_matrix_equality. 
        unfold get_vec, col_wedge, reduce_col, scale; simpl. 
-       bdestruct (y =? 0); bdestruct (i =? 0); try lca; try lia. 
+       bdestruct (y =? 0); bdestruct (i =? 0); try lca; try lia.
        replace (S (i - 1)) with i by lia. 
        easy. 
 Qed.
 
 
 Lemma Determinant_col_add : forall {n} (A : Square n) (i j : nat) (c : C),
-  i < n -> j < n -> i <> j -> Determinant n (col_add A i j c) = Determinant n A.     
+  i < n -> j < n -> i <> j -> Determinant (col_add A i j c) = Determinant A.     
 Proof. intros. 
        destruct j.
        - rewrite <- col_swap_col_add_0.
@@ -993,14 +988,14 @@ Proof. intros.
 Qed.
 
 (* We can now define some invariants for Determinant *)
-Definition det_neq_0 (n m : nat) (A : Matrix n m) : Prop :=
-  n = m /\ Determinant n A <> C0.
+Definition det_neq_0 {n m : nat} (A : Matrix n m) : Prop :=
+  n = m /\ @Determinant n A <> C0.
 
-Definition det_eq_c (c : C) (n m : nat) (A : Matrix n m) : Prop :=
-  n = m /\ Determinant n A = c.
+Definition det_eq_c (c : C) {n m : nat} (A : Matrix n m) : Prop :=
+  n = m /\ @Determinant n A = c.
 
 
-Lemma det_neq_0_swap_invr : invr_col_swap (det_neq_0).
+Lemma det_neq_0_swap_invr : invr_col_swap (@det_neq_0).
 Proof. apply invr_swap; intros.  
        destruct H1; subst. 
        split; auto.
@@ -1016,7 +1011,7 @@ Proof. apply invr_swap; intros.
          lca. 
 Qed.
 
-Lemma det_neq_0_scale_invr : invr_col_scale (det_neq_0).
+Lemma det_neq_0_scale_invr : invr_col_scale (@det_neq_0).
 Proof. apply invr_scale; intros.  
        destruct H0; subst. 
        split; auto.
@@ -1031,7 +1026,7 @@ Proof. apply invr_scale; intros.
          rewrite <- H'; easy. 
 Qed.
 
-Lemma det_neq_0_add_invr : invr_col_add (det_neq_0).
+Lemma det_neq_0_add_invr : invr_col_add (@det_neq_0).
 Proof. apply invr_add; intros.  
        destruct H2; subst. 
        split; auto. 
@@ -1039,7 +1034,7 @@ Proof. apply invr_add; intros.
 Qed.
 
 
-Lemma det_neq_0_pad_invr : invr_pad (det_neq_0).  
+Lemma det_neq_0_pad_invr : invr_pad (@det_neq_0).  
 Proof. apply invr_p; intros. 
        destruct H0; apply eq_add_S in H0; subst. 
        split; auto. 
@@ -1055,7 +1050,7 @@ Proof. apply invr_p; intros.
            lca. 
 Qed.
 
-Lemma det_neq_0_pzf : prop_zero_false (det_neq_0).  
+Lemma det_neq_0_pzf : prop_zero_false (@det_neq_0).  
 Proof. apply PZF; intros.
        unfold not; intros. 
        destruct H0; subst. 
@@ -1063,7 +1058,7 @@ Proof. apply PZF; intros.
        easy. 
 Qed.
 
-Lemma det_0_swap_invr : invr_col_swap (det_eq_c C0).
+Lemma det_0_swap_invr : invr_col_swap (@det_eq_c C0).
 Proof. apply invr_swap; intros.  
        unfold det_eq_c in *; destruct H1; subst. 
        split; auto.
@@ -1074,7 +1069,7 @@ Proof. apply invr_swap; intros.
          rewrite H2; lca. 
 Qed.
 
-Lemma det_0_scale_invr : invr_col_scale (det_eq_c C0).
+Lemma det_0_scale_invr : invr_col_scale (@det_eq_c C0).
 Proof. apply invr_scale; intros. 
        unfold det_eq_c in *; destruct H0; subst. 
        split; auto.
@@ -1089,7 +1084,7 @@ Proof. apply invr_scale; intros.
          rewrite <- H'; easy. 
 Qed.
 
-Lemma det_c_add_invr : forall (c : C), invr_col_add (det_eq_c c).
+Lemma det_c_add_invr : forall (c : C), invr_col_add (@det_eq_c c).
 Proof. intros. 
        apply invr_add; intros.  
        unfold det_eq_c in *; destruct H2; subst. 
@@ -1097,7 +1092,7 @@ Proof. intros.
        apply Determinant_col_add; easy.
 Qed.
 
-Lemma det_0_pad_invr : invr_pad (det_eq_c C0).
+Lemma det_0_pad_invr : invr_pad (@det_eq_c C0).
 Proof. apply invr_p; intros. 
        destruct H0; apply eq_add_S in H0; subst. 
        split; auto. 
@@ -1108,8 +1103,8 @@ Proof. apply invr_p; intros.
          rewrite Cmult_1_r in H1. 
          easy.
        - rewrite Det_simplify in H1. 
-         assert (H' : (c * Determinant (S m) (reduce (pad T c) 0 0) = C0)%C).
-         { rewrite <- H1, (Csum_unique (c * Determinant (S m) (reduce (pad T c) 0 0))%C).  
+         assert (H' : (c * Determinant (reduce (pad T c) 0 0) = C0)%C).
+         { rewrite <- H1, (Csum_unique (c * Determinant (reduce (pad T c) 0 0))%C).  
            easy. 
            exists 0. split; try lia. 
            split. simpl parity. 
@@ -1120,7 +1115,7 @@ Proof. apply invr_p; intros.
            unfold pad, col_wedge, row_wedge, e_i, scale. 
            bdestruct_all; lca. }
          rewrite <- reduce_pad in H'.
-         destruct (Ceq_dec (Determinant (S m) T) C0); try easy. 
+         destruct (Ceq_dec (Determinant T) C0); try easy. 
          apply (Cmult_neq_0 c _) in n; easy. 
 Qed.
 
@@ -1130,9 +1125,9 @@ Hint Resolve det_neq_0_pzf det_0_swap_invr det_0_scale_invr det_c_add_invr det_0
 
 Lemma Determinant_col_add_many : forall (n col : nat) (A : Square n) (as' : Vector n),
   col < n -> as' col 0 = C0 -> 
-  Determinant n A = Determinant n (col_add_many col as' A).
+  Determinant A = Determinant (col_add_many col as' A).
 Proof. intros.
-       assert (H' := det_c_add_invr (Determinant n A)).
+       assert (H' := det_c_add_invr (Determinant A)).
        apply invr_col_add_col_add_many in H'. 
        inversion H'; subst. 
        apply (H1 n n col A as') in H; try easy.
@@ -1144,9 +1139,9 @@ Qed.
 Lemma Determinant_col_add_each : forall (n col : nat) (as' : Matrix 1 n) 
                                           (A : Square n),
   col < n -> WF_Matrix as' -> as' 0 col = C0 ->
-  Determinant n A = Determinant n (col_add_each col as' A).
+  Determinant A = Determinant (col_add_each col as' A).
 Proof. intros. 
-       assert (H' := det_c_add_invr (Determinant n A)).
+       assert (H' := det_c_add_invr (Determinant A)).
        apply invr_col_add_col_add_each in H'. 
        inversion H'; subst. 
        apply (H2 n n col A as') in H; try easy.
@@ -1247,18 +1242,16 @@ Proof. intros.
        intros. 
        assert (H' : row_append a Zero = Zero).
        { apply H.
-         rewrite easy_sub in *.
          apply WF_row_append; try easy.
          prep_matrix_equality. 
-         unfold Mmult, row_append, Zero. 
+         unfold Mmult, row_append, Zero.  
          rewrite <- Csum_extend_r. 
-         bdestruct (m =? S m - 1); try lia. 
+         bdestruct (m =? m); try lia. 
          autorewrite with C_db.
          assert (H' : (reduce_col A m × a) x y = C0).
          { rewrite H1; easy. }
          rewrite <- H'. 
          unfold Mmult. 
-         rewrite easy_sub.
          apply Csum_eq_bounded. 
          intros.
          unfold reduce_col.
@@ -1268,7 +1261,6 @@ Proof. intros.
        assert (H'' : row_append a Zero x y = C0). { rewrite H'. easy. }
        unfold Zero; simpl. rewrite <- H''. 
        unfold row_append.
-       rewrite easy_sub. 
        bdestruct (x =? m); try easy.
        unfold WF_Matrix in H0. 
        unfold Zero; simpl. 
@@ -1291,18 +1283,13 @@ Proof. induction m2 as [| m2'].
          apply Csum_eq_bounded.
          intros. 
          bdestruct (x0 <? m1); try lia; easy.
-       - intros. 
+       - intros.  
          assert (H1 := @lin_indep_col_reduce_n n (m1 + m2') (smash A1 A2)). 
-         assert (H' : (Init.Nat.add m1 (S m2')) = (S (Init.Nat.add m1 m2'))). { lia. }
-         rewrite H' in H.
+         rewrite <- plus_n_Sm in H.
          apply H1 in H.
-         assert (H1' : S (Nat.add m1 m2') = Nat.add m1 (S m2')). { lia. } 
-         rewrite H1' in H. 
          rewrite smash_reduce in H.
          apply (IHm2' m1 A1 (reduce_col A2 m2')).
-         rewrite easy_sub in *.
-         assert (H2' : (m1 + S m2' - 1) = m1 + m2'). { lia. }
-         rewrite H2' in *; easy.
+         easy.
 Qed.
 
 Lemma lin_dep_mult_r : forall {n m o} (A : Matrix n m) (B : Matrix m o),
@@ -1538,22 +1525,8 @@ Proof. intros.
        bdestruct (x <? S m).
        - split; try easy.
          exists ( (/ (a x 0)) .* (reduce_row a x)).
-         split. rewrite easy_sub.
-         apply WF_scale.
-         assert (H' := (@WF_reduce_row (S m) 1 x a)).
-         rewrite easy_sub in *.
-         apply H'; easy.
+         split; auto with wf_db. 
          apply mat_equiv_eq; auto with wf_db.
-         apply WF_mult.
-         assert (H' := (@WF_reduce_col n (S m) x T)).
-         rewrite easy_sub in *.
-         apply H'; try lia; try easy.
-         rewrite easy_sub in *.
-         apply WF_scale.
-         assert (H' := (@WF_reduce_row (S m) 1 x a)).
-         rewrite easy_sub in *.
-         apply H'; try lia; try easy.
-         rewrite easy_sub.
          rewrite Mscale_mult_dist_r.  
          unfold mat_equiv; intros. 
          unfold Mmult, scale.
@@ -1614,66 +1587,60 @@ Proof. intros.
        destruct H2 as [a [H3 [H4 H5]]]. 
        repeat rewrite easy_sub in *.
        exists (row_wedge a (@Zero 1 1) col).
+       split; auto with wf_db.
        split. 
-       - rewrite easy_sub in *.
-         auto with wf_db.
-       - split. 
-         + unfold not in *. 
-           intros. apply H4. 
-           prep_matrix_equality.
-           bdestruct (x <? col).
-           assert (H' : (row_wedge a Zero col) x y = C0 ).
-           { rewrite H2. easy. }
-           unfold row_wedge in *. 
-           bdestruct (x <? col); try lia. easy. 
-           assert (H' : (row_wedge a Zero col) (S x) y = C0 ).
-           { rewrite H2. easy. }
-           unfold row_wedge in *.
-           bdestruct (S x <? col); bdestruct (S x =? col); try lia. 
-           rewrite easy_sub in *; easy. 
-         + repeat rewrite easy_sub in *.
-           apply mat_equiv_eq; auto with wf_db.
-           apply WF_mult; auto with wf_db.
-           unfold mat_equiv; intros. 
-           assert (H' : (get_vec col T) i 0 = @e_i (S n) 0 i 0).
-           { rewrite H1. easy. }  
-           unfold col_add_each, make_col_zero, get_row, Mmult, Mplus, get_vec, 
-           scale, row_append, row_wedge.
-           destruct i.  
-           * unfold get_vec, e_i in H'; simpl in H'. 
-             rewrite H'. unfold Zero. 
-             apply Csum_0_bounded. 
-             intros; simpl.  
-             bdestruct (x =? col); bdestruct (x <? col); try lia; lca. 
-           * unfold get_vec, e_i in H'; simpl in H'. 
-             assert (H0' : (reduce_row (reduce_col T col) 0 × a) i j = @Zero (S n) 1 (S i) j).
-             repeat rewrite easy_sub in *; rewrite H5. easy.
-             rewrite <- H0'.
-             unfold Mmult, reduce_row, reduce_col.
-             repeat rewrite easy_sub in *.
-             assert (p : S m = col + (S m - col)). lia.
-             rewrite p.
-             rewrite Csum_sum.
-             assert (p1 : S m - col = S (m - col)). lia. 
-             rewrite p1. 
-             rewrite <- Csum_extend_l. 
-             simpl. bdestruct (col + 0 =? col); bdestruct (col + 0 <? col); try lia. 
-             assert (p2 : m = col + (m - col)). lia.
-             rewrite p2.
-             rewrite Csum_sum.
-             rewrite <- p2.
-             apply Cplus_simplify.
-             apply Csum_eq_bounded; intros. 
-             bdestruct (x <? col); bdestruct (x =? col); try lia.
-             rewrite H'. lca. 
-             rewrite <- Cplus_0_l.
-             apply Cplus_simplify; try lca.
-             apply Csum_eq_bounded; intros.
-             bdestruct (col + S x <? col); bdestruct (col + S x =? col); 
-               bdestruct (col + x <? col); try lia. 
-             assert (p4 : col + S x - 1 = col + x). lia. 
-             assert (p5 : S (col + x) = col + S x). lia.  
-             rewrite H', p4, p5. lca. 
+       + unfold not in *. 
+         intros. apply H4. 
+         prep_matrix_equality.
+         bdestruct (x <? col).
+         assert (H' : (row_wedge a Zero col) x y = C0 ).
+         { rewrite H2. easy. }
+         unfold row_wedge in *. 
+         bdestruct (x <? col); try lia. easy. 
+         assert (H' : (row_wedge a Zero col) (S x) y = C0 ).
+         { rewrite H2. easy. }
+         unfold row_wedge in *.
+         bdestruct (S x <? col); bdestruct (S x =? col); try lia. 
+         rewrite easy_sub in *; easy. 
+       + repeat rewrite easy_sub in *.
+         apply mat_equiv_eq; auto with wf_db.
+         apply WF_mult; auto with wf_db.
+         unfold mat_equiv; intros. 
+         assert (H' : (get_vec col T) i 0 = @e_i (S n) 0 i 0).
+         { rewrite H1. easy. }  
+         unfold col_add_each, make_col_zero, get_row, Mmult, Mplus, get_vec, 
+         scale, row_append, row_wedge.
+         destruct i.  
+         * unfold get_vec, e_i in H'; simpl in H'. 
+           rewrite H'. unfold Zero. 
+           apply Csum_0_bounded. 
+           intros; simpl.  
+           bdestruct (x =? col); bdestruct (x <? col); try lia; lca. 
+         * unfold get_vec, e_i in H'; simpl in H'. 
+           assert (H0' : (reduce_row (reduce_col T col) 0 × a) i j = @Zero (S n) 1 (S i) j).
+           repeat rewrite easy_sub in *; rewrite H5. easy.
+           rewrite <- H0'.
+           unfold Mmult, reduce_row, reduce_col.
+           repeat rewrite easy_sub in *.
+           assert (p : S m = col + (S m - col)). lia.
+           rewrite p, Csum_sum.
+           assert (p1 : S m - col = S (m - col)). lia. 
+           rewrite p1, <- Csum_extend_l. 
+           simpl. bdestruct (col + 0 =? col); bdestruct (col + 0 <? col); try lia. 
+           assert (p2 : m = col + (m - col)). lia.
+           rewrite p2, Csum_sum, <- p2.
+           apply Cplus_simplify.
+           apply Csum_eq_bounded; intros. 
+           bdestruct (x <? col); bdestruct (x =? col); try lia.
+           rewrite H'. lca. 
+           rewrite <- Cplus_0_l.
+           apply Cplus_simplify; try lca.
+           apply Csum_eq_bounded; intros.
+           bdestruct (col + S x <? col); bdestruct (col + S x =? col); 
+             bdestruct (col + x <? col); try lia. 
+           assert (p4 : col + S x - 1 = col + x). lia. 
+           assert (p5 : S (col + x) = col + S x). lia.  
+           rewrite H', p4, p5. lca. 
 Qed.             
              
 
@@ -1684,10 +1651,9 @@ Lemma gt_dim_lindep_ind_step2 : forall {n m} (T : Matrix (S n) (S m))
                      - C1 .* get_vec col (reduce_row T 0) -> 
   linearly_dependent (reduce_row (reduce_col T col) 0) -> linearly_dependent T.
 Proof. intros. 
-       assert (H' := @col_add_many_cancel n (S m) (reduce_row T 0) v col).
+       assert (H' := @col_add_many_cancel n m (reduce_row T 0) v col).
        assert (H0' : forall i : nat, @col_add_many n (S m) col v  (reduce_row T 0) i col = C0).
-       { repeat rewrite easy_sub in *; apply H'; try easy. }
-       repeat rewrite easy_sub in *.
+       { apply H'; try easy. }
        apply (mat_prop_col_add_many_conv _ _ col v); try easy.
        apply lin_dep_add_invr.
        destruct (Ceq_dec ((col_add_many col v T) 0 col) C0).
@@ -1726,12 +1692,11 @@ Proof. intros.
              do 2 rewrite Msum_Csum. 
              apply Csum_eq_bounded; intros. 
              bdestruct (i <? 0); try lia; easy. }
-           rewrite r. 
-           rewrite easy_sub in *. 
+           rewrite r.  
            rewrite (H0' i); lca. 
          + rewrite col_scale_reduce_col_same; try easy.
            rewrite col_add_many_reduce_col_same. 
-           repeat rewrite easy_sub in *. easy.
+           easy.
 Qed.
 
 Lemma gt_dim_lindep : forall {m n} (T : Matrix n m),
@@ -1756,33 +1721,19 @@ Proof. induction m as [| m'].
            { rewrite (reduce_append_split (reduce_row T 0)).
              assert (H'' := @lin_dep_col_append_n n' m' 
                                 (reduce_col (reduce_row T 0) m') (get_vec m' (reduce_row T 0))).
-             do 2 rewrite easy_sub in *.
              apply H''.
-             apply IHm'; try easy.
-             assert (H0' := (@WF_reduce_col n' (S m'))).
-             rewrite easy_sub in *.
-             apply H0'; try lia.
-             assert (H1' := (@WF_reduce_row (S n') (S m'))).
-             rewrite easy_sub in *.
-             apply H1'; try lia; easy. 
-             assert (H1' := (@WF_reduce_row (S n') (S m'))).
-             rewrite easy_sub in *.
-             apply H1'; try lia; easy. }
-           apply lin_dep_gen_elem in H'. 
+             apply IHm'; try easy; auto with wf_db.
+             apply WF_reduce_col. lia. 
+             all : apply WF_reduce_row; try lia; easy. }
+           apply lin_dep_gen_elem in H'; auto with wf_db.
            destruct H' as [i [H2 H3]].
            destruct H3 as [v [H3 H4]]. 
            * apply (gt_dim_lindep_ind_step2 _ (row_wedge v (@Zero 1 1) i) i); try easy.
              unfold row_wedge.
              bdestruct (i <? i); bdestruct (i =? i); try lia; easy.
-             rewrite row_wedge_reduce_row_same. 
-             repeat rewrite easy_sub in *; easy.
-             assert (H' := (IHm' n' (reduce_row (reduce_col T i) 0))).
-             repeat rewrite easy_sub in *.
-             apply H'; try lia. 
-             assert (H1' := (@WF_reduce_row (S n') m')).
-             rewrite easy_sub in *; apply H1'; try lia. 
-             assert (H2' := (@WF_reduce_col (S n') (S m'))).
-             rewrite easy_sub in *; apply H2'; try lia; easy. 
+             rewrite row_wedge_reduce_row_same; easy.
+             apply (IHm' n' (reduce_row (reduce_col T i) 0)); try lia. 
+             apply WF_reduce_row; try apply WF_reduce_col; try lia; easy. 
            * apply WF_reduce_row; try lia; easy.
 Qed.
 
@@ -1975,11 +1926,9 @@ Lemma mpr_step1_pzf_P : forall {n} (A : Square (S n)) (P : forall m o, Matrix m 
   WF_Matrix A -> P (S n) (S n) A ->
   (exists B : Square (S n), op_to_I B /\ P (S n) (S n) (A × B) /\
                        (exists i, i < (S n) /\ get_vec i (A × B) = e_i 0)).
-Proof. intros. 
+Proof. intros.  
        assert (H4 : WF_Matrix (reduce_row A 0)).
-       { assert (H1' := (@WF_reduce_row (S n) (S n))).
-         rewrite easy_sub in *.
-         apply H1'; try lia; easy. }
+       { apply WF_reduce_row; try lia; easy. } 
        assert (H5 : linearly_dependent (reduce_row A 0)).
        { apply gt_dim_lindep; try lia. 
          apply H4. }
@@ -1998,7 +1947,6 @@ Proof. intros.
          unfold row_wedge. 
          bdestruct (i <? i); bdestruct (i =? i); try lia; easy. 
          rewrite row_wedge_reduce_row_same. 
-         rewrite easy_sub in *.
          easy. 
          assert (H11: get_vec i (col_add_many i (row_wedge v Zero i) A) = Zero).
          { apply mat_equiv_eq; auto with wf_db.
@@ -2029,7 +1977,6 @@ Proof. intros.
          unfold row_wedge.  
          bdestruct (i <? i); bdestruct (i =? i); try lia; easy. 
          rewrite row_wedge_reduce_row_same. 
-         rewrite easy_sub in *.
          easy. 
          rewrite col_add_many_reduce_row in H11.                
          exists ((row_add_each i (row_wedge v Zero i) (I (S n))) × 
@@ -2079,9 +2026,7 @@ Lemma mrp_step1_pzt_P0 : forall {n} (A : Square (S n)) (P P0: forall m o, Matrix
                        (exists i, i < (S n) /\ get_vec i (A × B) = e_i 0)) \/ P0 (S n) (S n) A.
 Proof. intros. 
        assert (H5 : WF_Matrix (reduce_row A 0)).
-       { assert (H1' := (@WF_reduce_row (S n) (S n))).
-         rewrite easy_sub in *.
-         apply H1'; try lia; easy. }
+       { apply WF_reduce_row; try lia; easy. }
        assert (H6 : linearly_dependent (reduce_row A 0)).
        { apply gt_dim_lindep; try lia. 
          apply H5. }
@@ -2101,7 +2046,6 @@ Proof. intros.
          unfold row_wedge. 
          bdestruct (i <? i); bdestruct (i =? i); try lia; easy. 
          rewrite row_wedge_reduce_row_same. 
-         rewrite easy_sub in *.
          easy. 
          assert (H12: get_vec i (col_add_many i (row_wedge v Zero i) A) = Zero).
          { apply mat_equiv_eq; auto with wf_db.
@@ -2133,7 +2077,6 @@ Proof. intros.
          unfold row_wedge.  
          bdestruct (i <? i); bdestruct (i =? i); try lia; easy. 
          rewrite row_wedge_reduce_row_same. 
-         rewrite easy_sub in *.
          easy. 
          rewrite col_add_many_reduce_row in H12.                
          exists ((row_add_each i (row_wedge v Zero i) (I (S n))) × 
@@ -2456,7 +2399,7 @@ Proof. intros. split.
 Qed.
 
 Corollary lin_indep_det_neq_0 : forall {n} (A : Square n),
-  WF_Matrix A -> (linearly_independent A <-> det_neq_0 n n A).
+  WF_Matrix A -> (linearly_independent A <-> det_neq_0 A).
 Proof. intros. split.  
        - intros. 
          apply invr_P_equiv_otI in H0; auto with invr_db.      
@@ -2475,7 +2418,7 @@ Proof. intros. split.
 Qed.
 
 Corollary lin_dep_det_eq_0 : forall {n} (A : Square n), 
-  WF_Matrix A -> (linearly_dependent A <-> det_eq_c C0 n n A).
+  WF_Matrix A -> (linearly_dependent A <-> det_eq_c C0 A).
 Proof. induction n as [| n'].
        - intros. split; intros.
          destruct H0 as [v [H0 [H1 H2]]]. 
@@ -2491,11 +2434,11 @@ Proof. induction n as [| n'].
          split; intros.  
          + split; try easy. 
            apply lindep_implies_not_linindep in H0.
-           assert (H' : ~  (det_neq_0 (S n') (S n') A)).
+           assert (H' : ~  (det_neq_0 A)).
            unfold not; intros; apply H0.
            apply lin_indep_det_neq_0; auto. 
            unfold not in H'. 
-           destruct (Ceq_dec (Determinant (S n') A) C0); try easy. 
+           destruct (Ceq_dec (Determinant A) C0); try easy. 
            assert (H'' : False). apply H'.
            split; easy. 
            easy. 
@@ -2540,7 +2483,7 @@ Qed.
 Corollary lin_dep_indep_dec : forall {n} (A : Square n),
   WF_Matrix A -> { linearly_independent A } + { linearly_dependent A }. 
 Proof. intros. 
-       destruct (Ceq_dec (Determinant n A) C0).
+       destruct (Ceq_dec (Determinant A) C0).
        - right. 
          apply lin_dep_det_eq_0; auto. 
          split; easy. 
@@ -2554,7 +2497,7 @@ Qed.
 (*************************************************************************************)
 
 Definition Det_mult_comm_l (n m : nat) (A : Matrix n m) :=
-  n = m /\ (forall (B : Square n), (Determinant n B) * (Determinant n A) = (Determinant n (B × A)))%C.
+  n = m /\ (forall (B : Square n), (Determinant B) * (@Determinant n A) = (@Determinant n (B × A)))%C.
 
 
 Lemma Dmc_I : forall {n}, Det_mult_comm_l n n (I n).
@@ -2697,7 +2640,7 @@ Qed.
 
 Lemma Determinant_multiplicative_WF : forall {n} (A B : Square n), 
   WF_Matrix A -> WF_Matrix B -> 
-  (Determinant n A) * (Determinant n B) = Determinant n (A × B).
+  (Determinant A) * (Determinant B) = Determinant (A × B).
 Proof. intros. 
        destruct (lin_dep_indep_dec B); auto. 
        - apply invr_P_equiv_otI in l; auto with invr_db. 
@@ -2715,9 +2658,10 @@ Qed.
 
 
 Theorem Determinant_multiplicative : forall {n} (A B : Square n), 
-  (Determinant n A) * (Determinant n B) = Determinant n (A × B).
+  (Determinant A) * (Determinant B) = Determinant (A × B).
 Proof. intros. 
        rewrite Det_make_WF, (Det_make_WF _ B), Determinant_multiplicative_WF;
          auto with wf_db. 
        rewrite <- Det_Mmult_make_WF_l, <- Det_Mmult_make_WF_r; easy. 
 Qed.
+
