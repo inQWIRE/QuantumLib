@@ -1,3 +1,20 @@
+<<<<<<< HEAD
+*.glob
+*.aux
+*~
+*.vo
+*.vos
+*.vok
+extra/*
+*.bak
+*.v.d
+.lia.cache
+
+# Ignore coq_makefile-generated files
+.coqdeps.d
+CoqMakefile
+CoqMakefile.conf
+=======
 .*.aux
 .*.d
 *.a
@@ -31,3 +48,4 @@ lia.cache
 nia.cache
 nlia.cache
 nra.cache
+>>>>>>> QuantumLib/main

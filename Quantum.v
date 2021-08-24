@@ -1,12 +1,34 @@
+<<<<<<< HEAD
+<<<<<<< HEAD
+Require Import Psatz.
+=======
+Require Import Psatz. 
+>>>>>>> Heisenberg-Foundations/main
+Require Import Reals.
+
+Require Export Matrix.
+
+<<<<<<< HEAD
+(* TODO: Add S and T gates, split this into multiple files including one for gates. *)
+
+(* Using our (complex, unbounded) matrices, their complex numbers *)
+
+=======
+=======
 Require Import Psatz. 
 Require Import Reals.
 
 Require Export VecSet.
 
+>>>>>>> QuantumLib/main
 (* Using our (complex, unbounded) matrices, their complex numbers *)
 
 
 
+<<<<<<< HEAD
+>>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 (*******************************************)
 (** * Quantum basis states *)
 (*******************************************)
@@ -136,7 +158,32 @@ Definition σz : Matrix 2 2 :=
           | 1, 1 => -C1
           | _, _ => C0
           end.
+<<<<<<< HEAD
+<<<<<<< HEAD
+
+Definition sqrtx : Matrix 2 2 :=
+  fun x y => match x, y with
+          | 0, 0 => (1 + Ci)/2
+          | 0, 1 => (1 - Ci)/2
+          | 1, 0 => (1 - Ci)/2
+          | 1, 1 => (1 + Ci)/2
+          | _, _ => C0
+          end.
+
+Lemma sqrtx_sqrtx : sqrtx × sqrtx = σx.
+Proof.
+  unfold sqrtx, σx, Mmult.
+  prep_matrix_equality.
+  destruct_m_eq; 
+  autorewrite with trig_db C_db; try lca.
+Qed.
+
+=======
   
+>>>>>>> Heisenberg-Foundations/main
+=======
+  
+>>>>>>> QuantumLib/main
 Definition control {n : nat} (A : Matrix n n) : Matrix (2*n) (2*n) :=
   fun x y => if (x <? n) && (y =? x) then 1 else 
           if (n <=? x) && (n <=? y) then A (x-n)%nat (y-n)%nat else 0.
@@ -253,12 +300,15 @@ Definition y_rotation  (θ : R) : Matrix 2 2 :=
           end.
  *)
 
+<<<<<<< HEAD
+=======
 
 Definition Sgate : Matrix 2 2 := phase_shift (PI / 2).
 
 Definition Tgate :=  phase_shift (PI / 4).
 
 
+>>>>>>> QuantumLib/main
 Lemma x_rotation_pi : x_rotation PI = -Ci .* σx.
 Proof.
   unfold σx, x_rotation, scale.
@@ -326,6 +376,14 @@ Proof.
   lra.
 Qed.
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+(* sqrtx as a (x-)rotation? *)
+
+=======
+>>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 Lemma Rx_rotation : forall θ, rotation θ (3*PI/2) (PI/2) = x_rotation θ.
 Proof.
   intros.
@@ -374,6 +432,18 @@ Qed.
 
 (* Lemmas *)
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+Lemma sqrtx_decompose: sqrtx = hadamard × phase_shift (PI/2) × hadamard.
+Proof.
+  solve_matrix.
+  all: rewrite Cexp_PI2; group_radicals; lca.
+Qed.
+
+=======
+>>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 (* Additional tactics for ∣0⟩, ∣1⟩, cnot and σx. *)
 
 Lemma Mmult00 : ⟨0∣ × ∣0⟩ = I 1. Proof. solve_matrix. Qed.
@@ -539,6 +609,11 @@ Lemma WF_qubit0 : WF_Matrix ∣0⟩. Proof. show_wf. Qed.
 Lemma WF_qubit1 : WF_Matrix ∣1⟩. Proof. show_wf. Qed.
 Lemma WF_braqubit0 : WF_Matrix ∣0⟩⟨0∣. Proof. show_wf. Qed.
 Lemma WF_braqubit1 : WF_Matrix ∣1⟩⟨1∣. Proof. show_wf. Qed.
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> QuantumLib/main
 
 Lemma WF_bra : forall (x : nat), WF_Matrix (bra x).
 Proof. intros x. unfold bra. destruct (x =? 0). show_wf. show_wf. 
@@ -548,6 +623,10 @@ Lemma WF_ket : forall (x : nat), WF_Matrix (ket x).
 Proof. intros x. unfold ket. destruct (x =? 0). show_wf. show_wf. 
 Qed. 
 
+<<<<<<< HEAD
+>>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 Lemma WF_bool_to_ket : forall b, WF_Matrix (bool_to_ket b). 
 Proof. destruct b; show_wf. Qed.
 Lemma WF_bool_to_matrix : forall b, WF_Matrix (bool_to_matrix b).
@@ -555,6 +634,17 @@ Proof. destruct b; show_wf. Qed.
 Lemma WF_bool_to_matrix' : forall b, WF_Matrix (bool_to_matrix' b).
 Proof. destruct b; show_wf. Qed.
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+Lemma WF_ket : forall n, WF_Matrix (ket n).
+Proof. destruct n; simpl; show_wf. Qed.
+Lemma WF_bra : forall n, WF_Matrix (bra n).
+Proof. destruct n; simpl; show_wf. Qed.
+
+=======
+>>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 Lemma WF_bools_to_matrix : forall l, 
   @WF_Matrix (2^(length l)) (2^(length l))  (bools_to_matrix l).
 Proof. 
@@ -565,23 +655,41 @@ Proof.
   apply IHl.
 Qed.
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+Hint Resolve WF_bra0 WF_bra1 WF_qubit0 WF_qubit1 WF_braqubit0 WF_braqubit1 : wf_db.
+Hint Resolve WF_bool_to_ket WF_bool_to_matrix WF_bool_to_matrix' : wf_db.
+Hint Resolve WF_ket WF_bra WF_bools_to_matrix : wf_db.
+=======
 Hint Resolve WF_bra0 WF_bra1 WF_qubit0 WF_qubit1 WF_bra WF_ket WF_braqubit0 WF_braqubit1 : wf_db.
 Hint Resolve WF_bool_to_ket WF_bool_to_matrix WF_bool_to_matrix' : wf_db.
 Hint Resolve WF_bools_to_matrix : wf_db.
+>>>>>>> Heisenberg-Foundations/main
+=======
+Hint Resolve WF_bra0 WF_bra1 WF_qubit0 WF_qubit1 WF_bra WF_ket WF_braqubit0 WF_braqubit1 : wf_db.
+Hint Resolve WF_bool_to_ket WF_bool_to_matrix WF_bool_to_matrix' : wf_db.
+Hint Resolve WF_bools_to_matrix : wf_db.
+>>>>>>> QuantumLib/main
 
 Lemma WF_hadamard : WF_Matrix hadamard. Proof. show_wf. Qed.
 Lemma WF_σx : WF_Matrix σx. Proof. show_wf. Qed.
 Lemma WF_σy : WF_Matrix σy. Proof. show_wf. Qed.
 Lemma WF_σz : WF_Matrix σz. Proof. show_wf. Qed.
 Lemma WF_cnot : WF_Matrix cnot. Proof. show_wf. Qed.
+<<<<<<< HEAD
+=======
 Lemma WF_notc : WF_Matrix notc. Proof. show_wf. Qed.
+>>>>>>> QuantumLib/main
 Lemma WF_swap : WF_Matrix swap. Proof. show_wf. Qed.
 
 Lemma WF_rotation : forall θ ϕ λ, WF_Matrix (rotation θ ϕ λ). Proof. intros. show_wf. Qed.
 Lemma WF_phase : forall ϕ, WF_Matrix (phase_shift ϕ). Proof. intros. show_wf. Qed.
 
+<<<<<<< HEAD
+=======
 Lemma WF_Sgate : WF_Matrix Sgate. Proof. show_wf. Qed.
 Lemma WF_Tgate: WF_Matrix Tgate. Proof. show_wf. Qed.
+>>>>>>> QuantumLib/main
 
 Lemma WF_control : forall (n : nat) (U : Matrix n n), 
       WF_Matrix U -> WF_Matrix (control U).
@@ -594,8 +702,13 @@ Proof.
   all: rewrite WFU; [reflexivity|lia].
 Qed.
 
+<<<<<<< HEAD
+Hint Resolve WF_hadamard WF_σx WF_σy WF_σz WF_cnot WF_swap WF_phase : wf_db.
+Hint Resolve WF_rotation : wf_db.
+=======
 Hint Resolve WF_hadamard WF_σx WF_σy WF_σz WF_cnot WF_notc WF_swap : wf_db.
 Hint Resolve WF_phase WF_Sgate WF_Tgate WF_rotation : wf_db.
+>>>>>>> QuantumLib/main
 
 Hint Extern 2 (WF_Matrix (phase_shift _)) => apply WF_phase : wf_db.
 Hint Extern 2 (WF_Matrix (control _)) => apply WF_control : wf_db.
@@ -754,9 +867,19 @@ Proof. intros. rewrite <- Rx_rotation. apply rotation_unitary. Qed.
 Lemma y_rotation_unitary : forall θ, @WF_Unitary 2 (y_rotation θ).
 Proof. intros. rewrite <- Ry_rotation. apply rotation_unitary. Qed.
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+Lemma control_unitary : forall n (A : Matrix n n), 
+=======
 (* caused errors so commenting out for now:
 
  Lemma control_unitary : forall n (A : Matrix n n), 
+>>>>>>> Heisenberg-Foundations/main
+=======
+(* caused errors so commenting out for now:
+
+ Lemma control_unitary : forall n (A : Matrix n n), 
+>>>>>>> QuantumLib/main
                           WF_Unitary A -> WF_Unitary (control A). 
 Proof.
   intros n A H.
@@ -765,11 +888,25 @@ Proof.
   unfold control, adjoint, Mmult, I.
   prep_matrix_equality.
   simpl.
+<<<<<<< HEAD
+<<<<<<< HEAD
+  bdestructΩ (x =? y).
+  - subst; simpl.
+    rewrite Csum_sum.
+    bdestructΩ (y <? n + (n + 0)).
+    + bdestructΩ (n <=? y).
+=======
+=======
+>>>>>>> QuantumLib/main
   bdestruct (x =? y).
   - subst; simpl.
     rewrite Csum_sum.
     bdestruct (y <? n + (n + 0)).
     + bdestruct (n <=? y).
+<<<<<<< HEAD
+>>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
       * rewrite Csum_0_bounded. Csimpl.
         rewrite (Csum_eq _ (fun x => A x (y - n)%nat ^* * A x (y - n)%nat)).
         ++ unfold control, adjoint, Mmult, I in U.
@@ -778,6 +915,20 @@ Proof.
            eapply (equal_f) in U. 
            rewrite U.
            rewrite Nat.eqb_refl. simpl.
+<<<<<<< HEAD
+<<<<<<< HEAD
+           bdestructΩ (y - n <? n).
+           easy.
+        ++ apply functional_extensionality. intros x.
+           bdestructΩ (n + x <? n).
+           bdestructΩ (n <=? n + x).
+           rewrite minus_plus.
+           easy.
+        ++ intros x L.
+           bdestructΩ (y =? x).
+=======
+=======
+>>>>>>> QuantumLib/main
            bdestruct (y - n <? n).
            easy.
         ++ apply functional_extensionality. intros x.
@@ -787,6 +938,10 @@ Proof.
            easy.
         ++ intros x L.
            bdestruct (y =? x).
+<<<<<<< HEAD
+>>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
            rewrite andb_false_r.
            bdestructΩ (n <=? x).
            simpl. lca.
@@ -795,7 +950,15 @@ Proof.
         ++ lca.
         ++ intros.
            rewrite andb_false_r.
+<<<<<<< HEAD
+<<<<<<< HEAD
+           bdestructΩ (n + x <? n).
+=======
            bdestruct (n + x <? n).
+>>>>>>> Heisenberg-Foundations/main
+=======
+           bdestruct (n + x <? n).
+>>>>>>> QuantumLib/main
            simpl.
            lca.
         ++ exists y.
@@ -806,7 +969,15 @@ Proof.
            bdestructΩ (y <? n).
            simpl. lca.
            intros x Ne.
+<<<<<<< HEAD
+<<<<<<< HEAD
+           bdestructΩ (y =? x ).
+=======
            bdestruct (y =? x ).
+>>>>>>> Heisenberg-Foundations/main
+=======
+           bdestruct (y =? x ).
+>>>>>>> QuantumLib/main
            repeat rewrite andb_false_r.
            lca.
     + rewrite 2 Csum_0_bounded; [lca| |].
@@ -882,7 +1053,15 @@ Proof.
         rewrite andb_false_r.
         rewrite (WF _ (y-n)%nat) by (right; lia).
         destruct ((n <=? z) && (n <=? y)); lca.
+<<<<<<< HEAD
+<<<<<<< HEAD
+Qed.
+=======
 Qed. *)
+>>>>>>> Heisenberg-Foundations/main
+=======
+Qed. *)
+>>>>>>> QuantumLib/main
 
 Lemma transpose_unitary : forall n (A : Matrix n n), WF_Unitary A -> WF_Unitary (A†).
 Proof.
@@ -892,11 +1071,25 @@ Proof.
   + destruct H; auto with wf_db.
   + unfold WF_Unitary in *.
     rewrite adjoint_involutive.
+<<<<<<< HEAD
+<<<<<<< HEAD
+    destruct H as [_ H].
+    apply Minv_left in H as [_ S]. (* NB: admitted lemma *)
+    assumption.
+Qed.
+
+=======
+=======
+>>>>>>> QuantumLib/main
     destruct H as [H H0].
     apply Minv_left in H0 as [_ S]; auto with wf_db.
 Qed.
 
 
+<<<<<<< HEAD
+>>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 Lemma cnot_unitary : WF_Unitary cnot.
 Proof.
   split. 
@@ -1213,12 +1406,28 @@ Inductive Mixed_State {n} : Matrix n n -> Prop :=
 | Pure_S : forall ρ, Pure_State ρ -> Mixed_State ρ
 | Mix_S : forall (p : R) ρ1 ρ2, 0 < p < 1 -> Mixed_State ρ1 -> Mixed_State ρ2 ->
                                        Mixed_State (p .* ρ1 .+ (1-p)%R .* ρ2).  
+<<<<<<< HEAD
+<<<<<<< HEAD
+
+=======
  
+>>>>>>> Heisenberg-Foundations/main
+=======
+ 
+>>>>>>> QuantumLib/main
 Lemma WF_Pure : forall {n} (ρ : Density n), Pure_State ρ -> WF_Matrix ρ.
 Proof. intros. destruct H as [φ [[WFφ IP1] Eρ]]. rewrite Eρ. auto with wf_db. Qed.
 Hint Resolve WF_Pure : wf_db.
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+Lemma WF_Mixed : forall {n} (ρ : Density n), Mixed_State ρ -> WF_Matrix ρ.
+=======
 Lemma WF_Mixed : forall {n} (ρ : Density n), Mixed_State ρ -> WF_Matrix ρ. 
+>>>>>>> Heisenberg-Foundations/main
+=======
+Lemma WF_Mixed : forall {n} (ρ : Density n), Mixed_State ρ -> WF_Matrix ρ. 
+>>>>>>> QuantumLib/main
 Proof. induction 1; auto with wf_db. Qed.
 Hint Resolve WF_Mixed : wf_db.
 
@@ -1233,11 +1442,22 @@ Proof. exists (I  1). split. split. auto with wf_db. solve_matrix. solve_matrix.
 
 Lemma pure_dim1 : forall (ρ : Square 1), Pure_State ρ -> ρ = I  1.
 Proof.
+<<<<<<< HEAD
+<<<<<<< HEAD
+  intros ρ [φ [[WFφ IP1] Eρ]]. 
+  apply Minv_flip in IP1.
+=======
+=======
+>>>>>>> QuantumLib/main
   intros. 
   assert (H' := H).
   apply WF_Pure in H'.
   destruct H as [φ [[WFφ IP1] Eρ]]. 
   apply Minv_flip in IP1; auto with wf_db.
+<<<<<<< HEAD
+>>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
   rewrite Eρ; easy.
 Qed.    
                               
@@ -1381,14 +1601,32 @@ Proof.
   + apply pure_dim1; trivial.
   + rewrite IHMixed_State1, IHMixed_State2.
     prep_matrix_equality.
+<<<<<<< HEAD
+<<<<<<< HEAD
+    lca.
+Qed.  
+=======
     lca. 
 Qed.
+>>>>>>> Heisenberg-Foundations/main
+=======
+    lca. 
+Qed.
+>>>>>>> QuantumLib/main
 
 (* Useful to be able to normalize vectors *)
 
 Definition norm {n} (ψ : Vector n) : R :=
   sqrt (fst ((ψ† × ψ) O O)).
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+Definition normalize {n} (ψ : Vector n) :=
+  / (norm ψ) .* ψ.
+
+=======
+=======
+>>>>>>> QuantumLib/main
 
 
 Lemma norm_real : forall {n} (v : Vector n), snd ((v† × v) 0%nat 0%nat) = 0%R. 
@@ -1405,6 +1643,10 @@ Definition normalize {n} (ψ : Vector n) :=
   / (norm ψ) .* ψ.
 
 
+<<<<<<< HEAD
+>>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 Lemma inner_product_ge_0 : forall {d} (ψ : Vector d),
   0 <= fst ((ψ† × ψ) O O).
 Proof.
@@ -1418,7 +1660,14 @@ Proof.
   apply Rmult_le_pos; apply Cmod_ge_0.
 Qed.
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
 
+>>>>>>> Heisenberg-Foundations/main
+=======
+
+>>>>>>> QuantumLib/main
 Lemma norm_scale : forall {n} c (v : Vector n), norm (c .* v) = ((Cmod c) * norm v)%R.
 Proof.
   intros n c v.
@@ -1437,6 +1686,11 @@ Proof.
   lra.
 Qed.
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> QuantumLib/main
 
 Lemma div_real : forall (c : C),
   snd c = 0 -> snd (/ c) = 0.
@@ -1496,6 +1750,10 @@ Proof. intros.
 Qed.
 
 
+<<<<<<< HEAD
+>>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 (** Density matrices and superoperators **)
 
 Definition Superoperator m n := Density m -> Density n.
@@ -1707,6 +1965,20 @@ Proof.
   simpl.
   rewrite Mmult_assoc.
   repeat rewrite Mmult_assoc.
+<<<<<<< HEAD
+<<<<<<< HEAD
+  rewrite (kron_assoc q0 q1) by auto with wf_db. Qsimpl.
+  replace 4%nat with (2*2)%nat by reflexivity.
+  repeat rewrite kron_assoc by auto with wf_db.
+  restore_dims.
+  rewrite <- (kron_assoc q0 q2) by auto with wf_db. Qsimpl.
+  rewrite (kron_assoc q2) by auto with wf_db. Qsimpl.
+  rewrite <- kron_assoc by auto with wf_db. Qsimpl.
+  repeat rewrite <- kron_assoc by auto with wf_db.
+  reflexivity.
+=======
+=======
+>>>>>>> QuantumLib/main
   rewrite (kron_assoc q0 q1). Qsimpl.
   replace 4%nat with (2*2)%nat by reflexivity.
   repeat rewrite kron_assoc.
@@ -1717,6 +1989,10 @@ Proof.
   repeat rewrite <- kron_assoc.
   reflexivity.
   all : auto with wf_db.
+<<<<<<< HEAD
+>>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 Qed.
 
 Lemma swap_two_base : swap_two 2 1 0 = swap.
@@ -1762,17 +2038,39 @@ Proof.
   intros q0 q1 q2 q3 WF0 WF1 WF2 WF3.
   unfold move_to_0, move_to_0_aux.
   repeat rewrite Mmult_assoc.
+<<<<<<< HEAD
+<<<<<<< HEAD
+  rewrite (kron_assoc q0 q1) by auto with wf_db.
+=======
   rewrite (kron_assoc q0 q1).
+>>>>>>> Heisenberg-Foundations/main
+=======
+  rewrite (kron_assoc q0 q1).
+>>>>>>> QuantumLib/main
   simpl.
   restore_dims.
   replace 4%nat with (2*2)%nat by reflexivity.
   Qsimpl.
+<<<<<<< HEAD
+<<<<<<< HEAD
+  rewrite <- kron_assoc by auto with wf_db.
+  restore_dims.
+  repeat rewrite (kron_assoc _ q1) by auto with wf_db. 
+  Qsimpl.
+  reflexivity.
+=======
+=======
+>>>>>>> QuantumLib/main
   rewrite <- kron_assoc.
   restore_dims.
   repeat rewrite (kron_assoc _ q1). 
   Qsimpl.
   reflexivity.
   all : auto with wf_db.
+<<<<<<< HEAD
+>>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 Qed.
 
 (* *)

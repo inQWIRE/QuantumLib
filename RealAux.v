@@ -1,12 +1,26 @@
 Require Export Reals.
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
 
+>>>>>>> Heisenberg-Foundations/main
+=======
+
+>>>>>>> QuantumLib/main
 Require Import Psatz.
 
 (******************************************)
 (** Relevant lemmas from Rcomplements.v. **)
 (******************************************)
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
 
+>>>>>>> Heisenberg-Foundations/main
+=======
+
+>>>>>>> QuantumLib/main
 Open Scope R_scope.
 
 Lemma Rle_minus_l : forall a b c,(a - c <= b <-> a <= b + c). Proof. intros. lra. Qed.
@@ -145,12 +159,15 @@ Proof.
   apply sqrt_neq_0_compat; lra. 
 Qed.
 
+<<<<<<< HEAD
+=======
 Lemma sqrt_1_unique : forall x, 1 = √ x -> x = 1.
 Proof. intros. assert (H' := H). unfold sqrt in H. destruct (Rcase_abs x).
        - apply R1_neq_R0 in H; easy. 
        - rewrite <- (sqrt_def x); try rewrite <- H'; lra.
 Qed.
 
+>>>>>>> QuantumLib/main
 (* Automation *)
 Ltac R_field_simplify := repeat field_simplify_eq [pow2_sqrt2 sqrt2_inv].
 Ltac R_field := R_field_simplify; easy.
