@@ -7,12 +7,6 @@ Require Export List.
 
 Export ListNotations.
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-
->>>>>>> Heisenberg-Foundations/main
-=======
 
 (* Some more than basic nat lemmas that are useful to have *)
 
@@ -30,7 +24,6 @@ Lemma easy_sub6 : forall (a c b : nat),
 Proof. intros. lia. Qed.
 
 
->>>>>>> QuantumLib/main
 (* Boolean notations, lemmas *)
 
 Notation "¬ b" := (negb b) (at level 10).
@@ -77,22 +70,13 @@ Ltac bdestruct X :=
 
 Ltac bdestructΩ X := bdestruct X; simpl; try lia.
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> QuantumLib/main
 Ltac bdestruct_all :=
   repeat match goal with
   | |- context[?a <? ?b] => bdestruct (a <? b)
   | |- context[?a <=? ?b] => bdestruct (a <=? b)                                       
   | |- context[?a =? ?b] => bdestruct (a =? b)
   end; try (exfalso; lia).
-<<<<<<< HEAD
-=======
->>>>>>> Heisenberg-Foundations/main
-=======
 
->>>>>>> QuantumLib/main
 
 (* Distribute functions over lists *)
 
@@ -256,109 +240,6 @@ Definition maybe {A} (o : option A) (default : A) : A :=
   end.
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-(* Why are we defining this from scratch??? *)
-Fixpoint inb (a : nat) (ls : list nat) : bool :=
-  match ls with
-  | [] => false
-  | b :: ls' => (b =? a) || inb a ls'
-  end%bool.
-
-Fixpoint subset (ls1 ls2 : list nat) : bool :=
-  match ls1 with
-  | [] => true
-  | a :: ls1' => inb a ls2 && subset ls1' ls2
-  end.
-Notation "ls1 ⊆ ls2" := (subset ls1 ls2 = true) (at level 30).
-
-Fixpoint disjoint (ls1 ls2 : list nat) : bool :=
-  match ls1 with
-  | [] => true
-  | a :: ls1' => (negb (inb a ls2)) && disjoint ls1' ls2
-  end.
-Notation "ls1 ⊥ ls2" := (disjoint ls1 ls2 = true) (at level 30).
-
-Lemma disjoint_nil_l : forall ls, nil ⊥ ls. Proof. reflexivity. Qed.
-Lemma disjoint_nil_r : forall ls, ls ⊥ nil. Proof. induction ls; trivial. Qed.
-
-Lemma disjoint_cons : forall a ls1 ls2, 
-    ((negb (inb a ls1)) && disjoint ls1 ls2 = disjoint ls1 (a :: ls2))%bool.
-Proof.
-  intros a ls1 ls2.
-  induction ls1. reflexivity.
-  simpl.
-  rewrite <- IHls1.
-  rewrite Nat.eqb_sym.
-  destruct (a =? a0), (inb a ls1), (inb a0 ls2); auto.
-Qed.  
-
-Lemma disjoint_symm : forall ls1 ls2, disjoint ls1 ls2 = disjoint ls2 ls1.
-Proof. intros. 
-       induction ls1.
-       - simpl.
-         symmetry.
-         apply disjoint_nil_r.
-       - simpl.
-         rewrite <- disjoint_cons.
-         rewrite IHls1.
-         reflexivity.
-Qed.         
-         
-
-Lemma eqb_neq : forall x y, x <> y -> x =? y = false.
-Proof.
-  induction x as [ | x]; destruct y as [ | y]; intros H; auto.
-  - contradiction.
-  - simpl.
-    apply IHx.
-    intros H'.
-    subst.
-    contradiction.
-Qed.
-
-Lemma lookup_app : forall x ls1 ls2,
-      lookup x (ls1 ++ ls2) = if inb x ls1 then lookup x ls1 
-                                           else (lookup x ls2 + length ls1)%nat.
-Proof.
-  induction ls1; intros; simpl; auto. 
-  destruct (Nat.eq_dec x a) as [H_x_a | H_x_a].
-  * subst.
-    rewrite Nat.eqb_refl.
-    reflexivity.
-  * repeat rewrite eqb_neq; auto. simpl.
-    rewrite IHls1.
-    destruct (inb x ls1); auto.
-Qed.
-
-Lemma subset_app : forall ls1 ls2 ls, (ls1 ++ ls2) ⊆ ls -> ls1 ⊆ ls /\ ls2 ⊆ ls.
-Proof.
-  induction ls1; intros ls2 ls H; simpl in *; split; auto.
-  - apply Bool.andb_true_iff in H.
-    destruct H as [H_a_ls H].
-    rewrite H_a_ls; simpl.
-    apply IHls1 in H.
-    destruct H; auto.
-  - apply Bool.andb_true_iff in H.
-    destruct H as [H_a_ls H].
-    apply IHls1 in H.
-    destruct H; auto.
-Qed.
-
-Lemma seq_app : forall offset1 offset2 start,
-      seq start offset1 ++ seq (start + offset1) offset2 
-    = seq start (offset1 + offset2).
-Proof.
-  induction offset1; intros; simpl; auto.
-  rewrite Nat.add_succ_r.
-  rewrite <- Nat.add_succ_l.
-  rewrite IHoffset1.
-  reflexivity.
-Qed.
-=======
->>>>>>> Heisenberg-Foundations/main
-=======
->>>>>>> QuantumLib/main
 
 (************************************)
 (* Helpful, general purpose tactics *)
@@ -446,11 +327,6 @@ Ltac unify_pows_two :=
   | [ |- context[ (?a + (?b + ?c))%nat ]]   => rewrite plus_assoc 
   | [ |- (2^?x = 2^?y)%nat ]                => apply pow_components; try lia 
   end.
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-=======
->>>>>>> QuantumLib/main
 
 
 
@@ -548,11 +424,6 @@ Proof. intros X l1 l2 l3.
 Qed.
 
 
-<<<<<<< HEAD
-
-Hint Resolve subset_concat_l subset_concat_r subset_self subsets_add subset_trans : sub_db.
->>>>>>> Heisenberg-Foundations/main
-=======
 Hint Resolve subset_concat_l subset_concat_r subset_self subsets_add subset_trans : sub_db.
 
 
@@ -883,4 +754,3 @@ Proof. intros.
 Qed.
 
 
->>>>>>> QuantumLib/main
