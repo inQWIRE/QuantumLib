@@ -1,6 +1,5 @@
 Require Import List.     
-Require Export Complex. 
-Require Export VecSet.  
+Require Export Complex.  
 Require Export Quantum. 
 Require Export Polynomial.
 
@@ -111,7 +110,7 @@ Proof. unfold good_M, I; intros.
 Qed.
 
 
-Lemma good_M_reduce : forall {n} (A : Square n) (x y : nat),
+Lemma good_M_reduce : forall {n} (A : Square (S n)) (x y : nat),
   good_M A -> good_M (reduce A x y).    
 Proof. unfold good_M; intros.
        destruct H0 as [H0 H1].
@@ -136,7 +135,7 @@ Qed.
 
 Lemma connect : forall (n : nat) (A gM : Square (S n)),
   good_M gM ->
-  exists (p : Polynomial (S n)), (forall c : C, Determinant (S n) (A .+ (-c .* gM)) = eval_P (S n) p c).
+  exists (p : Polynomial (S n)), (forall c : C, Determinant (A .+ (-c .* gM)) = eval_P (S n) p c).
 Proof. induction n as [| n'].
        - intros.
          exists [A 0 0; - gM 0 0].
@@ -159,7 +158,7 @@ Proof. induction n as [| n'].
 
 
 Lemma connect2 : forall (n : nat) (A : Square (S n)),
-  exists (c : C), det_eq_c C0 (S n) (S n) (A .+ (-c .* I (S n))).
+  exists (c : C), det_eq_c C0 (A .+ (-c .* I (S n))).
 Proof. intros. 
        assert (H' : good_M (I (S n))).
        apply good_M_I.
@@ -435,7 +434,6 @@ Qed.
 (*****************************************************************************************)
 (* Defining and verifying the gram_schmidt algorythm and proving v can be part of an onb *)
 (*****************************************************************************************)
- 
 
 
 (* proj of v onto u *)
@@ -517,7 +515,6 @@ Proof. intros.
          { prep_matrix_equality; 
            unfold get_vec, reduce_col.
            bdestruct (x0 <? m); try lia; easy. }
-         rewrite easy_sub in *.
          rewrite H'. unfold scale. lca. 
        - unfold delta_T. 
          bdestruct (m =? m); try lia. 
@@ -591,11 +588,7 @@ Proof. intros.
        rewrite (Msum_to_Mmult T (delta_T T)) in H0. 
        unfold linearly_independent in H.
        apply H in H0.
-       assert (H' : C1 <> C0). 
-       { apply C0_fst_neq.
-         simpl. 
-         apply R1_neq_R0. }
-       apply H'.
+       apply C1_neq_C0.
        assert (H'' : f_to_vec (S m) (delta_T T) m 0 = C0).
        { rewrite H0. easy. }
        rewrite <- H''. 
@@ -622,7 +615,7 @@ Lemma get_vec_reduce_append_miss : forall {n m} (T : Matrix n (S m)) (v : Vector
 Proof. intros. 
        prep_matrix_equality. 
        unfold get_vec, col_append, reduce_col.
-       bdestruct (i =? S m - 1); bdestruct (i <? m); try lia; easy.
+       bdestruct_all; easy. 
 Qed.
 
 
@@ -632,8 +625,7 @@ Proof. intros.
        unfold get_vec, col_append, reduce_col.
        prep_matrix_equality. 
        bdestruct (y =? 0).
-       - bdestruct (m =? S m - 1); try lia.
-         rewrite H0; easy.
+       - bdestruct_all; subst; easy. 
        - rewrite H; try lia; easy.
 Qed.
 
@@ -644,8 +636,8 @@ Lemma get_vec_reduce_append_over : forall {n m} (T : Matrix n (S m)) (v : Vector
 Proof. intros. 
        prep_matrix_equality. 
        unfold get_vec, col_append, reduce_col.
-       bdestruct (i =? S m - 1); bdestruct (i <? m); try lia; try easy.
-       rewrite H. bdestruct (y =? 0); easy.
+       bdestruct_all; try easy.  
+       rewrite H. easy.
        right. lia. 
 Qed.
 
@@ -682,18 +674,17 @@ Proof. intros.
              rewrite Cconj_involutive, Cconj_0.
              apply inner_product_zero_normalize.
              rewrite gram_schmidt_compare.
-             rewrite easy_sub in *.
              apply (gram_schmidt_orthogonal (get_vec m T) _ j) in H1; try lia.
-             assert (H9 := (@get_vec_reduce_col n (S m) j m T)). 
-             rewrite easy_sub in *.
-             rewrite H9 in H1; try lia.
+             rewrite (@get_vec_reduce_col n m j m T) in H1; try lia.
              apply H1.
              assert (H' : WF_Matrix (get_vec m T)).
              { apply WF_get_vec; easy. }
              apply inner_product_zero_iff_zero in H'.
              destruct (Ceq_dec (inner_product (get_vec m T) (get_vec m T)) C0); try easy.
              apply H' in e.
-             apply lin_indep_nonzero_cols in e; try lia; try easy.
+             apply_mat_prop lin_indep_pzf.
+             apply H10 in H0; try easy.
+             exists m; split; try lia; easy.
              unfold normalize.
              apply WF_scale.
              apply WF_gs_on_T; easy.
@@ -703,18 +694,17 @@ Proof. intros.
              rewrite get_vec_reduce_append_miss; try easy.
              apply inner_product_zero_normalize.
              rewrite gram_schmidt_compare.
-             rewrite easy_sub in *.
              apply (gram_schmidt_orthogonal (get_vec m T) _ i) in H1; try lia.
-             assert (H9 := (@get_vec_reduce_col n (S m) i m T)). 
-             rewrite easy_sub in *.
-             rewrite H9 in H1; try lia.
+             rewrite (@get_vec_reduce_col n m i m T) in H1; try lia.
              apply H1.
              assert (H' : WF_Matrix (get_vec m T)).
              { apply WF_get_vec; easy. }
              apply inner_product_zero_iff_zero in H'.
              destruct (Ceq_dec (inner_product (get_vec m T) (get_vec m T)) C0); try easy.
              apply H' in e.
-             apply lin_indep_nonzero_cols in e; try lia; try easy.
+             apply_mat_prop lin_indep_pzf.
+             apply H10 in H0; try easy.
+             exists m; split; try lia; easy.
              unfold normalize.
              apply WF_scale.
              apply WF_gs_on_T; easy.
@@ -724,9 +714,8 @@ Proof. intros.
              unfold orthonormal in H1.
              destruct H1 as [H1 _].
              unfold orthogonal in H1.
-             apply (@get_vec_reduce_col n (S m) i m T) in H7.
-             apply (@get_vec_reduce_col n (S m) j m T) in H8.
-             rewrite easy_sub in *.
+             apply (@get_vec_reduce_col n m i m T) in H7.
+             apply (@get_vec_reduce_col n m j m T) in H8.
              apply H1 in H2.             
              rewrite H7, H8 in H2; easy. 
        - intros. 
@@ -744,9 +733,8 @@ Proof. intros.
            apply WF_scale.
            apply WF_gs_on_T; easy.
          + destruct H1 as [_ H1].
-           rewrite get_vec_reduce_append_miss; try lia. 
-           assert (H' := (@get_vec_reduce_col n (S m) i m T)).
-           rewrite <- H'; try lia. 
+           rewrite get_vec_reduce_append_miss; try lia.         
+           rewrite <- (@get_vec_reduce_col n m i m T); try lia. 
            apply H1; lia. 
 Qed.     
 
@@ -808,32 +796,32 @@ Lemma extend_onb_ind_step_part2 : forall {n m1 m2} (T1 : Matrix n m1) (T2 : Matr
                                     (normalize (gram_schmidt_on_T n m1 (col_append T1 v)))) T2).
 Proof. intros. 
        rewrite smash_scale. 
-       apply lin_indep_scale.
+       apply_mat_prop lin_indep_scale_invr.
+       apply H5.
        unfold not; intros. 
        assert (H4' : (norm (gram_schmidt_on_T n m1 (col_append T1 v)) * 
                      / norm (gram_schmidt_on_T n m1 (col_append T1 v)) = 
                      norm (gram_schmidt_on_T n m1 (col_append T1 v)) * C0)%C).
-       { rewrite H4; easy. }
+       { rewrite H6; easy. }
        rewrite Cmult_0_r, Cinv_r in H4'. 
-       assert (H5 : C1 <> C0). 
-       { apply C0_fst_neq.
-         simpl. 
-         apply R1_neq_R0. }
-       apply H5; easy.
+       apply C1_neq_C0; easy.
        unfold not; intros.
        assert (H5' : WF_Matrix (gram_schmidt_on_T n m1 (col_append T1 v))).
        { apply WF_gs_on_T.
          apply WF_col_append; easy. }
        apply norm_zero_iff_zero in H5'.
-       apply RtoC_inj in H5.
-       rewrite H5 in H5'. 
+       apply RtoC_inj in H7.
+       rewrite H7 in H5'. 
        apply (gram_schmidt_non_zero (col_append T1 v)).
        apply lin_indep_smash in H3; easy.
        apply H5'; lra.
        rewrite gs_on_T_cols_add; try easy.
-       apply lin_indep_col_add_many; try lia; try easy.
+       apply_mat_prop lin_indep_add_invr.
+       apply invr_col_add_col_add_many in H6.
+       inversion H6; subst.
+       apply H8; try lia; try easy.  
        unfold f_to_vec, delta_T'.
-       bdestruct (m1 <? m1 + m2); bdestruct (m1 <? m1); try lia; easy. 
+       bdestruct (m1 <? m1 + m2); bdestruct (m1 <? m1); try lia; easy.
 Qed.       
 
 
@@ -860,20 +848,21 @@ Proof. intros.
              bdestruct (1 + y =? m1); try lia; try easy.
            all : rewrite H; try lia; rewrite H; try lia; lca. }
          rewrite H' in H4.
-         rewrite easy_sub in *.
          apply H4; try easy.
          apply WF_col_append; easy.
        - apply extend_onb_ind_step_part2; try easy.
          apply lin_indep_smash in H2.
-         assert (H4 := @lin_indep_nonzero_cols n (S m1) (col_append T1 v)). 
-         assert (H' : get_vec m1 (col_append T1 v) = v).
-         { prep_matrix_equality. 
+         apply_mat_prop lin_indep_pzf.
+         unfold not; intros.
+         assert (H' : ~ linearly_independent (col_append T1 v)).
+         { apply H5.
+           exists m1.
+           split; try lia.
+           rewrite <- H6. 
+           prep_matrix_equality. 
            unfold get_vec, col_append.
-           bdestruct (y =? 0); bdestruct (m1 =? m1); try lia.
-           rewrite H5; easy.
-           rewrite H1; try lca; lia. }
-         rewrite <- H'. 
-         apply H4; try lia; easy.
+           bdestruct (y =? 0); bdestruct (m1 =? m1); subst; try easy; try lia. }
+         easy. 
 Qed.
 
 
@@ -892,7 +881,6 @@ Proof. induction m2 as [| m2'].
        - intros. 
          rewrite (split T2) in *.
          assert (H3 := (smash_assoc T1 (get_vec 0 T2) (reduce_col T2 0))). 
-         rewrite easy_sub in *.
          simpl in *.
          rewrite <- H3 in H1. 
          rewrite <- smash_append in H1; try easy.
@@ -903,7 +891,6 @@ Proof. induction m2 as [| m2'].
            rewrite (split T2). easy.
            apply WF_get_vec.
            rewrite (split T2). easy.
-           rewrite easy_sub in *.
            assert (add1 : S (m1 + S m2') = S (S m1) + m2'). { lia. }
            assert (add2 : S (m1 + 1) = S (S m1)). { lia. }
            rewrite add1, add2 in H1.
@@ -911,28 +898,22 @@ Proof. induction m2 as [| m2'].
          destruct H4 as [v [H4 [H5 H6]]].
          assert (H7 : exists T2' : Matrix n m2', 
                     WF_Matrix T2' /\ orthonormal (smash (smash T1 v) T2')).
-         { apply (IHm2' _ (smash T1 v) (reduce_col T2 0)).            
+         { assert (H'' := (@WF_smash n (S m1) (S O) T1 v)).
+           assert (H''' : Nat.add (S m1) (S O) = S (S m1)). lia. 
+           apply (IHm2' _ (smash T1 v) (reduce_col T2 0)); try easy.             
            assert (H' : Nat.add m1 (S O) = S m1). lia. 
            unfold Nat.add in H'.
            rewrite H'. 
-           assert (H'' := (@WF_smash n (S m1) (S O) T1 v)).
-           assert (H''' : Nat.add (S m1) (S O) = S (S m1)). lia. 
            rewrite H''' in *.
-           apply H''. 
-           easy. 
-           easy. 
-           assert (H7 := (WF_reduce_col 0 T2)).
-           rewrite easy_sub in *. 
-           apply H7. 
-           lia. 
-           rewrite (split T2).
-           easy. 
+           apply H''.  
+           easy. easy.
+           apply (WF_reduce_col 0 T2); try lia. 
+           rewrite (split T2); easy. 
            assert (add1 : S (Nat.add m1 (S m2')) = S (Nat.add (Nat.add m1 (S O)) m2')). lia. 
            rewrite add1 in H1.
            unfold Nat.add in H1.
            unfold Nat.add.
            rewrite <- smash_append; try easy.
-           rewrite easy_sub in *.
            assert (add2 : Nat.add (S (S m1)) m2' = S (Nat.add (Nat.add m1 (S O)) m2')). lia. 
            assert (add3 : (S (S m1)) = S (Nat.add m1 (S O))). lia. 
            rewrite add2, add3 in H6.
@@ -1030,9 +1011,7 @@ Proof. intros.
          apply WF_get_vec; easy.
          easy.
          apply WF_get_vec; easy.
-         apply (WF_reduce_col 0) in H1.
-         rewrite easy_sub in *; easy.
-         lia. 
+         apply (WF_reduce_col 0) in H1; try easy; lia.  
          rewrite H3; apply orthonormal_normalize_v; easy.
          unfold not; intros; apply H0.
          prep_matrix_equality. 
@@ -1522,7 +1501,7 @@ Proof.
 Qed.
 
 
-Lemma up_tri_reduce_0 : forall {n : nat} (A : Square n),
+Lemma up_tri_reduce_0 : forall {n : nat} (A : Square (S n)),
   upper_triangular A -> upper_triangular (reduce A 0 0).
 Proof. 
   unfold upper_triangular, reduce.
@@ -1535,7 +1514,7 @@ Qed.
 
 Lemma det_up_tri_diags : forall {n : nat} (A : Square n),
   upper_triangular A -> 
-  Determinant n A = Cprod (fun i => A i i) n.
+  Determinant A = Cprod (fun i => A i i) n.
 Proof. induction n as [| n'].
        - easy.
        - intros. simpl. 
@@ -1561,26 +1540,6 @@ Proof. induction n as [| n'].
            apply Csum_0_bounded.
            intros. 
            rewrite H; try lia; lca. 
-Qed.
-
-
-
-Lemma det_multiplicative_up_tri : forall {n} (A B : Square n),
-  upper_triangular A -> upper_triangular B -> 
-  (Determinant n A * Determinant n B)%C = Determinant n (A × B).
-Proof. intros. 
-       rewrite det_up_tri_diags; try easy.
-       rewrite det_up_tri_diags; try easy.
-       rewrite det_up_tri_diags; try apply up_tri_mult; try easy.
-       apply Cprod_product.
-       intros. unfold Mmult.
-       apply Csum_unique.
-       exists i.
-       split. easy. split. easy.
-       intros. 
-       bdestruct (i <? x'); bdestruct (x' <? i); try lia.
-       rewrite H0; try lia; lca.
-       rewrite H; try lia; lca.
 Qed.
 
 
@@ -1616,9 +1575,11 @@ Proof. unfold WF_Diagonal, Eigenpair, e_i. intros.
        - intros. simpl. bdestruct (x' =? i); try lia; lca.
 Qed.
 
+Local Close Scope nat_scope.
+
 
 Lemma eigen_scale : forall {n} (A : Square n) (v : Vector n) (c1 c2 : C),
-  Eigenpair A (v, c1) -> Eigenpair (c2 .* A) (v, Cmult c1 c2).
+  Eigenpair A (v, c1) -> Eigenpair (c2 .* A) (v, c1 * c2).
 Proof. intros. 
        unfold Eigenpair in *; simpl in *. 
        rewrite Mscale_mult_dist_l.
@@ -1689,9 +1650,9 @@ Proof. intros. destruct H0 as [v [H0 [H1 H2]]].
        rewrite Mscale_mult_dist_r in H4.
        rewrite Mscale_mult_dist_l in H4.
        rewrite Mscale_assoc in H4.
-       assert (H' : ((v) † × v) 0 0 = (c * c ^* .* ((v) † × v)) 0 0).
+       assert (H' : ((v) † × v) O O = (c * c ^* .* ((v) † × v)) O O).
        rewrite <- H4; easy.
-       assert (H'' : ((v) † × v) 0 0 = inner_product v v). easy.
+       assert (H'' : ((v) † × v) O O = inner_product v v). easy.
        unfold scale in H'.
        rewrite H'' in H'.
        apply (Cmult_simplify (inner_product v v) (c * c ^* * inner_product v v)
@@ -1766,7 +1727,7 @@ Proof. intros n A [Hwf Hu].
        apply H; easy.
 Qed.
 
-
+Local Open Scope nat_scope.
 (* this proof is horribly long and I feel like theres probably a better way to show this *)
 (* TODO : make this better *) 
 Lemma unitary_reduction_step2 : forall {n} (A : Square (S n)),
@@ -1870,11 +1831,8 @@ Proof. intros n A [Hwf Hu].
        assert (H' : WF_Matrix (reduce A 0 0)).
        { apply WF_reduce; try lia; easy. } 
        split. split.        
-       rewrite easy_sub in *.
        apply H'.
        apply mat_equiv_eq; auto with wf_db.
-       apply WF_mult; try apply WF_adjoint.
-       all : rewrite easy_sub in *; try easy.
        unfold mat_equiv; intros. 
        assert (H2 : ((A) † × A) (S i) (S j) = (I n) i j).
        { rewrite Hu. 
@@ -1943,7 +1901,8 @@ Proof. induction n as [| n'].
          { do 2 try apply Mmult_unitary.
            apply transpose_unitary.
            all : easy. }
-         assert (H4 : (forall (i j : nat), (i = 0 \/ j = 0) /\ i <> j -> ((X) † × A × X) i j = C0)).
+         assert (H4 : (forall (i j : nat), (i = 0 \/ j = 0) /\ i <> j ->
+                                           ((X) † × A × X) i j = C0)).
          { apply unitary_reduction_step2; try easy. 
            exists c. easy. }
          apply unitary_reduction_step3 in H3; try easy.
