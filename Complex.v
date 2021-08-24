@@ -304,6 +304,11 @@ Proof.
   apply injective_projections ; simpl ; ring.
 Qed.
 
+<<<<<<< HEAD
+=======
+
+
+>>>>>>> Heisenberg-Foundations/main
 (* I'll be leaving out mixins and Canonical Structures :
 Definition C_AbelianGroup_mixin :=
   AbelianGroup.Mixin _ _ _ _ Cplus_comm Cplus_assoc Cplus_0_r Cplus_opp_r.
@@ -465,6 +470,7 @@ Proof. intros c. intros N E. apply N. rewrite E. reflexivity. Qed.
 Lemma RtoC_neq : forall (r : R), r <> 0 -> RtoC r <> 0. 
 Proof. intros. apply C0_fst_neq. easy. Qed.
 
+<<<<<<< HEAD
 Lemma Copp_neq_0_compat: forall c : C, c <> 0 -> (- c)%C <> 0.
 Proof.
  intros c H.
@@ -477,6 +483,45 @@ Proof.
  assumption.
 Qed.
 
+=======
+Lemma C1_neq_C0 : C1 <> C0.
+Proof. apply C0_fst_neq.
+       simpl. 
+       apply R1_neq_R0.
+Qed.
+
+
+Lemma nonzero_div_nonzero : forall c : C, c <> C0 -> / c <> C0.
+Proof. intros. 
+       unfold not; intros. 
+        assert (H' : (c * (/ c) = c * C0)%C). 
+        { rewrite H0; easy. } 
+        rewrite Cinv_r in H'; try easy.
+        rewrite Cmult_0_r in H'.
+        apply C1_neq_C0; easy.
+Qed.
+
+Lemma eq_neg_implies_0 : forall (c : C), 
+  (-C1 * c)%C = c -> c = C0.
+Proof.  intros. 
+        assert (H' : (- C1 * c + c = c + c)%C).
+        { rewrite H; easy. }
+        assert (H'' : (- C1 * c + c = C0)%C).
+        { lca. }
+        rewrite H'' in H'.
+        assert (H0 : (c + c = C2 * c)%C). lca.  
+        rewrite H0 in H'. 
+        destruct (Ceq_dec c C0); try easy.
+        assert (H1 : C2 <> C0).
+        apply C0_fst_neq.
+        simpl. lra. 
+        assert (H2 : (C2 * c)%C <> C0).
+        apply Cmult_neq_0; try easy.
+        rewrite <- H' in H2. easy.
+Qed.
+
+
+>>>>>>> Heisenberg-Foundations/main
 Lemma Cinv_mult_distr : forall c1 c2 : C, c1 <> 0 -> c2 <> 0 -> / (c1 * c2) = / c1 * / c2.
 Proof.
   intros.
@@ -683,6 +728,7 @@ Proof.
     field.
 Qed.
 
+<<<<<<< HEAD
 Lemma Cexp_plus_PI : forall x,
   Cexp (x + PI) = (- (Cexp x))%C.
 Proof.
@@ -705,6 +751,8 @@ Proof.
   lca.
 Qed.
 
+=======
+>>>>>>> Heisenberg-Foundations/main
 Lemma Cexp_nonzero : forall θ, Cexp θ <> 0.
 Proof. 
   intro θ. unfold Cexp.
@@ -939,7 +987,11 @@ Qed.
   
 Hint Rewrite Cexp_0 Cexp_PI Cexp_PI2 Cexp_2PI Cexp_3PI2 Cexp_PI4 Cexp_PIm4
   Cexp_1PI4 Cexp_2PI4 Cexp_3PI4 Cexp_4PI4 Cexp_5PI4 Cexp_6PI4 Cexp_7PI4 Cexp_8PI4
+<<<<<<< HEAD
   Cexp_add Cexp_neg Cexp_plus_PI Cexp_minus_PI : Cexp_db.
+=======
+  Cexp_add Cexp_neg : Cexp_db.
+>>>>>>> Heisenberg-Foundations/main
 
 Opaque C.
 
@@ -953,6 +1005,7 @@ Lemma Cdiv_unfold : forall c1 c2, (c1 / c2 = c1 */ c2)%C. Proof. reflexivity. Qe
 (* For proving goals of the form x <> 0 or 0 < x *)
 Ltac nonzero :=
   repeat split;
+<<<<<<< HEAD
   repeat 
     match goal with
     | |- not (@eq _ (Copp _) (RtoC (IZR Z0))) => apply Copp_neq_0_compat
@@ -961,6 +1014,14 @@ Ltac nonzero :=
     | |- not (@eq _ (Cexp _) (RtoC (IZR Z0))) => apply Cexp_nonzero
     | |- not (@eq _ _ (RtoC (IZR Z0))) => apply RtoC_neq
     end;
+=======
+   try match goal with
+       | |- not (@eq _ _ (RtoC (IZR Z0))) => apply RtoC_neq
+       | |- not (@eq _ (Cpow _ _) (RtoC (IZR Z0))) => apply Cpow_nonzero; try apply RtoC_neq
+       | |- not (@eq _ Ci (RtoC (IZR Z0))) => apply C0_snd_neq; simpl
+       | |- not (@eq _ (Cexp _) (RtoC (IZR Z0))) => apply Cexp_nonzero
+       end;
+>>>>>>> Heisenberg-Foundations/main
   repeat
     match goal with
     | |- not (@eq _ (sqrt (pow _ _)) (IZR Z0)) => rewrite sqrt_pow
@@ -974,12 +1035,20 @@ Ltac nonzero :=
     | |- Rlt (IZR Z0) (Rmult _ _) => apply Rmult_lt_0_compat
     | |- Rlt (IZR Z0) (Rinv _) => apply Rinv_0_lt_compat
     | |- Rlt (IZR Z0) (pow _ _) => apply pow_lt
+<<<<<<< HEAD
     end; 
   match goal with
   | |- not (@eq _ _ _) => lra
   | |- Rlt _ _ => lra
   | |- Rle _ _ => lra
   end.
+=======
+    end; match goal with
+         | |- not (@eq _ _ _) => lra
+         | |- Rlt _ _ => lra
+         | |- Rle _ _ => lra
+         end.
+>>>>>>> Heisenberg-Foundations/main
 
 Hint Rewrite Cminus_unfold Cdiv_unfold Ci2 Cconj_R Cconj_opp Cconj_rad2 
      Cinv_sqrt2_sqrt Cplus_div2
@@ -1000,9 +1069,12 @@ Hint Rewrite Cplus_0_l Cplus_0_r Cmult_0_l Cmult_0_r Copp_0
 Hint Rewrite Cmult_plus_distr_l Cmult_plus_distr_r Copp_plus_distr Copp_mult_distr_l 
               Copp_involutive : Cdist_db.
 
+<<<<<<< HEAD
 Hint Rewrite <- RtoC_opp RtoC_mult RtoC_plus : RtoC_db.
 Hint Rewrite <- RtoC_inv using nonzero : RtoC_db.
 Hint Rewrite RtoC_pow : RtoC_db.
+=======
+>>>>>>> Heisenberg-Foundations/main
 
 Ltac Csimpl := 
   repeat match goal with

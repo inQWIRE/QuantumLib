@@ -1,10 +1,18 @@
 Require Export Reals.
+<<<<<<< HEAD
+=======
+
+>>>>>>> Heisenberg-Foundations/main
 Require Import Psatz.
 
 (******************************************)
 (** Relevant lemmas from Rcomplements.v. **)
 (******************************************)
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> Heisenberg-Foundations/main
 Open Scope R_scope.
 
 Lemma Rle_minus_l : forall a b c,(a - c <= b <-> a <= b + c). Proof. intros. lra. Qed.
