@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 Require Import Psatz.
+=======
+Require Import Psatz. 
+>>>>>>> QuantumLib/main
 Require Import String.
 Require Import Program.
 Require Export Complex.
@@ -8,6 +12,7 @@ Require Import List.
 (* TODO: Use matrix equality everywhere, declare equivalence relation *)
 (* TODO: Make all nat arguments to matrix lemmas implicit *)
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 Local Open Scope nat_scope.
@@ -38,6 +43,8 @@ Qed.
 
 
 >>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 (*******************************************)
 (** Matrix Definitions and Infrastructure **)
 (*******************************************)
@@ -172,9 +179,12 @@ Definition I (n : nat) : Square n :=
 (* Optional coercion to scalar (should be limited to 1 × 1 matrices):
 Definition to_scalar (m n : nat) (A: Matrix m n) : C := A 0 0.
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 >>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 Coercion to_scalar : Matrix >-> C.
  *)
 
@@ -289,7 +299,10 @@ Ltac lma :=
   lca.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> QuantumLib/main
 
 
 Ltac solve_end :=
@@ -319,7 +332,21 @@ Ltac lma' :=
 
 
 
+<<<<<<< HEAD
 >>>>>>> Heisenberg-Foundations/main
+=======
+(* lemmas which are useful for simplifying proofs involving Mmult or kron *)
+Lemma kron_simplify : forall (n m o p : nat) (a b : Matrix n m) (c d : Matrix o p), 
+    a = b -> c = d -> a ⊗ c = b ⊗ d.
+Proof. intros; subst; easy. 
+Qed.
+
+Lemma Mmult_simplify : forall (n m o : nat) (a b : Matrix n m) (c d : Matrix m o), 
+    a = b -> c = d -> a × c = b × d.
+Proof. intros; subst; easy. 
+Qed.
+
+>>>>>>> QuantumLib/main
 (******************************)
 (** Proofs about finite sums **)
 (******************************)
@@ -523,7 +550,10 @@ Proof.
 Qed.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> QuantumLib/main
 
 Lemma Csum_gt_0 : forall f n, (forall x, 0 <= fst (f x)) -> 
                               (exists y : nat, (y < n)%nat /\ 0 < fst (f y)) ->
@@ -543,7 +573,10 @@ Qed.
 
 
 
+<<<<<<< HEAD
 >>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 Lemma Csum_member_le : forall (f : nat -> C) (n : nat), (forall x, 0 <= fst (f x)) -> 
                       (forall x, (x < n)%nat -> fst (f x) <= fst (Csum f n)).
 Proof.
@@ -565,11 +598,14 @@ Proof.
       apply Csum_ge_0; easy.
       lra.
 <<<<<<< HEAD
+<<<<<<< HEAD
 Qed.            
 
 
 
 =======
+=======
+>>>>>>> QuantumLib/main
 Qed.      
 
 Lemma Csum_squeeze : forall (f : nat -> C) (n : nat), 
@@ -628,7 +664,11 @@ Proof. induction m as [| m'].
        - rewrite Nat.mul_succ_r.
          rewrite <- Csum_extend_r.
          rewrite Csum_sum.
+<<<<<<< HEAD
          apply Csum_simplify; try easy.
+=======
+         apply Cplus_simplify; try easy.
+>>>>>>> QuantumLib/main
          apply Csum_eq_bounded; intros.
          rewrite mult_comm.
          rewrite Nat.div_add_l; try lia. 
@@ -651,7 +691,11 @@ Proof. intros.
        assert (H' : forall a b c d, (a + b + c + d = (a + c) + (b + d))%C). 
        { intros. lca. }
        rewrite H'.
+<<<<<<< HEAD
        apply Csum_simplify; try easy.
+=======
+       apply Cplus_simplify; try easy.
+>>>>>>> QuantumLib/main
        rewrite <- Csum_plus.
        apply Csum_eq_bounded; intros. 
        easy.
@@ -669,7 +713,11 @@ Proof. induction n as [| n'].
          rewrite (IHn' f g); try easy.
          repeat rewrite Cmult_plus_distr_l.
          repeat rewrite <- Cplus_assoc.
+<<<<<<< HEAD
          apply Csum_simplify; try easy.
+=======
+         apply Cplus_simplify; try easy.
+>>>>>>> QuantumLib/main
          assert (H' : forall a b c, (a + (b + c) = (a + c) + b)%C). 
          intros. lca. 
          do 2 rewrite H'.
@@ -677,22 +725,33 @@ Proof. induction n as [| n'].
          do 2 rewrite Csum_extend_r. 
          do 2 rewrite Csum_mult_l.
          rewrite Cplus_comm.
+<<<<<<< HEAD
          apply Csum_simplify.
+=======
+         apply Cplus_simplify.
+>>>>>>> QuantumLib/main
          all : apply Csum_eq_bounded; intros. 
          apply H; lia. 
          apply H0; lia. 
 Qed.
          
+<<<<<<< HEAD
 >>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 (**********************************)
 (** Proofs about Well-Formedness **)
 (**********************************)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 Local Open Scope nat_scope.
 =======
 
 >>>>>>> Heisenberg-Foundations/main
+=======
+
+>>>>>>> QuantumLib/main
 
 Lemma WF_Matrix_dim_change : forall (m n m' n' : nat) (A : Matrix m n),
   m = m' ->
@@ -825,6 +884,22 @@ Proof.
     apply IHl. intros i. apply (H (S i)).
 Qed.
 
+<<<<<<< HEAD
+=======
+(* alternate version that uses In instead of nth *)
+Lemma WF_big_kron' : forall n m (l : list (Matrix m n)), 
+                        (forall A, In A l -> WF_Matrix A) ->
+                         WF_Matrix (⨂ l). 
+Proof.                         
+  intros n m l H. 
+  induction l.
+  - simpl. apply WF_I.
+  - simpl. apply WF_kron; trivial. apply H; left; easy. 
+    apply IHl. intros A' H0. apply H; right; easy.
+Qed.
+
+
+>>>>>>> QuantumLib/main
 Lemma WF_Mmult_n : forall n {m} (A : Square m),
    WF_Matrix A -> WF_Matrix (Mmult_n n A).
 Proof.
@@ -1015,9 +1090,13 @@ Proof.
 Qed.  
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 >>>>>>> Heisenberg-Foundations/main
+=======
+
+>>>>>>> QuantumLib/main
 Lemma Mmult_1_l: forall (m n : nat) (A : Matrix m n), 
   WF_Matrix A -> I m × A = A.
 Proof.
@@ -1346,7 +1425,10 @@ Proof.
 Qed.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> QuantumLib/main
 
 Lemma Mscale_div : forall {n m} (c : C) (A B : Matrix n m),
   c <> C0 -> c .* A = c .* B -> A = B.
@@ -1360,7 +1442,10 @@ Proof. intros.
 Qed.
 
 
+<<<<<<< HEAD
 >>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 Lemma Mscale_plus_distr_l : forall (m n : nat) (x y : C) (A : Matrix m n),
   (x + y) .* A = x .* A .+ y .* A.
 Proof.
@@ -1430,16 +1515,21 @@ Lemma Mscale_adj : forall (m n : nat) (x : C) (A : Matrix m n),
     (x .* A)† = x^* .* A†.
 Proof.
 <<<<<<< HEAD
+<<<<<<< HEAD
   intros m n x A.
 =======
   intros m n xtranspose A.
 >>>>>>> Heisenberg-Foundations/main
+=======
+  intros m n xtranspose A.
+>>>>>>> QuantumLib/main
   unfold scale, adjoint.
   prep_matrix_equality.
   rewrite Cconj_mult_distr.          
   reflexivity.
 Qed.
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 (* Inverses of square matrices *)
 
@@ -1478,11 +1568,114 @@ Proof.
   unfold Minv. split; trivial.
   apply Minv_flip.
   assumption.
+=======
+
+Lemma Mplus_transpose : forall (m n : nat) (A : Matrix m n) (B : Matrix m n),
+  (A .+ B)⊤ = A⊤ .+ B⊤.
+Proof. reflexivity. Qed.
+
+Lemma Mmult_transpose : forall (m n o : nat) (A : Matrix m n) (B : Matrix n o),
+      (A × B)⊤ = B⊤ × A⊤.
+Proof.
+  intros m n o A B.
+  unfold Mmult, transpose.
+  prep_matrix_equality.
+  apply Csum_eq.  
+  apply functional_extensionality. intros z.
+  rewrite Cmult_comm.
+  reflexivity.
+Qed.
+
+Lemma kron_transpose : forall (m n o p : nat) (A : Matrix m n) (B : Matrix o p ),
+  (A ⊗ B)⊤ = A⊤ ⊗ B⊤.
+Proof. reflexivity. Qed.
+
+
+Lemma Mplus_adjoint : forall (m n : nat) (A : Matrix m n) (B : Matrix m n),
+  (A .+ B)† = A† .+ B†.
+Proof.  
+  intros m n A B.
+  unfold Mplus, adjoint.
+  prep_matrix_equality.
+  rewrite Cconj_plus_distr.
+  reflexivity.
+Qed.
+
+Lemma Mmult_adjoint : forall {m n o : nat} (A : Matrix m n) (B : Matrix n o),
+      (A × B)† = B† × A†.
+Proof.
+  intros m n o A B.
+  unfold Mmult, adjoint.
+  prep_matrix_equality.
+  rewrite Csum_conj_distr.
+  apply Csum_eq.  
+  apply functional_extensionality. intros z.
+  rewrite Cconj_mult_distr.
+  rewrite Cmult_comm.
+  reflexivity.
+Qed.
+
+Lemma kron_adjoint : forall {m n o p : nat} (A : Matrix m n) (B : Matrix o p),
+  (A ⊗ B)† = A† ⊗ B†.
+Proof. 
+  intros. unfold adjoint, kron. 
+  prep_matrix_equality.
+  rewrite Cconj_mult_distr.
+  reflexivity.
+Qed.
+
+Lemma id_kron : forall (m n : nat),  I m ⊗ I n = I (m * n).
+Proof.
+  intros.
+  unfold I, kron.
+  prep_matrix_equality.
+  bdestruct (x =? y); rename H into Eq; subst.
+  + repeat rewrite <- beq_nat_refl; simpl.
+    destruct n.
+    - simpl.
+      rewrite mult_0_r.
+      bdestruct (y <? 0); try lia.
+      autorewrite with C_db; reflexivity.
+    - bdestruct (y mod S n <? S n). 
+      2: specialize (Nat.mod_upper_bound y (S n)); intros; lia. 
+      rewrite Cmult_1_r.
+      destruct (y / S n <? m) eqn:L1, (y <? m * S n) eqn:L2; trivial.
+      * apply Nat.ltb_lt in L1. 
+        apply Nat.ltb_nlt in L2. 
+        contradict L2. 
+        clear H.
+        (* Why doesn't this lemma exist??? *)
+        destruct m.
+        lia.
+        apply Nat.div_small_iff. 
+        simpl. apply Nat.neq_succ_0. (* `lia` will solve in 8.11+ *)
+        apply Nat.div_small in L1.
+        rewrite Nat.div_div in L1; try lia.
+        rewrite mult_comm.
+        assumption.
+      * apply Nat.ltb_nlt in L1. 
+        apply Nat.ltb_lt in L2. 
+        contradict L1. 
+        apply Nat.div_lt_upper_bound. lia.
+        rewrite mult_comm.
+        assumption.
+  + simpl.
+    bdestruct (x / n =? y / n); simpl; try lca.
+    bdestruct (x mod n =? y mod n); simpl; try lca.
+    destruct n; try lca.    
+    contradict Eq.
+    rewrite (Nat.div_mod x (S n)) by lia.
+    rewrite (Nat.div_mod y (S n)) by lia.
+    rewrite H, H0; reflexivity.
+>>>>>>> QuantumLib/main
 Qed.
 
 Local Open Scope nat_scope.
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> QuantumLib/main
 Lemma div_mod : forall (x y z : nat), (x / y) mod z = (x mod (y * z)) / y.
 Proof.
   intros. bdestruct (y =? 0). subst. simpl.
@@ -1555,6 +1748,10 @@ Proof.
   apply kron_assoc_mat_equiv.
 Qed.  
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> QuantumLib/main
 Lemma kron_mixed_product : forall {m n o p q r : nat} (A : Matrix m n) (B : Matrix p q ) 
   (C : Matrix n o) (D : Matrix q r), (A ⊗ B) × (C ⊗ D) = (A × C) ⊗ (B × D).
 Proof.
@@ -1576,7 +1773,11 @@ Qed.
 
 (* Arguments kron_mixed_product [m n o p q r]. *)
 
+<<<<<<< HEAD
 (*
+=======
+
+>>>>>>> QuantumLib/main
 (* A more explicit version, for when typechecking fails *)
 Lemma kron_mixed_product' : forall (m n n' o p q q' r mp nq or: nat)
     (A : Matrix m n) (B : Matrix p q) (C : Matrix n' o) (D : Matrix q' r),
@@ -1585,6 +1786,7 @@ Lemma kron_mixed_product' : forall (m n n' o p q q' r mp nq or: nat)
   (@Mmult mp nq or (@kron m n p q A B) (@kron n' o q' r C D)) =
   (@kron m o p r (@Mmult m n o A C) (@Mmult p q r B D)).
 Proof. intros. subst. apply kron_mixed_product. Qed.
+<<<<<<< HEAD
 *)
 
 Lemma Mplus_tranpose : forall (m n : nat) (A : Matrix m n) (B : Matrix m n),
@@ -1695,6 +1897,10 @@ Proof.
 Qed.
 
 <<<<<<< HEAD
+=======
+
+
+>>>>>>> QuantumLib/main
 Lemma outer_product_eq : forall m (φ ψ : Matrix m 1),
  φ = ψ -> outer_product φ φ = outer_product ψ ψ.
 Proof. congruence. Qed.
@@ -1710,6 +1916,27 @@ Proof.
   reflexivity.
 Qed.
 
+<<<<<<< HEAD
+=======
+Lemma big_kron_app : forall {n m} (l1 l2 : list (Matrix n m)),
+  (forall i, WF_Matrix (nth i l1 (@Zero n m))) ->
+  (forall i, WF_Matrix (nth i l2 (@Zero n m))) ->
+  ⨂ (l1 ++ l2) = (⨂ l1) ⊗ (⨂ l2).
+Proof. induction l1.
+       - intros. simpl. rewrite (kron_1_l _ _ (⨂ l2)); try easy.
+         apply (WF_big_kron _ _ _ (@Zero n m)); easy.
+       - intros. simpl. rewrite IHl1. 
+         rewrite kron_assoc.
+         do 2 (rewrite <- Nat.pow_add_r).
+         rewrite app_length.
+         reflexivity.
+         assert (H' := H 0); simpl in H'; easy.
+         all : try apply (WF_big_kron _ _ _ (@Zero n m)); try easy. 
+         all : intros. 
+         all : assert (H' := H (S i)); simpl in H'; easy.
+Qed.
+
+>>>>>>> QuantumLib/main
 Lemma kron_n_assoc :
   forall n {m1 m2} (A : Matrix m1 m2), WF_Matrix A -> (S n) ⨂ A = A ⊗ (n ⨂ A).
 Proof.
@@ -1758,6 +1985,7 @@ Proof.
   rewrite Mmult_1_l. reflexivity.
   apply WF_I.
   replace (m1 * m1 ^ n) with (m1 ^ n * m1) by apply Nat.mul_comm.
+<<<<<<< HEAD
 =======
 
 (* this was origionally with the other Msum stuff, but I needed it earlier... *)
@@ -1779,6 +2007,217 @@ Qed.
 (*****************************************************)
 
 Local Open Scope nat_scope.
+=======
+  replace (m2 * m2 ^ n) with (m2 ^ n * m2) by apply Nat.mul_comm.
+  replace (m3 * m3 ^ n) with (m3 ^ n * m3) by apply Nat.mul_comm.
+  rewrite kron_mixed_product.
+  rewrite IHn.
+  reflexivity.
+Qed.
+
+Lemma kron_n_I : forall n, n ⨂ I 2 = I (2 ^ n).
+Proof.
+  intros.
+  induction n; simpl.
+  reflexivity.
+  rewrite IHn. 
+  rewrite id_kron.
+  apply f_equal.
+  lia.
+Qed.
+
+Lemma Mmult_n_kron_distr_l : forall {m n} i (A : Square m) (B : Square n),
+  i ⨉ (A ⊗ B) = (i ⨉ A) ⊗ (i ⨉ B).
+Proof.
+  intros m n i A B.
+  induction i; simpl.
+  rewrite id_kron; reflexivity.
+  rewrite IHi.
+  rewrite kron_mixed_product.
+  reflexivity.
+Qed.
+
+Lemma Mmult_n_1_l : forall {n} (A : Square n),
+  WF_Matrix A ->
+  1 ⨉ A = A.
+Proof. intros n A WF. simpl. rewrite Mmult_1_r; auto. Qed.
+
+Lemma Mmult_n_1_r : forall n i,
+  i ⨉ (I n) = I n.
+Proof.
+  intros n i.
+  induction i; simpl.
+  reflexivity.
+  rewrite IHi.  
+  rewrite Mmult_1_l; auto with wf_db.
+Qed.
+
+Lemma Mmult_n_eigenvector : forall {n} (A : Square n) (ψ : Vector n) λ i,
+  WF_Matrix ψ -> A × ψ = λ .* ψ ->
+  i ⨉ A × ψ = (λ ^ i) .* ψ.
+Proof.
+  intros n A ψ λ i WF H.
+  induction i; simpl.
+  rewrite Mmult_1_l; auto.
+  rewrite Mscale_1_l; auto.
+  rewrite Mmult_assoc.
+  rewrite IHi.
+  rewrite Mscale_mult_dist_r.
+  rewrite H.
+  rewrite Mscale_assoc.
+  rewrite Cmult_comm.
+  reflexivity.
+Qed.
+
+Lemma Msum_eq_bounded : forall {d1 d2} n (f f' : nat -> Matrix d1 d2),
+  (forall i, (i < n)%nat -> f i = f' i) -> Msum n f = Msum n f'.
+Proof.
+  intros d1 d2 n f f' Heq.
+  induction n; simpl.
+  reflexivity.
+  rewrite Heq by lia.
+  rewrite IHn. reflexivity.
+  intros. apply Heq. lia.
+Qed.
+
+Lemma kron_Msum_distr_l : 
+  forall {d1 d2 d3 d4} n (f : nat -> Matrix d1 d2) (A : Matrix d3 d4),
+  A ⊗ Msum n f = Msum n (fun i => A ⊗ f i).
+Proof.
+  intros.
+  induction n; simpl. lma.
+  rewrite kron_plus_distr_l, IHn. reflexivity.
+Qed.
+
+Lemma kron_Msum_distr_r : 
+  forall {d1 d2 d3 d4} n (f : nat -> Matrix d1 d2) (A : Matrix d3 d4),
+  Msum n f ⊗ A = Msum n (fun i => f i ⊗ A).
+Proof.
+  intros.
+  induction n; simpl. lma.
+  rewrite kron_plus_distr_r, IHn. reflexivity.
+Qed.
+
+Lemma Mmult_Msum_distr_l : forall {d1 d2 m} n (f : nat -> Matrix d1 d2) (A : Matrix m d1),
+  A × Msum n f = Msum n (fun i => A × f i).
+Proof.
+  intros.
+  induction n; simpl. 
+  rewrite Mmult_0_r. reflexivity.
+  rewrite Mmult_plus_distr_l, IHn. reflexivity.
+Qed.
+
+Lemma Mmult_Msum_distr_r : forall {d1 d2 m} n (f : nat -> Matrix d1 d2) (A : Matrix d2 m),
+  Msum n f × A = Msum n (fun i => f i × A).
+Proof.
+  intros.
+  induction n; simpl. 
+  rewrite Mmult_0_l. reflexivity.
+  rewrite Mmult_plus_distr_r, IHn. reflexivity.
+Qed.
+
+Lemma Mscale_Msum_distr_r : forall {d1 d2} x n (f : nat -> Matrix d1 d2),
+  x .* Msum n f = Msum n (fun i => x .* f i).
+Proof.
+  intros d1 d2 x n f.
+  induction n; simpl. lma.
+  rewrite Mscale_plus_distr_r, IHn. reflexivity.
+Qed.
+
+Lemma Mscale_Msum_distr_l : forall {d1 d2} n (f : nat -> C) (A : Matrix d1 d2),
+  Msum n (fun i => (f i) .* A) = Csum f n .* A.
+Proof.
+  intros d1 d2 n f A.
+  induction n; simpl. lma.
+  rewrite Mscale_plus_distr_l, IHn. reflexivity.
+Qed.
+
+Lemma Msum_0 : forall {d1 d2} n (f : nat -> Matrix d1 d2),
+  (forall x, x < n -> f x = Zero) -> Msum n f = Zero.
+Proof.
+  intros d1 d2 n f Hf.
+  induction n; simpl. reflexivity.
+  rewrite IHn, Hf. lma.
+  lia. intros. apply Hf. lia.
+Qed.
+
+Lemma Msum_constant : forall {d1 d2} n (A : Matrix d1 d2),  Msum n (fun _ => A) = INR n .* A.
+Proof.
+  intros. 
+  induction n.
+  simpl. lma.
+  simpl Msum.
+  rewrite IHn.
+  replace (S n) with (n + 1)%nat by lia. 
+  rewrite plus_INR; simpl. 
+  rewrite RtoC_plus. 
+  rewrite Mscale_plus_distr_l.
+  lma.
+Qed.
+
+Lemma Msum_plus : forall {d1 d2} n (f1 f2 : nat -> Matrix d1 d2),
+  Msum n (fun i => (f1 i) .+ (f2 i)) = Msum n f1 .+ Msum n f2.
+Proof.
+  intros d1 d2 n f1 f2.
+  induction n; simpl. lma.
+  rewrite IHn. lma.
+Qed.
+
+Lemma Msum_adjoint : forall {d1 d2} n (f : nat -> Matrix d1 d2),
+  (Msum n f)† = Msum n (fun i => (f i)†).
+Proof.
+  intros.
+  induction n; simpl.
+  lma.
+  rewrite Mplus_adjoint, IHn.  
+  reflexivity.
+Qed.
+
+Lemma Msum_Csum : forall {d1 d2} n (f : nat -> Matrix d1 d2) i j,
+  Msum n f i j = Csum (fun x => f x i j) n.
+Proof.
+  intros. 
+  induction n; simpl.
+  reflexivity.
+  unfold Mplus.
+  rewrite IHn.
+  reflexivity.
+Qed.
+
+Lemma Msum_unique : forall {d1 d2} n (f : nat -> Matrix d1 d2) (A : Matrix d1 d2),
+  (exists i, i < n /\ f i = A /\ (forall j, j < n -> j <> i -> f j = Zero)) -> 
+  Msum n f = A.
+Proof.
+  intros d1 d2 n f A H.
+  destruct H as [i [? [? H]]].
+  induction n; try lia.
+  simpl.
+  bdestruct (n =? i).
+  rewrite (Msum_eq_bounded _ _ (fun _ : nat => Zero)).
+  rewrite Msum_0. subst. lma. reflexivity.
+  intros x ?. apply H; lia.
+  rewrite IHn; try lia.
+  rewrite H by lia. lma.
+  intros. apply H; lia.
+Qed.
+
+Lemma Msum_diagonal :
+  forall {d1 d2} n (f : nat -> nat -> Matrix d1 d2),
+    (forall i j, (i < n)%nat -> (j < n)%nat -> (i <> j)%nat -> f i j = Zero) ->
+    Msum n (fun i => Msum n (fun j => f i j)) = Msum n (fun i => f i i).
+Proof.
+  intros. apply Msum_eq_bounded. intros.
+  apply Msum_unique. 
+  exists i. auto.
+Qed.
+ 
+
+
+(*****************************************************)
+(* Defining matrix altering/col operations functions *)
+(*****************************************************)
+
+>>>>>>> QuantumLib/main
 
 Definition get_vec {n m} (i : nat) (S : Matrix n m) : Vector n :=
   fun x y => (if (y =? 0) then S x i else C0).   
@@ -1788,26 +2227,43 @@ Definition get_row {n m} (i : nat) (S : Matrix n m) : Matrix 1 m :=
   fun x y => (if (x =? 0) then S i y else C0).  
 
 
+<<<<<<< HEAD
 Definition reduce_row {n m} (A : Matrix n m) (row : nat) : Matrix (n - 1) m :=
+=======
+Definition reduce_row {n m} (A : Matrix (S n) m) (row : nat) : Matrix n m :=
+>>>>>>> QuantumLib/main
   fun x y => if x <? row
              then A x y
              else A (1 + x) y.
 
+<<<<<<< HEAD
 Definition reduce_col {n m} (A : Matrix n m) (col : nat) : Matrix n (m - 1) :=
+=======
+Definition reduce_col {n m} (A : Matrix n (S m)) (col : nat) : Matrix n m :=
+>>>>>>> QuantumLib/main
   fun x y => if y <? col
              then A x y
              else A x (1 + y).
 
 
 (* more specific form for vectors *)
+<<<<<<< HEAD
 Definition reduce_vecn {n} (v : Vector n) : Vector (n - 1) :=
   fun x y => if x <? (n - 1)
+=======
+Definition reduce_vecn {n} (v : Vector (S n)) : Vector n :=
+  fun x y => if x <? n
+>>>>>>> QuantumLib/main
              then v x y
              else v (1 + x) y.
 
 
 (* More specific form for squares *)
+<<<<<<< HEAD
 Definition reduce {n} (A : Square n) (row col : nat) : Square (n - 1) :=
+=======
+Definition reduce {n} (A : Square (S n)) (row col : nat) : Square n :=
+>>>>>>> QuantumLib/main
   fun x y => (if x <? row 
               then (if y <? col 
                     then A x y
@@ -1946,14 +2402,23 @@ Proof. unfold WF_Matrix, get_row in *.
 Qed.
 
 
+<<<<<<< HEAD
 Lemma WF_reduce_row : forall {n m} (row : nat) (A : Matrix n m),
   row < n -> WF_Matrix A -> WF_Matrix (reduce_row A row).
+=======
+Lemma WF_reduce_row : forall {n m} (row : nat) (A : Matrix (S n) m),
+  row < (S n) -> WF_Matrix A -> WF_Matrix (reduce_row A row).
+>>>>>>> QuantumLib/main
 Proof. unfold WF_Matrix, reduce_row. intros. 
        bdestruct (x <? row). 
        - destruct H1 as [H1 | H1].
          + assert (nibzo : forall (a b c : nat), a < b -> b < c -> 1 + a < c).
            { lia. }
+<<<<<<< HEAD
            apply (nibzo x row n) in H2.
+=======
+           apply (nibzo x row (S n)) in H2.
+>>>>>>> QuantumLib/main
            simpl in H2. lia. apply H.
          + apply H0; auto.
        - apply H0. destruct H1. 
@@ -1962,15 +2427,24 @@ Proof. unfold WF_Matrix, reduce_row. intros.
 Qed.
 
 
+<<<<<<< HEAD
 Lemma WF_reduce_col : forall {n m} (col : nat) (A : Matrix n m),
   col < m -> WF_Matrix A -> WF_Matrix (reduce_col A col).
+=======
+Lemma WF_reduce_col : forall {n m} (col : nat) (A : Matrix n (S m)),
+  col < (S m) -> WF_Matrix A -> WF_Matrix (reduce_col A col).
+>>>>>>> QuantumLib/main
 Proof. unfold WF_Matrix, reduce_col. intros. 
        bdestruct (y <? col). 
        - destruct H1 as [H1 | H1].   
          + apply H0; auto. 
          + assert (nibzo : forall (a b c : nat), a < b -> b < c -> 1 + a < c).
            { lia. }
+<<<<<<< HEAD
            apply (nibzo y col m) in H2.
+=======
+           apply (nibzo y col (S m)) in H2.
+>>>>>>> QuantumLib/main
            simpl in H2. lia. apply H.
        - apply H0. destruct H1.
          + left. apply H1. 
@@ -1978,23 +2452,38 @@ Proof. unfold WF_Matrix, reduce_col. intros.
 Qed.
 
 
+<<<<<<< HEAD
 Lemma rvn_is_rr_n : forall {n : nat} (v : Vector n),
   reduce_vecn v = reduce_row v (n - 1).
+=======
+Lemma rvn_is_rr_n : forall {n : nat} (v : Vector (S n)),
+  reduce_vecn v = reduce_row v n.
+>>>>>>> QuantumLib/main
 Proof. intros.
        prep_matrix_equality.
        unfold reduce_row, reduce_vecn.
        easy.
 Qed.
 
+<<<<<<< HEAD
 Lemma WF_reduce_vecn : forall {n} (v : Vector n),
   n <> 0 -> WF_Matrix v -> WF_Matrix (reduce_vecn v).
 Proof. intros. 
+=======
+Lemma WF_reduce_vecn : forall {n} (v : Vector (S n)),
+  n <> 0 -> WF_Matrix v -> WF_Matrix (reduce_vecn v).
+Proof. intros.
+>>>>>>> QuantumLib/main
        rewrite rvn_is_rr_n.
        apply WF_reduce_row; try lia; try easy. 
 Qed.
 
 
+<<<<<<< HEAD
 Lemma reduce_is_redrow_redcol : forall {n} (A : Square n) (row col : nat),
+=======
+Lemma reduce_is_redrow_redcol : forall {n} (A : Square (S n)) (row col : nat),
+>>>>>>> QuantumLib/main
   reduce A row col = reduce_col (reduce_row A row) col.
 Proof. intros. 
        prep_matrix_equality.
@@ -2003,7 +2492,11 @@ Proof. intros.
 Qed. 
 
 
+<<<<<<< HEAD
 Lemma reduce_is_redcol_redrow : forall {n} (A : Square n) (row col : nat),
+=======
+Lemma reduce_is_redcol_redrow : forall {n} (A : Square (S n)) (row col : nat),
+>>>>>>> QuantumLib/main
   reduce A row col = reduce_row (reduce_col A col) row.
 Proof. intros. 
        prep_matrix_equality.
@@ -2012,8 +2505,13 @@ Proof. intros.
 Qed. 
 
 
+<<<<<<< HEAD
 Lemma WF_reduce : forall {n} (A : Square n) (row col : nat),
   n <> 0 -> row < n -> col < n -> WF_Matrix A -> WF_Matrix (reduce A row col).
+=======
+Lemma WF_reduce : forall {n} (A : Square (S n)) (row col : nat),
+  row < S n -> col < S n -> WF_Matrix A -> WF_Matrix (reduce A row col).
+>>>>>>> QuantumLib/main
 Proof. intros.
        rewrite reduce_is_redrow_redcol.
        apply WF_reduce_col; try easy.
@@ -2236,10 +2734,17 @@ Hint Resolve WF_get_vec WF_get_row WF_reduce_row WF_reduce_col WF_reduce_vecn WF
 Hint Resolve WF_col_swap WF_row_swap WF_col_scale WF_row_scale WF_col_add WF_row_add  : wf_db.
 Hint Resolve WF_gen_new_vec WF_gen_new_row WF_col_add_many WF_row_add_many : wf_db.
 Hint Resolve WF_col_append WF_row_append WF_row_wedge WF_col_wedge WF_smash : wf_db.
+<<<<<<< HEAD
 Hint Resolve WF_col_add_each WF_row_add_each WF_make_col_zero WF_make_row_zero : wf_db.
  
 
 Lemma get_vec_reduce_col : forall {n m} (i col : nat) (A : Matrix n m),
+=======
+Hint Resolve WF_col_add_each WF_row_add_each WF_make_col_zero WF_make_row_zero WF_make_WF : wf_db.
+Hint Extern 1 (Nat.lt _ _) => lia : wf_db.
+
+Lemma get_vec_reduce_col : forall {n m} (i col : nat) (A : Matrix n (S m)),
+>>>>>>> QuantumLib/main
   i < col -> get_vec i (reduce_col A col) = get_vec i A.
 Proof. intros. 
        prep_matrix_equality. 
@@ -2277,7 +2782,11 @@ Proof. intros. prep_matrix_equality.
 Qed.
 
 
+<<<<<<< HEAD
 Lemma col_scale_reduce_col_same : forall {n m} (T : Matrix n m) (y col : nat) (a : C),
+=======
+Lemma col_scale_reduce_col_same : forall {n m} (T : Matrix n (S m)) (y col : nat) (a : C),
+>>>>>>> QuantumLib/main
   y = col -> reduce_col (col_scale T col a) y = reduce_col T y.
 Proof. intros.
        prep_matrix_equality. 
@@ -2286,7 +2795,11 @@ Proof. intros.
 Qed.
 
 
+<<<<<<< HEAD
 Lemma col_swap_reduce_before : forall {n : nat} (T : Square n) (row col c1 c2 : nat),
+=======
+Lemma col_swap_reduce_before : forall {n : nat} (T : Square (S n)) (row col c1 c2 : nat),
+>>>>>>> QuantumLib/main
   col < (S c1) -> col < (S c2) ->
   reduce (col_swap T (S c1) (S c2)) row col = col_swap (reduce T row col) c1 c2.
 Proof. intros. 
@@ -2299,7 +2812,11 @@ Proof. intros.
 Qed.
 
 
+<<<<<<< HEAD
 Lemma col_scale_reduce_before : forall {n : nat} (T : Square n) (x y col : nat) (a : C),
+=======
+Lemma col_scale_reduce_before : forall {n : nat} (T : Square (S n)) (x y col : nat) (a : C),
+>>>>>>> QuantumLib/main
   y < col -> reduce (col_scale T col a) x y = col_scale (reduce T x y) (col - 1) a.
 Proof. intros. 
        prep_matrix_equality. 
@@ -2311,7 +2828,11 @@ Proof. intros.
 Qed.
 
 
+<<<<<<< HEAD
 Lemma col_scale_reduce_same : forall {n : nat} (T : Square n) (x y col : nat) (a : C),
+=======
+Lemma col_scale_reduce_same : forall {n : nat} (T : Square (S n)) (x y col : nat) (a : C),
+>>>>>>> QuantumLib/main
   y = col -> reduce (col_scale T col a) x y = reduce T x y.
 Proof. intros. 
        prep_matrix_equality. 
@@ -2321,7 +2842,11 @@ Proof. intros.
 Qed.
 
 
+<<<<<<< HEAD
 Lemma col_scale_reduce_after : forall {n : nat} (T : Square n) (x y col : nat) (a : C),
+=======
+Lemma col_scale_reduce_after : forall {n : nat} (T : Square (S n)) (x y col : nat) (a : C),
+>>>>>>> QuantumLib/main
   y > col -> reduce (col_scale T col a) x y = col_scale (reduce T x y) col a.
 Proof. intros. 
        prep_matrix_equality. 
@@ -2331,7 +2856,11 @@ Proof. intros.
 Qed.
 
 
+<<<<<<< HEAD
 Lemma mcz_reduce_col_same : forall {n m} (T : Matrix n m) (col : nat),
+=======
+Lemma mcz_reduce_col_same : forall {n m} (T : Matrix n (S m)) (col : nat),
+>>>>>>> QuantumLib/main
   reduce_col (make_col_zero col T) col = reduce_col T col.
 Proof. intros. 
        prep_matrix_equality. 
@@ -2340,7 +2869,11 @@ Proof. intros.
          bdestruct (y =? col); bdestruct (1 + y =? col); try lia; easy. 
 Qed.
 
+<<<<<<< HEAD
 Lemma mrz_reduce_row_same : forall {n m} (T : Matrix n m) (row : nat),
+=======
+Lemma mrz_reduce_row_same : forall {n m} (T : Matrix (S n) m) (row : nat),
+>>>>>>> QuantumLib/main
   reduce_row (make_row_zero row T) row = reduce_row T row.
 Proof. intros. 
        prep_matrix_equality. 
@@ -2349,7 +2882,12 @@ Proof. intros.
          bdestruct (x =? row); bdestruct (1 + x =? row); try lia; easy. 
 Qed.
 
+<<<<<<< HEAD
 Lemma col_add_many_reduce_col_same : forall {n m} (T : Matrix n m) (v : Vector m) (col : nat),
+=======
+Lemma col_add_many_reduce_col_same : forall {n m} (T : Matrix n (S m)) (v : Vector (S m))
+                                            (col : nat),
+>>>>>>> QuantumLib/main
   reduce_col (col_add_many col v T) col = reduce_col T col.
 Proof. intros. 
        unfold reduce_col, col_add_many.
@@ -2358,7 +2896,12 @@ Proof. intros.
          bdestruct (y =? col); bdestruct (1 + y =? col); try lia; easy. 
 Qed.
 
+<<<<<<< HEAD
 Lemma row_add_many_reduce_row_same : forall {n m} (T : Matrix n m) (v : Matrix 1 n) (row : nat),
+=======
+Lemma row_add_many_reduce_row_same : forall {n m} (T : Matrix (S n) m) (v : Matrix 1 (S n))
+                                            (row : nat),
+>>>>>>> QuantumLib/main
   reduce_row (row_add_many row v T) row = reduce_row T row.
 Proof. intros. 
        unfold reduce_row, row_add_many.
@@ -2367,7 +2910,12 @@ Proof. intros.
          bdestruct (x =? row); bdestruct (1 + x =? row); try lia; easy. 
 Qed.
 
+<<<<<<< HEAD
 Lemma col_wedge_reduce_col_same : forall {n m} (T : Matrix n m) (v : Vector m) (col : nat),
+=======
+Lemma col_wedge_reduce_col_same : forall {n m} (T : Matrix n m) (v : Vector m)
+                                         (col : nat),
+>>>>>>> QuantumLib/main
   reduce_col (col_wedge T v col) col = T.
 Proof. intros.
        prep_matrix_equality.
@@ -2378,7 +2926,12 @@ Proof. intros.
        all : rewrite p; easy.
 Qed.
 
+<<<<<<< HEAD
 Lemma row_wedge_reduce_row_same : forall {n m} (T : Matrix n m) (v : Matrix 1 n) (row : nat),
+=======
+Lemma row_wedge_reduce_row_same : forall {n m} (T : Matrix n m) (v : Matrix 1 n)
+                                         (row : nat),
+>>>>>>> QuantumLib/main
   reduce_row (row_wedge T v row) row = T.
 Proof. intros.
        prep_matrix_equality.
@@ -2389,18 +2942,30 @@ Proof. intros.
        all : rewrite p; easy.
 Qed.
 
+<<<<<<< HEAD
 Lemma col_add_many_reduce_row : forall {n m} (T : Matrix n m) (v : Vector m) (col row : nat),
+=======
+Lemma col_add_many_reduce_row : forall {n m} (T : Matrix (S n) m) (v : Vector m) (col row : nat),
+>>>>>>> QuantumLib/main
   col_add_many col v (reduce_row T row) = reduce_row (col_add_many col v T) row.
 Proof. intros. 
        prep_matrix_equality. 
        unfold col_add_many, reduce_row, gen_new_vec, scale, get_vec. 
        bdestruct (y =? col); try lia; try easy. 
        bdestruct (x <? row); try lia. 
+<<<<<<< HEAD
        apply Csum_simplify; try easy. 
        do 2 rewrite Msum_Csum.
        apply Csum_eq_bounded; intros. 
        bdestruct (x <? row); try lia; easy.
        apply Csum_simplify; try easy. 
+=======
+       apply Cplus_simplify; try easy. 
+       do 2 rewrite Msum_Csum.
+       apply Csum_eq_bounded; intros. 
+       bdestruct (x <? row); try lia; easy.
+       apply Cplus_simplify; try easy. 
+>>>>>>> QuantumLib/main
        do 2 rewrite Msum_Csum.
        apply Csum_eq_bounded; intros. 
        bdestruct (x <? row); try lia; easy.
@@ -2494,14 +3059,22 @@ Proof. intros.
        easy.
 Qed.
 
+<<<<<<< HEAD
 Lemma reduce_row_reduce_col : forall {n m} (A : Matrix n m) (i j : nat),
+=======
+Lemma reduce_row_reduce_col : forall {n m} (A : Matrix (S n) (S m)) (i j : nat),
+>>>>>>> QuantumLib/main
   reduce_col (reduce_row A i) j = reduce_row (reduce_col A j) i.
 Proof. intros. 
        prep_matrix_equality. 
        unfold reduce_col, reduce_row.
        bdestruct (y <? j); bdestruct (x <? i); try lia; try easy. 
 Qed.
+<<<<<<< HEAD
 Lemma reduce_col_swap_01 : forall {n} (A : Square n),
+=======
+Lemma reduce_col_swap_01 : forall {n} (A : Square (S (S n))),
+>>>>>>> QuantumLib/main
   reduce_col (reduce_col (col_swap A 0 1) 0) 0 = reduce_col (reduce_col A 0) 0.
 Proof. intros. 
        prep_matrix_equality. 
@@ -2511,7 +3084,11 @@ Proof. intros.
        easy. 
 Qed.
 
+<<<<<<< HEAD
 Lemma reduce_reduce_0 : forall {n} (A : Square n) (x y : nat),
+=======
+Lemma reduce_reduce_0 : forall {n} (A : Square (S (S n))) (x y : nat),
+>>>>>>> QuantumLib/main
   x <= y ->
   (reduce (reduce A x 0) y 0) = (reduce (reduce A (S y) 0) x 0).
 Proof. intros.
@@ -2524,7 +3101,11 @@ Proof. intros.
 Qed.     
 
 
+<<<<<<< HEAD
 Lemma col_add_split : forall {n} (A : Square n) (i : nat) (c : C),
+=======
+Lemma col_add_split : forall {n} (A : Square (S n)) (i : nat) (c : C),
+>>>>>>> QuantumLib/main
   col_add A 0 i c = col_wedge (reduce_col A 0) (get_vec 0 A .+ c.* get_vec i A) 0.
 Proof. intros. 
        prep_matrix_equality. 
@@ -2576,7 +3157,11 @@ Proof. intros.
 Qed.
 
 
+<<<<<<< HEAD
 Lemma col_swap_reduce_row : forall {n m : nat} (S : Matrix n m) (x y row : nat),
+=======
+Lemma col_swap_reduce_row : forall {n m : nat} (S : Matrix (S n) m) (x y row : nat),
+>>>>>>> QuantumLib/main
   col_swap (reduce_row S row) x y = reduce_row (col_swap S x y) row.
 Proof. intros. 
        prep_matrix_equality. 
@@ -2642,8 +3227,12 @@ Lemma row_add_swap : forall {n m : nat} (S : Matrix n m) (x y : nat) (a : C),
 Proof. intros. 
        prep_matrix_equality. 
        unfold row_swap, row_add.
+<<<<<<< HEAD
        bdestruct (x0 =? x); bdestruct (y =? x);
          bdestruct (x0 =? y); bdestruct (x =? x); try lia; easy. 
+=======
+       bdestruct_all; easy.
+>>>>>>> QuantumLib/main
 Qed.
 
 
@@ -2665,14 +3254,62 @@ Proof. intros.
        lca. easy. 
 Qed.
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> QuantumLib/main
 Lemma mat_equiv_make_WF : forall {n m} (T : Matrix n m),
   T == make_WF T.
 Proof. unfold make_WF, mat_equiv; intros. 
        bdestruct (i <? n); bdestruct (j <? m); try lia; easy.
 Qed.
 
+<<<<<<< HEAD
+=======
+Lemma eq_make_WF : forall {n m} (T : Matrix n m),
+  WF_Matrix T -> T = make_WF T.
+Proof. intros. 
+       apply mat_equiv_eq; auto with wf_db.
+       apply mat_equiv_make_WF.
+Qed.
+
+
+Lemma col_swap_make_WF : forall {n m} (T : Matrix n m) (x y : nat),
+  x < m -> y < m -> col_swap (make_WF T) x y = make_WF (col_swap T x y).
+Proof. intros.
+       unfold make_WF, col_swap. 
+       prep_matrix_equality.
+       bdestruct_all; try easy. 
+Qed.
+
+Lemma col_scale_make_WF : forall {n m} (T : Matrix n m) (x : nat) (c : C),
+  col_scale (make_WF T) x c = make_WF (col_scale T x c).
+Proof. intros.
+       unfold make_WF, col_scale. 
+       prep_matrix_equality.
+       bdestruct_all; try easy; lca. 
+Qed.
+
+Lemma col_add_make_WF : forall {n m} (T : Matrix n m) (x y : nat) (c : C),
+  x < m -> y < m -> col_add (make_WF T) x y c = make_WF (col_add T x y c).
+Proof. intros.
+       unfold make_WF, col_add. 
+       prep_matrix_equality.
+       bdestruct_all; try easy; lca. 
+Qed.
+
+Lemma Mmult_make_WF : forall {n m o} (A : Matrix n m) (B : Matrix m o),
+  make_WF A × make_WF B = make_WF (A × B).
+Proof. intros. 
+       apply mat_equiv_eq; auto with wf_db.
+       unfold mat_equiv; intros. 
+       unfold make_WF, Mmult.
+       bdestruct (i <? n); bdestruct (j <? o); try lia; simpl. 
+       apply Csum_eq_bounded; intros. 
+       bdestruct (x <? m); try lia; easy. 
+Qed.
+>>>>>>> QuantumLib/main
 
 Lemma gen_new_vec_0 : forall {n m} (T : Matrix n m) (as' : Vector m),
   as' == Zero -> gen_new_vec n m T as' = Zero.
@@ -2714,7 +3351,11 @@ Lemma row_add_many_0 : forall {n m} (row : nat) (T : Matrix n m) (as' : Matrix 1
   as' == Zero -> T = row_add_many row as' T.
 Proof. intros. 
        unfold row_add_many in *.
+<<<<<<< HEAD
        prep_matrix_equality.
+=======
+       prep_matrix_equality. 
+>>>>>>> QuantumLib/main
        bdestruct (x =? row); try easy.
        rewrite gen_new_row_0; try easy.
        unfold Zero; lca. 
@@ -2788,14 +3429,22 @@ Proof. intros.
        bdestruct (y =? col); try easy.
        bdestruct (e =? col); try lia.
        rewrite <- Cplus_assoc.
+<<<<<<< HEAD
        apply Csum_simplify; try easy.
+=======
+       apply Cplus_simplify; try easy.
+>>>>>>> QuantumLib/main
        assert (H' : m = e + (m - e)). lia. 
        rewrite H'.
        do 2 rewrite Msum_Csum. 
        rewrite Csum_sum.
        rewrite Csum_sum.
        rewrite <- Cplus_assoc.
+<<<<<<< HEAD
        apply Csum_simplify.
+=======
+       apply Cplus_simplify.
+>>>>>>> QuantumLib/main
        apply Csum_eq_bounded; intros.
        unfold make_row_zero.
        bdestruct (x0 =? e); try lia; easy. 
@@ -2806,7 +3455,11 @@ Proof. intros.
        unfold scale.
        rewrite Cmult_0_l, Cplus_0_l.
        rewrite Cplus_comm.
+<<<<<<< HEAD
        apply Csum_simplify.
+=======
+       apply Cplus_simplify.
+>>>>>>> QuantumLib/main
        apply Csum_eq_bounded; intros.
        bdestruct (e + S x0 =? e); try lia; easy.
        unfold get_vec. simpl. 
@@ -2814,17 +3467,26 @@ Proof. intros.
 Qed.
 
 
+<<<<<<< HEAD
 Lemma col_add_many_cancel : forall {n m} (T : Matrix n m) (as' : Vector m) (col : nat),
   col < m -> as' col 0 = C0 ->
   (reduce_col T col) × (reduce_row as' col) = -C1 .* (get_vec col T) -> 
   (forall i : nat, (col_add_many col as' T) i col = C0).
 Proof. intros.
        destruct m; try lia. 
+=======
+Lemma col_add_many_cancel : forall {n m} (T : Matrix n (S m)) (as' : Vector (S m)) (col : nat),
+  col < (S m) -> as' col 0 = C0 ->
+  (reduce_col T col) × (reduce_row as' col) = -C1 .* (get_vec col T) -> 
+  (forall i : nat, (col_add_many col as' T) i col = C0).
+Proof. intros. 
+>>>>>>> QuantumLib/main
        unfold col_add_many, gen_new_vec.
        bdestruct (col =? col); try lia. 
        rewrite Msum_Csum. 
        assert (H' : (Csum (fun x : nat => (as' x 0 .* get_vec x T) i 0) (S m) = 
                      (@Mmult n m 1 (reduce_col T col) (reduce_row as' col)) i 0)%C).
+<<<<<<< HEAD
        { unfold Mmult. 
          assert (p : S m = col + (S (m - col))). lia.
          assert (p1 : m = col + (m - col)). lia.
@@ -2836,15 +3498,29 @@ Proof. intros.
          bdestruct (x <? col); simpl; try lia; lca.  
          rewrite <- p1, <- Csum_extend_l. 
          assert (p2 : col + 0 = col). lia. rewrite p2, H0.
+=======
+       { unfold Mmult.
+         replace (S m) with (col + (S (m - col))) by lia; rewrite Csum_sum. 
+         rewrite (le_plus_minus col m); try lia; rewrite Csum_sum. 
+         apply Cplus_simplify. 
+         apply Csum_eq_bounded; intros. 
+         unfold get_vec, scale, reduce_col, reduce_row. 
+         bdestruct (x <? col); simpl; try lia; lca.
+         rewrite <- le_plus_minus, <- Csum_extend_l, plus_0_r, H0; try lia. 
+>>>>>>> QuantumLib/main
          unfold scale; rewrite Cmult_0_l, Cplus_0_l.
          apply Csum_eq_bounded; intros. 
          unfold get_vec, scale, reduce_col, reduce_row. 
          bdestruct (col + x <? col); simpl; try lia.
          assert (p3 : (col + S x) = (S (col + x))). lia.
          rewrite p3. lca. }
+<<<<<<< HEAD
        rewrite H'.
        rewrite easy_sub in *.
        rewrite H1.
+=======
+       rewrite H', H1.
+>>>>>>> QuantumLib/main
        unfold scale, get_vec. 
        bdestruct (0 =? 0); try lia. 
        lca.
@@ -2859,7 +3535,11 @@ Proof. intros.
        bdestruct (y =? col); try easy.
        rewrite <- (Cplus_0_r (S x y)).
        rewrite <- Cplus_assoc.
+<<<<<<< HEAD
        apply Csum_simplify; try lca.
+=======
+       apply Cplus_simplify; try lca.
+>>>>>>> QuantumLib/main
        do 2 rewrite Msum_Csum.
        rewrite <- Csum_plus.
        rewrite Csum_0_bounded; try lca.
@@ -2992,7 +3672,11 @@ Proof. intros.
        prep_matrix_equality. 
        unfold row_add_many, col_add_many, transpose. 
        bdestruct (x =? col); try easy. 
+<<<<<<< HEAD
        apply Csum_simplify; try easy.
+=======
+       apply Cplus_simplify; try easy.
+>>>>>>> QuantumLib/main
        unfold gen_new_vec, gen_new_row, get_vec, get_row, scale.
        do 2 rewrite Msum_Csum.
        apply Csum_eq_bounded; intros. 
@@ -3005,7 +3689,11 @@ Proof. intros.
        prep_matrix_equality. 
        unfold row_add_many, col_add_many, transpose. 
        bdestruct (y =? row); try easy. 
+<<<<<<< HEAD
        apply Csum_simplify; try easy.
+=======
+       apply Cplus_simplify; try easy.
+>>>>>>> QuantumLib/main
        unfold gen_new_vec, gen_new_row, get_vec, get_row, scale.
        do 2 rewrite Msum_Csum.
        apply Csum_eq_bounded; intros. 
@@ -3040,7 +3728,11 @@ Proof. intros.
        bdestruct (x <? m); try lia.
        rewrite (le_plus_minus x m); try lia.
        do 2 rewrite Csum_sum. 
+<<<<<<< HEAD
        apply Csum_simplify. 
+=======
+       apply Cplus_simplify. 
+>>>>>>> QuantumLib/main
        apply Csum_eq_bounded.
        intros. 
        unfold col_swap, row_swap.
@@ -3053,7 +3745,11 @@ Proof. intros.
        rewrite (le_plus_minus (y - x - 1) x'); try lia. 
        do 2 rewrite Csum_sum.
        do 2 rewrite <- Cplus_assoc.
+<<<<<<< HEAD
        apply Csum_simplify. 
+=======
+       apply Cplus_simplify. 
+>>>>>>> QuantumLib/main
        apply Csum_eq_bounded.
        intros. 
        unfold col_swap, row_swap.
@@ -3063,7 +3759,11 @@ Proof. intros.
        rewrite Cplus_comm.
        rewrite (Cplus_comm _ (col_swap A x y x0 (x + 0)%nat * row_swap B x y (x + 0)%nat y0)%C). 
        do 2 rewrite Cplus_assoc.
+<<<<<<< HEAD
        apply Csum_simplify.
+=======
+       apply Cplus_simplify.
+>>>>>>> QuantumLib/main
        do 2 rewrite <- plus_n_O. 
        unfold col_swap, row_swap.
        bdestruct (x + S (y - x - 1) =? x); bdestruct (x + S (y - x - 1) =? y); 
@@ -3103,7 +3803,11 @@ Proof. intros.
 Qed.        
 
 
+<<<<<<< HEAD
 Lemma col_add_preserves_mul_lt : forall {n m o} (A : Matrix n m) (B : Matrix m o) 
+=======
+Lemma add_preserves_mul_lt : forall {n m o} (A : Matrix n m) (B : Matrix m o) 
+>>>>>>> QuantumLib/main
                                                 (x y : nat) (a : C),
    x < y -> x < m -> y < m -> A × (row_add B y x a) = (col_add A x y a) × B.
 Proof. intros.  
@@ -3112,7 +3816,11 @@ Proof. intros.
        bdestruct (x <? m); try lia.
        rewrite (le_plus_minus x m); try lia.       
        do 2 rewrite Csum_sum.
+<<<<<<< HEAD
        apply Csum_simplify. 
+=======
+       apply Cplus_simplify. 
+>>>>>>> QuantumLib/main
        apply Csum_eq_bounded.
        intros. 
        unfold row_add, col_add.
@@ -3125,7 +3833,11 @@ Proof. intros.
        rewrite (le_plus_minus (y - x - 1) x'); try lia. 
        do 2 rewrite Csum_sum.
        do 2 rewrite <- Cplus_assoc.
+<<<<<<< HEAD
        apply Csum_simplify. 
+=======
+       apply Cplus_simplify. 
+>>>>>>> QuantumLib/main
        apply Csum_eq_bounded.
        intros. 
        unfold row_add, col_add.
@@ -3135,7 +3847,11 @@ Proof. intros.
        rewrite Cplus_comm. 
        rewrite (Cplus_comm _ (col_add A x y a x0 (x + 0)%nat * B (x + 0)%nat y0)%C).
        do 2 rewrite Cplus_assoc.
+<<<<<<< HEAD
        apply Csum_simplify. 
+=======
+       apply Cplus_simplify. 
+>>>>>>> QuantumLib/main
        unfold row_add, col_add.
        do 2 rewrite <- plus_n_O.
        bdestruct (x =? y); bdestruct (x =? x); 
@@ -3148,11 +3864,19 @@ Proof. intros.
          bdestruct (x + S (y - x - 1 + S x1) =? x); try lia; easy. 
 Qed.
 
+<<<<<<< HEAD
 Lemma col_add_preserves_mul : forall {n m o} (A : Matrix n m) (B : Matrix m o) 
                                              (x y : nat) (a : C),
    x < m -> y < m -> A × (row_add B y x a) = (col_add A x y a) × B.
 Proof. intros. bdestruct (x <? y).
        - apply col_add_preserves_mul_lt; easy.
+=======
+Lemma add_preserves_mul : forall {n m o} (A : Matrix n m) (B : Matrix m o) 
+                                             (x y : nat) (a : C),
+   x < m -> y < m -> A × (row_add B y x a) = (col_add A x y a) × B.
+Proof. intros. bdestruct (x <? y).
+       - apply add_preserves_mul_lt; easy.
+>>>>>>> QuantumLib/main
        - destruct H1.
          + rewrite col_add_double, row_add_double. 
            apply scale_preserves_mul.
@@ -3162,7 +3886,11 @@ Proof. intros. bdestruct (x <? y).
            rewrite row_add_swap.
            rewrite row_swap_diff_order.
            rewrite col_swap_diff_order.
+<<<<<<< HEAD
            apply col_add_preserves_mul_lt; lia. 
+=======
+           apply add_preserves_mul_lt; lia. 
+>>>>>>> QuantumLib/main
 Qed.
 
 
@@ -3202,10 +3930,17 @@ Proof. intros.
        unfold col_add, col_add_many.
        bdestruct (y =? col); try lia; try easy.
        repeat rewrite <- Cplus_assoc.
+<<<<<<< HEAD
        apply Csum_simplify; try easy.
        bdestruct (to_add =? col); try lia.
        rewrite Cplus_comm.
        apply Csum_simplify; try easy. 
+=======
+       apply Cplus_simplify; try easy.
+       bdestruct (to_add =? col); try lia.
+       rewrite Cplus_comm.
+       apply Cplus_simplify; try easy. 
+>>>>>>> QuantumLib/main
        unfold gen_new_vec.
        do 2 rewrite Msum_Csum.
        apply Csum_eq_bounded; intros. 
@@ -3228,7 +3963,11 @@ Proof. induction e as [| e].
          rewrite <- (col_add_many_0 col A (make_row_zero (skip_count col 0) v)).
          rewrite (row_add_each_row_add col (skip_count col 0) _ _); try easy.
          rewrite <- (row_add_each_0 col B (make_row_zero (skip_count col 0) v)).
+<<<<<<< HEAD
          apply col_add_preserves_mul; try easy.
+=======
+         apply add_preserves_mul; try easy.
+>>>>>>> QuantumLib/main
          apply mat_equiv_eq; auto with wf_db.
          unfold mat_equiv; intros. 
          destruct j; try lia. 
@@ -3255,7 +3994,11 @@ Proof. induction e as [| e].
          destruct m; try easy.
          rewrite (col_add_many_col_add col (skip_count col (S e)) _ _); try easy.
          rewrite (row_add_each_row_add col (skip_count col (S e)) _ _); try easy.
+<<<<<<< HEAD
          rewrite col_add_preserves_mul; try easy.
+=======
+         rewrite add_preserves_mul; try easy.
+>>>>>>> QuantumLib/main
          rewrite cam_ca_switch. 
          rewrite IHe; try easy; auto with wf_db.
          assert (p : e < S e). lia. 
@@ -3345,6 +4088,16 @@ Proof. intros.
        rewrite Mmult_1_r; auto with wf_db. 
 Qed.
 
+<<<<<<< HEAD
+=======
+Lemma col_add_mult_r : forall {n} (A : Square n) (x y : nat) (a : C),
+  x < n -> y < n -> WF_Matrix A -> 
+  col_add A x y a = A × (row_add (I n) y x a).
+Proof. intros. 
+       rewrite add_preserves_mul; auto.
+       rewrite Mmult_1_r; auto with wf_db. 
+Qed.
+>>>>>>> QuantumLib/main
 
 Lemma col_add_many_mult_r : forall {n} (A : Square n) (v : Vector n) (col : nat),
   WF_Matrix A -> WF_Matrix v -> col < n -> v col 0 = C0 ->
@@ -3364,15 +4117,64 @@ Proof. intros.
 Qed.
 
 
+<<<<<<< HEAD
+=======
+(* now we prove facts about the ops on (I n) *)
+Lemma col_row_swap_invr_I : forall (n x y : nat), 
+  x < n -> y < n -> col_swap (I n) x y = row_swap (I n) x y.
+Proof. intros. 
+       prep_matrix_equality.
+       unfold col_swap, row_swap, I.
+       bdestruct_all; try easy.
+Qed.
+
+Lemma col_row_scale_invr_I : forall (n x : nat) (c : C), 
+  col_scale (I n) x c = row_scale (I n) x c.
+Proof. intros. 
+       prep_matrix_equality.
+       unfold col_scale, row_scale, I.
+       bdestruct_all; try easy; lca.
+Qed.
+
+Lemma col_row_add_invr_I : forall (n x y : nat) (c : C), 
+  x < n -> y < n -> col_add (I n) x y c = row_add (I n) y x c.
+Proof. intros. 
+       prep_matrix_equality.
+       unfold col_add, row_add, I.
+       bdestruct_all; try easy; try lca.
+Qed.
+
+
+Lemma row_each_col_many_invr_I : forall (n col : nat) (v : Vector n),
+  WF_Matrix v -> col < n -> v col 0 = C0 ->
+  row_add_each col v (I n) = col_add_many col v (I n).  
+Proof. intros. 
+       rewrite <- Mmult_1_r, <- col_add_many_preserves_mul, Mmult_1_l; auto with wf_db. 
+Qed.
+
+
+Lemma row_many_col_each_invr_I : forall (n col : nat) (v : Matrix 1 n),
+  WF_Matrix v -> col < n -> v 0 col = C0 ->
+  row_add_many col v (I n) = col_add_each col v (I n).  
+Proof. intros. 
+       rewrite <- Mmult_1_r, <- col_add_each_preserves_mul, Mmult_1_l; auto with wf_db. 
+Qed.
+
+>>>>>>> QuantumLib/main
 
 Lemma reduce_append_split : forall {n m} (T : Matrix n (S m)), 
   WF_Matrix T -> T = col_append (reduce_col T m) (get_vec m T).
 Proof. intros. 
        prep_matrix_equality. 
        unfold col_append, get_vec, reduce_col.
+<<<<<<< HEAD
        bdestruct (y =? S m - 1); bdestruct (0 =? 0); bdestruct (y <? m); try lia; try easy. 
        rewrite H0. rewrite easy_sub; easy.
        rewrite H; try lia. rewrite H; try lia. lca.
+=======
+       bdestruct_all; subst; try easy.
+       do 2 (rewrite H; try lia); easy. 
+>>>>>>> QuantumLib/main
 Qed.
 
 
@@ -3451,12 +4253,18 @@ Proof. induction n as [| n'].
              rewrite H1.
              destruct j.
              apply e. lia.
+<<<<<<< HEAD
              apply (m i j) in H0.
              unfold reduce_vecn in H0.
              assert (H' : i <? S n' - 1 = true).
              { apply leb_correct. lia. }
              rewrite H' in H0.
              apply H0. lia. 
+=======
+             apply (m i j) in H0; try lia.
+             unfold reduce_vecn in H0.
+             bdestruct (i <? n'); try lia; easy.
+>>>>>>> QuantumLib/main
            * right. unfold not. 
              intros. unfold mat_equiv in H.
              apply n. apply H; lia. 
@@ -3465,9 +4273,13 @@ Proof. induction n as [| n'].
            intros. apply n.
            unfold mat_equiv in *.
            intros. unfold reduce_vecn.
+<<<<<<< HEAD
            assert (H' : i <? S n' - 1 = true).
            { apply leb_correct. lia. }
            rewrite H'. 
+=======
+           bdestruct (i <? n'); try lia. 
+>>>>>>> QuantumLib/main
            apply H; lia. 
 Qed.
 
@@ -3506,11 +4318,19 @@ Qed.
  
 
 (* we can also now prove some useful lemmas about nonzero vectors *)
+<<<<<<< HEAD
 Lemma last_zero_simplification : forall {n : nat} (v : Vector n),
   WF_Matrix v -> v (n - 1) 0 = C0 -> v = reduce_vecn v.
 Proof. intros. unfold reduce_vecn.
        prep_matrix_equality.
        bdestruct (x <? (n - 1)).
+=======
+Lemma last_zero_simplification : forall {n : nat} (v : Vector (S n)),
+  WF_Matrix v -> v n 0 = C0 -> v = reduce_vecn v.
+Proof. intros. unfold reduce_vecn.
+       prep_matrix_equality.
+       bdestruct (x <? n).
+>>>>>>> QuantumLib/main
        - easy.
        - unfold WF_Matrix in H.
          destruct H1.
@@ -3576,23 +4396,32 @@ Proof. induction n as [| n'].
                easy. }
              easy.             
            * assert (H1 : exists x, (reduce_row v n') x 0 <> C0).
+<<<<<<< HEAD
              { apply IHn'. 
                assert (H1' := (@WF_reduce_row (S n') 1 n')).
                rewrite easy_sub in *.
                apply H1'; try lia; try easy.
+=======
+             { apply IHn'; auto with wf_db.
+>>>>>>> QuantumLib/main
                unfold not in *. intros. apply n. 
                rewrite H1. easy. }
              destruct H1. 
              exists x. 
+<<<<<<< HEAD
              rewrite (last_zero_simplification v); try easy.
              rewrite rvn_is_rr_n.
              all : rewrite easy_sub.
              apply H1. 
              apply e.
+=======
+             rewrite (last_zero_simplification v); try easy.    
+>>>>>>> QuantumLib/main
          + exists n'. 
            apply n.
 Qed.
 
+<<<<<<< HEAD
 (***********************************************************)
 (* Defining linear independence, and proving lemmas etc... *)
 (***********************************************************)
@@ -5511,6 +6340,21 @@ Qed.
 (*******************************)
 (* Restoring Matrix Dimensions *)
 (*******************************)
+=======
+
+
+(* Note on "using [tactics]": Most generated subgoals will be of the form 
+   WF_Matrix M, where auto with wf_db will work.
+   Occasionally WF_Matrix M will rely on rewriting to match an assumption in the 
+   context, here we recursively autorewrite (which adds time). 
+   kron_1_l requires proofs of (n > 0)%nat, here we use lia. *)
+
+(* *)
+
+(*******************************)
+(* Restoring Matrix Dimensions *)
+(*******************************)
+>>>>>>> QuantumLib/main
 
 (** Restoring Matrix dimensions *)
 Ltac is_nat n := match type of n with nat => idtac end.
@@ -5595,10 +6439,14 @@ Ltac restore_dims_rec A :=
                  end
                end
 <<<<<<< HEAD
+<<<<<<< HEAD
   | ?c .* ?A => let A' := restore_dims_rec A in 
 =======
   | ?c .* ?AA => let A' := restore_dims_rec A in 
 >>>>>>> Heisenberg-Foundations/main
+=======
+  | ?c .* ?AA => let A' := restore_dims_rec A in 
+>>>>>>> QuantumLib/main
                match type of A' with
                | Matrix ?m' ?n' => constr:(@scale m' n' c A')
                end
@@ -5893,8 +6741,11 @@ Ltac solve_matrix := assoc_least;
     Eg: ((..×..×..)⊗(..×..×..)⊗(..×..×..)) .+ ((..×..)⊗(..×..))
 *)
 
+<<<<<<< HEAD
 Local Open Scope nat_scope.
 
+=======
+>>>>>>> QuantumLib/main
 Lemma repad_lemma1_l : forall (a b d : nat),
   a < b -> d = (b - a - 1) -> b = a + 1 + d.
 Proof. intros. subst. lia. Qed. 
@@ -5920,6 +6771,7 @@ Lemma lt_ex_diff_r : forall a b, a < b -> exists d, b = a + 1 + d.
 Proof. intros. exists (b - a - 1). lia. Qed.
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 Ltac bdestruct_all :=
   repeat match goal with
@@ -5929,6 +6781,8 @@ Ltac bdestruct_all :=
   end; try (exfalso; lia).
 
 >>>>>>> Heisenberg-Foundations/main
+=======
+>>>>>>> QuantumLib/main
 (* Remove _ < _ from hyps, remove _ - _  from goal *)
 Ltac remember_differences :=
   repeat match goal with

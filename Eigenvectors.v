@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Require Import List.    
 Require Export Complex. 
 Require Export Matrix.
@@ -460,6 +461,20 @@ Qed.
 Hint Resolve WF_Phase WF_Phase' WF_Tgate WF_notc WF_ket WF_bra : wf_db.
 
 (* ran into problems with hadamard. Can probably make this more general. *)
+=======
+Require Import List.     
+Require Export Complex.  
+Require Export Quantum. 
+Require Export Polynomial.
+
+
+
+(****************************)
+(* Proving some indentities *)
+(****************************)
+
+(* little Ltac for helping with √ 2 *)
+>>>>>>> QuantumLib/main
 Ltac Hhelper :=
    unfold Mmult;
    unfold Csum;
@@ -469,6 +484,7 @@ Ltac Hhelper :=
    try lca;
    C_field.
 
+<<<<<<< HEAD
 
 Lemma big_kron_app : forall {n m} (l1 l2 : list (Matrix n m)),
   (forall i, WF_Matrix (nth i l1 (@Zero n m))) ->
@@ -502,6 +518,13 @@ Lemma H_eq_Hadjoint : hadamard† = hadamard. Proof. lma'. Qed.
 
 
 Hint Rewrite Y_eq_iXZ PEqP' H_eq_Hadjoint : id_db.
+=======
+Lemma Y_eq_iXZ : σy = Ci .* σx × σz. Proof. lma'. Qed.
+Lemma H_eq_Hadjoint : hadamard† = hadamard. Proof. lma'. Qed.
+
+
+Hint Rewrite Y_eq_iXZ H_eq_Hadjoint : id_db.
+>>>>>>> QuantumLib/main
 
 Lemma ItimesIid : I 2 × I 2 = I 2. Proof. lma'. Qed.      
 Lemma XtimesXid : σx × σx = I 2. Proof. lma'. Qed.      
@@ -513,15 +536,26 @@ Hint Resolve ItimesIid XtimesXid YtimesYid ZtimesZid HtimesHid : id_db.
 
 Lemma ZH_eq_HX : σz × hadamard = hadamard × σx. Proof. lma'. Qed.
 Lemma XH_eq_HZ : σx × hadamard = hadamard × σz. Proof. lma'. Qed.
+<<<<<<< HEAD
 Lemma PX_eq_YP : Phase × σx = σy × Phase. Proof. rewrite PEqP'. lma'. Qed.
 Lemma PZ_eq_ZP : Phase × σz = σz × Phase. Proof. lma'. Qed.
 
+=======
+Lemma SX_eq_YS : Sgate × σx = σy × Sgate. Proof. lma'; unfold Mmult;
+                                                   simpl; rewrite Cexp_PI2; lca. Qed.
+Lemma SZ_eq_ZS : Sgate × σz = σz × Sgate. Proof. lma'; unfold Mmult;
+                                                   simpl; rewrite Cexp_PI2; lca. Qed.
+>>>>>>> QuantumLib/main
 Lemma cnotX1 : cnot × (σx ⊗ I 2) = (σx ⊗ σx) × cnot. Proof. lma'. Qed.
 Lemma cnotX2 : cnot × (I 2 ⊗ σx) = (I 2 ⊗ σx) × cnot. Proof. lma'. Qed.
 Lemma cnotZ1 : cnot × (σz ⊗ I 2) = (σz ⊗ I 2) × cnot. Proof. lma'. Qed.
 Lemma cnotZ2 : cnot × (I 2 ⊗ σz) = (σz ⊗ σz) × cnot. Proof. lma'. Qed.
 
+<<<<<<< HEAD
 Hint Resolve ZH_eq_HX XH_eq_HZ PX_eq_YP PZ_eq_ZP cnotX1 cnotX2 cnotZ1 cnotZ2 : id_db.
+=======
+Hint Resolve ZH_eq_HX XH_eq_HZ SX_eq_YS SZ_eq_ZS cnotX1 cnotX2 cnotZ1 cnotZ2 : id_db.
+>>>>>>> QuantumLib/main
 
 
 
@@ -531,6 +565,11 @@ Hint Resolve ZH_eq_HX XH_eq_HZ PX_eq_YP PZ_eq_ZP cnotX1 cnotX2 cnotZ1 cnotZ2 : i
 (************************************************************************)
 
 
+<<<<<<< HEAD
+=======
+Local Open Scope nat_scope. 
+
+>>>>>>> QuantumLib/main
 Definition orthogonal {n m} (S : Matrix n m) : Prop := 
   forall i j, i <> j -> inner_product (get_vec i S) (get_vec j S) = C0.
 
@@ -566,6 +605,7 @@ Proof. intros.
 Qed.
 
 
+<<<<<<< HEAD
 (***********************************************************)
 (* Defining and proving lemmas relating to the determinant *)
 (***********************************************************)
@@ -1123,6 +1163,8 @@ Proof. induction n as [| n'].
 
 
 
+=======
+>>>>>>> QuantumLib/main
 
 
 (***************************************************)
@@ -1142,7 +1184,11 @@ Proof. unfold good_M, I; intros.
 Qed.
 
 
+<<<<<<< HEAD
 Lemma good_M_reduce : forall {n} (A : Square n) (x y : nat),
+=======
+Lemma good_M_reduce : forall {n} (A : Square (S n)) (x y : nat),
+>>>>>>> QuantumLib/main
   good_M A -> good_M (reduce A x y).    
 Proof. unfold good_M; intros.
        destruct H0 as [H0 H1].
@@ -1167,7 +1213,11 @@ Qed.
 
 Lemma connect : forall (n : nat) (A gM : Square (S n)),
   good_M gM ->
+<<<<<<< HEAD
   exists (p : Polynomial (S n)), (forall c : C, Determinant (S n) (A .+ (-c .* gM)) = eval_P (S n) p c).
+=======
+  exists (p : Polynomial (S n)), (forall c : C, Determinant (A .+ (-c .* gM)) = eval_P (S n) p c).
+>>>>>>> QuantumLib/main
 Proof. induction n as [| n'].
        - intros.
          exists [A 0 0; - gM 0 0].
@@ -1190,7 +1240,11 @@ Proof. induction n as [| n'].
 
 
 Lemma connect2 : forall (n : nat) (A : Square (S n)),
+<<<<<<< HEAD
   exists (c : C), Determinant (S n) (A .+ (-c .* I (S n))) = C0.
+=======
+  exists (c : C), det_eq_c C0 (A .+ (-c .* I (S n))).
+>>>>>>> QuantumLib/main
 Proof. intros. 
        assert (H' : good_M (I (S n))).
        apply good_M_I.
@@ -1199,7 +1253,13 @@ Proof. intros.
        assert (H0 : S n > 0). lia.
        apply (Fundamental_Theorem_Algebra p) in H0.
        destruct H0 as [c H0].
+<<<<<<< HEAD
        exists c. rewrite <- H0.
+=======
+       exists c. 
+       split; try easy. 
+       rewrite <- H0.
+>>>>>>> QuantumLib/main
        easy.
 Qed.
 
@@ -1210,7 +1270,11 @@ Lemma exists_eigenvector : forall (n : nat) (A : Square (S n)),
   exists (c : C) (v : Vector (S n)), WF_Matrix v /\ v <> Zero /\ A × v = c.* v.
 Proof. intros. 
        destruct (connect2 n A) as [c H0].
+<<<<<<< HEAD
        apply Det_0_lindep in H0.
+=======
+       apply lin_dep_det_eq_0 in H0; auto with wf_db.
+>>>>>>> QuantumLib/main
        destruct H0 as [v [H1 [H2 H3]]].
        exists c, v.
        split; auto. 
@@ -1219,12 +1283,18 @@ Proof. intros.
        assert (H4 : A × v .+ (-c .* v) .+ (c .* v) = (c .* v)).
        { rewrite H3. lma. }
        rewrite Mplus_assoc in H4.
+<<<<<<< HEAD
        Search (_ .* ?b .+ _ .* ?b). 
+=======
+>>>>>>> QuantumLib/main
        rewrite <- Mscale_plus_distr_l in H4. 
        replace (-c + c)%C with C0 in H4 by lca.
        rewrite <- H4.
        lma. 
+<<<<<<< HEAD
        auto with wf_db.
+=======
+>>>>>>> QuantumLib/main
 Qed.
     
 
@@ -1285,10 +1355,18 @@ Lemma form_basis_ver : forall {n} (v : Vector n) (x : nat),
   linearly_independent (form_basis v x) /\ get_vec x (form_basis v x) = v.
 Proof. intros.
        destruct n; try lia. split.
+<<<<<<< HEAD
        - apply (lin_indep_col_add_many_conv _ _ x _ (-C1 .* (make_row_zero x v))); try easy.
          unfold scale, make_row_zero. 
          bdestruct (x =? x); try lia; lca. 
          apply (lin_indep_scale_conv _ x (/ (v x 0))).
+=======
+       - apply (mat_prop_col_add_many_conv _ _ x (-C1 .* (make_row_zero x v))); 
+           try easy; auto with invr_db.
+         unfold scale, make_row_zero. 
+         bdestruct (x =? x); try lia; lca. 
+         apply (mat_prop_col_scale_conv _ _ x (/ (v x 0))); auto with invr_db.
+>>>>>>> QuantumLib/main
          apply nonzero_div_nonzero; easy.
          assert (H' : forall A : Square (S n), A = I (S n) -> linearly_independent A).
          { intros. rewrite H3. 
@@ -1373,7 +1451,12 @@ Proof. intros.
          apply WF_col_swap; try lia; try easy.
          apply WF_form_basis; easy.
          split. 
+<<<<<<< HEAD
          + apply lin_indep_swap; try lia.
+=======
+         + apply_mat_prop lin_indep_swap_invr.  
+           apply H3; try lia.
+>>>>>>> QuantumLib/main
            easy. 
          + rewrite col_swap_diff_order.
            rewrite <- (col_swap_get_vec _ 0 x).
@@ -1464,7 +1547,10 @@ Qed.
 (*****************************************************************************************)
 (* Defining and verifying the gram_schmidt algorythm and proving v can be part of an onb *)
 (*****************************************************************************************)
+<<<<<<< HEAD
  
+=======
+>>>>>>> QuantumLib/main
 
 
 (* proj of v onto u *)
@@ -1494,8 +1580,11 @@ Proof. intros.
 Qed.
 
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> QuantumLib/main
 Definition gram_schmidt_on_v (n m : nat) (v : Vector n) (S : Matrix n m) :=
   v .+ (Msum m (fun i => (-C1) .* (proj (get_vec i S) v))).
 
@@ -1537,7 +1626,11 @@ Proof. intros.
        do 2 rewrite Msum_Csum. 
        rewrite Cplus_comm. 
        rewrite <- Csum_extend_r.
+<<<<<<< HEAD
        apply Csum_simplify.
+=======
+       apply Cplus_simplify.
+>>>>>>> QuantumLib/main
        - apply Csum_eq_bounded.
          intros. 
          unfold delta_T.
@@ -1548,7 +1641,10 @@ Proof. intros.
          { prep_matrix_equality; 
            unfold get_vec, reduce_col.
            bdestruct (x0 <? m); try lia; easy. }
+<<<<<<< HEAD
          rewrite easy_sub in *.
+=======
+>>>>>>> QuantumLib/main
          rewrite H'. unfold scale. lca. 
        - unfold delta_T. 
          bdestruct (m =? m); try lia. 
@@ -1622,11 +1718,15 @@ Proof. intros.
        rewrite (Msum_to_Mmult T (delta_T T)) in H0. 
        unfold linearly_independent in H.
        apply H in H0.
+<<<<<<< HEAD
        assert (H' : C1 <> C0). 
        { apply C0_fst_neq.
          simpl. 
          apply R1_neq_R0. }
        apply H'.
+=======
+       apply C1_neq_C0.
+>>>>>>> QuantumLib/main
        assert (H'' : f_to_vec (S m) (delta_T T) m 0 = C0).
        { rewrite H0. easy. }
        rewrite <- H''. 
@@ -1647,6 +1747,7 @@ Proof. intros.
 Qed.
 
 
+<<<<<<< HEAD
 Lemma Cconj_simplify : forall (c1 c2 : C), c1^* = c2^* -> c1 = c2.
 Proof. intros. 
        assert (H1 : c1 ^* ^* = c2 ^* ^*). { rewrite H; easy. }
@@ -1658,13 +1759,19 @@ Qed.
 
 
 
+=======
+>>>>>>> QuantumLib/main
 
 Lemma get_vec_reduce_append_miss : forall {n m} (T : Matrix n (S m)) (v : Vector n) (i : nat),
   i < m -> get_vec i (col_append (reduce_col T m) v) = get_vec i T.
 Proof. intros. 
        prep_matrix_equality. 
        unfold get_vec, col_append, reduce_col.
+<<<<<<< HEAD
        bdestruct (i =? S m - 1); bdestruct (i <? m); try lia; easy.
+=======
+       bdestruct_all; easy. 
+>>>>>>> QuantumLib/main
 Qed.
 
 
@@ -1674,8 +1781,12 @@ Proof. intros.
        unfold get_vec, col_append, reduce_col.
        prep_matrix_equality. 
        bdestruct (y =? 0).
+<<<<<<< HEAD
        - bdestruct (m =? S m - 1); try lia.
          rewrite H0; easy.
+=======
+       - bdestruct_all; subst; easy. 
+>>>>>>> QuantumLib/main
        - rewrite H; try lia; easy.
 Qed.
 
@@ -1686,14 +1797,22 @@ Lemma get_vec_reduce_append_over : forall {n m} (T : Matrix n (S m)) (v : Vector
 Proof. intros. 
        prep_matrix_equality. 
        unfold get_vec, col_append, reduce_col.
+<<<<<<< HEAD
        bdestruct (i =? S m - 1); bdestruct (i <? m); try lia; try easy.
        rewrite H. bdestruct (y =? 0); easy.
+=======
+       bdestruct_all; try easy.  
+       rewrite H. easy.
+>>>>>>> QuantumLib/main
        right. lia. 
 Qed.
 
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> QuantumLib/main
 Lemma extend_onb_ind_step_part1 : forall {n m} (T : Matrix n (S m)),
   WF_Matrix T -> linearly_independent T -> orthonormal (reduce_col T m) ->
   orthonormal (col_append (reduce_col T m) (normalize (gram_schmidt_on_T n m T))). 
@@ -1726,18 +1845,29 @@ Proof. intros.
              rewrite Cconj_involutive, Cconj_0.
              apply inner_product_zero_normalize.
              rewrite gram_schmidt_compare.
+<<<<<<< HEAD
              rewrite easy_sub in *.
              apply (gram_schmidt_orthogonal (get_vec m T) _ j) in H1; try lia.
              assert (H9 := (@get_vec_reduce_col n (S m) j m T)). 
              rewrite easy_sub in *.
              rewrite H9 in H1; try lia.
+=======
+             apply (gram_schmidt_orthogonal (get_vec m T) _ j) in H1; try lia.
+             rewrite (@get_vec_reduce_col n m j m T) in H1; try lia.
+>>>>>>> QuantumLib/main
              apply H1.
              assert (H' : WF_Matrix (get_vec m T)).
              { apply WF_get_vec; easy. }
              apply inner_product_zero_iff_zero in H'.
              destruct (Ceq_dec (inner_product (get_vec m T) (get_vec m T)) C0); try easy.
              apply H' in e.
+<<<<<<< HEAD
              apply lin_indep_nonzero_cols in e; try lia; try easy.
+=======
+             apply_mat_prop lin_indep_pzf.
+             apply H10 in H0; try easy.
+             exists m; split; try lia; easy.
+>>>>>>> QuantumLib/main
              unfold normalize.
              apply WF_scale.
              apply WF_gs_on_T; easy.
@@ -1747,18 +1877,29 @@ Proof. intros.
              rewrite get_vec_reduce_append_miss; try easy.
              apply inner_product_zero_normalize.
              rewrite gram_schmidt_compare.
+<<<<<<< HEAD
              rewrite easy_sub in *.
              apply (gram_schmidt_orthogonal (get_vec m T) _ i) in H1; try lia.
              assert (H9 := (@get_vec_reduce_col n (S m) i m T)). 
              rewrite easy_sub in *.
              rewrite H9 in H1; try lia.
+=======
+             apply (gram_schmidt_orthogonal (get_vec m T) _ i) in H1; try lia.
+             rewrite (@get_vec_reduce_col n m i m T) in H1; try lia.
+>>>>>>> QuantumLib/main
              apply H1.
              assert (H' : WF_Matrix (get_vec m T)).
              { apply WF_get_vec; easy. }
              apply inner_product_zero_iff_zero in H'.
              destruct (Ceq_dec (inner_product (get_vec m T) (get_vec m T)) C0); try easy.
              apply H' in e.
+<<<<<<< HEAD
              apply lin_indep_nonzero_cols in e; try lia; try easy.
+=======
+             apply_mat_prop lin_indep_pzf.
+             apply H10 in H0; try easy.
+             exists m; split; try lia; easy.
+>>>>>>> QuantumLib/main
              unfold normalize.
              apply WF_scale.
              apply WF_gs_on_T; easy.
@@ -1768,9 +1909,14 @@ Proof. intros.
              unfold orthonormal in H1.
              destruct H1 as [H1 _].
              unfold orthogonal in H1.
+<<<<<<< HEAD
              apply (@get_vec_reduce_col n (S m) i m T) in H7.
              apply (@get_vec_reduce_col n (S m) j m T) in H8.
              rewrite easy_sub in *.
+=======
+             apply (@get_vec_reduce_col n m i m T) in H7.
+             apply (@get_vec_reduce_col n m j m T) in H8.
+>>>>>>> QuantumLib/main
              apply H1 in H2.             
              rewrite H7, H8 in H2; easy. 
        - intros. 
@@ -1788,9 +1934,14 @@ Proof. intros.
            apply WF_scale.
            apply WF_gs_on_T; easy.
          + destruct H1 as [_ H1].
+<<<<<<< HEAD
            rewrite get_vec_reduce_append_miss; try lia. 
            assert (H' := (@get_vec_reduce_col n (S m) i m T)).
            rewrite <- H'; try lia. 
+=======
+           rewrite get_vec_reduce_append_miss; try lia.         
+           rewrite <- (@get_vec_reduce_col n m i m T); try lia. 
+>>>>>>> QuantumLib/main
            apply H1; lia. 
 Qed.     
 
@@ -1815,7 +1966,11 @@ Proof. intros.
        rewrite <- Csum_extend_r.
        bdestruct (m1 =? m1); bdestruct (0 =? 0); try lia. 
        rewrite Cplus_comm.
+<<<<<<< HEAD
        apply Csum_simplify; try lca. 
+=======
+       apply Cplus_simplify; try lca. 
+>>>>>>> QuantumLib/main
        unfold get_vec.
        assert (p : S m1 + m2 = m1 + (S m2)). lia. 
        rewrite p. 
@@ -1852,11 +2007,17 @@ Lemma extend_onb_ind_step_part2 : forall {n m1 m2} (T1 : Matrix n m1) (T2 : Matr
                                     (normalize (gram_schmidt_on_T n m1 (col_append T1 v)))) T2).
 Proof. intros. 
        rewrite smash_scale. 
+<<<<<<< HEAD
        apply lin_indep_scale.
+=======
+       apply_mat_prop lin_indep_scale_invr.
+       apply H5.
+>>>>>>> QuantumLib/main
        unfold not; intros. 
        assert (H4' : (norm (gram_schmidt_on_T n m1 (col_append T1 v)) * 
                      / norm (gram_schmidt_on_T n m1 (col_append T1 v)) = 
                      norm (gram_schmidt_on_T n m1 (col_append T1 v)) * C0)%C).
+<<<<<<< HEAD
        { rewrite H4; easy. }
        rewrite Cmult_0_r, Cinv_r in H4'. 
        assert (H5 : C1 <> C0). 
@@ -1864,20 +2025,39 @@ Proof. intros.
          simpl. 
          apply R1_neq_R0. }
        apply H5; easy.
+=======
+       { rewrite H6; easy. }
+       rewrite Cmult_0_r, Cinv_r in H4'. 
+       apply C1_neq_C0; easy.
+>>>>>>> QuantumLib/main
        unfold not; intros.
        assert (H5' : WF_Matrix (gram_schmidt_on_T n m1 (col_append T1 v))).
        { apply WF_gs_on_T.
          apply WF_col_append; easy. }
        apply norm_zero_iff_zero in H5'.
+<<<<<<< HEAD
        apply RtoC_inj in H5.
        rewrite H5 in H5'. 
+=======
+       apply RtoC_inj in H7.
+       rewrite H7 in H5'. 
+>>>>>>> QuantumLib/main
        apply (gram_schmidt_non_zero (col_append T1 v)).
        apply lin_indep_smash in H3; easy.
        apply H5'; lra.
        rewrite gs_on_T_cols_add; try easy.
+<<<<<<< HEAD
        apply lin_indep_col_add_many; try lia; try easy.
        unfold f_to_vec, delta_T'.
        bdestruct (m1 <? m1 + m2); bdestruct (m1 <? m1); try lia; easy. 
+=======
+       apply_mat_prop lin_indep_add_invr.
+       apply invr_col_add_col_add_many in H6.
+       inversion H6; subst.
+       apply H8; try lia; try easy.  
+       unfold f_to_vec, delta_T'.
+       bdestruct (m1 <? m1 + m2); bdestruct (m1 <? m1); try lia; easy.
+>>>>>>> QuantumLib/main
 Qed.       
 
 
@@ -1904,11 +2084,15 @@ Proof. intros.
              bdestruct (1 + y =? m1); try lia; try easy.
            all : rewrite H; try lia; rewrite H; try lia; lca. }
          rewrite H' in H4.
+<<<<<<< HEAD
          rewrite easy_sub in *.
+=======
+>>>>>>> QuantumLib/main
          apply H4; try easy.
          apply WF_col_append; easy.
        - apply extend_onb_ind_step_part2; try easy.
          apply lin_indep_smash in H2.
+<<<<<<< HEAD
          assert (H4 := @lin_indep_nonzero_cols n (S m1) (col_append T1 v)). 
          assert (H' : get_vec m1 (col_append T1 v) = v).
          { prep_matrix_equality. 
@@ -1918,6 +2102,19 @@ Proof. intros.
            rewrite H1; try lca; lia. }
          rewrite <- H'. 
          apply H4; try lia; easy.
+=======
+         apply_mat_prop lin_indep_pzf.
+         unfold not; intros.
+         assert (H' : ~ linearly_independent (col_append T1 v)).
+         { apply H5.
+           exists m1.
+           split; try lia.
+           rewrite <- H6. 
+           prep_matrix_equality. 
+           unfold get_vec, col_append.
+           bdestruct (y =? 0); bdestruct (m1 =? m1); subst; try easy; try lia. }
+         easy. 
+>>>>>>> QuantumLib/main
 Qed.
 
 
@@ -1936,7 +2133,10 @@ Proof. induction m2 as [| m2'].
        - intros. 
          rewrite (split T2) in *.
          assert (H3 := (smash_assoc T1 (get_vec 0 T2) (reduce_col T2 0))). 
+<<<<<<< HEAD
          rewrite easy_sub in *.
+=======
+>>>>>>> QuantumLib/main
          simpl in *.
          rewrite <- H3 in H1. 
          rewrite <- smash_append in H1; try easy.
@@ -1947,7 +2147,10 @@ Proof. induction m2 as [| m2'].
            rewrite (split T2). easy.
            apply WF_get_vec.
            rewrite (split T2). easy.
+<<<<<<< HEAD
            rewrite easy_sub in *.
+=======
+>>>>>>> QuantumLib/main
            assert (add1 : S (m1 + S m2') = S (S m1) + m2'). { lia. }
            assert (add2 : S (m1 + 1) = S (S m1)). { lia. }
            rewrite add1, add2 in H1.
@@ -1955,6 +2158,7 @@ Proof. induction m2 as [| m2'].
          destruct H4 as [v [H4 [H5 H6]]].
          assert (H7 : exists T2' : Matrix n m2', 
                     WF_Matrix T2' /\ orthonormal (smash (smash T1 v) T2')).
+<<<<<<< HEAD
          { apply (IHm2' _ (smash T1 v) (reduce_col T2 0)).            
            assert (H' : Nat.add m1 (S O) = S m1). lia. 
            unfold Nat.add in H'.
@@ -1971,12 +2175,28 @@ Proof. induction m2 as [| m2'].
            lia. 
            rewrite (split T2).
            easy. 
+=======
+         { assert (H'' := (@WF_smash n (S m1) (S O) T1 v)).
+           assert (H''' : Nat.add (S m1) (S O) = S (S m1)). lia. 
+           apply (IHm2' _ (smash T1 v) (reduce_col T2 0)); try easy.             
+           assert (H' : Nat.add m1 (S O) = S m1). lia. 
+           unfold Nat.add in H'.
+           rewrite H'. 
+           rewrite H''' in *.
+           apply H''.  
+           easy. easy.
+           apply (WF_reduce_col 0 T2); try lia. 
+           rewrite (split T2); easy. 
+>>>>>>> QuantumLib/main
            assert (add1 : S (Nat.add m1 (S m2')) = S (Nat.add (Nat.add m1 (S O)) m2')). lia. 
            rewrite add1 in H1.
            unfold Nat.add in H1.
            unfold Nat.add.
            rewrite <- smash_append; try easy.
+<<<<<<< HEAD
            rewrite easy_sub in *.
+=======
+>>>>>>> QuantumLib/main
            assert (add2 : Nat.add (S (S m1)) m2' = S (Nat.add (Nat.add m1 (S O)) m2')). lia. 
            assert (add3 : (S (S m1)) = S (Nat.add m1 (S O))). lia. 
            rewrite add2, add3 in H6.
@@ -2074,9 +2294,13 @@ Proof. intros.
          apply WF_get_vec; easy.
          easy.
          apply WF_get_vec; easy.
+<<<<<<< HEAD
          apply (WF_reduce_col 0) in H1.
          rewrite easy_sub in *; easy.
          lia. 
+=======
+         apply (WF_reduce_col 0) in H1; try easy; lia.  
+>>>>>>> QuantumLib/main
          rewrite H3; apply orthonormal_normalize_v; easy.
          unfold not; intros; apply H0.
          prep_matrix_equality. 
@@ -2109,6 +2333,7 @@ Qed.
 (********************************************************************)
 
 
+<<<<<<< HEAD
 Lemma P_unitary : WF_Unitary Phase. Proof. apply phase_unitary. Qed.
 Lemma T_unitary : WF_Unitary Tgate. 
 Proof. unfold WF_Unitary.
@@ -2121,6 +2346,10 @@ Proof. unfold WF_Unitary.
        rewrite H1 in H; rewrite H.
        rewrite Cexp_mul_neg_l. lca. 
 Qed.
+=======
+Lemma P_unitary : WF_Unitary Sgate. Proof. apply phase_unitary. Qed.
+Lemma T_unitary : WF_Unitary Tgate. Proof. apply phase_unitary. Qed.
+>>>>>>> QuantumLib/main
 
 
 Lemma notc_unitary : WF_Unitary notc.
@@ -2198,6 +2427,10 @@ Proof. intros n U. split.
          bdestruct (i =? j); bdestruct (i <? n); try lia. 
          * unfold norm in H3.
            apply H3 in H0.
+<<<<<<< HEAD
+=======
+           apply eq_sym in H0.
+>>>>>>> QuantumLib/main
            apply sqrt_1_unique in H0.
            unfold RtoC.
            apply c_proj_eq.
@@ -2575,7 +2808,11 @@ Proof.
 Qed.
 
 
+<<<<<<< HEAD
 Lemma up_tri_reduce_0 : forall {n : nat} (A : Square n),
+=======
+Lemma up_tri_reduce_0 : forall {n : nat} (A : Square (S n)),
+>>>>>>> QuantumLib/main
   upper_triangular A -> upper_triangular (reduce A 0 0).
 Proof. 
   unfold upper_triangular, reduce.
@@ -2588,7 +2825,11 @@ Qed.
 
 Lemma det_up_tri_diags : forall {n : nat} (A : Square n),
   upper_triangular A -> 
+<<<<<<< HEAD
   Determinant n A = Cprod (fun i => A i i) n.
+=======
+  Determinant A = Cprod (fun i => A i i) n.
+>>>>>>> QuantumLib/main
 Proof. induction n as [| n'].
        - easy.
        - intros. simpl. 
@@ -2603,14 +2844,22 @@ Proof. induction n as [| n'].
            rewrite <- Csum_extend_l.
            rewrite <- Cplus_0_r.
            rewrite <- Cplus_assoc.
+<<<<<<< HEAD
            apply Csum_simplify.
+=======
+           apply Cplus_simplify.
+>>>>>>> QuantumLib/main
            simpl parity. 
            rewrite IHn'; try lca.
            apply up_tri_reduce_0; easy.
            unfold upper_triangular in H.
            rewrite H; try lia. 
            rewrite <- Cplus_0_r.
+<<<<<<< HEAD
            apply Csum_simplify; try lca. 
+=======
+           apply Cplus_simplify; try lca. 
+>>>>>>> QuantumLib/main
            apply Csum_0_bounded.
            intros. 
            rewrite H; try lia; lca. 
@@ -2618,6 +2867,7 @@ Qed.
 
 
 
+<<<<<<< HEAD
 Lemma det_multiplicative_up_tri : forall {n} (A B : Square n),
   upper_triangular A -> upper_triangular B -> 
   (Determinant n A * Determinant n B)%C = Determinant n (A × B).
@@ -2638,6 +2888,8 @@ Qed.
 
 
 
+=======
+>>>>>>> QuantumLib/main
 (**************************************************)
 (* Defining eignestates to be used in type system *)
 (**************************************************)
@@ -2669,9 +2921,17 @@ Proof. unfold WF_Diagonal, Eigenpair, e_i. intros.
        - intros. simpl. bdestruct (x' =? i); try lia; lca.
 Qed.
 
+<<<<<<< HEAD
 
 Lemma eigen_scale : forall {n} (A : Square n) (v : Vector n) (c1 c2 : C),
   Eigenpair A (v, c1) -> Eigenpair (c2 .* A) (v, Cmult c1 c2).
+=======
+Local Close Scope nat_scope.
+
+
+Lemma eigen_scale : forall {n} (A : Square n) (v : Vector n) (c1 c2 : C),
+  Eigenpair A (v, c1) -> Eigenpair (c2 .* A) (v, c1 * c2).
+>>>>>>> QuantumLib/main
 Proof. intros. 
        unfold Eigenpair in *; simpl in *. 
        rewrite Mscale_mult_dist_l.
@@ -2742,9 +3002,15 @@ Proof. intros. destruct H0 as [v [H0 [H1 H2]]].
        rewrite Mscale_mult_dist_r in H4.
        rewrite Mscale_mult_dist_l in H4.
        rewrite Mscale_assoc in H4.
+<<<<<<< HEAD
        assert (H' : ((v) † × v) 0 0 = (c * c ^* .* ((v) † × v)) 0 0).
        rewrite <- H4; easy.
        assert (H'' : ((v) † × v) 0 0 = inner_product v v). easy.
+=======
+       assert (H' : ((v) † × v) O O = (c * c ^* .* ((v) † × v)) O O).
+       rewrite <- H4; easy.
+       assert (H'' : ((v) † × v) O O = inner_product v v). easy.
+>>>>>>> QuantumLib/main
        unfold scale in H'.
        rewrite H'' in H'.
        apply (Cmult_simplify (inner_product v v) (c * c ^* * inner_product v v)
@@ -2819,7 +3085,11 @@ Proof. intros n A [Hwf Hu].
        apply H; easy.
 Qed.
 
+<<<<<<< HEAD
 
+=======
+Local Open Scope nat_scope.
+>>>>>>> QuantumLib/main
 (* this proof is horribly long and I feel like theres probably a better way to show this *)
 (* TODO : make this better *) 
 Lemma unitary_reduction_step2 : forall {n} (A : Square (S n)),
@@ -2848,6 +3118,10 @@ Proof. intros n A H [c H0] i j H1.
          assert (H4 : norm (get_vec 0 A†) = 1%R).
          { apply Hn; lia. } 
          unfold norm in H4.
+<<<<<<< HEAD
+=======
+         apply eq_sym in H4.
+>>>>>>> QuantumLib/main
          apply sqrt_1_unique in H4.
          replace 1%R with (fst C1) in H4 by easy.
          apply (c_proj_eq (((get_vec 0 A†) † × get_vec 0 A†) 0 0) C1) in H4.
@@ -2922,11 +3196,16 @@ Proof. intros n A [Hwf Hu].
        assert (H' : WF_Matrix (reduce A 0 0)).
        { apply WF_reduce; try lia; easy. } 
        split. split.        
+<<<<<<< HEAD
        rewrite easy_sub in *.
        apply H'.
        apply mat_equiv_eq; auto with wf_db.
        apply WF_mult; try apply WF_adjoint.
        all : rewrite easy_sub in *; try easy.
+=======
+       apply H'.
+       apply mat_equiv_eq; auto with wf_db.
+>>>>>>> QuantumLib/main
        unfold mat_equiv; intros. 
        assert (H2 : ((A) † × A) (S i) (S j) = (I n) i j).
        { rewrite Hu. 
@@ -2995,7 +3274,12 @@ Proof. induction n as [| n'].
          { do 2 try apply Mmult_unitary.
            apply transpose_unitary.
            all : easy. }
+<<<<<<< HEAD
          assert (H4 : (forall (i j : nat), (i = 0 \/ j = 0) /\ i <> j -> ((X) † × A × X) i j = C0)).
+=======
+         assert (H4 : (forall (i j : nat), (i = 0 \/ j = 0) /\ i <> j ->
+                                           ((X) † × A × X) i j = C0)).
+>>>>>>> QuantumLib/main
          { apply unitary_reduction_step2; try easy. 
            exists c. easy. }
          apply unitary_reduction_step3 in H3; try easy.
