@@ -33,23 +33,23 @@ Lemma ket1_equiv : ∣1⟩ = ket 1.
 Proof. reflexivity. Qed.
 
 Lemma bra0ket0 : bra 0 × ket 0 = I 1.
-Proof. solve_matrix. Qed.
+Proof. lma'. Qed.
 
 Lemma bra0ket1 : bra 0 × ket 1 = Zero.
-Proof. solve_matrix. Qed.
+Proof. lma'. Qed.
 
 Lemma bra1ket0 : bra 1 × ket 0 = Zero.
-Proof. solve_matrix. Qed.
+Proof. lma'. Qed.
 
 Lemma bra1ket1 : bra 1 × ket 1 = I 1.
-Proof. solve_matrix. Qed.
+Proof. lma'. Qed.
 
 (* Hadamard properties *)
 Lemma H0_spec : hadamard × ∣ 0 ⟩ = ∣ + ⟩.
-Proof. solve_matrix. Qed.
+Proof. lma'. Qed.
 
 Lemma H1_spec : hadamard × ∣ 1 ⟩ = ∣ - ⟩.
-Proof. solve_matrix. Qed.
+Proof. lma'. Qed.
 
 Lemma Hplus_spec : hadamard × ∣ + ⟩ = ∣ 0 ⟩.
 Proof. solve_matrix. Qed.
@@ -57,63 +57,69 @@ Proof. solve_matrix. Qed.
 Lemma Hminus_spec : hadamard × ∣ - ⟩ = ∣ 1 ⟩.
 Proof. solve_matrix.  Qed.
 
+Local Open Scope nat_scope. 
+
 Lemma H0_kron_n_spec : forall n,
   n ⨂ hadamard × n ⨂ ∣0⟩ = n ⨂ ∣+⟩.
 Proof.
   intros.
   induction n; simpl.
   - Msimpl_light. reflexivity.
-  - restore_dims. 
+  - replace (2^n + (2^n + 0)) with (2^n * 2) by lia.
+    replace (1^n + 0) with (1*1) by (rewrite Nat.pow_1_l, plus_0_r; lia). 
+    rewrite Nat.pow_1_l.
     rewrite kron_mixed_product.
     rewrite <- IHn.
     apply f_equal_gen; try reflexivity.
-    solve_matrix.
+    lma'.    
 Qed.
+
+Local Close Scope nat_scope. 
 
 (* X properties *)
 Lemma X0_spec : σx × ∣ 0 ⟩ = ∣ 1 ⟩.
-Proof. solve_matrix. Qed.
+Proof. lma'. Qed.
 
 Lemma X1_spec : σx × ∣ 1 ⟩ = ∣ 0 ⟩.
-Proof. solve_matrix. Qed.
+Proof. lma'. Qed.
 
 (* Y properties *)
 Lemma Y0_spec : σy × ∣ 0 ⟩ = Ci .* ∣ 1 ⟩.
-Proof. solve_matrix. Qed.
+Proof. lma'. Qed.
 
 Lemma Y1_spec : σy × ∣ 1 ⟩ = -Ci .* ∣ 0 ⟩.
-Proof. solve_matrix. Qed.
+Proof. lma'. Qed.
 
 (* Z properties *)
 Lemma Z0_spec : σz × ∣ 0 ⟩ = ∣ 0 ⟩.
-Proof. solve_matrix. Qed.
+Proof. lma'. Qed.
 
 Lemma Z1_spec : σz × ∣ 1 ⟩ = -1 .* ∣ 1 ⟩.
-Proof. solve_matrix. Qed.
+Proof. lma'. Qed.
 
 (* CNOT properties *)
 
 Lemma CNOT_spec : forall (x y : nat), (x < 2)%nat -> (y < 2)%nat -> cnot × ∣ x,y ⟩ = ∣ x, (x + y) mod 2 ⟩.
 Proof.
-  intros; destruct x as [| [|x]], y as [| [|y]]; try lia; solve_matrix.
+  intros; destruct x as [| [|x]], y as [| [|y]]; try lia; lma'.
 Qed.
 
 Lemma CNOT00_spec : cnot × ∣ 0,0 ⟩ = ∣ 0,0 ⟩.
-Proof. solve_matrix. Qed.
+Proof. lma'. Qed.
 
 Lemma CNOT01_spec : cnot × ∣ 0,1 ⟩ = ∣ 0,1 ⟩.
-Proof. crunch_matrix. Qed.
+Proof. lma'. Qed.
 
 Lemma CNOT10_spec : cnot × ∣ 1,0 ⟩ = ∣ 1,1 ⟩.
-Proof. solve_matrix. Qed.
+Proof. lma'. Qed.
                                         
 Lemma CNOT11_spec : cnot × ∣ 1,1 ⟩ = ∣ 1,0 ⟩.
-Proof. solve_matrix. Qed.
+Proof. lma'. Qed.
 
 (* SWAP properties *)
 
 Lemma SWAP_spec : forall x y, swap × ∣ x,y ⟩ = ∣ y,x ⟩.
-Proof. intros. destruct x,y; solve_matrix. Qed.
+Proof. intros. destruct x,y; lma'. Qed.
 
 (* Automation *)
 

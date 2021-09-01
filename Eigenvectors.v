@@ -47,8 +47,6 @@ Lemma cnotZ2 : cnot × (I 2 ⊗ σz) = (σz ⊗ σz) × cnot. Proof. lma'. Qed.
 Hint Resolve ZH_eq_HX XH_eq_HZ SX_eq_YS SZ_eq_ZS cnotX1 cnotX2 cnotZ1 cnotZ2 : id_db.
 
 
-
-
 (************************************************************************)
 (* Defining a set of vectors, linear independence, other prelims etc... *)
 (************************************************************************)
@@ -69,7 +67,7 @@ Definition WF_Orthonormal {n m} (S : Matrix n m) : Prop :=
 
 
 Lemma inner_product_is_mult : forall {n} (i j : nat) (S : Square n),
-  inner_product (get_vec i S) (get_vec j S) = ((S†) × S) i j.
+  inner_product (get_vec i S) (get_vec j S) = (S† × S) i j.
 Proof. intros. unfold inner_product, get_vec, Mmult, adjoint.
        apply Csum_eq.
        apply functional_extensionality; intros. simpl.
@@ -98,53 +96,22 @@ Qed.
 (***************************************************)
 
 
-Definition good_M {n} (A : Square n) : Prop :=
-  forall (i j k : nat), (A j i <> C0 /\ A k i <> C0 -> j = k). 
-
-
-Lemma good_M_I : forall (n : nat), good_M (I n).
-Proof. unfold good_M, I; intros. 
-       destruct H as [H H0].
-       bdestruct (j =? i); bdestruct (j <? n); try lia; try easy.
-       bdestruct (k =? i); bdestruct (k <? n); try lia; try easy.
-Qed.
-
-
-Lemma good_M_reduce : forall {n} (A : Square (S n)) (x y : nat),
-  good_M A -> good_M (reduce A x y).    
-Proof. unfold good_M; intros.
-       destruct H0 as [H0 H1].
-       unfold reduce in *.
-       bdestruct (j <? x); bdestruct (k <? x); bdestruct (i <? y).
-       - apply (H i j k); auto.
-       - apply (H (1 + i) j k); auto.
-       - assert (H' : j = 1 + k). apply (H i); auto.
-         lia.
-       - assert (H' : j = 1 + k). apply (H (1 +i)); auto.
-         lia.
-       - assert (H' : 1 + j = k). apply (H i); auto.
-         lia.
-       - assert (H' : 1 + j = k). apply (H (1 +i)); auto.
-         lia. 
-       - assert (H' : 1 + j = 1 + k). apply (H i); auto.
-         lia.
-       - assert (H' : 1 + j = 1 + k). apply (H (1 + i)); auto.
-         lia.
-Qed.
-
-
 Lemma connect : forall (n : nat) (A gM : Square (S n)),
   good_M gM ->
-  exists (p : Polynomial (S n)), (forall c : C, Determinant (A .+ (-c .* gM)) = eval_P (S n) p c).
+  exists (p : Polynomial (S n)), (forall c : C, Determinant (A .+ (-c .* gM)) = p[[c]]).
 Proof. induction n as [| n'].
        - intros.
          exists [A 0 0; - gM 0 0].
          intros. 
          unfold eval_P; simpl. 
          lca. 
-       - intros. 
+       - intros.
+         assert (H' : forall i, 
+
+ 
          exists [C1]; intros. 
          rewrite Det_simplify.
+         rewrite (reduce_plus A _ i 0). , reduce_scale.
          Admitted.
 
 

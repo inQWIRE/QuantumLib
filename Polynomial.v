@@ -1,6 +1,5 @@
 Require Import Psatz.
 Require Import String.
-Require Import Program.
 Require Export Complex.
 Require Export Matrix.
 Require Import List.
@@ -12,6 +11,11 @@ Require Export CoRN.coq_reals.Rreals_iso.
 *)
 
 
+
+Declare Scope poly_scope.
+Delimit Scope poly_scope with P.
+Open Scope poly_scope.
+
 (* polynomial represented by a list of coeficients and a degree*)
 Definition Polynomial (n : nat) := list (Complex.C).
 
@@ -19,8 +23,25 @@ Definition Polynomial (n : nat) := list (Complex.C).
 Definition WF_Poly {n : nat} (p : Polynomial n) :=
   length p = (S n).
 
-Definition eval_P (n : nat) (p : Polynomial n) (x : Complex.C):=
+Definition eval_P {n : nat} (p : Polynomial n) (x : Complex.C):=
   Csum (fun i => (nth i p C0)* x^i) (S n).
+
+
+
+Definition Pplus {n} (p1 p2 : Polynomial n) : Polynomial n := zipWith Cplus p1 p2.
+Definition Pscale {n} (c : C) (p1 : Polynomial n) : Polynomial n := map (Cmult c) p1.
+
+
+
+Infix "+," := Pplus (at level 40, left associativity) : poly_scope. 
+Infix "*," := Pscale (at level 40, left associativity) : poly_scope.
+Notation "P [[ x ]]" := (eval_P P x) (at level 0) : poly_scope.  
+
+Axiom Pplus_eval : forall {n} (p1 p2 : Polynomial n) (c : C),
+  (p1 +, p2)[[c]] = p1[[c]] + p2[[c]].
+
+Axiom Pscale_eval : forall {n} (p1 : Polynomial n) (c1 c2 : C),
+  (c1 *, p1)[[c2]] = c1 * p1[[c2]].
 
 
 (*****************************************************)
@@ -59,6 +80,6 @@ Qed. *)
        
 
 Theorem Fundamental_Theorem_Algebra : forall {n : nat} (p : Polynomial n),
-  (n > 0)%nat -> (exists c : (R * R), eval_P n p c = C0).
+  (n > 0)%nat -> (exists c : C, p[[c]] = C0).
 Proof. Admitted.
 
