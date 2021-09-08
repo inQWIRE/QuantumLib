@@ -96,51 +96,92 @@ Qed.
 (***************************************************)
 
 
-Lemma connect : forall (n : nat) (A gM : Square (S n)),
-  good_M gM ->
-  exists (p : Polynomial (S n)), (forall c : C, Determinant (A .+ (-c .* gM)) = p[[c]]).
-Proof. induction n as [| n'].
-       - intros.
-         exists [A 0 0; - gM 0 0].
-         intros. 
-         unfold eval_P; simpl. 
-         lca. 
-       - intros.
-         assert (H' : forall i, 
+(* We first must define a new type to connect polynomials to matrices *)
 
- 
-         exists [C1]; intros. 
-         rewrite Det_simplify.
-         rewrite (reduce_plus A _ i 0). , reduce_scale.
-         Admitted.
+Definition MatrixP (m n : nat) := nat -> nat -> Polynomial.
+
+Notation SquareP n := (MatrixP n n).
 
 
-(*
-  Σ^ S (S n')
-  (fun i : nat =>
-   (parity i * (A .+ - c .* gM) i 0 * Determinant (S n') (reduce (A .+ - c .* gM) i 0))%C) =
-  eval_P (S (S n')) [C1] c *)
+Definition eval_matP {n m} (A : MatrixP n m) (c : C) : Matrix n m :=
+  fun x y => (A x y)[[c]]. 
 
 
 
+Definition reduceP {n} (A : SquareP (S n)) (row col : nat) : SquareP n :=
+  fun x y => (if x <? row 
+              then (if y <? col 
+                    then A x y
+                    else A x (1+y))
+              else (if y <? col 
+                    then A (1+x) y
+                    else A (1+x) (1+y))).
+
+Lemma reduceP_eval_mat : forall {n} (A : SquareP (S n)) (c : C) (x y : nat),
+  reduce (eval_matP A c) x y = eval_matP (reduceP A x y) c.
+Proof. intros. 
+       prep_matrix_equality.
+       unfold reduce, eval_matP, reduceP.
+       bdestruct_all; easy. 
+Qed.
+
+Fixpoint DeterminantP (n : nat) (A : SquareP n) : Polynomial :=
+  match n with 
+  | 0 => [C1]
+  | S 0 => A 0 0
+  | S n' => (Psum (fun i => [(parity i)] *, (A i 0) *, (DeterminantP n' (reduceP A i 0)))%C n)
+  end.
+
+Arguments DeterminantP {n}. 
+
+Lemma DetP_simplify : forall {n} (A : SquareP (S (S n))),
+  DeterminantP A =  
+  (Psum (fun i => [(parity i)] *, (A i 0) *, (DeterminantP (reduceP A i 0)))%C (S (S n))).
+Proof. intros. easy. Qed.
+
+Lemma Peval_Det : forall {n} (A : SquareP n) (c : C),
+  Determinant (eval_matP A c) = (DeterminantP A)[[c]].
+Proof. induction n as [| n']. 
+       - intros; lca.  
+       - intros. 
+         destruct n'. 
+         + simpl. easy. 
+         + rewrite DetP_simplify, Det_simplify.
+           rewrite Psum_eval.
+           apply Csum_eq_bounded; intros.
+           rewrite reduceP_eval_mat, IHn'.
+           do 2 rewrite Pmult_eval.
+           repeat apply f_equal_gen; try easy.  
+           unfold Peval; lca. 
+Qed.
+
+(* note really useful except for in the proof of connect *)
+Definition prep_mat {n} (A : Square n) : SquareP n := 
+  (fun x y => if (x =? y) && (x <? n) then [A x y; -C1] else [A x y]).
+
+
+Lemma connect : forall (n : nat) (A : Square (S n)),
+  exists (p : Polynomial), (forall c : C, Determinant (A .+ (-c .* I (S n))) = p[[c]]).
+Proof. intros. 
+       exists (DeterminantP (prep_mat A)).
+       intros. 
+       rewrite <- Peval_Det.
+       apply f_equal_gen; try easy. 
+       prep_matrix_equality.
+       unfold prep_mat, eval_matP, Peval, I, Mplus, scale.
+       bdestruct_all; simpl; lca. 
+Qed.
 
 Lemma connect2 : forall (n : nat) (A : Square (S n)),
   exists (c : C), det_eq_c C0 (A .+ (-c .* I (S n))).
 Proof. intros. 
-       assert (H' : good_M (I (S n))).
-       apply good_M_I.
-       apply (connect n A) in H'.
-       destruct H' as [p H].
-       assert (H0 : S n > 0). lia.
-       apply (Fundamental_Theorem_Algebra p) in H0.
-       destruct H0 as [c H0].
-       exists c. 
-       split; try easy. 
-       rewrite <- H0.
-       easy.
+       destruct (connect n A) as [p H].
+       destruct (Fundamental_Theorem_Algebra p). 
+       exists x. 
+       split; auto. 
+       rewrite H; easy.
 Qed.
-
-
+     
 
 Lemma exists_eigenvector : forall (n : nat) (A : Square (S n)),
   WF_Matrix A -> 
@@ -148,7 +189,7 @@ Lemma exists_eigenvector : forall (n : nat) (A : Square (S n)),
 Proof. intros. 
        destruct (connect2 n A) as [c H0].
        apply lin_dep_det_eq_0 in H0; auto with wf_db.
-       destruct H0 as [v [H1 [H2 H3]]].
+       destruct H0 as [v [H1 [H2 H3] ] ].
        exists c, v.
        split; auto. 
        split; auto. 
@@ -862,7 +903,7 @@ Proof. induction m2 as [| m2'].
            assert (add2 : S (m1 + 1) = S (S m1)). { lia. }
            rewrite add1, add2 in H1.
            apply H1. }
-         destruct H4 as [v [H4 [H5 H6]]].
+         destruct H4 as [v [H4 [H5 H6] ] ].
          assert (H7 : exists T2' : Matrix n m2', 
                     WF_Matrix T2' /\ orthonormal (smash (smash T1 v) T2')).
          { assert (H'' := (@WF_smash n (S m1) (S O) T1 v)).
@@ -967,10 +1008,10 @@ Proof. intros.
          { unfold normalize. 
            auto with wf_db. }
          apply lin_indep_out_of_v in H'; try easy.
-         destruct H' as [S0 [H1 [H2 H3]]].
+         destruct H' as [S0 [H1 [H2 H3] ] ].
          rewrite (split S0) in H2.
          apply (extend_onb (S n) n 0 (get_vec 0 S0) (reduce_col S0 0)) in H2. 
-         destruct H2 as [T [H4 H5]].
+         destruct H2 as [T [H4 H5] ].
          exists (smash (get_vec 0 S0) T). split; try easy.
          assert (H' : S n = 1 + n). lia. rewrite H'.
          unfold WF_Orthonormal; split. 
@@ -1081,7 +1122,7 @@ Proof. intros n U. split.
            rewrite H2. unfold I.
            bdestruct (i =? i); bdestruct (i <? n); try lia. 
            simpl. apply sqrt_1. 
-       - intros [H1 [H2 H3]]. 
+       - intros [H1 [H2 H3] ]. 
          split; try easy.
          apply mat_equiv_eq; auto with wf_db.
          unfold mat_equiv; intros. 
@@ -1110,7 +1151,7 @@ Lemma unit_out_of_v : forall {n} (v : Vector n) (x : nat),
   exists S : Matrix n n, WF_Unitary S /\ get_vec 0 S = normalize v.
 Proof. intros.
        apply onb_out_of_v in H; try easy.
-       destruct H as [S [H1 H2]].
+       destruct H as [S [H1 H2] ].
        exists S. split; try easy.
        apply unit_is_orthonormal; easy.
 Qed.
@@ -1323,7 +1364,7 @@ Proof.
   intros n r A [H H0].  
   split; auto with wf_db.
   do 3 (destruct H0).
-  destruct H0 as [H1 [H2 [H3 [H4 H5]]]].
+  destruct H0 as [H1 [H2 [H3 [H4 H5] ] ] ].
   exists x, x0, (r .* x1); split. 
   apply diag_scale; apply H1. 
   split; try easy.
@@ -1367,7 +1408,7 @@ Lemma Cprod_0_bounded : forall (f : nat -> C) (n : nat),
 Proof. intros. 
        induction n as [| n'].
        - destruct H; lia.
-       - destruct H as [i [H1 H2]].
+       - destruct H as [i [H1 H2] ].
          bdestruct (i <? n'); bdestruct (i =? n'); try lia. 
          + simpl. rewrite IHn'; try lca.
            exists i. easy.
@@ -1603,7 +1644,7 @@ Qed.
 
 Lemma eig_unit_norm1 : forall {n} (U : Square n) (c : C),
   WF_Unitary U -> (exists v, WF_Matrix v /\ v <> Zero /\ Eigenpair U (v, c)) -> (c * c^* = C1)%C.
-Proof. intros. destruct H0 as [v [H0 [H1 H2]]].
+Proof. intros. destruct H0 as [v [H0 [H1 H2] ] ].
        unfold Eigenpair in H2; simpl in H2. 
        assert (H3 : (U × v)† = (c .* v)†). rewrite H2; easy.
        rewrite Mmult_adjoint, Mscale_adj in H3.
@@ -1638,7 +1679,7 @@ Lemma unit_has_eigen : forall {n} (A : Square (S n)),
   exists (c : C) (v : Vector (S n)),  Eigenpair A (v, c) /\ v <> Zero /\ WF_Matrix v.
 Proof. intros n A [Hwf Hu].
        apply exists_eigenvector in Hwf.
-       destruct Hwf as [c [v [H [H0 H1]]]].
+       destruct Hwf as [c [v [H [H0 H1] ] ] ].
        exists c. exists v.
        split. unfold Eigenpair.
        simpl; easy.
@@ -1651,10 +1692,10 @@ Lemma unitary_reduction_step1 : forall {n} (A : Square (S n)),
   (exists c : C, get_vec 0 (X†×A×X) = c .* e_i 0).
 Proof. intros n A [Hwf Hu].
        apply exists_eigenvector in Hwf.
-       destruct Hwf as [c [v [H [H0 H1]]]]. 
+       destruct Hwf as [c [v [H [H0 H1] ] ] ]. 
        assert (H' := H0).
        apply onb_out_of_v in H0; auto.
-       destruct H0 as [T [H2 H3]].
+       destruct H0 as [T [H2 H3] ].
        exists T. split. 
        apply unit_is_orthonormal; easy.
        exists c.
@@ -1716,10 +1757,10 @@ Proof. intros n A H [c H0] i j H1.
          rewrite H2; easy.
          unfold Eigenpair; simpl. 
          rewrite <- matrix_by_basis; try easy; lia. }
-       destruct H1 as [[H1 | H1] H3].
+       destruct H1 as [ [H1 | H1] H3].
        - apply transpose_unitary in H.
          apply unit_is_orthonormal in H.
-         destruct H as [Hwf [Ho Hn]].
+         destruct H as [Hwf [Ho Hn] ].
          assert (H4 : norm (get_vec 0 A†) = 1%R).
          { apply Hn; lia. } 
          unfold norm in H4.
@@ -1830,7 +1871,7 @@ Qed.
 
 Lemma diagble_pad : forall {n} (A : Square n) (c : C),
   WF_Diagonalizable A -> WF_Diagonalizable (pad A c).
-Proof. intros n A c [H [X [X' [B [[Hwf Hd] [H1 [H2 [H3 H4]]]]]]]].
+Proof. intros n A c [H [X [X' [B [ [Hwf Hd] [H1 [H2 [H3 H4] ] ] ] ] ] ] ].
        split. apply WF_pad; auto.
        exists (pad X C1), (pad X' C1), (pad B c).
        split. split; try (apply WF_pad; auto).
@@ -1863,7 +1904,7 @@ Proof. induction n as [| n'].
        - intros A H. 
          assert (H0 := H).
          apply unitary_reduction_step1 in H.
-         destruct H as [X [H1 [c H2]]].
+         destruct H as [X [H1 [c H2] ] ].
          assert (H3 : WF_Unitary ((X) † × A × X)).
          { do 2 try apply Mmult_unitary.
            apply transpose_unitary.
@@ -1873,7 +1914,7 @@ Proof. induction n as [| n'].
          { apply unitary_reduction_step2; try easy. 
            exists c. easy. }
          apply unitary_reduction_step3 in H3; try easy.
-         destruct H3 as [A' [H5 H6]].
+         destruct H3 as [A' [H5 H6] ].
          assert (H7 : WF_Diagonalizable ((X) † × A × X)).
          apply IHn' in H5.
          { rewrite <- H6. 
@@ -1882,7 +1923,7 @@ Proof. induction n as [| n'].
          destruct H7 as [Hwf Hd].
          split. 
          destruct H0; easy.
-         destruct Hd as [X0 [X0' [B [H7 [H8 [H9 [H10 H11]]]]]]].
+         destruct Hd as [X0 [X0' [B [H7 [H8 [H9 [H10 H11] ] ] ] ] ] ].
          exists (X0 × (X) †).
          exists (X × X0').
          exists B.
@@ -1962,8 +2003,8 @@ Qed.
 Lemma eq_eigs_implies_eq_diagble : forall {n} (D1 D2 : Square n),
   WF_Diagonalizable D1 -> WF_Diagonalizable D2 -> eq_eigs D1 D2 -> D1 = D2.
 Proof. intros n D1 D2 [H1wf H1d] [H2wf H2d] H. 
-       destruct H1d as [X1 [X1' [B1 [[Hb1wf Hb1u] [H12 [H13 [H14 H15]]]]]]].
-       destruct H2d as [X2 [X2' [B2 [[Hb2wf Hb2u] [H22 [H23 [H24 H25]]]]]]].
+       destruct H1d as [X1 [X1' [B1 [ [Hb1wf Hb1u] [H12 [H13 [H14 H15] ] ] ] ] ] ].
+       destruct H2d as [X2 [X2' [B2 [ [Hb2wf Hb2u] [H22 [H23 [H24 H25] ] ] ] ] ] ].
        apply diagble_switch in H15; apply diagble_switch in H25; auto.
        assert (H0 : D1 × X1' = X1' × B1).
        { rewrite H15.
