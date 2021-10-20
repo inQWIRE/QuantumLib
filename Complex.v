@@ -770,6 +770,19 @@ Proof.
   apply f_equal. lra.
 Qed.
 
+Lemma Cexp_conj_neg : forall θ, (Cexp θ)^* = Cexp (-θ)%R.
+Proof.
+  intros.
+  unfold Cexp.
+  unfold Cconj.
+  simpl.
+  apply c_proj_eq; simpl.
+  - rewrite cos_neg.
+    reflexivity.
+  - rewrite sin_neg.
+    reflexivity.
+Qed.
+
 Lemma Cmod_Cexp : forall θ, Cmod (Cexp θ) = 1.
 Proof.
   intro. unfold Cexp, Cmod. simpl. 
