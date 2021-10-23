@@ -694,6 +694,17 @@ Proof.
   apply RtoC_neq; apply sqrt_neq_0_compat; lra. 
 Qed.
 
+Lemma Csqrt2_neq_0 : (RtoC (√ 2) <> 0)%C.
+Proof.
+  unfold RtoC.
+  unfold not.
+  intro Hcontra.
+  apply pair_equal_spec in Hcontra.
+  destruct Hcontra.
+  contradict H.
+  apply sqrt2_neq_0.
+Qed.
+
 (****************************)
 (** Complex Exponentiation **)
 (****************************)
