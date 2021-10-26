@@ -3917,7 +3917,7 @@ Ltac restore_dims_rec A :=
                  | Matrix ?m'' ?n'' => constr:(@Mplus m' n' A' B')
                  end
                end
-  | ?c .* ?AA => let A' := restore_dims_rec A in 
+  | ?c .* ?A => let A' := restore_dims_rec A in 
                match type of A' with
                | Matrix ?m' ?n' => constr:(@scale m' n' c A')
                end
@@ -3957,6 +3957,7 @@ Ltac restore_dims tac :=
 Tactic Notation "restore_dims" tactic(tac) := restore_dims tac.
 
 Tactic Notation "restore_dims" := restore_dims (repeat rewrite Nat.pow_1_l; try ring; unify_pows_two; simpl; lia).
+
 
 (*************************)
 (* Matrix Simplification *)
