@@ -283,14 +283,49 @@ Ltac lma' :=
 
 
 
-(* lemmas which are useful for simplifying proofs involving Mmult or kron *)
+(* lemmas which are useful for simplifying proofs involving matrix operations *)
 Lemma kron_simplify : forall (n m o p : nat) (a b : Matrix n m) (c d : Matrix o p), 
     a = b -> c = d -> a ⊗ c = b ⊗ d.
 Proof. intros; subst; easy. 
 Qed.
 
+Lemma n_kron_simplify : forall (n m : nat) (a b : Matrix n m) (n m : nat), 
+    a = b -> n = m -> n ⨂ a = m ⨂ b.
+Proof. intros; subst; easy. 
+Qed.
+
+Lemma Mtranspose_simplify : forall (n m : nat) (a b : Matrix n m), 
+    a = b -> a⊤ = b⊤.
+Proof. intros; subst; easy. 
+Qed.
+
+Lemma Madjoint_simplify : forall (n m : nat) (a b : Matrix n m), 
+    a = b -> a† = b†.
+Proof. intros; subst; easy. 
+Qed.
+
 Lemma Mmult_simplify : forall (n m o : nat) (a b : Matrix n m) (c d : Matrix m o), 
     a = b -> c = d -> a × c = b × d.
+Proof. intros; subst; easy. 
+Qed.
+
+Lemma Mmult_n_simplify : forall (n : nat) (a b : Square n) (c d : nat), 
+    a = b -> c = d -> c ⨉ a = d ⨉ b.
+Proof. intros; subst; easy. 
+Qed.
+
+Lemma dot_simplify : forall (n : nat) (a b c d: Vector n), 
+    a = b -> c = d -> a ∘ c = b ∘ c.
+Proof. intros; subst; easy. 
+Qed.
+
+Lemma Mplus_simplify : forall (n m: nat) (a b : Matrix n m) (c d : Matrix n m), 
+    a = b -> c = d -> a .+ c = b .+ d.
+Proof. intros; subst; easy. 
+Qed.
+
+Lemma Mscale_simplify : forall (n m: nat) (a b : Matrix n m) (c d : C), 
+    a = b -> c = d -> c .* a = d .* b.
 Proof. intros; subst; easy. 
 Qed.
 
@@ -3882,7 +3917,7 @@ Ltac restore_dims_rec A :=
                  | Matrix ?m'' ?n'' => constr:(@Mplus m' n' A' B')
                  end
                end
-  | ?c .* ?AA => let A' := restore_dims_rec A in 
+  | ?c .* ?A => let A' := restore_dims_rec A in 
                match type of A' with
                | Matrix ?m' ?n' => constr:(@scale m' n' c A')
                end
@@ -3922,6 +3957,7 @@ Ltac restore_dims tac :=
 Tactic Notation "restore_dims" tactic(tac) := restore_dims tac.
 
 Tactic Notation "restore_dims" := restore_dims (repeat rewrite Nat.pow_1_l; try ring; unify_pows_two; simpl; lia).
+
 
 (*************************)
 (* Matrix Simplification *)

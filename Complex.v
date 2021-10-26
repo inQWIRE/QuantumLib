@@ -694,6 +694,17 @@ Proof.
   apply RtoC_neq; apply sqrt_neq_0_compat; lra. 
 Qed.
 
+Lemma Csqrt2_neq_0 : (RtoC (√ 2) <> 0)%C.
+Proof.
+  unfold RtoC.
+  unfold not.
+  intro Hcontra.
+  apply pair_equal_spec in Hcontra.
+  destruct Hcontra.
+  contradict H.
+  apply sqrt2_neq_0.
+Qed.
+
 (****************************)
 (** Complex Exponentiation **)
 (****************************)
@@ -768,6 +779,19 @@ Proof.
   Local Transparent INR.
   rewrite plus_INR; simpl.
   apply f_equal. lra.
+Qed.
+
+Lemma Cexp_conj_neg : forall θ, (Cexp θ)^* = Cexp (-θ)%R.
+Proof.
+  intros.
+  unfold Cexp.
+  unfold Cconj.
+  simpl.
+  apply c_proj_eq; simpl.
+  - rewrite cos_neg.
+    reflexivity.
+  - rewrite sin_neg.
+    reflexivity.
 Qed.
 
 Lemma Cmod_Cexp : forall θ, Cmod (Cexp θ) = 1.
