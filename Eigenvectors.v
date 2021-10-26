@@ -107,7 +107,6 @@ Definition eval_matP {n m} (A : MatrixP n m) (c : C) : Matrix n m :=
   fun x y => (A x y)[[c]]. 
 
 
-
 Definition reduceP {n} (A : SquareP (S n)) (row col : nat) : SquareP n :=
   fun x y => (if x <? row 
               then (if y <? col 
@@ -124,6 +123,7 @@ Proof. intros.
        unfold reduce, eval_matP, reduceP.
        bdestruct_all; easy. 
 Qed.
+
 
 Fixpoint DeterminantP (n : nat) (A : SquareP n) : Polynomial :=
   match n with 
@@ -155,16 +155,155 @@ Proof. induction n as [| n'].
            unfold Peval; lca. 
 Qed.
 
-(* note really useful except for in the proof of connect *)
+(* not really useful except for in the proof of connect *)
 Definition prep_mat {n} (A : Square n) : SquareP n := 
   (fun x y => if (x =? y) && (x <? n) then [A x y; -C1] else [A x y]).
 
 
+
+(* we must first show that degree (DeterminantP (prep_mat A)) = n *)
+
+Definition deg_elem_leq_1 {n} (A : SquareP n) : Prop :=
+  forall i j, degree (A i j) <= 1.
+  
+Lemma del1_reduce : forall {n} (A : SquareP (S n)) (i j : nat),
+  deg_elem_leq_1 A -> deg_elem_leq_1 (reduceP A i j).
+Proof. unfold deg_elem_leq_1, reduceP in *; intros. 
+       bdestruct_all; easy.
+Qed.
+
+
+Lemma bound_deg_matP : forall {n} (A : SquareP n),
+  deg_elem_leq_1 A -> degree (DeterminantP A) <= n.
+Proof. induction n as [| n'].
+       - intros.
+         unfold degree, compactify; simpl. 
+         destruct (Ceq_dec C1 C0); easy.
+       - intros.
+         destruct n'.
+         + simpl. 
+           apply H.
+         + rewrite DetP_simplify.
+           apply Psum_degree; intros. 
+           destruct (Peq_dec (A i 0) []).
+           rewrite p, Pmult_0_r.
+           unfold degree; simpl; lia. 
+           destruct (Peq_dec (DeterminantP (reduceP A i 0)) []).
+           rewrite p, Pmult_0_r.
+           unfold degree; simpl; lia. 
+           destruct (Peq_dec [parity i] []).
+           rewrite p. 
+           unfold degree; simpl; lia.
+           destruct (Peq_dec ([parity i] *, A i 0) []).
+           rewrite p. 
+           unfold degree; simpl; lia.
+           repeat rewrite Pmult_degree; auto. 
+           assert (H' : degree [parity i] = 0).
+           { unfold degree, compactify; simpl.  
+             destruct (Ceq_dec (parity i) C0); easy. }
+           rewrite H', <- (Nat.add_1_l (S n')), Nat.add_0_l.  
+           apply Nat.add_le_mono; auto.
+           apply IHn'.
+           apply del1_reduce; easy. 
+Qed.
+
+(* we now prove prepmat is del1 *)
+Lemma del1_prep_mat : forall {n} (A : Square n),
+  deg_elem_leq_1 (prep_mat A).
+Proof. unfold deg_elem_leq_1, prep_mat; intros.
+       destruct ((i =? j) && (i <? n)).
+       all : unfold degree, compactify; simpl. 
+       destruct (Ceq_dec (- C1) C0); simpl; try lia. 
+       all : destruct (Ceq_dec (A i j) C0); simpl; lia.
+Qed.
+
+Lemma reduce_prep_mat : forall {n} (A : Square (S n)),
+  reduceP (prep_mat A) 0 0 = prep_mat (reduce A 0 0).
+Proof. intros. 
+       prep_matrix_equality.
+       unfold reduceP, reduce, prep_mat.
+       bdestruct_all; simpl; try easy. 
+Qed.       
+
+(* this got annoyingly long. Probably want to add some helper lemmas at some point *)
+Lemma detP_deg : forall {n} (A : Square n),
+  degree (DeterminantP (prep_mat A)) = n.
+Proof. induction n as [| n'].
+       - intros. 
+         unfold degree, compactify; simpl. 
+         destruct (Ceq_dec C1 C0); easy.
+       - intros. 
+         destruct n'.  
+         + unfold degree, compactify; simpl. 
+           destruct (Ceq_dec (- C1) C0); try easy.
+           assert (H' : - (- C1) = C0).
+           { rewrite e; lca. }
+           replace (- - C1) with C1 in H' by lca. 
+           apply C1_neq_C0 in H'; easy. 
+         + rewrite DetP_simplify.
+           assert (H' : forall n f, Psum f (S n) = f 0 +, Psum (fun i => f (S i)) n). 
+           { intros. 
+             induction n. 
+             + simpl. 
+               destruct (f 0); try easy; simpl. 
+               rewrite Cplus_0_l, Cplus_0_r, Pplus_0_r. 
+               easy. 
+             + simpl in *. 
+               rewrite IHn, Pplus_assoc; easy. }
+           assert (H0 : degree (prep_mat A 0 0) = 1). 
+           { unfold prep_mat.
+             bdestruct_all; simpl. 
+             unfold degree, compactify; simpl. 
+             destruct (Ceq_dec (- C1) C0); try easy. 
+             assert (H'' := C1_neq_C0).
+             replace C1 with (-C1 * -C1)%C in H'' by lca.  
+             rewrite e, Cmult_0_l in H''; easy. }
+           assert (H1 : degree ([parity 0] *, prep_mat A 0 0 *, 
+                                            DeterminantP (reduceP (prep_mat A) 0 0)) = S (S n')).
+           { simpl parity.             
+             rewrite Pmult_1_l, Pmult_degree, reduce_prep_mat, H0, IHn'.
+             easy.
+             destruct (Peq_dec (prep_mat A 0 0) []); auto. 
+             rewrite p in H0; easy. 
+             destruct (Peq_dec (DeterminantP (reduceP (prep_mat A) 0 0)) []); auto. 
+             rewrite reduce_prep_mat in *.
+             assert (H1 := (IHn' (reduce A 0 0))).
+             rewrite p in H1; easy. }
+           rewrite H', Pplus_comm, Pplus_degree2; auto. 
+           rewrite H1. 
+           apply le_lt_n_Sm.
+           apply Psum_degree; intros. 
+           assert (H2 : prep_mat A (S i) 0 = [A (S i) 0]).
+           { unfold prep_mat. 
+             bdestruct_all; easy. }
+           rewrite H2. 
+           replace ([parity (S i)] *, [A (S i) 0]) with [parity (S i) * A (S i) 0]%C. 
+           destruct (Peq_dec [(parity (S i) * A (S i) 0)%C] []).
+           rewrite p; simpl. 
+           unfold degree, compactify; simpl; try lia. 
+           destruct (Peq_dec (DeterminantP (reduceP (prep_mat A) (S i) 0)) []).
+           rewrite p, Pmult_0_r. 
+           unfold degree, compactify; simpl; try lia. 
+           rewrite Pmult_degree; auto. 
+           rewrite <- Nat.add_0_l.
+           apply Nat.add_le_mono.
+           destruct (parity (S i) * A (S i) 0)%C eqn:E.
+           unfold degree, compactify; simpl. 
+           destruct (Ceq_dec (r, r0) C0); simpl; lia. 
+           apply bound_deg_matP.
+           apply del1_reduce.
+           apply del1_prep_mat.
+           simpl; rewrite Cplus_0_r. easy. 
+Qed.
+
+
 Lemma connect : forall (n : nat) (A : Square (S n)),
-  exists (p : Polynomial), (forall c : C, Determinant (A .+ (-c .* I (S n))) = p[[c]]).
+  exists (p : Polynomial), (Polynomial.degree p) > 0 /\
+    (forall c : C, Determinant (A .+ (-c .* I (S n))) = p[[c]]).
 Proof. intros. 
        exists (DeterminantP (prep_mat A)).
-       intros. 
+       split; intros. 
+       rewrite detP_deg; lia. 
        rewrite <- Peval_Det.
        apply f_equal_gen; try easy. 
        prep_matrix_equality.
@@ -175,11 +314,11 @@ Qed.
 Lemma connect2 : forall (n : nat) (A : Square (S n)),
   exists (c : C), det_eq_c C0 (A .+ (-c .* I (S n))).
 Proof. intros. 
-       destruct (connect n A) as [p H].
-       destruct (Fundamental_Theorem_Algebra p). 
+       destruct (connect n A) as [p [H H0] ].
+       destruct (Fundamental_Theorem_Algebra p); auto.
        exists x. 
        split; auto. 
-       rewrite H; easy.
+       rewrite H0; easy.
 Qed.
      
 
@@ -873,8 +1012,6 @@ Proof. intros.
          easy. 
 Qed.
 
-
-
 Lemma extend_onb : forall (n m2 m1 : nat) (T1 : Matrix n (S m1)) (T2 : Matrix n m2),
   WF_Matrix T1 -> WF_Matrix T2 ->  
   linearly_independent (smash T1 T2) -> orthonormal T1 ->
@@ -887,7 +1024,7 @@ Proof. induction m2 as [| m2'].
          rewrite plus_0_r.
          apply H2.
        - intros. 
-         rewrite (split T2) in *.
+         rewrite (split_col T2) in *.
          assert (H3 := (smash_assoc T1 (get_vec 0 T2) (reduce_col T2 0))). 
          simpl in *.
          rewrite <- H3 in H1. 
@@ -896,9 +1033,9 @@ Proof. induction m2 as [| m2'].
              linearly_independent (smash (col_append T1 v1) (reduce_col T2 0))).
          { apply (extend_onb_ind_step _ _ (get_vec 0 T2)); try easy.
            apply WF_reduce_col. lia. 
-           rewrite (split T2). easy.
+           rewrite (split_col T2). easy.
            apply WF_get_vec.
-           rewrite (split T2). easy.
+           rewrite (split_col T2). easy.
            assert (add1 : S (m1 + S m2') = S (S m1) + m2'). { lia. }
            assert (add2 : S (m1 + 1) = S (S m1)). { lia. }
            rewrite add1, add2 in H1.
@@ -916,7 +1053,7 @@ Proof. induction m2 as [| m2'].
            apply H''.  
            easy. easy.
            apply (WF_reduce_col 0 T2); try lia. 
-           rewrite (split T2); easy. 
+           rewrite (split_col T2); easy. 
            assert (add1 : S (Nat.add m1 (S m2')) = S (Nat.add (Nat.add m1 (S O)) m2')). lia. 
            rewrite add1 in H1.
            unfold Nat.add in H1.
@@ -943,7 +1080,7 @@ Proof. induction m2 as [| m2'].
          rewrite add5, add6 in H7.    
          apply H7. 
          apply WF_get_vec.
-         rewrite (split T2).
+         rewrite (split_col T2).
          easy. 
 Qed.
 
@@ -1009,7 +1146,7 @@ Proof. intros.
            auto with wf_db. }
          apply lin_indep_out_of_v in H'; try easy.
          destruct H' as [S0 [H1 [H2 H3] ] ].
-         rewrite (split S0) in H2.
+         rewrite (split_col S0) in H2.
          apply (extend_onb (S n) n 0 (get_vec 0 S0) (reduce_col S0 0)) in H2. 
          destruct H2 as [T [H4 H5] ].
          exists (smash (get_vec 0 S0) T). split; try easy.
@@ -1667,6 +1804,7 @@ Proof. intros. destruct H0 as [v [H0 [H1 H2] ] ].
                             (/ (inner_product v v)) (/ (inner_product v v))) in H'; try easy.
        rewrite <- Cmult_assoc in H'.
        rewrite Cinv_r in H'.
+       
        rewrite H'; lca.
        unfold not; intros; apply H1.
        apply inner_product_zero_iff_zero in H0.

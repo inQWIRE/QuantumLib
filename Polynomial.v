@@ -31,6 +31,44 @@ Proof. intros.
        lca. 
 Qed.
 
+Lemma destruct_from_last : forall {X} (n : nat) (d : X) (l : list X),
+  length l = S n -> l = (firstn n l) ++ [nth n l d].
+Proof. induction n as [| n'].
+       - intros. 
+         repeat (destruct l; try easy).
+       - intros. 
+         destruct l; try easy.
+         simpl in *. 
+         apply Nat.succ_inj in H.
+         rewrite <- IHn'; easy.
+Qed.     
+
+
+Lemma ind_from_end_helper : forall {X} (p : list X -> Prop) (n : nat),
+  p [] -> 
+  (forall (x : X) (l : list X), p l -> p (l ++ [x])) -> 
+  forall l, length l = n -> p l. 
+Proof. intros X p n H H0.
+       induction n as [| n'].
+       - intros. 
+         destruct l; try easy.
+       - intros. destruct l; try easy. 
+         rewrite (destruct_from_last n' x); auto. 
+         apply H0.
+         apply IHn'.
+         rewrite firstn_length, H1.
+         rewrite min_l; lia.
+Qed.
+       
+Lemma ind_from_end : forall {X} (p : list X -> Prop),
+  p [] -> 
+  (forall (x : X) (l : list X), p l -> p (l ++ [x])) -> 
+  forall l, p l. 
+Proof. intros. 
+       apply (ind_from_end_helper _ (length l)); easy. 
+Qed.
+
+
 (* polynomial represented by a list of coeficients and a degree*)
 Definition Polynomial := list C.
 
@@ -235,7 +273,6 @@ Proof. intros.
        destruct p; easy. 
 Qed.
 
-
 Lemma C0_Peq_nil : [C0] ≅ [].
 Proof. apply functional_extensionality; intros; lca. Qed.
 
@@ -246,6 +283,19 @@ Proof. induction p as [| a]; try easy.
        simpl. 
        rewrite IHp.
        apply C0_Peq_nil.
+Qed.
+
+Lemma Pscale_comm_nempty : forall (a : C) (p : Polynomial),
+  p <> [] -> [a] *, p = p *, [a].
+Proof. induction p as [| h]; try easy.
+       intros; simpl. 
+       destruct p.
+       + simpl; rewrite Cmult_comm; easy. 
+       + rewrite <- IHp; try easy.
+         apply f_equal_gen; try (apply f_equal_gen; try lca; easy).
+         simpl. 
+         rewrite Pplus_0_r, Cplus_0_r.
+         reflexivity.
 Qed.
 
 Lemma Pmult_comm_helper : forall (n : nat) (p1 p2 : Polynomial),
@@ -269,7 +319,6 @@ Proof. intros.
        apply (Pmult_comm_helper (length p1 + length p2)).
        easy. 
 Qed.
-
 
 Lemma map_comm_distr_l : forall (p1 p2 : Polynomial) (c : C),
   map (Cmult c) (p1 +, p2) = map (Cmult c) p1 +, map (Cmult c) p2.
@@ -703,31 +752,17 @@ Proof. induction n as [| n'].
          apply IHn'.
 Qed.
 
-Lemma polynomial_continuous_helper : forall (n : nat) (p : Polynomial) (a : C),
-  length p = n -> continuous_at (Peval p) a.
-Proof. induction n as [| n']. 
+Lemma polynomial_continuous : forall (p : Polynomial) (a : C),
+  (fun p => continuous_at (Peval p) a) p.
+Proof. intros.       
+       apply (@ind_from_end C).
+       - rewrite <- C0_Peq_nil.
+         apply constant_continuous_poly. 
        - intros. 
-         destruct p; try easy. 
-         rewrite <- C0_Peq_nil.
-         apply constant_continuous_poly.
-       - intros. 
-         rewrite <- (firstn_skipn n' p).
          rewrite app_eval. 
          apply continuous_plus.
-         apply IHn'.
-         rewrite firstn_length_le; subst; try lia. 
-         assert (H0 := (skipn_length n' p)).
-         rewrite H in H0.
-         replace (S n' - n')%nat with 1%nat in H0 by lia. 
-         destruct (skipn n' p) as [| b]; try easy. 
-         destruct l; try easy. 
+         apply H.
          apply continuous_power_x.
-Qed.
-
-Lemma polynomial_continuous : forall (p : Polynomial) (a : C),
-  continuous_at (Peval p) a.
-Proof. intros. 
-       apply (polynomial_continuous_helper (length p)); easy. 
 Qed.
 
 Lemma constant_ae_continuous : forall (f : C -> C) (a c : C),
@@ -910,6 +945,20 @@ Proof. intros.
        rewrite app_nth1; easy. 
 Qed.
 
+Lemma repeat_C0_Peq_front : forall (n : nat) (p : Polynomial),
+  p ++ (repeat C0 n) ≅ p.
+Proof. induction n as [| n'].
+       - intros; simpl. 
+         rewrite app_nil_r.
+         easy.
+       - intros.
+         simpl. 
+         replace (p ++ C0 :: repeat C0 n') with (p ++ [C0] ++ repeat C0 n') by easy.
+         rewrite app_assoc.
+         rewrite (IHn' (p ++ [C0])), last_C0_Peq_front.
+         easy.
+Qed.
+
 Lemma Peq_firstn_eq : forall (p1 p2 : Polynomial), 
   p1 ≅ p2 -> (length p1 <= length p2)%nat -> 
   p1 = firstn (length p1) p2.
@@ -934,7 +983,7 @@ Proof. intros.
        easy. 
 Qed.
 
-(* now we define the degree of a polynomial *) 
+(* now we define prune/compactify which removes the uneccesary 0s at the end of a polynomial *) 
 
 Local Open Scope nat_scope.
 
@@ -1003,7 +1052,7 @@ Proof. induction p; try easy.
          apply (Peq_head_eq _ _ a C0) in H; easy. 
 Qed.
 
-Lemma Peq_0_compactify_0 : forall (n : nat) (p : Polynomial),
+Lemma Peq_0_compactify_0 : forall (p : Polynomial),
   p ≅ [] -> compactify p = []. 
 Proof. intros. 
        unfold compactify. 
@@ -1024,6 +1073,13 @@ Proof. induction n as [| n'].
          destruct (Ceq_dec C0 C0); try easy. 
          rewrite <- rev_repeat, <- rev_app_distr. 
          easy.
+Qed.
+
+Lemma app_C0_compactify_reduce_1 : forall (p : Polynomial),
+  compactify (p ++ [C0]) = compactify p. 
+Proof. intros. 
+       replace [C0] with (repeat C0 1) by easy.
+       apply app_C0_compactify_reduce.
 Qed.
 
 Lemma app_nonzero_compactify_reduce : forall (p : Polynomial) (a : C),
@@ -1061,44 +1117,59 @@ Proof. intros p1 p2 H.
        apply Peq_compactify_eq; easy. 
 Qed.
 
-Lemma p_Peq_pruned_p_helper : forall (n : nat) (p : Polynomial),
-  (length p = n) -> p ≅ compactify p.
-Proof. induction n as [| n']. 
-       - intros. destruct p; easy. 
-       - intros. 
-         unfold compactify.
-         destruct (rev p) eqn:E.
-         + simpl.  
-           rewrite <- (rev_involutive p), E.
-           easy. 
-         + simpl. 
-           destruct (Ceq_dec c C0).
-           * rewrite <- (rev_involutive l).
-             unfold compactify in IHn'.
-             rewrite <- IHn', <- (rev_involutive p), E. 
-             apply functional_extensionality; intros. 
-             unfold Peval.
-             do 2 rewrite rev_length. simpl length. 
-             rewrite <- Cplus_0_r, <- Csum_extend_r.
-             apply Cplus_simplify.
-             apply Csum_eq_bounded; intros; simpl. 
-             rewrite app_nth1; auto. 
-             rewrite rev_length; easy.
-             rewrite <- (plus_0_r (length l)); simpl.
-             rewrite <- rev_length, (app_nth2_plus (rev l) [c]), e.
-             lca. 
-             rewrite <- rev_length, E in H.
-             simpl in H.
-             apply Nat.succ_inj in H.
-             rewrite rev_length; easy.
-           * rewrite <- E, rev_involutive; easy. 
+Lemma p_Peq_compactify_p : forall (p : Polynomial),
+  (fun p0 => p0 ≅ compactify p0) p.
+Proof. apply ind_from_end; try easy.
+       intros.
+       unfold compactify.
+       rewrite rev_unit; simpl. 
+       destruct (Ceq_dec x C0); subst. 
+       - rewrite <- H.
+         apply last_C0_Peq_front.
+       - rewrite <- rev_unit, rev_involutive.
+         easy.
 Qed.
 
-Lemma p_Peq_pruned_p : forall (p : Polynomial),
-  p ≅ compactify p.
+Lemma compactify_eq_Peq : forall (p1 p2 : Polynomial),
+  compactify p1 = compactify p2 -> p1 ≅ p2.
 Proof. intros. 
-       apply (p_Peq_pruned_p_helper (length p)); easy. 
+       rewrite p_Peq_compactify_p, (p_Peq_compactify_p p2), H.
+       easy.
 Qed.
+
+
+(* We can now show that ≅ is decidable *)
+Lemma Peq_0_dec : forall (p : Polynomial),
+  { p ≅ [] } + { ~( p ≅ [] ) }.
+Proof. intros.
+       destruct (compactify p) eqn:E.
+       - left. 
+         rewrite <- E.
+         apply p_Peq_compactify_p.
+       - right. 
+         unfold not; intros. 
+         rewrite Peq_0_compactify_0 in E; auto. 
+         easy. 
+Qed.
+
+
+Lemma Peq_dec : forall (p1 p2 : Polynomial),
+  { p1 ≅ p2 } + { ~(p1 ≅ p2) }.
+Proof. intros. 
+       destruct (Peq_0_dec (p1 +, (-, p2))).
+       - left. 
+         assert (H' : (p1 +, -, p2) +, p2 ≅ [] +, p2).
+         { rewrite p; easy. }
+         rewrite Pplus_assoc, Pplus_opp_l, Pplus_0_r in H'.
+         easy. 
+       - right. 
+         unfold not in *; intros. 
+         apply n. 
+         rewrite H, Pplus_opp_r.
+         easy.
+Qed.
+
+(* now we start proving stuff about lengths/degree *)
 
 Lemma Pplus_length1 : forall (p1 p2 : Polynomial),
   length (p1 +, p2) = max (length p1) (length p2).
@@ -1110,14 +1181,54 @@ Proof. induction p1 as [| a1]; try easy.
 Qed.
 
 Lemma Pplus_length2 : forall (p1 p2 : Polynomial),
-  length p1 < length p2 ->
+  length p1 <= length p2 ->
   length (p1 +, p2) = length p2.
 Proof. induction p1 as [| a1]; try easy. 
        intros. 
        destruct p2; try easy. 
        simpl in *.
-       apply lt_S_n in H.
+       apply le_S_n in H.
        rewrite IHp1; easy.
+Qed.
+
+Lemma Pplus_lt_app : forall (a : C) (p1 p2 : Polynomial), 
+  length p1 <= length p2 -> 
+  p1 +, (p2 ++ [a]) = (p1 +, p2) ++ [a].
+Proof. induction p1 as [| h]; try easy.
+       intros. 
+       destruct p2; try easy. 
+       simpl in *. 
+       rewrite IHp1; try easy.
+       lia. 
+Qed.
+
+Lemma Pmult_leading_terms : forall (a1 a2 : C) (p1 p2 : Polynomial),
+  exists p : Polynomial, (p1 ++ [a1]) *, (p2 ++ [a2]) = p ++ [(a1 * a2)%C] /\ 
+                    length p2 <= length p. 
+Proof. induction p1 as [| h].
+       - intros.
+         destruct p2.
+         + do 2 rewrite app_nil_l.
+           exists [].
+           simpl. 
+           rewrite Cplus_0_r; easy. 
+         + exists ([a1] *, (c :: p2)).
+           rewrite app_nil_l.
+           simpl. 
+           do 2 rewrite Pplus_0_r.
+           rewrite map_app.
+           split; try easy. 
+           rewrite map_length; easy.
+       - intros. 
+         simpl.  
+         destruct (IHp1 p2) as [p [H1 H2] ].     
+         exists (map (Cmult h) (p2 ++ [a2]) +, (C0 :: p)).
+         split. 
+         rewrite H1, app_comm_cons. 
+         apply Pplus_lt_app.
+         rewrite map_length, app_length; simpl; lia. 
+         rewrite Pplus_length1, map_length, app_length; simpl.
+         lia. 
 Qed.
 
 Lemma Pmult_length_le : forall (p1 p2 : Polynomial),
@@ -1128,7 +1239,7 @@ Proof. induction p1 as [| a1].
        - intros. destruct p2; try easy; simpl.
          rewrite Pplus_length1, map_length.
          destruct p2; try lia.  
-Qed.         
+Qed.   
 
 Lemma Pmult_length_helper : forall (n : nat) (a1 a2 : C) (p1 p2 : Polynomial),
   length p1 <= n ->
@@ -1151,13 +1262,87 @@ Proof. induction n as [| n'].
            lia. 
 Qed. 
 
-Lemma Pmult_length : forall (n : nat) (a1 a2 : C) (p1 p2 : Polynomial),
+Lemma Pmult_length : forall (p1 p2 : Polynomial),
   p1 <> [] -> p2 <> [] ->
   length (p1 *, p2) = length p1 + length p2 - 1.          
 Proof. intros. 
        destruct p1; destruct p2; try easy. 
        apply (Pmult_length_helper (length (c :: p1))).
        simpl; lia. 
+Qed.
+
+Lemma compactify_neq_nil : forall (a : C) (p : Polynomial),
+  a <> C0 -> (fun p0 => compactify (a :: p0) <> []) p.
+Proof. intros a p H.
+       apply ind_from_end.
+       - unfold compactify, prune; simpl.
+         destruct (Ceq_dec a C0); try easy. 
+       - intros. 
+         rewrite app_comm_cons. 
+         destruct (Ceq_dec x C0); subst.
+         + rewrite app_C0_compactify_reduce_1; easy. 
+         + rewrite app_nonzero_compactify_reduce; easy.
+Qed.
+
+Lemma compactify_Pscale : forall (a b : C) (p : Polynomial),
+  a <> C0 -> b <> C0 -> (fun p0 => [a] *, compactify (b :: p0) = compactify ([a] *, (b :: p0))) p.
+Proof. intros. 
+       apply ind_from_end. 
+       - unfold compactify; simpl. 
+         rewrite Cplus_0_r.
+         apply (Cmult_neq_0 a b) in H; auto.
+         destruct (Ceq_dec b C0); destruct (Ceq_dec (a * b) C0); try easy.
+         simpl; rewrite Cplus_0_r; easy.
+       - intros.
+         destruct (Ceq_dec x C0); subst.
+         + rewrite app_comm_cons, app_C0_compactify_reduce_1, H1; simpl. 
+           rewrite Pplus_0_r, Pplus_0_r, map_last, Cmult_0_r.
+           rewrite app_comm_cons, app_C0_compactify_reduce_1; easy.
+         + rewrite app_comm_cons, app_nonzero_compactify_reduce; auto; simpl. 
+           rewrite Pplus_0_r, map_last, app_comm_cons, app_nonzero_compactify_reduce; auto.
+           apply Cmult_neq_0; auto.
+Qed.   
+
+Lemma compactify_Pmult_helper : forall (a1 a2 : C) (p1 p2 : Polynomial),
+  a1 <> C0 -> a2 <> C0 ->  
+  compactify (p1 ++ [a1]) *, compactify (p2 ++ [a2]) = compactify ((p1 ++ [a1]) *, (p2 ++ [a2])).
+Proof. intros. 
+       destruct (Pmult_leading_terms a1 a2 p1 p2) as [p [H1 H2] ].
+       rewrite H1.
+       do 3 (rewrite app_nonzero_compactify_reduce; auto).
+       apply Cmult_neq_0; easy. 
+Qed.
+
+Lemma C0_end_breakdown : forall (p : Polynomial),
+  (fun p0 => Peval p0 <> Peval [] -> 
+  (exists n a p', a <> C0 /\ p0 = (p' ++ [a]) ++ (repeat C0 n))) p.
+Proof. apply ind_from_end; try easy.
+       intros. 
+       destruct (Ceq_dec x C0); subst.
+       - rewrite last_C0_Peq_front in H0.
+         apply H in H0.
+         destruct H0 as [n [a [p' [H1 H2] ] ] ].
+         exists (S n), a, p'.
+         split; auto. 
+         rewrite H2, app_assoc_reverse.
+         apply f_equal_gen; try easy.
+         simpl. 
+         rewrite repeat_cons.
+         easy. 
+       - exists 0, x, l.
+         split; auto.         
+         apply app_nil_end.
+Qed.
+
+Lemma compactify_Pmult : forall (p1 p2 : Polynomial),
+  Peval p1 <> Peval [] -> Peval p2 <> Peval [] ->
+  compactify p1 *, compactify p2 = compactify (p1 *, p2).
+Proof. intros. 
+       apply C0_end_breakdown in H; apply C0_end_breakdown in H0.
+       destruct H as [n1 [a1 [p1' [H1 H2] ] ] ];
+       destruct H0 as [n2 [a2 [p2' [H3 H4] ] ] ]; subst. 
+       do 2 rewrite repeat_C0_Peq_front.
+       apply compactify_Pmult_helper; easy.
 Qed.
 
 Definition degree (p : Polynomial) : nat :=
@@ -1170,50 +1355,36 @@ Proof. intros p1 p2 H.
        rewrite H; easy.
 Qed.
 
-Lemma destruct_from_last : forall {X} (n : nat) (d : X) (l : list X),
-  length l = S n -> l = (firstn n l) ++ [nth n l d].
-Proof. induction n as [| n'].
-       - intros. 
-         repeat (destruct l; try easy).
-       - intros. 
-         destruct l; try easy.
-         simpl in *. 
-         apply Nat.succ_inj in H.
-         rewrite <- IHn'; easy.
-Qed.         
-
 Lemma length_compactify1 : forall (p1 p2 : Polynomial),
   length (compactify (p1 +, p2)) <= length (compactify p1 +, compactify p2).
 Proof. intros. 
        assert (H' : compactify (p1 +, p2) = compactify (compactify p1 +, compactify p2)).
-       { rewrite <- (p_Peq_pruned_p p1).
-         rewrite <- (p_Peq_pruned_p p2).
+       { rewrite <- (p_Peq_compactify_p p1).
+         rewrite <- (p_Peq_compactify_p p2).
          easy. }
        rewrite H'.
        apply compactify_length.
 Qed.
 
-Lemma length_compactify2 : forall (n : nat) (p1 p2 : Polynomial),
-  length p2 = n -> 
-  length (compactify p1) < length (compactify p2) -> 
-  length (compactify (p1 +, p2)) = length (compactify p2).
-Proof. induction n as [| n']. 
-       - intros. 
-         destruct p2; easy.
-       - intros.  
-         rewrite (destruct_from_last n' C0 p2) in *; auto. 
-         destruct (Ceq_dec (nth n' p2 C0) C0).
-         + rewrite e in *.
-           replace [C0] with (repeat C0 1) in * by easy. 
-           rewrite app_C0_compactify_reduce in *.
-           rewrite <- (IHn' p1 (firstn n' p2)); auto. 
-           apply f_equal_gen; auto.
-           unfold repeat.
-           rewrite last_C0_Peq_front; easy.
-           rewrite app_length in H; simpl in H.
-           lia. 
-         + rewrite app_nonzero_compactify_reduce in *; auto.
-           Admitted.
+Lemma length_compactify2 : forall (p1 p2 : Polynomial),
+  (fun p =>
+  length (compactify p1) < length (compactify p) -> 
+  length (compactify (p1 +, p)) = length (compactify p)) p2.
+Proof. intros. 
+       apply ind_from_end; try easy.
+       intros. 
+       destruct (Ceq_dec x C0); subst.
+       + rewrite app_C0_compactify_reduce_1 in *.
+         rewrite <- H; auto. 
+         apply f_equal_gen; auto.
+         rewrite last_C0_Peq_front; easy.
+       + rewrite app_nonzero_compactify_reduce, app_length in *; auto.
+         rewrite (p_Peq_compactify_p p1), Pplus_lt_app.
+         rewrite app_nonzero_compactify_reduce, app_length; auto.
+         do 2 (apply f_equal_gen; auto).
+         rewrite Pplus_length2; auto.
+         all : simpl in *; lia. 
+Qed.
 
 Lemma Pplus_degree1 : forall (p1 p2 : Polynomial),
   degree (p1 +, p2) <= max (degree p1) (degree p2).
@@ -1222,9 +1393,9 @@ Proof. intros.
        rewrite Nat.sub_max_distr_r.
        apply Nat.sub_le_mono_r.
        bdestruct (Datatypes.length (compactify p1) <? Datatypes.length (compactify p2)).
-       - rewrite Max.max_r, (length_compactify2 (length p2)); try lia. 
+       - rewrite Max.max_r, length_compactify2; try lia. 
        - bdestruct (Datatypes.length (compactify p2) <? Datatypes.length (compactify p1)).
-         + rewrite Max.max_l, Pplus_comm, (length_compactify2 (length p1)); try lia. 
+         + rewrite Max.max_l, Pplus_comm, length_compactify2; try lia. 
          + apply Nat.le_antisymm in H; auto.
            rewrite <- Pplus_length1.
            apply length_compactify1.
@@ -1235,26 +1406,49 @@ Lemma Pplus_degree2 : forall (p1 p2 : Polynomial),
   degree (p1 +, p2) = degree p2. 
 Proof. intros. 
        unfold degree in *.
-       rewrite (length_compactify2 (length p2)); try easy. 
+       rewrite length_compactify2; try easy. 
        lia. 
 Qed.
 
 Lemma Pmult_degree : forall (p1 p2 : Polynomial),
   Peval p1 <> Peval [] -> Peval p2 <> Peval [] ->
   degree (p1 *, p2) = (degree p1) + (degree p2).
-Proof. intros. 
-       Admitted.
-       
+Proof. intros.
+       assert (H' : forall p, Peval p <> Peval [] -> compactify p <> []).
+       { intros. 
+         unfold not; intros; apply H1.
+         apply compactify_eq_Peq.
+         rewrite H2; easy. }
+       unfold degree.
+       rewrite <- compactify_Pmult; auto.
+       apply H' in H; apply H' in H0.
+       rewrite Pmult_length; auto.
+       destruct (compactify p1); destruct (compactify p2); try easy.
+       simpl; lia. 
+Qed.
 
-      
+
+Lemma Psum_degree : forall (f : nat -> Polynomial) (n deg : nat), 
+  (forall i, degree (f i) <= deg) -> degree (Psum f n) <= deg.
+Proof. induction n as [| n'].
+       - intros; simpl.  
+         unfold degree, compactify; simpl.
+         destruct (Ceq_dec C0 C0); try easy; simpl; lia. 
+       - intros; simpl. 
+         apply (Nat.le_trans _ (max (degree (Psum f n')) (degree (f n')))).
+         apply Pplus_degree1.
+         apply Max.max_lub; auto. 
+Qed.
+
 
 (*****************************************************)
 (* First, we show that our C is the same as ccorns C *)
 (*****************************************************)
 
-
-Require Export CoRN.fta.FTA. 
-Require Export CoRN.coq_reals.Rreals_iso.
+Require Import CoRN.fta.FTA. 
+Require Import CoRN.coq_reals.Rreals_iso. 
+Require Import CoRN.coq_reals.Rreals.
+Require Import CoRN.reals.iso_CReals.
 
 Definition CtoCC (c : Complex.C) : CC := cc_set_CC (RasIR (fst c)) (RasIR (snd c)). 
 Definition CCtoC (c : CC_set) : Complex.C := (IRasR (Re c), IRasR (Im c)).
@@ -1270,12 +1464,89 @@ Qed.
 
 Lemma CCtoCtoCC_id : forall (x : CC), CtoCC (CCtoC x) [=] x.
 Proof. intros.
-       unfold CtoCC, CCtoC, cc_eq.
-       simpl.
-       unfold cc_eq.
        split; simpl; rewrite IRasRasIR_id;
        easy. 
 Qed. 
+
+Lemma C_eq_to_CC : forall x y, (x = y -> CtoCC x [=] CtoCC y).
+Proof. intros. 
+       split; simpl; subst; easy. 
+Qed.
+
+Lemma CC_eq_to_C : forall x y : CC, (x [=] y -> CCtoC x = CCtoC y).
+Proof. intros.
+       unfold CCtoC; simpl.
+       destruct H.
+       rewrite <- IRasRasIR_id, <- (IRasRasIR_id (Re y)) in H.
+       rewrite <- IRasRasIR_id, <- (IRasRasIR_id (Im y)) in H0.
+       apply R_eq_as_IR_back in H; apply R_eq_as_IR_back in H0.
+       rewrite H, H0.
+       easy. 
+Qed.     
+
+Lemma CC_ap_as_C : forall x y, (x <> y -> CtoCC x [#] CtoCC y).
+Proof. intros. 
+       destruct x as [x1 x2], y as [y1 y2].
+       destruct (Req_EM_T x1 y1); subst.
+       - destruct (Req_EM_T x2 y2); subst; try easy.
+         right; simpl. 
+         apply R_ap_as_IR_back; auto. 
+       - left; simpl. 
+         apply R_ap_as_IR_back; auto. 
+Qed.   
+
+Lemma C_zero_to_CC : CtoCC C0 [=] [0].
+Proof. split; simpl; apply R_Zero_as_IR. 
+Qed.
+
+Lemma CC_zero_to_C : CCtoC cc_zero = C0.
+Proof. unfold CCtoC, cc_zero.
+       simpl. 
+       rewrite IR_Zero_as_R.
+       easy.
+Qed.       
+
+Lemma C_plus_to_CC : forall x y, (CtoCC (x+y) [=] CtoCC x [+] CtoCC y).
+Proof. intros. 
+       split; simpl; 
+       apply R_plus_as_IR.
+Qed.
+
+Lemma CC_plus_to_C : forall x y : CC, (CCtoC (x [+] y) = (CCtoC x + CCtoC y)%C).
+Proof. intros; simpl. 
+       unfold Cplus, cc_plus, CCtoC; simpl. 
+       do 2 rewrite <- IR_plus_as_R.
+       easy. 
+Qed.
+
+Lemma C_mult_to_CC : forall x y, (CtoCC (x*y) [=] CtoCC x [*] CtoCC y).
+Proof. intros. 
+       split; simpl. 
+       rewrite R_minus_as_IR, R_mult_as_IR, R_mult_as_IR; easy. 
+       rewrite R_plus_as_IR, R_mult_as_IR, R_mult_as_IR; easy. 
+Qed.
+
+(* these should be added to ccorn *)
+Lemma IR_mult_as_R : forall x y, (IRasR (x[*]y) = IRasR x * IRasR y).
+Proof.
+ apply: map_pres_mult_unfolded.
+Qed.
+
+Lemma IR_minus_as_R : forall x y, (IRasR (x[-]y) = IRasR x - IRasR y).
+Proof. intros x y.
+       unfold cg_minus, Rminus.
+       rewrite IR_plus_as_R.
+       apply f_equal_gen; try easy.
+       apply : map_pres_minus_unfolded.
+Qed.
+
+Lemma CC_mult_to_C : forall x y : CC, (CCtoC (x [*] y) = (CCtoC x * CCtoC y)%C).
+Proof. intros.
+       unfold cc_mult, CCtoC, Cmult; simpl. 
+       rewrite IR_minus_as_R, IR_plus_as_R.
+       do 4 rewrite IR_mult_as_R; easy. 
+Qed.
+
 
 Fixpoint PolytoCCX (p : Polynomial) : CCX :=
   match p with 
@@ -1302,20 +1573,88 @@ Proof. induction f as [| a]; try easy.
        apply IHf.
 Qed.
 
-Lemma Poly_eval_iso : forall (p : Polynomial),
-  exists (f : CCX), (forall c, CtoCC (p[[c]]) = f ! (CtoCC c)).
-Proof. Admitted.
+Lemma Poly_eval_iso : forall (p : Polynomial) (c : CC),
+  p [[CCtoC c]] = CCtoC ((PolytoCCX p) ! c).
+Proof. induction p as [| a]. 
+       - intros. simpl. 
+         rewrite CC_zero_to_C.
+         easy. 
+       - intros. 
+         simpl. 
+         rewrite cons_eval, IHp.
+         rewrite CC_plus_to_C, CC_mult_to_C, CtoCCtoC_id.
+         easy. 
+Qed.
 
+Lemma nth_poly_translate : forall (p : Polynomial) (n : nat),
+  nth_coeff n (PolytoCCX p) [=] CtoCC (nth n p C0). 
+Proof. induction p as [| a]. 
+       - intros.
+         replace (nth n [] C0) with C0. 
+         2 : destruct n; easy. 
+         rewrite C_zero_to_CC.
+         easy.
+       - intros. 
+         destruct n; try easy.         
+         apply IHp.
+Qed.
+
+Lemma ap_wdl_unfolded_CC : forall (a b c : CC), 
+  a [=] b -> a [#] c -> b [#] c.
+Proof. intros. eapply ap_wdl; eauto.
+Qed.
+
+Lemma ap_wdr_unfolded_CC : forall (a b c : CC), 
+  b [=] a -> a [#] c -> c [#] b.
+Proof. intros. 
+       apply ap_symmetric_unfolded.
+       eapply ap_wdl; eauto.
+       easy.
+Qed. 
+
+Lemma nth_compactify_nonzero : forall (p : Polynomial),
+  (fun p0 => (Polynomial.degree p0 > 0)%nat -> 
+  C0 <> nth (Datatypes.length (compactify p0) - 1) p0 C0) p.
+Proof. intros.
+       apply ind_from_end; try easy.
+       intros. 
+       unfold Polynomial.degree in *.
+       destruct (Ceq_dec x C0); subst.
+       - rewrite app_C0_compactify_reduce_1, app_nth1 in *.
+         apply H; easy.
+         assert (H' : (Datatypes.length (compactify l) - 1 < Datatypes.length (compactify l))%nat).
+         { lia. }
+         assert (H'' := (compactify_length l)).
+         lia. 
+       - rewrite app_nonzero_compactify_reduce; auto.
+         rewrite app_length, Nat.add_sub; simpl. 
+         rewrite nth_middle. 
+         unfold not; intros; apply n; easy.
+Qed.
+
+Lemma degree_gt_1_nonConst : forall (p : Polynomial),
+  ((Polynomial.degree p) > 0)%nat -> nonConst _ (PolytoCCX p).
+Proof. intros. 
+       unfold nonConst.
+       unfold Polynomial.degree in H.
+       exists (Datatypes.length (compactify p) - 1)%nat; auto.
+       apply (ap_wdl_unfolded_CC (CtoCC (nth (Datatypes.length (compactify p) - 1) p C0))).
+       rewrite nth_poly_translate; easy.
+       apply (ap_wdr_unfolded_CC (CtoCC (CCtoC cc_zero))).
+       rewrite CCtoCtoCC_id; easy.
+       apply CC_ap_as_C.
+       rewrite CC_zero_to_C.
+       apply nth_compactify_nonzero.
+       easy.
+Qed.       
 
 Theorem Fundamental_Theorem_Algebra : forall (p : Polynomial),
-  (exists c : Complex.C, p[[c]] = C0).
-Proof. intros. 
-       destruct (Poly_eval_iso p).
+  (Polynomial.degree p > 0)%nat -> (exists c : Complex.C, p[[c]] = C0).
+Proof. intros.  
        destruct (FTA (PolytoCCX p)).
-       2 : { exists (CCtoC x0).
-             
+       apply degree_gt_1_nonConst; auto.
+       exists (CCtoC x). 
+       rewrite Poly_eval_iso, <- CC_zero_to_C.
+       apply CC_eq_to_C; easy. 
+Qed.
 
-
-
-
-ddd.

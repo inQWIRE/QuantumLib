@@ -3629,7 +3629,7 @@ Proof. intros.
 Qed.
 
 
-Lemma split : forall {n m} (T : Matrix n (S m)), 
+Lemma split_col : forall {n m} (T : Matrix n (S m)), 
   T = smash (get_vec 0 T) (reduce_col T 0).
 Proof. intros. 
        prep_matrix_equality. 

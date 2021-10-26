@@ -277,7 +277,7 @@ Proof.
     unfold I.
     prep_matrix_equality.
     bdestruct (x =? 0); bdestruct (x =? y); subst; simpl; trivial.
-    bdestruct_all; auto.
+    bdestruct_all; easy. 
     bdestructΩ (y <? 1); easy.
   - simpl.
     rewrite IHn.
@@ -745,7 +745,6 @@ Proof.
 Qed.
 
 (* lemmas to describe the action of various gates on f_to_vec states *)
-
 
 Lemma f_to_vec_X : forall (n i : nat) (f : nat -> bool),
   i < n ->
