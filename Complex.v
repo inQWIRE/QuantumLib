@@ -638,15 +638,31 @@ Proof.
   - reflexivity.
 Qed. 
 
-Lemma Cpow_inv : forall (c : C) (n : nat), c <> 0 -> (forall n', c ^ n' <> 0) -> (/ c) ^ n = / (c ^ n).
+Lemma Cpow_inv : forall (c : C) (n : nat), (forall n', (n' <= n)%nat -> c ^ n' <> 0) -> (/ c) ^ n = / (c ^ n).
 Proof.
   intros.
   induction n.
   - lca.
   - simpl.
     rewrite IHn; try assumption.
-    rewrite Cinv_mult_distr; try apply H0; try assumption.
-    reflexivity.
+    rewrite Cinv_mult_distr.
+    + reflexivity.
+    + assert (c ^ 1 <> 0).
+      {
+        apply H.
+        apply Nat.le_pred_le_succ.
+        simpl.
+        apply Nat.le_0_l.
+      }
+      simpl in H0.
+      rewrite Cmult_1_r in H0.
+      assumption.
+    + apply H.
+      apply Nat.le_succ_diag_r.
+    + intros.
+      apply H.
+      apply le_S.
+      assumption.
 Qed.  
 
 Lemma Cconj_simplify : forall (c1 c2 : C), c1^* = c2^* -> c1 = c2.
