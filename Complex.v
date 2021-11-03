@@ -630,6 +630,25 @@ Proof.
   lra.
 Qed.
 
+Lemma Cpow_add : forall (c : C) (n : nat), c * (c ^ n) = c ^ (S n).
+Proof.
+  intros.
+  induction n.
+  - lca.
+  - reflexivity.
+Qed. 
+
+Lemma Cpow_inv : forall (c : C) (n : nat), c <> 0 -> (forall n', c ^ n' <> 0) -> (/ c) ^ n = / (c ^ n).
+Proof.
+  intros.
+  induction n.
+  - lca.
+  - simpl.
+    rewrite IHn; try assumption.
+    rewrite Cinv_mult_distr; try apply H0; try assumption.
+    reflexivity.
+Qed.  
+
 Lemma Cconj_simplify : forall (c1 c2 : C), c1^* = c2^* -> c1 = c2.
 Proof. intros. 
        assert (H1 : c1 ^* ^* = c2 ^* ^*). { rewrite H; easy. }
