@@ -1971,7 +1971,7 @@ Qed.
 Lemma unitary_reduction_step3 : forall {n} (A : Square (S n)),
   WF_Unitary A -> 
   (forall (i j : nat), (i = 0 \/ j = 0) /\ i <> j -> A i j = C0) ->
-  exists (A' : Square n), WF_Unitary A' /\ pad A' (A 0 0) = A.
+  exists (A' : Square n), WF_Unitary A' /\ pad1 A' (A 0 0) = A.
 Proof. intros n A [Hwf Hu]. 
        exists (reduce A 0 0).
        assert (H' : WF_Matrix (reduce A 0 0)).
@@ -1994,7 +1994,7 @@ Proof. intros n A [Hwf Hu].
        apply Cmult_simplify.
        all : simpl; try easy.
        lia. 
-       unfold pad, reduce, col_wedge, row_wedge, scale, e_i.
+       unfold pad1, reduce, col_wedge, row_wedge, scale, e_i.
        prep_matrix_equality.
        simpl. 
        bdestruct_all; simpl. 
@@ -2007,25 +2007,25 @@ Proof. intros n A [Hwf Hu].
 Qed.
        
 
-Lemma diagble_pad : forall {n} (A : Square n) (c : C),
-  WF_Diagonalizable A -> WF_Diagonalizable (pad A c).
+Lemma diagble_pad1 : forall {n} (A : Square n) (c : C),
+  WF_Diagonalizable A -> WF_Diagonalizable (pad1 A c).
 Proof. intros n A c [H [X [X' [B [ [Hwf Hd] [H1 [H2 [H3 H4] ] ] ] ] ] ] ].
-       split. apply WF_pad; auto.
-       exists (pad X C1), (pad X' C1), (pad B c).
-       split. split; try (apply WF_pad; auto).
+       split. apply WF_pad1; auto.
+       exists (pad1 X C1), (pad1 X' C1), (pad1 B c).
+       split. split; try (apply WF_pad1; auto).
        - intros.
          destruct i; destruct j; try lia;
-           unfold pad, col_wedge, row_wedge, scale, e_i;
+           unfold pad1, col_wedge, row_wedge, scale, e_i;
            bdestruct_all; try easy; try lca.
          do 2 rewrite easy_sub.
          apply Hd; lia.
          apply Hd; lia. 
-       - split; try (apply WF_pad; auto).
-         split; try (apply WF_pad; auto).
+       - split; try (apply WF_pad1; auto).
+         split; try (apply WF_pad1; auto).
          split. 
-         rewrite <- pad_mult, H3, Cmult_1_r, pad_I.
+         rewrite <- pad1_mult, H3, Cmult_1_r, pad1_I.
          easy.
-         do 2 rewrite <- pad_mult.
+         do 2 rewrite <- pad1_mult.
          rewrite <- H4, Cmult_1_r, Cmult_1_l.
          easy.
 Qed.         
@@ -2056,7 +2056,7 @@ Proof. induction n as [| n'].
          assert (H7 : WF_Diagonalizable ((X) † × A × X)).
          apply IHn' in H5.
          { rewrite <- H6. 
-           apply diagble_pad.
+           apply diagble_pad1.
            easy. }
          destruct H7 as [Hwf Hd].
          split. 

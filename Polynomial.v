@@ -1528,7 +1528,7 @@ Qed.
 
 (* these should be added to ccorn *)
 Lemma IR_mult_as_R : forall x y, (IRasR (x[*]y) = IRasR x * IRasR y).
-Proof.
+Proof. intros. 
  apply: map_pres_mult_unfolded.
 Qed.
 

@@ -14,12 +14,12 @@ Local Open Scope nat_scope.
 Definition e_i {n : nat} (i : nat) : Vector n :=
   fun x y => (if (x =? i) && (x <? n) && (y =? 0) then C1 else C0). 
 
-Definition pad {n m : nat} (A : Matrix n m) (c : C) : Matrix (S n) (S m) :=
+Definition pad1 {n m : nat} (A : Matrix n m) (c : C) : Matrix (S n) (S m) :=
   col_wedge (row_wedge A Zero 0) (c .* e_i 0) 0.
 
-Lemma WF_pad : forall {n m : nat} (A : Matrix n m) (c : C),
-  WF_Matrix A <-> WF_Matrix (pad A c).
-Proof. unfold WF_Matrix, pad. split.
+Lemma WF_pad1 : forall {n m : nat} (A : Matrix n m) (c : C),
+  WF_Matrix A <-> WF_Matrix (pad1 A c).
+Proof. unfold WF_Matrix, pad1. split.
        - intros. 
          unfold col_wedge, row_wedge, e_i, scale.
          bdestruct (y <? 0); bdestruct (y =? 0); try lia. 
@@ -48,7 +48,7 @@ Proof. unfold WF_Matrix, e_i.
        bdestruct (x =? i); bdestruct (x <? n); bdestruct (y =? 0); try lia; easy.
 Qed.
 
-Hint Resolve WF_e_i WF_pad : wf_db.
+Hint Resolve WF_e_i WF_pad1 : wf_db.
 
 Lemma I_is_eis : forall {n} (i : nat),
   get_vec i (I n) = e_i i. 
@@ -157,23 +157,23 @@ Proof. intros. unfold get_vec, e_i, Mmult.
 Qed.    
 
 
-Lemma pad_conv : forall {n m : nat} (A : Matrix n m) (c : C) (i j : nat),
-  (pad A c) (S i) (S j) = A i j.
+Lemma pad1_conv : forall {n m : nat} (A : Matrix n m) (c : C) (i j : nat),
+  (pad1 A c) (S i) (S j) = A i j.
 Proof. intros.
-       unfold pad, col_wedge, row_wedge, e_i.
+       unfold pad1, col_wedge, row_wedge, e_i.
        bdestruct (S j <? 0); bdestruct (S j =? 0); try lia.
        bdestruct (S i <? 0); bdestruct (S i =? 0); try lia.
        do 2 rewrite easy_sub.
        easy.
 Qed.
 
-Lemma pad_mult : forall {n m o : nat} (A : Matrix n m) (B : Matrix m o) (c1 c2 : C),
-  pad (A × B) (c1 * c2)%C = (pad A c1) × (pad B c2).
+Lemma pad1_mult : forall {n m o : nat} (A : Matrix n m) (B : Matrix m o) (c1 c2 : C),
+  pad1 (A × B) (c1 * c2)%C = (pad1 A c1) × (pad1 B c2).
 Proof. intros. 
        prep_matrix_equality. 
        unfold Mmult. 
        destruct x. 
-       - unfold pad, col_wedge, row_wedge, e_i, scale.
+       - unfold pad1, col_wedge, row_wedge, e_i, scale.
          bdestruct_all. 
          rewrite <- Csum_extend_l; simpl. 
          rewrite <- (Cplus_0_r (c1 * c2 * C1)).
@@ -184,32 +184,32 @@ Proof. intros.
          simpl; intros. 
          bdestruct_all; lca. 
        - destruct y.
-         unfold pad, col_wedge, row_wedge, e_i, scale. 
+         unfold pad1, col_wedge, row_wedge, e_i, scale. 
          simpl. 
          rewrite Csum_0_bounded; try lca.   
          bdestruct_all; lca. 
          intros. bdestruct_all; lca. 
-         rewrite pad_conv.
+         rewrite pad1_conv.
          rewrite <- Csum_extend_l.
          rewrite <- (Cplus_0_l (Csum _ _)). 
          apply Cplus_simplify.
-         unfold pad, col_wedge, row_wedge, e_i, scale. 
+         unfold pad1, col_wedge, row_wedge, e_i, scale. 
          bdestruct_all; lca. 
          apply Csum_eq_bounded; intros. 
-         do 2 rewrite pad_conv; easy.
+         do 2 rewrite pad1_conv; easy.
 Qed.
 
-Lemma pad_row_wedge_mult : forall {n m : nat} (A : Matrix n m) (v : Vector m) (c : C),
-  pad A c × row_wedge v Zero 0 = row_wedge (A × v) Zero 0.
+Lemma pad1_row_wedge_mult : forall {n m : nat} (A : Matrix n m) (v : Vector m) (c : C),
+  pad1 A c × row_wedge v Zero 0 = row_wedge (A × v) Zero 0.
 Proof. intros. 
        prep_matrix_equality.
        destruct x.
-       - unfold pad, Mmult, col_wedge, row_wedge, scale, e_i.
+       - unfold pad1, Mmult, col_wedge, row_wedge, scale, e_i.
          bdestruct_all;
          rewrite Csum_0_bounded; try lca; intros;
          bdestruct_all; lca. 
        - destruct y;
-         unfold pad, Mmult, col_wedge, row_wedge, scale, e_i;
+         unfold pad1, Mmult, col_wedge, row_wedge, scale, e_i;
          bdestruct_all;
          rewrite <- Csum_extend_l, <- Cplus_0_l;
          apply Cplus_simplify; try lca;
@@ -217,9 +217,9 @@ Proof. intros.
          bdestruct_all; do 2 rewrite easy_sub; easy. 
 Qed.
 
-Lemma pad_I : forall (n : nat), pad (I n) C1 = I (S n).
+Lemma pad1_I : forall (n : nat), pad1 (I n) C1 = I (S n).
 Proof. intros. 
-       unfold pad, I, col_wedge, row_wedge, e_i, scale.
+       unfold pad1, I, col_wedge, row_wedge, e_i, scale.
        prep_matrix_equality. 
        bdestruct (y <? 0); bdestruct (y =? 0); bdestruct (x <? 0); bdestruct (x <? S n);
          bdestruct (x =? 0); bdestruct (x =? y); bdestruct (x - 1 =? y - 1); 
@@ -227,12 +227,12 @@ Proof. intros.
 Qed.
 
 
-Lemma padded : forall {n m : nat} (A : Matrix (S n) (S m)) (c : C),
+Lemma pad1ded : forall {n m : nat} (A : Matrix (S n) (S m)) (c : C),
   (forall (i j : nat), (i = 0 \/ j = 0) /\ i <> j -> A i j = C0) -> A 0 0 = c ->
-  exists a : Matrix n m, pad a c = A.
+  exists a : Matrix n m, pad1 a c = A.
 Proof. intros.  
        exists (reduce_col (reduce_row A 0) 0).
-       unfold pad, reduce_row, reduce_col, col_wedge, row_wedge, e_i, scale.
+       unfold pad1, reduce_row, reduce_col, col_wedge, row_wedge, e_i, scale.
        prep_matrix_equality. 
        bdestruct (y <? 0); bdestruct (y =? 0); bdestruct (x <? 0); bdestruct (x =? 0);
          try lia. 
@@ -247,38 +247,38 @@ Proof. intros.
 Qed.
 
 
-Lemma reduce_pad : forall {n : nat} (A : Square n) (c : C),
-  A = reduce (pad A c) 0 0.
+Lemma reduce_pad1 : forall {n : nat} (A : Square n) (c : C),
+  A = reduce (pad1 A c) 0 0.
 Proof. intros. 
        prep_matrix_equality.
-       unfold reduce, pad, col_wedge, row_wedge, e_i. 
+       unfold reduce, pad1, col_wedge, row_wedge, e_i. 
        bdestruct_all.
        destruct x; destruct y; easy.  
 Qed.
 
 
-Lemma pad_col_swap : forall {n m : nat} (A : Matrix n m) (x y : nat) (c : C),
-  (pad (col_swap A x y) c) = col_swap (pad A c) (S x) (S y).
+Lemma pad1_col_swap : forall {n m : nat} (A : Matrix n m) (x y : nat) (c : C),
+  (pad1 (col_swap A x y) c) = col_swap (pad1 A c) (S x) (S y).
 Proof. intros. 
-       unfold pad, col_wedge, row_wedge, col_swap, e_i, scale. 
+       unfold pad1, col_wedge, row_wedge, col_swap, e_i, scale. 
        prep_matrix_equality.
        bdestruct_all; try easy. 
        all : rewrite easy_sub; easy.
 Qed.
 
-Lemma pad_col_scale : forall {n m : nat} (A : Matrix n m) (x : nat) (c1 c2 : C),
-  (pad (col_scale A x c1) c2) = col_scale (pad A c2) (S x) c1.
+Lemma pad1_col_scale : forall {n m : nat} (A : Matrix n m) (x : nat) (c1 c2 : C),
+  (pad1 (col_scale A x c1) c2) = col_scale (pad1 A c2) (S x) c1.
 Proof. intros. 
-       unfold pad, col_wedge, row_wedge, col_scale, e_i, scale. 
+       unfold pad1, col_wedge, row_wedge, col_scale, e_i, scale. 
        prep_matrix_equality.
        bdestruct_all; try easy. 
        lca. 
 Qed.
 
-Lemma pad_col_add : forall {n m : nat} (A : Matrix n m) (x y : nat) (c1 c2 : C),
-  (pad (col_add A x y c1) c2) = col_add (pad A c2) (S x) (S y) c1.
+Lemma pad1_col_add : forall {n m : nat} (A : Matrix n m) (x y : nat) (c1 c2 : C),
+  (pad1 (col_add A x y c1) c2) = col_add (pad1 A c2) (S x) (S y) c1.
 Proof. intros. 
-       unfold pad, col_wedge, row_wedge, col_add, e_i, scale. 
+       unfold pad1, col_wedge, row_wedge, col_add, e_i, scale. 
        prep_matrix_equality.
        bdestruct_all; try easy. 
        all : rewrite easy_sub; try easy.
@@ -318,10 +318,10 @@ Inductive invr_col_add_each : (forall n m : nat, Matrix n m -> Prop) -> Prop :=
         col < m -> WF_Matrix as' -> P n m T -> P n m (col_add_each col (make_col_zero col as') T)) 
     -> invr_col_add_each P.
 
-Inductive invr_pad : (forall n m : nat, Matrix n m -> Prop) -> Prop :=
+Inductive invr_pad1 : (forall n m : nat, Matrix n m -> Prop) -> Prop :=
 | invr_p : forall (P : (forall n m : nat, Matrix n m -> Prop)), 
-    (forall (n m : nat) (T : Matrix n m) (c : C), c <> C0 -> P (S n) (S m) (pad T c) -> P n m T) 
-    -> invr_pad P.
+    (forall (n m : nat) (T : Matrix n m) (c : C), c <> C0 -> P (S n) (S m) (pad1 T c) -> P n m T) 
+    -> invr_pad1 P.
 
 Inductive prop_zero_true : (forall n m : nat, Matrix n m -> Prop) -> Prop :=
 | PZT : forall (P : (forall n m : nat, Matrix n m -> Prop)), 
@@ -1034,7 +1034,7 @@ Proof. apply invr_add; intros.
 Qed.
 
 
-Lemma det_neq_0_pad_invr : invr_pad (@det_neq_0).  
+Lemma det_neq_0_pad1_invr : invr_pad1 (@det_neq_0).  
 Proof. apply invr_p; intros. 
        destruct H0; apply eq_add_S in H0; subst. 
        split; auto. 
@@ -1044,8 +1044,8 @@ Proof. apply invr_p; intros.
          rewrite Det_simplify. 
          apply Csum_0_bounded; intros. 
          destruct x. 
-         + rewrite <- reduce_pad, H0; lca. 
-         + unfold pad, col_wedge, row_wedge, e_i, scale.
+         + rewrite <- reduce_pad1, H0; lca. 
+         + unfold pad1, col_wedge, row_wedge, e_i, scale.
            bdestruct_all; simpl. 
            lca. 
 Qed.
@@ -1092,35 +1092,35 @@ Proof. intros.
        apply Determinant_col_add; easy.
 Qed.
 
-Lemma det_0_pad_invr : invr_pad (@det_eq_c C0).
+Lemma det_0_pad1_invr : invr_pad1 (@det_eq_c C0).
 Proof. apply invr_p; intros. 
        destruct H0; apply eq_add_S in H0; subst. 
        split; auto. 
        destruct m. 
        - simpl in H1.         
-         unfold pad, col_wedge, row_wedge, e_i, scale in H1; 
+         unfold pad1, col_wedge, row_wedge, e_i, scale in H1; 
          simpl in H1. 
          rewrite Cmult_1_r in H1. 
          easy.
        - rewrite Det_simplify in H1. 
-         assert (H' : (c * Determinant (reduce (pad T c) 0 0) = C0)%C).
-         { rewrite <- H1, (Csum_unique (c * Determinant (reduce (pad T c) 0 0))%C).  
+         assert (H' : (c * Determinant (reduce (pad1 T c) 0 0) = C0)%C).
+         { rewrite <- H1, (Csum_unique (c * Determinant (reduce (pad1 T c) 0 0))%C).  
            easy. 
            exists 0. split; try lia. 
            split. simpl parity. 
            apply Cmult_simplify; try easy.  
-           unfold pad, col_wedge, row_wedge, e_i, scale. 
+           unfold pad1, col_wedge, row_wedge, e_i, scale. 
            bdestruct_all; lca. 
            intros. 
-           unfold pad, col_wedge, row_wedge, e_i, scale. 
+           unfold pad1, col_wedge, row_wedge, e_i, scale. 
            bdestruct_all; lca. }
-         rewrite <- reduce_pad in H'.
+         rewrite <- reduce_pad1 in H'.
          destruct (Ceq_dec (Determinant T) C0); try easy. 
          apply (Cmult_neq_0 c _) in n; easy. 
 Qed.
 
-Hint Resolve det_neq_0_swap_invr det_neq_0_scale_invr det_neq_0_add_invr det_neq_0_pad_invr : invr_db.
-Hint Resolve det_neq_0_pzf det_0_swap_invr det_0_scale_invr det_c_add_invr det_0_pad_invr : invr_db.
+Hint Resolve det_neq_0_swap_invr det_neq_0_scale_invr det_neq_0_add_invr det_neq_0_pad1_invr : invr_db.
+Hint Resolve det_neq_0_pzf det_0_swap_invr det_0_scale_invr det_c_add_invr det_0_pad1_invr : invr_db.
 
 
 Lemma Determinant_col_add_many : forall (n col : nat) (A : Square n) (as' : Vector n),
@@ -1370,16 +1370,16 @@ Proof. apply invr_add; intros.
        apply WF_row_add; easy.
 Qed.
 
-Lemma lin_indep_pad_invr : invr_pad (@linearly_independent).  
+Lemma lin_indep_pad1_invr : invr_pad1 (@linearly_independent).  
 Proof. apply invr_p; intros. 
        unfold linearly_independent in *.
        intros. 
-       assert (H3 : @Mmult (S n) (S m) 1 (pad T c) (row_wedge a Zero 0) = Zero).
+       assert (H3 : @Mmult (S n) (S m) 1 (pad1 T c) (row_wedge a Zero 0) = Zero).
        { prep_matrix_equality. 
          destruct x. unfold Mmult. 
          unfold Zero. apply Csum_0_bounded. 
          intros.
-         unfold pad, row_wedge, col_wedge, e_i, scale.
+         unfold pad1, row_wedge, col_wedge, e_i, scale.
          bdestruct (x <? 0); bdestruct (x =? 0); try lia. lca. 
          lca.
          assert (p : @Zero (S n) 1 (S x) y = C0).
@@ -1391,12 +1391,12 @@ Proof. apply invr_p; intros.
          unfold Mmult. rewrite <- Csum_extend_l.  
          rewrite <- Cplus_0_l.
          apply Cplus_simplify.
-         unfold pad, row_wedge, col_wedge, e_i.
+         unfold pad1, row_wedge, col_wedge, e_i.
          bdestruct (x <? 0); bdestruct (x =? 0); try lia. 
          rewrite H4; simpl. lca. 
          rewrite easy_sub. lca. 
          apply Csum_eq_bounded; intros. 
-         rewrite pad_conv.
+         rewrite pad1_conv.
          unfold row_wedge.
          rewrite easy_sub. 
          easy. }
@@ -1504,7 +1504,7 @@ Proof. apply PZT; intros.
        rewrite <- matrix_by_basis; easy.
 Qed.
 
-Hint Resolve lin_indep_swap_invr lin_indep_scale_invr lin_indep_add_invr lin_indep_pad_invr : invr_db.
+Hint Resolve lin_indep_swap_invr lin_indep_scale_invr lin_indep_add_invr lin_indep_pad1_invr : invr_db.
 Hint Resolve lin_indep_pzf lin_dep_swap_invr lin_dep_scale_invr lin_dep_add_invr lin_dep_pzt : invr_db.
 
 
@@ -1799,46 +1799,46 @@ Proof. intros.
        apply H0; easy. 
 Qed.
 
-Definition otI_padded {n} (A : Square n) : Prop := 
-  forall (c :  C), (c <> C0 -> op_to_I (pad A c)).
+Definition otI_pad1ded {n} (A : Square n) : Prop := 
+  forall (c :  C), (c <> C0 -> op_to_I (pad1 A c)).
 
-Lemma otI_implies_otI_padded : forall {n} (A : Square n),
-  op_to_I A -> otI_padded A.
+Lemma otI_implies_otI_pad1ded : forall {n} (A : Square n),
+  op_to_I A -> otI_pad1ded A.
 Proof. intros. 
        apply op_to_I_ind; auto. 
-       - unfold otI_padded; intros. 
-         assert (H' : (pad (I n) c) = col_scale (I (S n)) 0 c).
+       - unfold otI_pad1ded; intros. 
+         assert (H' : (pad1 (I n) c) = col_scale (I (S n)) 0 c).
          { apply mat_equiv_eq; auto with wf_db.
-           apply WF_pad; apply WF_I.
+           apply WF_pad1; apply WF_I.
            unfold mat_equiv; intros. 
-           unfold pad, col_scale, col_wedge, row_wedge, e_i, scale, I.
+           unfold pad1, col_scale, col_wedge, row_wedge, e_i, scale, I.
            bdestruct_all; easy. }
          rewrite H'.
          apply otI_scale; auto; try lia. 
          apply otI_I.
        - intros. 
-         unfold otI_padded in *; intros. 
-         rewrite pad_col_swap. 
+         unfold otI_pad1ded in *; intros. 
+         rewrite pad1_col_swap. 
          apply otI_swap; try lia. 
          apply H3; easy. 
        - intros. 
-         unfold otI_padded in *; intros. 
-         rewrite pad_col_scale. 
+         unfold otI_pad1ded in *; intros. 
+         rewrite pad1_col_scale. 
          apply otI_scale; try lia; try easy. 
          apply H3; easy. 
        - intros. 
-         unfold otI_padded in *; intros. 
-         rewrite pad_col_add. 
+         unfold otI_pad1ded in *; intros. 
+         rewrite pad1_col_add. 
          apply otI_add; try lia; try easy. 
          apply H4; easy. 
 Qed.
 
-Lemma otI_pad : forall {n} (A : Square n) (c : C),
+Lemma otI_pad1 : forall {n} (A : Square n) (c : C),
   c <> C0 -> op_to_I A -> 
-  op_to_I (pad A c).
+  op_to_I (pad1 A c).
 Proof. intros. 
-       apply otI_implies_otI_padded in H0.
-       unfold otI_padded in H0.
+       apply otI_implies_otI_pad1ded in H0.
+       unfold otI_pad1ded in H0.
        apply H0; easy. 
 Qed.
 
@@ -2122,7 +2122,7 @@ Lemma mpr_step2 : forall {n} (A : Square (S n)) (P : forall m o, Matrix m o -> P
   WF_Matrix A -> P (S n) (S n) A ->  
   (exists i, i < (S n) /\ get_vec i A = e_i 0) ->
   (exists B : Square (S n), op_to_I B /\ P (S n) (S n) (A × B) /\
-                            (exists a : Square n, pad a C1 = (A × B))).
+                            (exists a : Square n, pad1 a C1 = (A × B))).
 Proof. intros.
        destruct H3 as [i [H3 H4]].
        inversion H0; subst.
@@ -2147,7 +2147,7 @@ Proof. intros.
        rewrite <- col_swap_mult_r; try lia; try easy.
        rewrite <- col_add_each_mult_r; try lia; try easy.
        split; try easy. 
-       apply padded; intros. 
+       apply pad1ded; intros. 
        4 : apply WF_make_col_zero.
        all : try (apply WF_scale; apply WF_get_row).  
        all : try (apply WF_col_swap; try lia; easy).
@@ -2181,14 +2181,14 @@ Qed.
 
 
 (* these two lemmas allow us to reduce our study of Square (S n) to Square n, allowing 
-   us to induct on n. Then, 'invr_pad P' allows us to jump from the n case to (S n) *) 
+   us to induct on n. Then, 'invr_pad1 P' allows us to jump from the n case to (S n) *) 
 Lemma mat_prop_reduce_pzf_P : forall {n} (A : Square (S n)) (P P0 : forall m o, Matrix m o -> Prop), 
   invr_col_swap P -> invr_col_scale P -> 
   invr_col_add P -> prop_zero_false P ->   
-  invr_pad P -> 
+  invr_pad1 P -> 
   WF_Matrix A -> P (S n) (S n) A -> 
   (exists B : Square (S n), op_to_I B /\ P (S n) (S n) (A × B) /\
-                            (exists a : Square n, pad a C1 = (A × B))). 
+                            (exists a : Square n, pad1 a C1 = (A × B))). 
 Proof. intros. 
        apply (mpr_step1_pzf_P A P) in H5; auto.  
        destruct H5 as [B [H5 [H6 [i [H7 H8]]]]].
@@ -2203,11 +2203,11 @@ Qed.
 Lemma mat_prop_reduce_pzt_P0 : forall {n} (A : Square (S n)) (P P0 : forall m o, Matrix m o -> Prop), 
   invr_col_swap P -> invr_col_scale P -> 
   invr_col_add P -> 
-  invr_pad P -> 
+  invr_pad1 P -> 
   invr_col_add P0 -> prop_zero_true P0 -> 
   WF_Matrix A -> P (S n) (S n) A -> 
   (exists B : Square (S n), op_to_I B /\ P (S n) (S n) (A × B) /\
-                            (exists a : Square n, pad a C1 = (A × B))) \/ P0 (S n) (S n) A.
+                            (exists a : Square n, pad1 a C1 = (A × B))) \/ P0 (S n) (S n) A.
 Proof. intros. 
        apply (mrp_step1_pzt_P0 A P P0) in H6; auto. 
        destruct H6.
@@ -2227,7 +2227,7 @@ Qed.
 Theorem invr_P_implies_invertible_r : forall {n} (A : Square n) (P : forall m o, Matrix m o -> Prop), 
   invr_col_swap P -> invr_col_scale P -> 
   invr_col_add P -> prop_zero_false P ->   
-  invr_pad P -> 
+  invr_pad1 P -> 
   WF_Matrix A -> P n n A -> 
   (exists B, op_to_I B /\ A × B = I n).
 Proof. induction n as [| n'].
@@ -2248,14 +2248,14 @@ Proof. induction n as [| n'].
          apply H8 in H6. 
          apply IHn' in H6; auto.
          destruct H6 as [B0 [H9 H10]].
-         exists (B × (pad B0 C1)). 
+         exists (B × (pad1 B0 C1)). 
          split. 
          apply otI_Mmult; auto. 
-         apply otI_pad; auto. 
+         apply otI_pad1; auto. 
          all : try apply C1_neq_C0.  
          rewrite <- Mmult_assoc, <- H7.          
-         rewrite <- pad_mult, H10, Cmult_1_l, pad_I; easy.
-         apply (WF_pad a C1). 
+         rewrite <- pad1_mult, H10, Cmult_1_l, pad1_I; easy.
+         apply (WF_pad1 a C1). 
          rewrite H7; auto with wf_db. 
 Qed.
 
@@ -2379,7 +2379,7 @@ Qed.
 Theorem invr_P_equiv_otI : forall {n} (A : Square n) (P : forall m o, Matrix m o -> Prop), 
   invr_col_swap P -> invr_col_scale P -> 
   invr_col_add P -> prop_zero_false P ->   
-  invr_pad P -> P n n (I n) -> 
+  invr_pad1 P -> P n n (I n) -> 
   WF_Matrix A -> 
   (P n n A <-> op_to_I A).  
 Proof. intros. split. 
@@ -2448,9 +2448,9 @@ Proof. induction n as [| n'].
            destruct H0 as [B [H0 [H1 [a H2]]]]. 
            assert (H' : linearly_dependent a).
            { apply IHn'. 
-             apply <- (@WF_pad n' n' a C1). 
+             apply <- (@WF_pad1 n' n' a C1). 
              rewrite H2; auto with wf_db. 
-             apply_mat_prop det_0_pad_invr.           
+             apply_mat_prop det_0_pad1_invr.           
              apply (H4 n' n' a C1).
              apply C1_neq_C0.
              rewrite H2; easy. }
@@ -2473,7 +2473,7 @@ Proof. induction n as [| n'].
            rewrite easy_sub; easy. 
            apply WF_row_wedge; try lia;  auto with wf_db.
            rewrite <- Mmult_assoc, <- H2.
-           rewrite pad_row_wedge_mult, H5.
+           rewrite pad1_row_wedge_mult, H5.
            prep_matrix_equality.
            unfold row_wedge. 
            bdestruct_all; easy. 

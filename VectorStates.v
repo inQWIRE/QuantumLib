@@ -1,4 +1,5 @@
 Require Import Dirac.
+Require Import Pad.
 
 Local Close Scope C_scope.
 Local Close Scope R_scope.
@@ -748,10 +749,23 @@ Qed.
 
 Lemma f_to_vec_X : forall (n i : nat) (f : nat -> bool),
   i < n ->
-  (uc_eval (X i)) × (f_to_vec n f) 
+  (smpl_U n i σx) × (f_to_vec n f) 
       = f_to_vec n (update f i (¬ (f i))).
 Proof.
-  intros.
+  induction n as [| n']; try lia. 
+  intros; simpl.
+  bdestruct (i <? n'); bdestruct (i =? n'); try lia. 
+  + rewrite <- IHn', update_index_neq; auto. 
+    unfold smpl_U, pad.
+
+
+
+
+
+
+
+
+    
   autorewrite with eval_db.
   rewrite (f_to_vec_split 0 n i f H). 
   simpl; replace (n - 1 - i) with (n - (i + 1)) by lia.

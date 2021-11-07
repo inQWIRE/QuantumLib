@@ -6,6 +6,7 @@ Eigenvectors.v
 Matrix.v
 Monad.v
 Monoid.v
+Pad.v
 Polynomial.v
 Prelim.v
 Quantum.v
