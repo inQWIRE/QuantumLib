@@ -1444,6 +1444,7 @@ Qed.
 (*****************************************************)
 (* First, we show that our C is the same as ccorns C *)
 (*****************************************************)
+ 
 
 Require Import CoRN.fta.FTA. 
 Require Import CoRN.coq_reals.Rreals_iso. 
@@ -1647,6 +1648,8 @@ Proof. intros.
        apply nth_compactify_nonzero.
        easy.
 Qed.       
+
+
 
 Theorem Fundamental_Theorem_Algebra : forall (p : Polynomial),
   (Polynomial.degree p > 0)%nat -> (exists c : Complex.C, p[[c]] = C0).
