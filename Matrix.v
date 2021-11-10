@@ -236,7 +236,7 @@ Notation "Σ^ n f" := (Csum f n) (at level 60) : matrix_scope.
 Notation "n ⨂ A" := (kron_n n A) (at level 30, no associativity) : matrix_scope.
 Notation "⨂ A" := (big_kron A) (at level 60): matrix_scope.
 Notation "n ⨉ A" := (Mmult_n n A) (at level 30, no associativity) : matrix_scope.
-Hint Unfold Zero I trace dot Mplus scale Mmult kron mat_equiv transpose 
+#[global] Hint Unfold Zero I trace dot Mplus scale Mmult kron mat_equiv transpose 
             adjoint : U_db.
   
 Ltac destruct_m_1 :=
@@ -895,13 +895,13 @@ Ltac show_wf :=
   destruct_m_eq;
   try lca.
 
-(* Create HintDb wf_db. *)
-Hint Resolve WF_Zero WF_I WF_I1 WF_mult WF_plus WF_scale WF_transpose 
+(* Create #[global] HintDb wf_db. *)
+#[global] Hint Resolve WF_Zero WF_I WF_I1 WF_mult WF_plus WF_scale WF_transpose 
      WF_adjoint WF_outer_product WF_big_kron WF_kron_n WF_kron 
      WF_Mmult_n WF_Msum : wf_db.
-Hint Extern 2 (_ = _) => unify_pows_two : wf_db.
+#[global] Hint Extern 2 (_ = _) => unify_pows_two : wf_db.
 
-(* Hint Resolve WF_Matrix_dim_change : wf_db. *)
+(* #[global] Hint Resolve WF_Matrix_dim_change : wf_db. *)
 
 
 (** Basic Matrix Lemmas **)
@@ -2388,12 +2388,12 @@ Proof. intros.
 Qed.
 
 
-Hint Resolve WF_get_vec WF_get_row WF_reduce_row WF_reduce_col WF_reduce_vecn WF_reduce : wf_db.
-Hint Resolve WF_col_swap WF_row_swap WF_col_scale WF_row_scale WF_col_add WF_row_add  : wf_db.
-Hint Resolve WF_gen_new_vec WF_gen_new_row WF_col_add_many WF_row_add_many : wf_db.
-Hint Resolve WF_col_append WF_row_append WF_row_wedge WF_col_wedge WF_smash : wf_db.
-Hint Resolve WF_col_add_each WF_row_add_each WF_make_col_zero WF_make_row_zero WF_make_WF : wf_db.
-Hint Extern 1 (Nat.lt _ _) => lia : wf_db.
+#[global] Hint Resolve WF_get_vec WF_get_row WF_reduce_row WF_reduce_col WF_reduce_vecn WF_reduce : wf_db.
+#[global] Hint Resolve WF_col_swap WF_row_swap WF_col_scale WF_row_scale WF_col_add WF_row_add  : wf_db.
+#[global] Hint Resolve WF_gen_new_vec WF_gen_new_row WF_col_add_many WF_row_add_many : wf_db.
+#[global] Hint Resolve WF_col_append WF_row_append WF_row_wedge WF_col_wedge WF_smash : wf_db.
+#[global] Hint Resolve WF_col_add_each WF_row_add_each WF_make_col_zero WF_make_row_zero WF_make_WF : wf_db.
+#[global] Hint Extern 1 (Nat.lt _ _) => lia : wf_db.
 
 Lemma get_vec_reduce_col : forall {n m} (i col : nat) (A : Matrix n (S m)),
   i < col -> get_vec i (reduce_col A col) = get_vec i A.
@@ -3964,7 +3964,7 @@ Tactic Notation "restore_dims" := restore_dims (repeat rewrite Nat.pow_1_l; try 
 (*************************)
 
 (* Old: 
-Hint Rewrite kron_1_l kron_1_r Mmult_1_l Mmult_1_r id_kron id_adjoint_eq
+#[global] Hint Rewrite kron_1_l kron_1_r Mmult_1_l Mmult_1_r id_kron id_adjoint_eq
      @Mmult_adjoint Mplus_adjoint @kron_adjoint @kron_mixed_product
      id_adjoint_eq adjoint_involutive using 
      (auto 100 with wf_db; autorewrite with M_db; auto 100 with wf_db; lia) : M_db.

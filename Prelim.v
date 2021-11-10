@@ -58,7 +58,7 @@ Proof.
   apply iff_reflect. symmetry. apply Nat.leb_le.
 Qed.
 
-Hint Resolve blt_reflect ble_reflect beq_reflect : bdestruct.
+#[global] Hint Resolve blt_reflect ble_reflect beq_reflect : bdestruct.
 
 Ltac bdestruct X :=
   let H := fresh in let e := fresh "e" in
@@ -424,7 +424,7 @@ Proof. intros X l1 l2 l3.
 Qed.
 
 
-Hint Resolve subset_concat_l subset_concat_r subset_self subsets_add subset_trans : sub_db.
+#[global] Hint Resolve subset_concat_l subset_concat_r subset_self subsets_add subset_trans : sub_db.
 
 
 Lemma firstn_subset : forall {X : Type} (n : nat) (ls : list X),
@@ -452,7 +452,7 @@ Proof. induction n as [| n'].
 Qed.
 
 
-Hint Resolve firstn_subset skipn_subset : sub_db.
+#[global] Hint Resolve firstn_subset skipn_subset : sub_db.
 
 (******************************)
 (* Some more basic list stuff *)
