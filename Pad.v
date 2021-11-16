@@ -45,10 +45,6 @@ Definition ctrl_U (dim m n: nat) (U: Square 2) :=
 
 (** some helper lemmas *)
 
-Lemma smpl_U_extend_miss : forall 
-
-
-
 
 (** Well-formedness **)
 
@@ -69,4 +65,4 @@ Lemma WF_ctrl_U : forall dim m n U, WF_Matrix U -> WF_Matrix (ctrl_U dim m n U).
   all : apply WF_pad; rewrite H'; apply WF_plus; auto with wf_db.
 Qed.  
 
-Hint Resolve WF_pad WF_smpl_U WF_ctrl_U : wf_db.
+#[global] Hint Resolve WF_pad WF_smpl_U WF_ctrl_U : wf_db.

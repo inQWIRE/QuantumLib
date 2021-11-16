@@ -1545,7 +1545,7 @@ Proof.
   intros. bdestruct (y =? 0). subst. simpl.
   bdestruct (z =? 0). subst. easy.
   apply Nat.mod_0_l. easy.
-  bdestruct (z =? 0). subst. rewrite Nat.mul_0_r. simpl; easy. 
+  bdestruct (z =? 0). subst. rewrite Nat.mul_0_r. simpl. rewrite Nat.div_0_l; easy.
   pattern x at 1. rewrite (Nat.div_mod x (y * z)) by nia.
   replace (y * z * (x / (y * z))) with ((z * (x / (y * z))) * y) by lia.
   rewrite Nat.div_add_l with (b := y) by easy.
@@ -3973,16 +3973,16 @@ Tactic Notation "restore_dims" := restore_dims (repeat rewrite Nat.pow_1_l; try 
 *)
 
 (* eauto will cause major choking... *)
-#[global] Hint Rewrite  @kron_1_l @kron_1_r @Mmult_1_l @Mmult_1_r @Mscale_1_l 
+Hint Rewrite  @kron_1_l @kron_1_r @Mmult_1_l @Mmult_1_r @Mscale_1_l 
      @id_adjoint_eq @id_transpose_eq using (auto 100 with wf_db) : M_db_light.
-#[global] Hint Rewrite @kron_0_l @kron_0_r @Mmult_0_l @Mmult_0_r @Mplus_0_l @Mplus_0_r
+Hint Rewrite @kron_0_l @kron_0_r @Mmult_0_l @Mmult_0_r @Mplus_0_l @Mplus_0_r
      @Mscale_0_l @Mscale_0_r @zero_adjoint_eq @zero_transpose_eq using (auto 100 with wf_db) : M_db_light.
 
 (* I don't like always doing restore_dims first, but otherwise sometimes leaves 
    unsolvable WF_Matrix goals. *)
 Ltac Msimpl_light := try restore_dims; autorewrite with M_db_light.
 
-#[global] Hint Rewrite @Mmult_adjoint @Mplus_adjoint @kron_adjoint @kron_mixed_product
+Hint Rewrite @Mmult_adjoint @Mplus_adjoint @kron_adjoint @kron_mixed_product
      @adjoint_involutive using (auto 100 with wf_db) : M_db.
 
 Ltac Msimpl := try restore_dims; autorewrite with M_db_light M_db.
