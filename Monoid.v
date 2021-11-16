@@ -3,6 +3,8 @@ Require Import PermutSetoid.
 Require Import Sorting.Permutation.
 Require Import Sorting.PermutEq. (* Standard library *)  
 
+
+
 (* A partial commutative monoid is a monoid (1,m) with an undefined element 0. *)
 Class PCM A :=
     { one  : A
@@ -23,7 +25,7 @@ Class PCM_Laws A `{PCM A} :=
   ; M_absorb : forall a, a ∘ ⊥ = ⊥ 
   }.
 
-Hint Resolve M_unit M_assoc M_comm M_absorb : core.
+#[global] Hint Resolve M_unit M_assoc M_comm M_absorb : core.
 
 (****************************)
 (* Interpretable type class *)
@@ -45,14 +47,14 @@ Class PPCM_Laws A `{PPCM A} :=
     PMonoid_comm : forall a b, m' a b = m' b a 
   }.
 
-Instance PPCM_to_PCM A `{PPCM A} : PCM (option A) :=
+#[global] Instance PPCM_to_PCM A `{PPCM A} : PCM (option A) :=
   { one := Some one'
   ; zero := None
   ; m := fun a b => do x ← a;
                     do y ← b;
                     m' x y
   }.
-Instance PPCM_to_PCM_Laws A `{PPCM_Laws A} : PCM_Laws (option A).
+#[global] Instance PPCM_to_PCM_Laws A `{PPCM_Laws A} : PCM_Laws (option A).
 Proof.
   split.
   - destruct a; simpl; auto. apply PMonoid_unit.

@@ -36,7 +36,7 @@ Class Monad (m: Type -> Type) `{M : Applicative m} : Type :=
 Definition return_ {m : Type -> Type} `{M : Monad m} {A : Type} : A -> m A := pure.
 Notation "a >>= f" := (bind a f) (at level 50, left associativity).
 
-Hint Unfold bind return_ : monad_db.
+#[global] Hint Unfold bind return_ : monad_db.
 
 Class Monad_Correct (m : Type -> Type) `{M : Monad m} := {
   bind_right_unit: forall A (a: m A), a = a >>= return_;
@@ -81,7 +81,7 @@ Fixpoint foldM {A B m} `{Monad m}
   | x :: ls' => do y ← f b x;
                 foldM f y ls'
   end.
-Hint Unfold foldM : monad_db.
+#[global] Hint Unfold foldM : monad_db.
 
 About fmap_compose.
 Lemma fmap_compose' {f} (F : Functor f) `{Functor_Correct f} : 
@@ -147,7 +147,7 @@ Definition list_fmap {A B} (f : A -> B) :=
   end.
 *)
 Definition list_fmap := map.
-Hint Unfold list_fmap : monad_db.
+#[global] Hint Unfold list_fmap : monad_db.
 (*
 Fixpoint list_fmap {A B} (f : A -> B) (ls : list A) : list B :=
   match ls with
@@ -167,22 +167,22 @@ Definition list_liftA {A B} (fs : list (A -> B)) (xs : list A) : list B :=
   let g := fun a => list_fmap (fun f => f a) fs
   in
   concat (list_fmap g xs).
-Hint Unfold list_liftA : monad_db.
+#[global] Hint Unfold list_liftA : monad_db.
 
 Fixpoint list_bind {A} (xs : list A) {B} (f : A -> list B) : list B :=
   match xs with
   | nil => nil
   | a :: xs' => f a ++ list_bind xs' f
   end.
-Hint Unfold list_bind : monad_db.
+#[global] Hint Unfold list_bind : monad_db.
 
-Instance listF : Functor list := { fmap := @list_fmap }.
-Instance listA : Applicative list := { pure := fun _ x => x :: nil
+#[global] Instance listF : Functor list := { fmap := @list_fmap }.
+#[global] Instance listA : Applicative list := { pure := fun _ x => x :: nil
                                      ; liftA := @list_liftA }.
-Instance listM : Monad list := 
+#[global] Instance listM : Monad list := 
   { bind := @list_bind }.
 
-Instance listF_correct : Functor_Correct list.
+#[global] Instance listF_correct : Functor_Correct list.
 Proof.
   constructor.
   * intros. simpl. apply functional_extensionality; intros x.
@@ -194,7 +194,7 @@ Proof.
     auto.
 Qed.
 
-Instance listA_correct : Applicative_Correct list.
+#[global] Instance listA_correct : Applicative_Correct list.
 Proof.
   constructor.
   * intros. simpl. apply functional_extensionality; intros l.
@@ -203,7 +203,7 @@ Proof.
     rewrite IHl; easy.
 Abort.
 
-Instance listM_correct : Monad_Correct list.
+#[global] Instance listM_correct : Monad_Correct list.
 Abort.
 
 
@@ -228,13 +228,13 @@ Definition option_liftA {A B} (f : option (A -> B)) (x : option A) : option B :=
   | Some f', Some a => Some (f' a)
   | _, _ => None
   end.
-Instance optionF : Functor option := { fmap := @option_fmap}.
-Instance optionA : Applicative option := { pure := @Some;
+#[global] Instance optionF : Functor option := { fmap := @option_fmap}.
+#[global] Instance optionA : Applicative option := { pure := @Some;
                                            liftA := @option_liftA}.
-Instance optionM : Monad option :=
+#[global] Instance optionM : Monad option :=
   { bind := fun  A m B f => match m with None => None | Some a => f a end
   }.
-Instance optionM_Laws : Monad_Correct option.
+#[global] Instance optionM_Laws : Monad_Correct option.
 Proof. split.
   - destruct a; auto.
   - intros; auto.
@@ -254,7 +254,7 @@ Proof.
   unfold optionT.
   refine (do a ← x; return_ (Some a)).
 Defined.
-Instance optionT_T : MonadTrans optionT := {liftT := @optionT_liftT}.
+#[global] Instance optionT_T : MonadTrans optionT := {liftT := @optionT_liftT}.
 
 Definition optionT_fmap {f} `{Functor f} 
                         {A B} (g : A -> B) (x : optionT f A) : optionT f B :=
@@ -281,12 +281,12 @@ Definition optionT_bind {m} `{Monad m}
   ).
 Defined.
 
-Instance optionT_F {f} `{Functor f} : Functor (optionT f) := 
+#[global] Instance optionT_F {f} `{Functor f} : Functor (optionT f) := 
     {fmap := @optionT_fmap f _}.
-Instance optionT_A {f} `{Applicative f} : Applicative (optionT f) :=
+#[global] Instance optionT_A {f} `{Applicative f} : Applicative (optionT f) :=
   { pure := @optionT_pure f _ _;
     liftA := @optionT_liftA f _ _ }.
-Instance optionT_M {m} `{Monad m} : Monad (optionT m) :=
+#[global] Instance optionT_M {m} `{Monad m} : Monad (optionT m) :=
   { bind := @optionT_bind m _ _ _ }.
 
 (** The Reader monad *)
@@ -300,12 +300,12 @@ Definition reader_liftA E A B (f : Reader E (A -> B)) (r : Reader E A) :=
 Definition reader_bind E A (r : Reader E A) B (f : A -> Reader E B) : Reader E B :=
   fun x => f (r x) x.
   
-Instance readerF E : Functor (Reader E) :=
+#[global] Instance readerF E : Functor (Reader E) :=
  { fmap := @reader_fmap E }.
-Instance readerA E : Applicative (Reader E) :=
+#[global] Instance readerA E : Applicative (Reader E) :=
  { pure := fun  A (a:A) e=> a;
    liftA := @reader_liftA E }.
-Instance readerM (E : Type): Monad (Reader E) :=
+#[global] Instance readerM (E : Type): Monad (Reader E) :=
  { bind := @reader_bind E }.
 (*
 (* Checking the 3 laws *)
@@ -347,7 +347,7 @@ Section State.
 
 
 End State.
-Hint Unfold put get runState evalState execState state_fmap state_liftA state_bind : monad_db.
+#[global] Hint Unfold put get runState evalState execState state_fmap state_liftA state_bind : monad_db.
 Ltac fold_evalState :=
   match goal with
   | [ |- context[fst (?c ?v)] ] => replace (fst (c v)) with (evalState c v)
@@ -357,16 +357,16 @@ Ltac fold_evalState :=
 Arguments get {S}.
 Arguments put {S}.
 
-Instance stateF {A} : Functor (State A) :=
+#[global] Instance stateF {A} : Functor (State A) :=
     { fmap := @state_fmap A }.
-Instance stateA {A} : Applicative (State A) :=
+#[global] Instance stateA {A} : Applicative (State A) :=
     { pure := fun  A a s=> (a,s);
       liftA := @state_liftA A }.
-Instance stateM {A} : Monad (State A) :=
+#[global] Instance stateM {A} : Monad (State A) :=
     { bind := @state_bind A }.
 
 
-Instance stateF_correct {A} : Functor_Correct (State A).
+#[global] Instance stateF_correct {A} : Functor_Correct (State A).
   Proof.
     split; intros;
       apply functional_extensionality; intros op;
@@ -376,7 +376,7 @@ Instance stateF_correct {A} : Functor_Correct (State A).
     - destruct (op x); reflexivity.
   Qed.
 
-Instance stateA_correct {A} : Applicative_Correct (State A).
+#[global] Instance stateA_correct {A} : Applicative_Correct (State A).
   Proof. 
     split; intros;
       apply functional_extensionality; intros op; 
@@ -392,7 +392,7 @@ Instance stateA_correct {A} : Applicative_Correct (State A).
       reflexivity.
   Qed.
 
-Instance stateM_correct {A} : Monad_Correct (State A).
+#[global] Instance stateM_correct {A} : Monad_Correct (State A).
   Proof.
     split; intros; simpl; unfold state_bind.
     - apply functional_extensionality; intros x. 
@@ -403,7 +403,7 @@ Instance stateM_correct {A} : Monad_Correct (State A).
       reflexivity.
   Qed.
 
-Hint Unfold Basics.compose : monad_db.
-Hint Unfold stateM : monad_db.
+#[global] Hint Unfold Basics.compose : monad_db.
+#[global] Hint Unfold stateM : monad_db.
 
 
