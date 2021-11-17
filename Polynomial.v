@@ -1441,12 +1441,3 @@ Proof. induction n as [| n'].
 Qed.
 
 
-(******************)
-(* Must prove FTA *)
-(******************)
- 
-
-Theorem Fundamental_Theorem_Algebra : forall (p : Polynomial),
-  (Polynomial.degree p > 0)%nat -> (exists c : Complex.C, p[[c]] = C0).
-Proof. Admitted. 
-
