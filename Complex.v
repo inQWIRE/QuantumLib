@@ -208,6 +208,18 @@ Proof.
   apply Rsqr_le_abs_1 in H0 ; unfold pow; rewrite !Rmult_1_r; auto.
 Qed.
 
+Lemma C_neq_0 : forall c : C, c <> 0 -> (fst c) <> 0 \/ (snd c) <> 0.
+Proof.
+  intros.
+  Search (~_ \/ ~_).
+  apply Classical_Prop.not_and_or.
+  rewrite <- pair_equal_spec.
+  unfold not in *.
+  replace ((fst c, snd c)) with c by apply surjective_pairing.
+  replace (0, 0)%C with (RtoC 0) by reflexivity.
+  assumption.
+Qed.
+
 (* some lemmas to help simplify addition/multiplication scenarios *)
 Lemma Cplus_simplify : forall (a b c d : C),
     a = b -> c = d -> (a + c = b + d)%C.
@@ -490,6 +502,20 @@ Proof. apply C0_fst_neq.
        apply R1_neq_R0.
 Qed.
 
+Lemma Cconj_neq_0 : forall c : C, c <> 0 -> c^* <> 0.
+Proof.
+  intros.
+  unfold Cconj.
+  apply C_neq_0 in H.
+  destruct H.
+  - apply C0_fst_neq.
+    simpl.
+    assumption.
+  - apply C0_snd_neq.
+    simpl.
+    apply Ropp_neq_0_compat.
+    assumption.
+Qed.
 
 Lemma nonzero_div_nonzero : forall c : C, c <> C0 -> / c <> C0.
 Proof. intros. 
