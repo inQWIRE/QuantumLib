@@ -977,6 +977,13 @@ Proof.
   apply UB.
 Qed.
 
+Lemma hadamard_st : hadamard ⊤ = hadamard.
+Proof. solve_matrix. Qed.
+
+Lemma adjoint_transpose_comm : forall m n (A : Matrix m n),
+  A † ⊤ = A ⊤ †.
+Proof. reflexivity. Qed.
+
 (********************)
 (* Self-adjointness *)
 (********************)

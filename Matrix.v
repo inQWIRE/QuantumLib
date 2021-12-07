@@ -1708,6 +1708,14 @@ Proof.
     reflexivity.
 Qed.
 
+Lemma kron_n_transpose : forall (m n o : nat) (A : Matrix m n),
+  (o ⨂ A)⊤ = o ⨂ (A⊤). 
+Proof. 
+  induction o; intros.
+  - apply id_transpose_eq.
+  - simpl; rewrite <- IHo; rewrite <- kron_transpose; reflexivity. 
+Qed.
+
 Lemma Mscale_kron_n_distr_r : forall {m1 m2} n α (A : Matrix m1 m2),
   n ⨂ (α .* A) = (α ^ n) .* (n ⨂ A).
 Proof.
@@ -3960,6 +3968,27 @@ Tactic Notation "restore_dims" tactic(tac) := restore_dims tac.
 
 Tactic Notation "restore_dims" := restore_dims (repeat rewrite Nat.pow_1_l; try ring; unify_pows_two; simpl; lia).
 
+(*************************)
+(* Proofs depending on restore_dims *)
+(*************************)
+
+Lemma kron_n_m_split {o p} : forall n m (A : Matrix o p), 
+  WF_Matrix A -> (n + m) ⨂ A = n ⨂ A ⊗ m ⨂ A.
+Proof.
+  induction n.
+  - simpl. 
+    intros. 
+    rewrite kron_1_l; try auto with wf_db.
+  - intros.
+    simpl.
+    rewrite IHn; try auto.
+    restore_dims.
+    rewrite 2 kron_assoc; try auto with wf_db.
+    rewrite <- kron_n_assoc; try auto.
+    simpl.
+    restore_dims.
+    reflexivity.
+Qed.
 
 (*************************)
 (* Matrix Simplification *)
