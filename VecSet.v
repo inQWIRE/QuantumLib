@@ -48,7 +48,7 @@ Proof. unfold WF_Matrix, e_i.
        bdestruct (x =? i); bdestruct (x <? n); bdestruct (y =? 0); try lia; easy.
 Qed.
 
-#[global] Hint Resolve WF_e_i WF_pad1 : wf_db.
+#[export] Hint Resolve WF_e_i WF_pad1 : wf_db.
 
 Lemma I_is_eis : forall {n} (i : nat),
   get_vec i (I n) = e_i i. 
@@ -1119,8 +1119,8 @@ Proof. apply invr_p; intros.
          apply (Cmult_neq_0 c _) in n; easy. 
 Qed.
 
-#[global] Hint Resolve det_neq_0_swap_invr det_neq_0_scale_invr det_neq_0_add_invr det_neq_0_pad1_invr : invr_db.
-#[global] Hint Resolve det_neq_0_pzf det_0_swap_invr det_0_scale_invr det_c_add_invr det_0_pad1_invr : invr_db.
+#[export] Hint Resolve det_neq_0_swap_invr det_neq_0_scale_invr det_neq_0_add_invr det_neq_0_pad1_invr : invr_db.
+#[export] Hint Resolve det_neq_0_pzf det_0_swap_invr det_0_scale_invr det_c_add_invr det_0_pad1_invr : invr_db.
 
 
 Lemma Determinant_col_add_many : forall (n col : nat) (A : Square n) (as' : Vector n),
@@ -1504,8 +1504,8 @@ Proof. apply PZT; intros.
        rewrite <- matrix_by_basis; easy.
 Qed.
 
-#[global] Hint Resolve lin_indep_swap_invr lin_indep_scale_invr lin_indep_add_invr lin_indep_pad1_invr : invr_db.
-#[global] Hint Resolve lin_indep_pzf lin_dep_swap_invr lin_dep_scale_invr lin_dep_add_invr lin_dep_pzt : invr_db.
+#[export] Hint Resolve lin_indep_swap_invr lin_indep_scale_invr lin_indep_add_invr lin_indep_pad1_invr : invr_db.
+#[export] Hint Resolve lin_indep_pzf lin_dep_swap_invr lin_dep_scale_invr lin_dep_add_invr lin_dep_pzt : invr_db.
 
 
 (* we begin to prove that if n < m, then any Matrix n m is linearly_dependent *)
@@ -1759,7 +1759,7 @@ Proof. intros.
        apply op_to_I_ind; auto with wf_db.
 Qed.
 
-#[global] Hint Resolve op_to_I_WF : wf_db.
+#[export] Hint Resolve op_to_I_WF : wf_db.
 
 
 Definition otI_multiplicative {n} (A : Square n) : Prop := 

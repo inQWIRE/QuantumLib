@@ -1,4 +1,4 @@
-Require Import Psatz. 
+Require Import Psatz.
 Require Import String.
 Require Import Program.
 Require Export Complex.
@@ -144,14 +144,6 @@ Definition to_scalar (m n : nat) (A: Matrix m n) : C := A 0 0.
 Coercion to_scalar : Matrix >-> C.
  *)
 
-
-  (*
-Definition I (n : nat) : Square n := 
-  (fun x y => if (x =? y) && (x <? n) then C1 else C0).
-Definition I1 := I (2^0).
-Notation "I  n" := (I n) (at level 10).
-*)
-
 (* This isn't used, but is interesting *)
 Definition I__inf := fun x y => if x =? y then C1 else C0.
 Notation "I∞" := I__inf : matrix_scope.
@@ -236,7 +228,7 @@ Notation "Σ^ n f" := (Csum f n) (at level 60) : matrix_scope.
 Notation "n ⨂ A" := (kron_n n A) (at level 30, no associativity) : matrix_scope.
 Notation "⨂ A" := (big_kron A) (at level 60): matrix_scope.
 Notation "n ⨉ A" := (Mmult_n n A) (at level 30, no associativity) : matrix_scope.
-#[global] Hint Unfold Zero I trace dot Mplus scale Mmult kron mat_equiv transpose 
+#[export] Hint Unfold Zero I trace dot Mplus scale Mmult kron mat_equiv transpose
             adjoint : U_db.
   
 Ltac destruct_m_1 :=
@@ -254,8 +246,6 @@ Ltac lma :=
   destruct_m_eq; 
   lca.
 
-
-
 Ltac solve_end :=
   match goal with
   | H : lt _ O |- _ => apply Nat.nlt_0_r in H; contradict H
@@ -271,17 +261,12 @@ Ltac by_cell :=
   repeat (destruct i as [|i]; simpl; [|apply lt_S_n in Hi]; try solve_end); clear Hi;
   repeat (destruct j as [|j]; simpl; [|apply lt_S_n in Hj]; try solve_end); clear Hj.
 
-
-
 Ltac lma' :=
   apply mat_equiv_eq;
   repeat match goal with
   | [ |- WF_Matrix (?A) ]  => auto with wf_db (* (try show_wf) *)
   | [ |- mat_equiv (?A) (?B) ] => by_cell; try lca                 
   end.
-
-
-
 
 (* lemmas which are useful for simplifying proofs involving matrix operations *)
 Lemma kron_simplify : forall (n m o p : nat) (a b : Matrix n m) (c d : Matrix o p), 
@@ -455,7 +440,6 @@ Lemma Csum_unique : forall k (f : nat -> C) n,
 Proof.                    
   intros k f n [x [L [Eq Unique]]].
   induction n; try lia.
-  Search Csum.
   rewrite <- Csum_extend_r.
   destruct (Nat.eq_dec x n).
   - subst. 
@@ -531,7 +515,6 @@ Proof.
     apply Rplus_le_compat; easy.
 Qed.
 
-
 Lemma Csum_gt_0 : forall f n, (forall x, 0 <= fst (f x)) -> 
                               (exists y : nat, (y < n)%nat /\ 0 < fst (f y)) ->
                               0 < fst (Csum f n).
@@ -548,9 +531,7 @@ Proof.
       lra. 
 Qed.
 
-
-
-Lemma Csum_member_le : forall (f : nat -> C) (n : nat), (forall x, 0 <= fst (f x)) -> 
+Lemma Csum_member_le : forall (f : nat -> C) (n : nat), (forall x, 0 <= fst (f x)) ->
                       (forall x, (x < n)%nat -> fst (f x) <= fst (Csum f n)).
 Proof.
   intros f.
@@ -567,10 +548,10 @@ Proof.
       rewrite E.
       simpl.
       rewrite <- Rplus_0_l at 1.
-      apply Rplus_le_compat. 
+      apply Rplus_le_compat.
       apply Csum_ge_0; easy.
       lra.
-Qed.      
+Qed.  
 
 Lemma Csum_squeeze : forall (f : nat -> C) (n : nat), 
   (forall x, (0 <= fst (f x)))%R -> Csum f n = C0 ->
@@ -589,7 +570,6 @@ Proof. intros.
        apply H.
 Qed.
 
-
 Lemma Csum_snd_0 : forall n f, (forall x, snd (f x) = 0) -> snd (Csum f n) = 0.       
 Proof. intros. induction n.
        - reflexivity.
@@ -597,7 +577,6 @@ Proof. intros. induction n.
          unfold Cplus. simpl. rewrite H, IHn.
          lra.
 Qed.
-
 
 Lemma Csum_comm : forall f g n, 
     (forall c1 c2 : C, g (c1 + c2) = g c1 + g c2) ->
@@ -616,7 +595,6 @@ Proof. intros. induction n as [| n'].
          rewrite H.
          reflexivity.
 Qed.
-
 
 Local Open Scope nat_scope.
 
@@ -640,7 +618,6 @@ Proof. induction m as [| m'].
          rewrite Nat.add_0_r.
          easy.
 Qed.
-         
 
 Lemma Csum_extend_double : forall (n m : nat) (f : nat -> nat -> C),
   (Csum (fun i => Csum (fun j => f i j) (S m)) (S n)) = 
@@ -682,12 +659,21 @@ Proof. induction n as [| n'].
          apply H; lia. 
          apply H0; lia. 
 Qed.
-         
+
+Lemma Rsum_Csum : forall n (f : nat -> R),
+  fst (Csum f n) = Rsum n f.
+Proof.
+  intros. induction n.
+  - easy.
+  - simpl. rewrite IHn.
+    destruct n.
+    + simpl. lra.
+    + rewrite tech5. simpl. easy.
+Qed.
+
 (**********************************)
 (** Proofs about Well-Formedness **)
 (**********************************)
-
-
 
 Lemma WF_Matrix_dim_change : forall (m n m' n' : nat) (A : Matrix m n),
   m = m' ->
@@ -832,7 +818,6 @@ Proof.
     apply IHl. intros A' H0. apply H; right; easy.
 Qed.
 
-
 Lemma WF_Mmult_n : forall n {m} (A : Square m),
    WF_Matrix A -> WF_Matrix (Mmult_n n A).
 Proof.
@@ -895,13 +880,13 @@ Ltac show_wf :=
   destruct_m_eq;
   try lca.
 
-(* Create #[global] HintDb wf_db. *)
-#[global] Hint Resolve WF_Zero WF_I WF_I1 WF_mult WF_plus WF_scale WF_transpose 
+(* Create HintDb wf_db. *)
+#[export] Hint Resolve WF_Zero WF_I WF_I1 WF_mult WF_plus WF_scale WF_transpose
      WF_adjoint WF_outer_product WF_big_kron WF_kron_n WF_kron 
      WF_Mmult_n WF_Msum : wf_db.
-#[global] Hint Extern 2 (_ = _) => unify_pows_two : wf_db.
+#[export] Hint Extern 2 (_ = _) => unify_pows_two : wf_db.
 
-(* #[global] Hint Resolve WF_Matrix_dim_change : wf_db. *)
+(* Hint Resolve WF_Matrix_dim_change : wf_db. *)
 
 
 (** Basic Matrix Lemmas **)
@@ -1021,7 +1006,6 @@ Proof.
   simpl in *.
   lia.
 Qed.  
-
 
 Lemma Mmult_1_l: forall (m n : nat) (A : Matrix m n), 
   WF_Matrix A -> I m × A = A.
@@ -1350,7 +1334,6 @@ Proof.
   rewrite Cmult_assoc; reflexivity.
 Qed.
 
-
 Lemma Mscale_div : forall {n m} (c : C) (A B : Matrix n m),
   c <> C0 -> c .* A = c .* B -> A = B.
 Proof. intros. 
@@ -1361,7 +1344,6 @@ Proof. intros.
        lma.
        apply H.
 Qed.
-
 
 Lemma Mscale_plus_distr_l : forall (m n : nat) (x y : C) (A : Matrix m n),
   (x + y) .* A = x .* A .+ y .* A.
@@ -1431,13 +1413,12 @@ Proof. reflexivity. Qed.
 Lemma Mscale_adj : forall (m n : nat) (x : C) (A : Matrix m n),
     (x .* A)† = x^* .* A†.
 Proof.
-  intros m n xtranspose A.
+  intros m n x A.
   unfold scale, adjoint.
   prep_matrix_equality.
   rewrite Cconj_mult_distr.          
   reflexivity.
 Qed.
-
 
 Lemma Mplus_transpose : forall (m n : nat) (A : Matrix m n) (B : Matrix m n),
   (A .+ B)⊤ = A⊤ .+ B⊤.
@@ -1458,7 +1439,6 @@ Qed.
 Lemma kron_transpose : forall (m n o p : nat) (A : Matrix m n) (B : Matrix o p ),
   (A ⊗ B)⊤ = A⊤ ⊗ B⊤.
 Proof. reflexivity. Qed.
-
 
 Lemma Mplus_adjoint : forall (m n : nat) (A : Matrix m n) (B : Matrix m n),
   (A .+ B)† = A† .+ B†.
@@ -1538,6 +1518,45 @@ Proof.
     rewrite H, H0; reflexivity.
 Qed.
 
+(* Inverses of square matrices *)
+
+Definition Minv {n : nat} (A B : Square n) : Prop := A × B = I n /\ B × A = I n.
+
+Lemma Minv_unique : forall (n : nat) (A B C : Square n),
+                      WF_Matrix A -> WF_Matrix B -> WF_Matrix C ->
+                      Minv A B -> Minv A C -> B = C.
+Proof.
+  intros n A B C WFA WFB WFC [HAB HBA] [HAC HCA].
+  replace B with (B × I n) by (apply Mmult_1_r; assumption).
+  rewrite <- HAC.
+  replace C with (I n × C) at 2 by (apply Mmult_1_l; assumption).
+  rewrite <- HBA.
+  rewrite Mmult_assoc.
+  reflexivity.
+Qed.
+
+Lemma Minv_symm : forall (n : nat) (A B : Square n), Minv A B -> Minv B A.
+Proof. unfold Minv; intuition. Qed.
+
+(* The left inverse of a square matrix is also its right inverse *)
+Axiom Minv_flip : forall (n : nat) (A B : Square n), A × B = I n -> B × A = I n.
+
+Lemma Minv_left : forall (n : nat) (A B : Square n), A × B = I n -> Minv A B.
+Proof.
+  intros n A B H.
+  unfold Minv. split; trivial.
+  apply Minv_flip.
+  assumption.
+Qed.
+
+Lemma Minv_right : forall (n : nat) (A B : Square n), B × A = I n -> Minv A B.
+Proof.
+  intros n A B H.
+  unfold Minv. split; trivial.
+  apply Minv_flip.
+  assumption.
+Qed.
+
 Local Open Scope nat_scope.
 
 Lemma div_mod : forall (x y z : nat), (x / y) mod z = (x mod (y * z)) / y.
@@ -1545,7 +1564,8 @@ Proof.
   intros. bdestruct (y =? 0). subst. simpl.
   bdestruct (z =? 0). subst. easy.
   apply Nat.mod_0_l. easy.
-  bdestruct (z =? 0). subst. rewrite Nat.mul_0_r. simpl. rewrite Nat.div_0_l; easy.
+  bdestruct (z =? 0). subst. rewrite Nat.mul_0_r. simpl.
+  try rewrite Nat.div_0_l; easy.
   pattern x at 1. rewrite (Nat.div_mod x (y * z)) by nia.
   replace (y * z * (x / (y * z))) with ((z * (x / (y * z))) * y) by lia.
   rewrite Nat.div_add_l with (b := y) by easy.
@@ -1561,8 +1581,7 @@ Lemma sub_mul_mod :
     y * z <= x ->
     (x - y * z) mod z = x mod z.
 Proof.
-  intros. bdestruct (z =? 0). subst.
-  rewrite Nat.mul_0_r, Nat.sub_0_r; easy.
+  intros. bdestruct (z =? 0). subst. simpl. lia.
   specialize (le_plus_minus_r (y * z) x H) as G.
   remember (x - (y * z)) as r.
   rewrite <- G. rewrite <- Nat.add_mod_idemp_l by easy. rewrite Nat.mod_mul by easy.
@@ -1572,7 +1591,7 @@ Qed.
 Lemma mod_product : forall x y z, y <> 0 -> x mod (y * z) mod z = x mod z.
 Proof.
   intros x y z H. bdestruct (z =? 0). subst.
-  rewrite Nat.mul_0_r; easy.
+  simpl. try rewrite Nat.mul_0_r. reflexivity.
   pattern x at 2. rewrite Nat.mod_eq with (b := y * z) by nia.
   replace (y * z * (x / (y * z))) with (y * (x / (y * z)) * z) by lia.
   rewrite sub_mul_mod. easy.
@@ -1614,7 +1633,6 @@ Proof.
   apply kron_assoc_mat_equiv.
 Qed.  
 
-
 Lemma kron_mixed_product : forall {m n o p q r : nat} (A : Matrix m n) (B : Matrix p q ) 
   (C : Matrix n o) (D : Matrix q r), (A ⊗ B) × (C ⊗ D) = (A × C) ⊗ (B × D).
 Proof.
@@ -1636,7 +1654,6 @@ Qed.
 
 (* Arguments kron_mixed_product [m n o p q r]. *)
 
-
 (* A more explicit version, for when typechecking fails *)
 Lemma kron_mixed_product' : forall (m n n' o p q q' r mp nq or: nat)
     (A : Matrix m n) (B : Matrix p q) (C : Matrix n' o) (D : Matrix q' r),
@@ -1645,7 +1662,6 @@ Lemma kron_mixed_product' : forall (m n n' o p q q' r mp nq or: nat)
   (@Mmult mp nq or (@kron m n p q A B) (@kron n' o q' r C D)) =
   (@kron m o p r (@Mmult m n o A C) (@Mmult p q r B D)).
 Proof. intros. subst. apply kron_mixed_product. Qed.
-
 
 Lemma outer_product_eq : forall m (φ ψ : Matrix m 1),
  φ = ψ -> outer_product φ φ = outer_product ψ ψ.
@@ -1938,21 +1954,16 @@ Proof.
   apply Msum_unique. 
   exists i. auto.
 Qed.
- 
-
 
 (*****************************************************)
 (* Defining matrix altering/col operations functions *)
 (*****************************************************)
 
-
 Definition get_vec {n m} (i : nat) (S : Matrix n m) : Vector n :=
   fun x y => (if (y =? 0) then S x i else C0).   
 
-
 Definition get_row {n m} (i : nat) (S : Matrix n m) : Matrix 1 m :=
   fun x y => (if (x =? 0) then S i y else C0).  
-
 
 Definition reduce_row {n m} (A : Matrix (S n) m) (row : nat) : Matrix n m :=
   fun x y => if x <? row
@@ -1964,13 +1975,11 @@ Definition reduce_col {n m} (A : Matrix n (S m)) (col : nat) : Matrix n m :=
              then A x y
              else A x (1 + y).
 
-
 (* more specific form for vectors *)
 Definition reduce_vecn {n} (v : Vector (S n)) : Vector n :=
   fun x y => if x <? n
              then v x y
              else v (1 + x) y.
-
 
 (* More specific form for squares *)
 Definition reduce {n} (A : Square (S n)) (row col : nat) : Square n :=
@@ -1985,14 +1994,12 @@ Definition reduce {n} (A : Square (S n)) (row col : nat) : Square n :=
 Definition col_append {n m} (T : Matrix n m) (v : Vector n) : Matrix n (S m) :=
   fun i j => if (j =? m) then v i 0 else T i j.
 
-
 Definition row_append {n m} (T : Matrix n m) (v : Matrix 1 m) : Matrix (S n) m :=
   fun i j => if (i =? n) then v 0 j else T i j.
 
 (* more general than col_append *)
 Definition smash {n m1 m2} (T1 : Matrix n m1) (T2 : Matrix n m2) : Matrix n (m1 + m2) :=
   fun i j => if j <? m1 then T1 i j else T2 i (j - m1).
-
 
 Definition col_wedge {n m} (T : Matrix n m) (v : Vector n) (spot : nat) : Matrix n (S m) :=
   fun i j => if j <? spot 
@@ -2007,7 +2014,6 @@ Definition row_wedge {n m} (T : Matrix n m) (v : Matrix 1 m) (spot : nat) : Matr
              else if i =? spot
                   then v 0 j
                   else T (i-1) j.
-
 
 Definition col_swap {n m : nat} (S : Matrix n m) (x y : nat) : Matrix n m := 
   fun i j => if (j =? x) 
@@ -2045,7 +2051,6 @@ Definition row_add {n m : nat} (S : Matrix n m) (row to_add : nat) (a : C) : Mat
              then (S i j + a * S to_add j)%C
              else S i j.
 
-
 (* generalizing col_add *)
 Definition gen_new_vec (n m : nat) (S : Matrix n m) (as' : Vector m) : Vector n :=
   Msum m (fun i => (as' i 0) .* (get_vec i S)).
@@ -2068,10 +2073,8 @@ Definition row_add_many {n m} (row : nat) (as' : Matrix 1 n) (S : Matrix n m) : 
 Definition col_add_each {n m} (col : nat) (as' : Matrix 1 m) (S : Matrix n m) : Matrix n m := 
   S .+ ((get_vec col S) × as').
 
-
 Definition row_add_each {n m} (row : nat) (as' : Vector n) (S : Matrix n m) : Matrix n m := 
   S .+ (as' × get_row row S).
-
 
 Definition make_col_zero {n m} (col : nat) (S : Matrix n m) : Matrix n m :=
   fun i j => if (j =? col) 
@@ -2085,7 +2088,6 @@ Definition make_row_zero {n m} (row : nat) (S : Matrix n m) : Matrix n m :=
 
 Definition make_WF {n m} (S : Matrix n m) : Matrix n m :=
   fun i j => if (i <? n) && (j <? m) then S i j else C0.
-
 
 (* proving lemmas about these new functions *)
 
@@ -2111,7 +2113,6 @@ Proof. unfold WF_Matrix, get_row in *.
        right; easy.
 Qed.
 
-
 Lemma WF_reduce_row : forall {n m} (row : nat) (A : Matrix (S n) m),
   row < (S n) -> WF_Matrix A -> WF_Matrix (reduce_row A row).
 Proof. unfold WF_Matrix, reduce_row. intros. 
@@ -2126,7 +2127,6 @@ Proof. unfold WF_Matrix, reduce_row. intros.
          + left. simpl. lia.
          + right. apply H1. 
 Qed.
-
 
 Lemma WF_reduce_col : forall {n m} (col : nat) (A : Matrix n (S m)),
   col < (S m) -> WF_Matrix A -> WF_Matrix (reduce_col A col).
@@ -2143,7 +2143,6 @@ Proof. unfold WF_Matrix, reduce_col. intros.
          + right. simpl. lia. 
 Qed.
 
-
 Lemma rvn_is_rr_n : forall {n : nat} (v : Vector (S n)),
   reduce_vecn v = reduce_row v n.
 Proof. intros.
@@ -2159,7 +2158,6 @@ Proof. intros.
        apply WF_reduce_row; try lia; try easy. 
 Qed.
 
-
 Lemma reduce_is_redrow_redcol : forall {n} (A : Square (S n)) (row col : nat),
   reduce A row col = reduce_col (reduce_row A row) col.
 Proof. intros. 
@@ -2168,7 +2166,6 @@ Proof. intros.
        bdestruct (x <? row); bdestruct (y <? col); try easy.
 Qed. 
 
-
 Lemma reduce_is_redcol_redrow : forall {n} (A : Square (S n)) (row col : nat),
   reduce A row col = reduce_row (reduce_col A col) row.
 Proof. intros. 
@@ -2176,7 +2173,6 @@ Proof. intros.
        unfold reduce, reduce_col, reduce_row.
        bdestruct (x <? row); bdestruct (y <? col); try easy.
 Qed. 
-
 
 Lemma WF_reduce : forall {n} (A : Square (S n)) (row col : nat),
   row < S n -> col < S n -> WF_Matrix A -> WF_Matrix (reduce A row col).
@@ -2224,7 +2220,6 @@ Proof. unfold WF_Matrix, row_scale in *.
        bdestruct (x0 =? x); easy.
 Qed.
 
-
 Lemma WF_col_add : forall {n m : nat} (S : Matrix n m) (x y : nat) (a : C),
   x < m -> WF_Matrix S -> WF_Matrix (col_add S x y a).
 Proof. unfold WF_Matrix, col_add in *.
@@ -2233,7 +2228,6 @@ Proof. unfold WF_Matrix, col_add in *.
        do 2 (rewrite H0; auto). lca. 
        all : apply H0; auto.
 Qed.
-
 
 Lemma WF_row_add : forall {n m : nat} (S : Matrix n m) (x y : nat) (a : C),
   x < n -> WF_Matrix S -> WF_Matrix (row_add S x y a).
@@ -2244,7 +2238,6 @@ Proof. unfold WF_Matrix, row_add in *.
        all : apply H0; auto.
 Qed.
 
-
 Lemma WF_gen_new_vec : forall {n m} (S : Matrix n m) (as' : Vector m),
   WF_Matrix S -> WF_Matrix (gen_new_vec n m S as').
 Proof. intros.
@@ -2254,7 +2247,6 @@ Proof. intros.
        apply WF_get_vec.
        easy.
 Qed.
-
 
 Lemma WF_gen_new_row : forall {n m} (S : Matrix n m) (as' : Matrix 1 n),
   WF_Matrix S -> WF_Matrix (gen_new_row n m S as').
@@ -2288,7 +2280,6 @@ Proof. unfold WF_Matrix, row_add_many.
        rewrite H0; easy.
 Qed.
 
-
 Lemma WF_col_append : forall {n m} (T : Matrix n m) (v : Vector n),
   WF_Matrix T -> WF_Matrix v -> WF_Matrix (col_append T v).
 Proof. unfold WF_Matrix in *.
@@ -2301,7 +2292,6 @@ Proof. unfold WF_Matrix in *.
          apply H; lia. 
 Qed.
 
-
 Lemma WF_row_append : forall {n m} (T : Matrix n m) (v : Matrix 1 m),
   WF_Matrix T -> WF_Matrix v -> WF_Matrix (row_append T v).
 Proof. unfold WF_Matrix in *.
@@ -2313,7 +2303,6 @@ Proof. unfold WF_Matrix in *.
          rewrite H, H0; try lia. 
          bdestruct (x =? n); easy. 
 Qed.
-
 
 Lemma WF_col_wedge : forall {n m} (T : Matrix n m) (v : Vector n) (spot : nat),
   spot <= m -> WF_Matrix T -> WF_Matrix v -> WF_Matrix (col_wedge T v spot).
@@ -2329,7 +2318,6 @@ Proof. unfold WF_Matrix in *.
          easy.  
 Qed.
 
-
 Lemma WF_row_wedge : forall {n m} (T : Matrix n m) (v : Matrix 1 m) (spot : nat),
   spot <= n -> WF_Matrix T -> WF_Matrix v -> WF_Matrix (row_wedge T v spot).
 Proof. unfold WF_Matrix in *.
@@ -2344,7 +2332,6 @@ Proof. unfold WF_Matrix in *.
          bdestruct (x <? spot); bdestruct (x =? spot); easy. 
 Qed.
 
-
 Lemma WF_smash : forall {n m1 m2} (T1 : Matrix n m1) (T2 : Matrix n m2),
   WF_Matrix T1 -> WF_Matrix T2 -> WF_Matrix (smash T1 T2).
 Proof. unfold WF_Matrix, smash in *.
@@ -2353,7 +2340,6 @@ Proof. unfold WF_Matrix, smash in *.
        - apply H; lia. 
        - apply H0; lia.
 Qed.
-
 
 Lemma WF_col_add_each : forall {n m} (col : nat) (as' : Matrix 1 m) (S : Matrix n m),
   WF_Matrix S -> WF_Matrix as' -> WF_Matrix (col_add_each col as' S).
@@ -2397,13 +2383,12 @@ Proof. intros.
        bdestruct (y <? m); bdestruct (x <? n); try lia; easy.
 Qed.
 
-
-#[global] Hint Resolve WF_get_vec WF_get_row WF_reduce_row WF_reduce_col WF_reduce_vecn WF_reduce : wf_db.
-#[global] Hint Resolve WF_col_swap WF_row_swap WF_col_scale WF_row_scale WF_col_add WF_row_add  : wf_db.
-#[global] Hint Resolve WF_gen_new_vec WF_gen_new_row WF_col_add_many WF_row_add_many : wf_db.
-#[global] Hint Resolve WF_col_append WF_row_append WF_row_wedge WF_col_wedge WF_smash : wf_db.
-#[global] Hint Resolve WF_col_add_each WF_row_add_each WF_make_col_zero WF_make_row_zero WF_make_WF : wf_db.
-#[global] Hint Extern 1 (Nat.lt _ _) => lia : wf_db.
+#[export] Hint Resolve WF_get_vec WF_get_row WF_reduce_row WF_reduce_col WF_reduce_vecn WF_reduce : wf_db.
+#[export] Hint Resolve WF_col_swap WF_row_swap WF_col_scale WF_row_scale WF_col_add WF_row_add  : wf_db.
+#[export] Hint Resolve WF_gen_new_vec WF_gen_new_row WF_col_add_many WF_row_add_many : wf_db.
+#[export] Hint Resolve WF_col_append WF_row_append WF_row_wedge WF_col_wedge WF_smash : wf_db.
+#[export] Hint Resolve WF_col_add_each WF_row_add_each WF_make_col_zero WF_make_row_zero WF_make_WF : wf_db.
+#[export] Hint Extern 1 (Nat.lt _ _) => lia : wf_db.
 
 Lemma get_vec_reduce_col : forall {n m} (i col : nat) (A : Matrix n (S m)),
   i < col -> get_vec i (reduce_col A col) = get_vec i A.
@@ -2413,14 +2398,11 @@ Proof. intros.
        bdestruct (i <? col); try lia; easy.
 Qed.
 
-
-
 Lemma get_vec_conv : forall {n m} (x y : nat) (S : Matrix n m),
   (get_vec y S) x 0 = S x y.
 Proof. intros. unfold get_vec.
        easy.
 Qed.
-
 
 Lemma get_vec_mult : forall {n} (i : nat) (A B : Square n),
   A × (get_vec i B) = get_vec i (A × B).
@@ -2432,7 +2414,6 @@ Proof. intros. unfold get_vec, Mmult.
          apply Cmult_0_r.
 Qed.
 
-
 Lemma det_by_get_vec : forall {n} (A B : Square n),
   (forall i, get_vec i A = get_vec i B) -> A = B.
 Proof. intros. prep_matrix_equality.
@@ -2442,7 +2423,6 @@ Proof. intros. prep_matrix_equality.
        reflexivity.
 Qed.
 
-
 Lemma col_scale_reduce_col_same : forall {n m} (T : Matrix n (S m)) (y col : nat) (a : C),
   y = col -> reduce_col (col_scale T col a) y = reduce_col T y.
 Proof. intros.
@@ -2450,7 +2430,6 @@ Proof. intros.
        unfold reduce_col, col_scale. 
        bdestruct (y0 <? y); bdestruct (y0 =? col); bdestruct (1 + y0 =? col); try lia; easy. 
 Qed.
-
 
 Lemma col_swap_reduce_before : forall {n : nat} (T : Square (S n)) (row col c1 c2 : nat),
   col < (S c1) -> col < (S c2) ->
@@ -2464,7 +2443,6 @@ Proof. intros.
          bdestruct (y =? S c1); bdestruct (y =? c2); bdestruct (y =? S c2); try lia; try easy. 
 Qed.
 
-
 Lemma col_scale_reduce_before : forall {n : nat} (T : Square (S n)) (x y col : nat) (a : C),
   y < col -> reduce (col_scale T col a) x y = col_scale (reduce T x y) (col - 1) a.
 Proof. intros. 
@@ -2476,7 +2454,6 @@ Proof. intros.
          bdestruct (y0 =? col); bdestruct (1 + y0 =? S col); try lia; easy. 
 Qed.
 
-
 Lemma col_scale_reduce_same : forall {n : nat} (T : Square (S n)) (x y col : nat) (a : C),
   y = col -> reduce (col_scale T col a) x y = reduce T x y.
 Proof. intros. 
@@ -2486,7 +2463,6 @@ Proof. intros.
          bdestruct (y0 =? col); bdestruct (1 + y0 =? col); try lia; easy. 
 Qed.
 
-
 Lemma col_scale_reduce_after : forall {n : nat} (T : Square (S n)) (x y col : nat) (a : C),
   y > col -> reduce (col_scale T col a) x y = col_scale (reduce T x y) col a.
 Proof. intros. 
@@ -2495,7 +2471,6 @@ Proof. intros.
        bdestruct (x0 <? x); bdestruct (y0 <? y);
          bdestruct (y0 =? col); bdestruct (1 + y0 =? col); try lia; easy. 
 Qed.
-
 
 Lemma mcz_reduce_col_same : forall {n m} (T : Matrix n (S m)) (col : nat),
   reduce_col (make_col_zero col T) col = reduce_col T col.
@@ -2576,7 +2551,6 @@ Proof. intros.
        bdestruct (x <? row); try lia; easy.
 Qed.
 
-
 Lemma col_swap_same : forall {n m : nat} (S : Matrix n m) (x : nat),
   col_swap S x x = S.
 Proof. intros. 
@@ -2585,7 +2559,6 @@ Proof. intros.
        bdestruct (y =? x); try easy.
        rewrite H; easy.
 Qed. 
-
 
 Lemma row_swap_same : forall {n m : nat} (S : Matrix n m) (x : nat),
   row_swap S x x = S.
@@ -2614,7 +2587,6 @@ Proof. intros.
        rewrite <- H, <- H0; easy.
 Qed.
 
-
 Lemma col_swap_inv : forall {n m : nat} (S : Matrix n m) (x y : nat),
   S = col_swap (col_swap S x y) x y.
 Proof. intros. 
@@ -2637,7 +2609,6 @@ Proof. intros.
        all : (try rewrite H; try rewrite H0; try rewrite H1; easy).
 Qed.
 
-
 Lemma col_swap_get_vec : forall {n m : nat} (S : Matrix n m) (x y : nat),
   get_vec y S = get_vec x (col_swap S x y).
 Proof. intros. 
@@ -2645,7 +2616,6 @@ Proof. intros.
        unfold get_vec, col_swap. 
        bdestruct (x =? x); bdestruct (x =? y); try lia; try easy.
 Qed.
-
 
 Lemma col_swap_three : forall {n m} (T : Matrix n m) (x y z : nat),
   x <> z -> y <> z -> col_swap T x z = col_swap (col_swap (col_swap T x y) y z) x y.
@@ -2693,7 +2663,6 @@ Proof. intros.
          try lia; try easy.
 Qed.     
 
-
 Lemma col_add_split : forall {n} (A : Square (S n)) (i : nat) (c : C),
   col_add A 0 i c = col_wedge (reduce_col A 0) (get_vec 0 A .+ c.* get_vec i A) 0.
 Proof. intros. 
@@ -2704,7 +2673,6 @@ Proof. intros.
        replace (S (y - 1)) with y by lia. 
        easy.
 Qed.
-
 
 Lemma col_swap_col_add_Si : forall {n} (A : Square n) (i j : nat) (c : C),
   i <> 0 -> i <> j -> col_swap (col_add (col_swap A j 0) 0 i c) j 0 = col_add A j i c.
@@ -2745,7 +2713,6 @@ Proof. intros.
        bdestruct (1 + y =? S i); try lia; easy.
 Qed.
 
-
 Lemma col_swap_reduce_row : forall {n m : nat} (S : Matrix (S n) m) (x y row : nat),
   col_swap (reduce_row S row) x y = reduce_row (col_swap S x y) row.
 Proof. intros. 
@@ -2753,7 +2720,6 @@ Proof. intros.
        unfold col_swap, reduce_row. 
        bdestruct (y0 =? x); bdestruct (x0 <? row); bdestruct (y0 =? y); try lia; easy. 
 Qed.
-
 
 Lemma col_scale_inv : forall {n m : nat} (S : Matrix n m) (x : nat) (a : C),
   a <> C0 -> S = col_scale (col_scale S x a) x (/ a).
@@ -2765,7 +2731,6 @@ Proof. intros.
        rewrite Cinv_l; try lca; easy. 
 Qed.
 
-
 Lemma row_scale_inv : forall {n m : nat} (S : Matrix n m) (x : nat) (a : C),
   a <> C0 -> S = row_scale (row_scale S x a) x (/ a).
 Proof. intros. 
@@ -2775,8 +2740,6 @@ Proof. intros.
        rewrite Cmult_assoc.
        rewrite Cinv_l; try lca; easy. 
 Qed.
-
-
 
 Lemma col_add_double : forall {n m : nat} (S : Matrix n m) (x : nat) (a : C),
   col_add S x x a = col_scale S x (C1 + a).
@@ -2815,7 +2778,6 @@ Proof. intros.
        bdestruct_all; easy.
 Qed.
 
-
 Lemma col_add_inv : forall {n m : nat} (S : Matrix n m) (x y : nat) (a : C),
   x <> y -> S = col_add (col_add S x y a) x y (-a).
 Proof. intros. 
@@ -2846,7 +2808,6 @@ Proof. intros.
        apply mat_equiv_eq; auto with wf_db.
        apply mat_equiv_make_WF.
 Qed.
-
 
 Lemma col_swap_make_WF : forall {n m} (T : Matrix n m) (x y : nat),
   x < m -> y < m -> col_swap (make_WF T) x y = make_WF (col_swap T x y).
@@ -2929,7 +2890,6 @@ Proof. intros.
        unfold Zero; lca. 
 Qed.
 
-
 Lemma gen_new_vec_mat_equiv : forall {n m} (T : Matrix n m) (as' bs : Vector m),
   as' == bs -> gen_new_vec n m T as' = gen_new_vec n m T bs.
 Proof. unfold mat_equiv, gen_new_vec; intros.
@@ -2964,7 +2924,6 @@ Proof. intros.
        rewrite (gen_new_row_mat_equiv _ as' bs); easy.
 Qed.
 
-
 Lemma col_add_each_0 : forall {n m} (col : nat) (T : Matrix n m) (v : Matrix 1 m),
   v = Zero -> T = col_add_each col v T.
 Proof. intros. 
@@ -2984,8 +2943,6 @@ Proof. intros.
        rewrite Mplus_0_r.
        easy. 
 Qed.
-
-
 
 Lemma col_add_many_col_add : forall {n m} (col e : nat) (T : Matrix n m) (as' : Vector m),
   col <> e -> e < m -> as' col 0 = C0 ->
@@ -3022,7 +2979,6 @@ Proof. intros.
        rewrite plus_0_r; easy.
 Qed.
 
-
 Lemma col_add_many_cancel : forall {n m} (T : Matrix n (S m)) (as' : Vector (S m)) (col : nat),
   col < (S m) -> as' col 0 = C0 ->
   (reduce_col T col) × (reduce_row as' col) = -C1 .* (get_vec col T) -> 
@@ -3053,7 +3009,6 @@ Proof. intros.
        lca.
 Qed.
 
-
 Lemma col_add_many_inv : forall {n m} (S : Matrix n m) (col : nat) (as' : Vector m),
   as' col 0 = C0 -> S = col_add_many col (-C1 .* as') (col_add_many col as' S).
 Proof. intros. 
@@ -3074,7 +3029,6 @@ Proof. intros.
        rewrite H3, H. lca.
 Qed.
 
-
 Lemma col_add_each_col_add : forall {n m} (col e : nat) (S : Matrix n m) (as' : Matrix 1 m),
   col <> e -> (forall x, as' x col = C0) ->
               col_add_each col as' S = 
@@ -3088,7 +3042,6 @@ Proof. intros.
        rewrite H2. lca.
 Qed.
 
-
 Lemma row_add_each_row_add : forall {n m} (row e : nat) (S : Matrix n m) (as' : Vector n),
   row <> e -> (forall y, as' row y = C0) ->
               row_add_each row as' S = 
@@ -3101,7 +3054,6 @@ Proof. intros.
        rewrite H0. 
        rewrite H2. lca.
 Qed.
-
 
 (* must use make_col_zero here instead of just as' col 0 = C0, since def requires stronger supp *)
 Lemma col_add_each_inv : forall {n m} (col : nat) (as' : Matrix 1 m) (T : Matrix n m),
@@ -3121,7 +3073,6 @@ Proof. intros.
        unfold row_add_each, make_row_zero, Mmult, Mplus, get_row, scale.
        simpl. bdestruct (x =? row); bdestruct (row =? row); try lia; try lca. 
 Qed.
-
 
 (* we can show that we get from col_XXX to row_XXX via transposing *)
 
@@ -3279,7 +3230,6 @@ Proof. intros.
          bdestruct (x + S (y - x - 1 + S x1) =? y); try lia; try easy.
 Qed.           
 
-
 Lemma swap_preserves_mul : forall {n m o} (A : Matrix n m) (B : Matrix m o) (x y : nat),
   x < m -> y < m -> A × B = (col_swap A x y) × (row_swap B x y).
 Proof. intros. bdestruct (x <? y).
@@ -3289,7 +3239,6 @@ Proof. intros. bdestruct (x <? y).
          + rewrite col_swap_diff_order, row_swap_diff_order. 
            apply swap_preserves_mul_lt; lia.
 Qed.
-
 
 Lemma scale_preserves_mul : forall {n m o} (A : Matrix n m) (B : Matrix m o) (x : nat) (a : C),
   A × (row_scale B x a) = (col_scale A x a) × B.
@@ -3304,7 +3253,6 @@ Proof. intros.
          lca. 
        - reflexivity. 
 Qed.        
-
 
 Lemma add_preserves_mul_lt : forall {n m o} (A : Matrix n m) (B : Matrix m o) 
                                                 (x y : nat) (a : C),
@@ -3374,7 +3322,6 @@ Qed.
 Definition skip_count (skip i : nat) : nat :=
   if (i <? skip) then i else S i.
 
-
 Lemma skip_count_le : forall (skip i : nat),
   i <= skip_count skip i.
 Proof. intros; unfold skip_count. 
@@ -3387,14 +3334,11 @@ Proof. intros; unfold skip_count.
        bdestruct (i <? skip); try lia. 
 Qed.
 
-
 Lemma skip_count_mono : forall (skip i1 i2 : nat),
   i1 < i2 -> skip_count skip i1 < skip_count skip i2.
 Proof. intros; unfold skip_count. 
        bdestruct (i1 <? skip); bdestruct (i2 <? skip); try lia. 
 Qed.
-
-
 
 Lemma cam_ca_switch : forall {n m} (T : Matrix n m) (as' : Vector m) (col to_add : nat) (c : C),
   as' col 0 = C0 -> to_add <> col -> 
@@ -3416,8 +3360,6 @@ Proof. intros.
        bdestruct (x0 =? col); try lca. 
        rewrite H4, H; lca.
 Qed.
-
-
 
 Lemma col_add_many_preserves_mul_some : forall (n m o e col : nat) 
                                                (A : Matrix n m) (B : Matrix m o) (v : Vector m),
@@ -3484,8 +3426,6 @@ Proof. induction e as [| e].
          apply H; lia. 
 Qed.
 
-
-
 Lemma col_add_many_preserves_mul: forall (n m o col : nat) 
                                                (A : Matrix n m) (B : Matrix m o) (v : Vector m),
   WF_Matrix v -> col < m -> v col 0 = C0 ->
@@ -3528,7 +3468,6 @@ Proof. intros.
        easy. 
 Qed.
 
-
 Lemma col_swap_mult_r : forall {n} (A : Square n) (x y : nat),
   x < n -> y < n -> WF_Matrix A -> 
   col_swap A x y = A × (row_swap (I n) x y).
@@ -3564,7 +3503,6 @@ Proof. intros.
        rewrite Mmult_1_r; auto with wf_db.
 Qed.
 
-
 Lemma col_add_each_mult_r : forall {n} (A : Square n) (v : Matrix 1 n) (col : nat),
   WF_Matrix A -> WF_Matrix v -> col < n -> v 0 col = C0 ->
   col_add_each col v A = A × (row_add_many col v (I n)).
@@ -3572,7 +3510,6 @@ Proof. intros.
        rewrite col_add_each_preserves_mul; try easy.
        rewrite Mmult_1_r; auto with wf_db.
 Qed.
-
 
 (* now we prove facts about the ops on (I n) *)
 Lemma col_row_swap_invr_I : forall (n x y : nat), 
@@ -3599,7 +3536,6 @@ Proof. intros.
        bdestruct_all; try easy; try lca.
 Qed.
 
-
 Lemma row_each_col_many_invr_I : forall (n col : nat) (v : Vector n),
   WF_Matrix v -> col < n -> v col 0 = C0 ->
   row_add_each col v (I n) = col_add_many col v (I n).  
@@ -3607,14 +3543,12 @@ Proof. intros.
        rewrite <- Mmult_1_r, <- col_add_many_preserves_mul, Mmult_1_l; auto with wf_db. 
 Qed.
 
-
 Lemma row_many_col_each_invr_I : forall (n col : nat) (v : Matrix 1 n),
   WF_Matrix v -> col < n -> v 0 col = C0 ->
   row_add_many col v (I n) = col_add_each col v (I n).  
 Proof. intros. 
        rewrite <- Mmult_1_r, <- col_add_each_preserves_mul, Mmult_1_l; auto with wf_db. 
 Qed.
-
 
 Lemma reduce_append_split : forall {n m} (T : Matrix n (S m)), 
   WF_Matrix T -> T = col_append (reduce_col T m) (get_vec m T).
@@ -3625,7 +3559,6 @@ Proof. intros.
        do 2 (rewrite H; try lia); easy. 
 Qed.
 
-
 Lemma smash_zero : forall {n m} (T : Matrix n m) (i : nat),
   WF_Matrix T -> smash T (@Zero n i) = T. 
 Proof. intros. 
@@ -3634,7 +3567,6 @@ Proof. intros.
        bdestruct (y <? m); try easy.
        rewrite H; try lia; easy.
 Qed.
-
 
 Lemma smash_assoc : forall {n m1 m2 m3}
                            (T1 : Matrix n m1) (T2 : Matrix n m2) (T3 : Matrix n m3),
@@ -3648,7 +3580,6 @@ Proof. intros.
        lia. rewrite H'; easy.
 Qed.
 
-
 Lemma smash_append : forall {n m} (T : Matrix n m) (v : Vector n),
   WF_Matrix T -> WF_Matrix v ->
   col_append T v = smash T v.
@@ -3659,8 +3590,7 @@ Proof. intros.
        rewrite H1.
        rewrite <- minus_diag_reverse; easy. 
        rewrite H0, H; try lia; try easy.
-Qed.       
-
+Qed.
 
 Lemma smash_reduce : forall {n m1 m2} (T1 : Matrix n m1) (T2 : Matrix n (S m2)),
   reduce_col (smash T1 T2) (m1 + m2) = smash T1 (reduce_col T2 m2).
@@ -3673,7 +3603,6 @@ Proof. intros.
        rewrite H'; easy.
 Qed.
 
-
 Lemma split_col : forall {n m} (T : Matrix n (S m)), 
   T = smash (get_vec 0 T) (reduce_col T 0).
 Proof. intros. 
@@ -3685,7 +3614,6 @@ Proof. intros.
        simpl. assert (H' : y - 0 = y). lia. 
        rewrite H'; easy.
 Qed.
-
 
 (* We can now show that matrix_equivalence is decidable *)
 Lemma vec_equiv_dec : forall {n : nat} (A B : Vector n), 
@@ -3715,7 +3643,6 @@ Proof. induction n as [| n'].
            bdestruct (i <? n'); try lia. 
            apply H; lia. 
 Qed.
-
 
 Lemma mat_equiv_dec : forall {n m : nat} (A B : Matrix n m), 
     { A == B } + { ~ (A == B) }.
@@ -3748,7 +3675,6 @@ Proof. induction m as [| m']. intros.
            bdestruct (j <? m'); try lia.
            apply H; lia.            
 Qed.
- 
 
 (* we can also now prove some useful lemmas about nonzero vectors *)
 Lemma last_zero_simplification : forall {n : nat} (v : Vector (S n)),
@@ -3767,7 +3693,6 @@ Proof. intros. unfold reduce_vecn.
          + rewrite H. rewrite H. reflexivity.
            left. nia. left. nia.
 Qed.
-
 
 Lemma zero_reduce : forall {n : nat} (v : Vector (S n)) (x : nat),
   WF_Matrix v -> (v = Zero <-> (reduce_row v x) = Zero /\ v x 0 = C0).
@@ -3795,7 +3720,6 @@ Proof. intros. split.
              bdestruct (x0 <? x); try lia. 
              rewrite <- H''. easy.
 Qed.
-  
 
 Lemma nonzero_vec_nonzero_elem : forall {n} (v : Vector n),
   WF_Matrix v -> v <> Zero -> exists x, v x 0 <> C0.
@@ -3831,15 +3755,58 @@ Proof. induction n as [| n'].
            apply n.
 Qed.
 
-
-
-(* Note on "using [tactics]": Most generated subgoals will be of the form 
+(* Note on "using [tactics]": Most generated subgoals will be of the form
    WF_Matrix M, where auto with wf_db will work.
-   Occasionally WF_Matrix M will rely on rewriting to match an assumption in the 
-   context, here we recursively autorewrite (which adds time). 
+   Occasionally WF_Matrix M will rely on rewriting to match an assumption in the
+   context, here we recursively autorewrite (which adds time).
    kron_1_l requires proofs of (n > 0)%nat, here we use lia. *)
 
 (* *)
+
+(* Convert a list to a vector *)
+Fixpoint vec_to_list' {nmax : nat} (n : nat) (v : Vector nmax) :=
+  match n with
+  | O    => nil
+  | S n' => v (nmax - n)%nat O :: vec_to_list' n' v
+  end.
+Definition vec_to_list {n : nat} (v : Vector n) := vec_to_list' n v.
+
+Lemma vec_to_list'_length : forall m n (v : Vector n), length (vec_to_list' m v) = m.
+Proof.
+  intros.
+  induction m; auto.
+  simpl. rewrite IHm.
+  reflexivity.
+Qed.
+
+Lemma vec_to_list_length : forall n (v : Vector n), length (vec_to_list v) = n.
+Proof. intros. apply vec_to_list'_length. Qed.
+
+Lemma nth_vec_to_list' : forall {m n} (v : Vector n) x,
+  (m <= n)%nat -> (x < m)%nat -> nth x (vec_to_list' m v) C0 = v (n - m + x)%nat O.
+Proof.
+  intros m n v x Hm.
+  gen x.
+  induction m; intros x Hx.
+  lia.
+  simpl.
+  destruct x.
+  rewrite Nat.add_0_r.
+  reflexivity.
+  rewrite IHm by lia.
+  replace (n - S m + S x)%nat with (n - m + x)%nat by lia.
+  reflexivity.
+Qed.
+
+Lemma nth_vec_to_list : forall n (v : Vector n) x,
+  (x < n)%nat -> nth x (vec_to_list v) C0 = v x O.
+Proof.
+  intros.
+  unfold vec_to_list.
+  rewrite nth_vec_to_list' by lia.
+  replace (n - n + x)%nat with x by lia.
+  reflexivity.
+Qed.
 
 (*******************************)
 (* Restoring Matrix Dimensions *)
@@ -3995,7 +3962,7 @@ Qed.
 (*************************)
 
 (* Old: 
-#[global] Hint Rewrite kron_1_l kron_1_r Mmult_1_l Mmult_1_r id_kron id_adjoint_eq
+Hint Rewrite kron_1_l kron_1_r Mmult_1_l Mmult_1_r id_kron id_adjoint_eq
      @Mmult_adjoint Mplus_adjoint @kron_adjoint @kron_mixed_product
      id_adjoint_eq adjoint_involutive using 
      (auto 100 with wf_db; autorewrite with M_db; auto 100 with wf_db; lia) : M_db.

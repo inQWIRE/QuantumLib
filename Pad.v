@@ -65,4 +65,4 @@ Lemma WF_ctrl_U : forall dim m n U, WF_Matrix U -> WF_Matrix (ctrl_U dim m n U).
   all : apply WF_pad; rewrite H'; apply WF_plus; auto with wf_db.
 Qed.  
 
-#[global] Hint Resolve WF_pad WF_smpl_U WF_ctrl_U : wf_db.
+#[export] Hint Resolve WF_pad WF_smpl_U WF_ctrl_U : wf_db.

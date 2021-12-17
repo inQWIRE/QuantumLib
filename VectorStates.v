@@ -15,6 +15,7 @@ Local Close Scope R_scope.
 (*******************************)
 
 (* General facts about (nat -> A) functions.
+
    TODO #1: These lemmas are probably already defined in Coq somewhere.
    TODO #2: For efficiency, instead of using functions indexed by natural
             numbers, we should use vectors/arrays. *)
@@ -112,7 +113,7 @@ Proof.
   intros.
   induction n; simpl; try auto with wf_db.
 Qed.
-Hint Resolve f_to_vec_WF : wf_db.
+#[export] Hint Resolve f_to_vec_WF : wf_db.
 
 Lemma f_to_vec_eq : forall n f f',
   (forall i, i < n -> f i = f' i) ->
@@ -141,7 +142,7 @@ Proof.
   bdestructΩ (x =? i)%nat. reflexivity.
   bdestructΩ (y =? 0)%nat. rewrite andb_false_r. reflexivity.
 Qed.
-Hint Resolve basis_vector_WF : wf_db.
+#[export] Hint Resolve basis_vector_WF : wf_db.
 
 Lemma basis_vector_product_eq : forall d n,
   n < d -> (basis_vector d n)† × basis_vector d n = I 1.
@@ -156,6 +157,13 @@ Proof.
   bdestruct_all; simpl; lca.
   intros i Hi. bdestructΩ (i =? n). lca.
   all: apply Csum_0; intro i; bdestruct_all; simpl; lca.
+Qed.
+
+Lemma basis_vector_pure_state : forall n i,
+  (i < n)%nat -> Pure_State_Vector (basis_vector n i).
+Proof.
+  intros. split. apply basis_vector_WF. easy.
+  apply basis_vector_product_eq. easy.
 Qed.
 
 Lemma basis_vector_product_neq : forall d m n,
@@ -187,7 +195,7 @@ Proof.
   intros j' Hj.
   bdestruct_all; auto. 
   simpl. lca.
-Qed.  
+Qed.
 
 Lemma equal_on_basis_vectors_implies_equal : forall m n (A B : Matrix m n),
   WF_Matrix A -> 
@@ -201,6 +209,47 @@ Proof.
   rewrite <- matrix_times_basis_eq; trivial.
   rewrite H; trivial.
   rewrite matrix_times_basis_eq; easy.
+Qed.
+
+Lemma divmod_decomp : forall x y z r,
+    (r > 0)%nat ->
+    (z < r)%nat ->
+    (x = y * r + z <-> x / r = y /\ x mod r = z)%nat.
+Proof.
+  split; intros.
+  - split. symmetry. apply Nat.div_unique with (r := z); try lia.
+    symmetry. apply Nat.mod_unique with (q := y); try lia.
+  - destruct H1.
+    replace (y * r)%nat with (r * y)%nat by lia.
+    rewrite <- H1, <- H2.
+    apply Nat.div_mod.
+    lia.
+Qed.
+
+Lemma split_basis_vector : forall m n x y,
+  (x < 2 ^ m)%nat ->
+  (y < 2 ^ n)%nat ->
+  basis_vector (2 ^ (m + n)) (x * 2 ^ n + y)
+    = basis_vector (2 ^ m) x ⊗ basis_vector (2 ^ n) y.
+Proof.
+  intros m n x y Hx Hy.
+  unfold kron, basis_vector.
+  solve_matrix.
+  bdestruct (y0 =? 0).
+  - repeat rewrite andb_true_r.
+    assert (2^n > 0)%nat.
+    { assert (0 < 2^n)%nat by (apply pow_positive; lia). lia.
+    }
+    specialize (divmod_decomp x0 x y (2^n)%nat H0 Hy) as G.
+    bdestruct (x0 =? x * 2 ^ n + y).
+    + apply G in H1. destruct H1.
+      rewrite H1, H2. do 2 rewrite Nat.eqb_refl. lca.
+    + bdestruct (x0 / 2 ^ n =? x); bdestruct (x0 mod 2 ^ n =? y); try lca.
+      assert ((x0 / 2 ^ n)%nat = x /\ x0 mod 2 ^ n = y) by easy.
+      apply G in H4.
+      easy.
+  - repeat rewrite andb_false_r.
+    lca.
 Qed.
 
 (* f_to_vec and basis_vector allow us to represent the same set of states.
@@ -278,7 +327,7 @@ Proof.
     unfold I.
     prep_matrix_equality.
     bdestruct (x =? 0); bdestruct (x =? y); subst; simpl; trivial.
-    bdestruct_all; easy. 
+    bdestruct_all; easy.
     bdestructΩ (y <? 1); easy.
   - simpl.
     rewrite IHn.
@@ -757,6 +806,7 @@ Proof.
   bdestruct (i <? n'); bdestruct (i =? n'); try lia. 
   + rewrite <- IHn', update_index_neq; auto. 
     unfold smpl_U, pad.
+Abort.
 
 
 
@@ -764,8 +814,7 @@ Proof.
 
 
 
-
-    
+(*
   autorewrite with eval_db.
   rewrite (f_to_vec_split 0 n i f H). 
   simpl; replace (n - 1 - i) with (n - (i + 1)) by lia.
@@ -912,7 +961,7 @@ Definition proj q dim (b : bool) := @pad 1 q dim (∣ b ⟩ × (∣ b ⟩)†).
 
 Lemma WF_proj : forall q dim b, WF_Matrix (proj q dim b).
 Proof. intros. unfold proj, pad. bdestruct_all; destruct b; auto with wf_db. Qed.
-Hint Resolve WF_proj : wf_db.
+#[export] Hint Resolve WF_proj : wf_db.
 
 Lemma proj_sum : forall q n,
   q < n ->
@@ -1122,7 +1171,7 @@ Lemma vsum_WF : forall {d} n (f : nat -> Vector d),
   (forall i, (i < n)%nat -> WF_Matrix (f i)) -> 
   WF_Matrix (vsum n f).
 Proof. intros. unfold vsum. apply WF_Msum; auto. Qed.
-Hint Resolve vsum_WF : wf_db.
+#[export] Hint Resolve vsum_WF : wf_db.
 
 Lemma vsum_eq : forall {d} n (f f' : nat -> Vector d),
   (forall i, (i < n)%nat -> f i = f' i) -> vsum n f = vsum n f'.
@@ -1212,6 +1261,40 @@ Lemma vsum_diagonal :
     (forall i j, (i < n)%nat -> (j < n)%nat -> (i <> j)%nat -> f i j = Zero) ->
     vsum n (fun i => vsum n (fun j => f i j)) = vsum n (fun i => f i i).
 Proof. intros. unfold vsum. apply Msum_diagonal. auto. Qed.
+
+Lemma vsum_Csum : forall {d n} (f : nat -> Vector d) x y,
+  vsum n f x y = Csum (fun i => f i x y) n.
+Proof.
+  intros d n f x y. induction n.
+  - easy.
+  - rewrite vsum_extend_r. unfold Mplus. rewrite IHn. easy.
+Qed.
+
+(* Any vector ψ can be written as a weighted sum over basis vectors. *)
+Lemma basis_vector_decomp : forall {d} (ψ : Vector d),
+  WF_Matrix ψ ->
+  ψ = vsum d (fun i => (ψ i O) .* basis_vector d i).
+Proof.
+  intros d ψ WF. 
+  do 2 (apply functional_extensionality; intros). 
+  rewrite vsum_Csum.
+  destruct (x <? d) eqn:Hx.
+  - apply Nat.ltb_lt in Hx. 
+    unfold scale. destruct x0.
+    + rewrite Csum_unique with (k:=ψ x O). easy.
+      exists x. split. easy.
+      split. unfold basis_vector. rewrite Nat.eqb_refl. simpl. lca.
+      intros. unfold basis_vector. apply eqb_neq in H. rewrite H. simpl. lca.
+    + unfold WF_Matrix in WF. rewrite WF by lia.
+      rewrite Csum_0. easy. intro.
+      unfold basis_vector. assert (S x0 <> 0)%nat by lia. apply eqb_neq in H.
+      rewrite H. rewrite andb_false_r. lca.
+  - apply Nat.ltb_ge in Hx.
+    unfold WF_Matrix in WF. rewrite WF by lia.
+    rewrite Csum_0_bounded. easy. intros. unfold scale.
+    unfold basis_vector. assert (x <> x1) by lia. apply eqb_neq in H0.
+    rewrite H0. simpl. lca.
+Qed.
 
 (* Two natural ways to split a vsum into two parts *)
 Lemma vsum_sum1 : forall d m n (f : nat -> Vector d),
@@ -1479,13 +1562,13 @@ Proof.
   induction n; simpl; auto with wf_db.
   apply WF_kron; auto. lia.
 Qed.
-Hint Resolve WF_vkron: wf_db.
+#[export] Hint Resolve WF_vkron: wf_db.
 
 Lemma WF_shift : forall m n j k (f : nat -> Matrix m n),
   (forall i, WF_Matrix (f i)) ->
   WF_Matrix (shift f j k).
 Proof. intros. apply H. Qed.
-Hint Resolve WF_shift: wf_db.
+#[export] Hint Resolve WF_shift: wf_db.
   
 Lemma vkron_extend_r : forall n f, 
   vkron n f ⊗ f n = vkron (S n) f.
@@ -1678,7 +1761,7 @@ Proof.
 Qed.
 Local Transparent Nat.mul Nat.div Nat.modulo.
 
-Lemma kron_n_0_is_0_vector : forall (n:nat), n ⨂ ∣0⟩ = basis_vector (2 ^ n) 0%nat.
+Lemma kron_n_0_is_0_vector : forall (n:nat), n ⨂ ∣0⟩ = basis_vector (2 ^ n) O.
 Proof.
   intros.
   induction n.
@@ -1927,3 +2010,4 @@ Proof.
   simpl. rewrite IHn. reflexivity.
 Qed.
 
+*)
