@@ -106,13 +106,6 @@ Fixpoint hadamard_k (k : nat) : Matrix (2^k) (2^k):=
 Lemma hadamard_1 : hadamard_k 1 = hadamard.
 Proof. apply kron_1_r. Qed.
 
-(* Alternative definitions:
-Definition pauli_x : Matrix 2 2 := fun x y => if x + y =? 1 then 1 else 0.
-Definition pauli_y : Matrix 2 2 := fun x y => if x + y =? 1 then (-1) ^ x * Ci else 0.
-Definition pauli_z : Matrix 2 2 := fun x y => if (x =? y) && (x <? 2) 
-                                           then (-1) ^ x * Ci else 0.
-*)
-
 Definition σx : Matrix 2 2 := 
   fun x y => match x, y with
           | 0, 1 => C1
@@ -198,8 +191,8 @@ Definition swap : Matrix (2*2) (2*2) :=
 
 (** ** Rotation Matrices *)
                               
-(* Standard(?) definition, but it makes equivalence-checking a little annoying 
-   because of a global phase.
+(* The definition given below is different from the standard definition (shown in the comments), 
+   but equivalent up to a global phase.
 
 Definition rotation (θ ϕ λ : R) : Matrix 2 2 :=
   fun x y => match x, y with
@@ -219,15 +212,12 @@ Definition rotation (θ ϕ λ : R) : Matrix 2 2 :=
              | _, _ => C0
              end.
 
-(* z_rotation lemmas are further down *)
 Definition phase_shift (ϕ : R) : Matrix 2 2 :=
   fun x y => match x, y with
           | 0, 0 => C1
           | 1, 1 => Cexp ϕ
           | _, _ => C0
           end.
-
-(* Notation z_rotation := phase_shift. *)
 
 Definition x_rotation  (θ : R) : Matrix 2 2 :=
   fun x y => match x, y with
@@ -338,8 +328,6 @@ Proof.
   lra.
 Qed.
 
-(* sqrtx as a (x-)rotation? *)
-
 Lemma Rx_rotation : forall θ, rotation θ (3*PI/2) (PI/2) = x_rotation θ.
 Proof.
   intros.
@@ -357,7 +345,6 @@ Proof.
   destruct_m_eq;
   autorewrite with C_db Cexp_db; try reflexivity.
 Qed.
-
 
 Lemma phase_shift_rotation : forall θ, rotation 0 0 θ = phase_shift θ.
 Proof. 
@@ -487,7 +474,7 @@ Qed.
 
 Hint Rewrite swap_swap swap_swap_r using (auto 100 with wf_db): Q_db.
 
-
+(* TODO: move these swap lemmas to Permutation.v? *)
 
 (* The input k is really k+1, to appease to Coq termination gods *)
 (* NOTE: Check that the offsets are right *)
@@ -770,8 +757,6 @@ Proof. intros. rewrite <- Rx_rotation. apply rotation_unitary. Qed.
 Lemma y_rotation_unitary : forall θ, @WF_Unitary 2 (y_rotation θ).
 Proof. intros. rewrite <- Ry_rotation. apply rotation_unitary. Qed.
 
-(* caused errors so commenting out for now:
-
 Lemma control_unitary : forall n (A : Matrix n n),
                           WF_Unitary A -> WF_Unitary (control A). 
 Proof.
@@ -898,7 +883,7 @@ Proof.
         rewrite andb_false_r.
         rewrite (WF _ (y-n)%nat) by (right; lia).
         destruct ((n <=? z) && (n <=? y)); lca.
-Qed. *)
+Qed.
 
 Lemma transpose_unitary : forall n (A : Matrix n n), WF_Unitary A -> WF_Unitary (A†).
 Proof.

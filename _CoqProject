@@ -1,10 +1,11 @@
 -R . Top
 
 Complex.v
-Dirac.v
 Eigenvectors.v
 Matrix.v
+Measurement.v
 Pad.v
+Permutations.v
 Polynomial.v
 Prelim.v
 Proportional.v

@@ -3,4 +3,4 @@ all: Makefile _CoqProject
 	$(MAKE) --no-print-directory -f CoqMakefile
 
 clean:
-	rm -rf CoqMakefile CoqMakefile.conf .*.aux *.vo* *.glob
+	rm -f CoqMakefile CoqMakefile.conf .*.aux *.vo* *.glob

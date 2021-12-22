@@ -1205,7 +1205,13 @@ Ltac group_Cexp :=
   repeat rewrite <- Cexp_neg;
   repeat match goal  with
   | _ => rewrite <- Cexp_add
-  | |- context [ ?x * Cexp ?y ] => rewrite (Cmult_comm x (Cexp y))
-  | |- context [ ?x * (?y * ?z) ] => rewrite Cmult_assoc
-  end.  
-
+  | _ => rewrite <- Copp_mult_distr_l
+  | _ => rewrite <- Copp_mult_distr_r
+  | |- context [ ?x * ?y ] => tryif has_term Cexp x then fail 
+                            else (has_term Cexp y; rewrite (Cmult_comm x y)) 
+  | |- context [ ?x * ?y * ?z ] =>
+    tryif has_term Cexp y then fail 
+    else (has_term Cexp x; has_term Cexp z; rewrite <- (Cmult_assoc x y z)) 
+  | |- context [ ?x * (?y * ?z) ] => 
+    has_term Cexp x; has_term Cexp y; rewrite (Cmult_assoc x y z)
+  end.    
