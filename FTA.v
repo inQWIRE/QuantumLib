@@ -1,680 +1,690 @@
-Require Export Polynomial.
-
-(************************************)
-(* First, we define a topology on C *)
-(************************************)
-
-Declare Scope topology_scope.
-Delimit Scope topology_scope with T.
-Open Scope topology_scope.
+Require Import Polar.
+Require Export Ctopology.
+Require Import Setoid.
 
 
-(* we define a subset of C as a function from C to {True, False} *)  
-(* so c is in A if A(c) = True *)
-Definition Csubset := C -> Prop.
+(* defining Rsum and some lemmas (does this exist already??) *)
 
-Definition union (A B : Csubset) : Csubset :=
-  fun c => A c \/ B c.
+Fixpoint Rsum (f : nat -> R) (n : nat) : R := 
+  match n with
+  | 0 => 0
+  | S n' => (Rsum f n' +  f n')%R
+  end.
 
-Definition intersection (A B : Csubset) : Csubset :=
-  fun c => A c /\ B c.
+Lemma Rsum_eq : forall f g n, f = g -> Rsum f n = Rsum g n.
+Proof. intros f g n H. subst. reflexivity. Qed.
 
-Definition complement (A : Csubset) : Csubset :=
-  fun c => not (A c).
-
-Definition setminus (A B : Csubset) : Csubset :=
-  intersection A (complement B).
-
-Definition is_in (a : C) (A : Csubset) : Prop := A a.
-
-Definition subset (A B : Csubset) : Prop :=
-  forall c, A c -> B c.
-
-Definition ϵ_disk (a : C) (ϵ : R) : Csubset :=
-  fun c => Cmod (c - a) < ϵ.
-
-Definition bounded (A : Csubset) : Prop :=
-  exists ϵ, subset A (ϵ_disk C0 ϵ). 
-
-Definition image (f : C -> C) (A : Csubset) : Csubset := 
-  fun c => (exists c', A c' /\ f c' = c).
-
-Definition preimage (f : C -> C) (B : Csubset) : Csubset :=
-  fun c => B (f c).
-
-Definition continuous_on (f : C -> C) (A : Csubset) : Prop :=
-  forall c, A c -> continuous_at f c.
-
-Infix "∪" := union (at level 50, left associativity) : topology_scope.
-Infix "∩" := intersection (at level 40, left associativity) : topology_scope.
-Infix "⊂" := subset (at level 0) : topology_scope.
-Infix "\" := setminus (at level 0) : topology_scope.
-Infix "@" := image (at level 0) : topology_scope.
-Notation "f *{ A }" := (preimage f A) (at level 0) : topology_scope.
-Notation "A *" := (complement A) (at level 0) : topology_scope.
-Infix "∈" := is_in (at level 0) : topology_scope.
-Notation "B( a , ϵ )" := (ϵ_disk a ϵ) (at level 30, no associativity) : topology_scope.
-
-
-Definition open (A : Csubset) : Prop :=
-  forall c, A c -> exists ϵ, ϵ > 0 /\ B(c,ϵ) ⊂ A.
-
-Definition closed (A : Csubset) : Prop :=
-  open (A*).
-
-Definition empty_set : Csubset :=
-  fun _ => False. 
-
-Definition C_ : Csubset :=
-  fun _ => True. 
-
-
-(** Subset lemmas *)
-
-Lemma subset_cup_l : forall (A B : Csubset),
-  A ⊂ (A ∪ B).
-Proof. unfold subset, union; left; easy. Qed.
-
-Lemma subset_cup_r : forall (A B : Csubset),
-  B ⊂ (A ∪ B).
-Proof. unfold subset, union; right; easy. Qed.
-
-Lemma subset_cap_l : forall (A B : Csubset),
-  (A ∩ B) ⊂ A.
-Proof. unfold subset, intersection; easy. Qed.
-
-Lemma subset_cap_r : forall (A B : Csubset),
-  (A ∩ B) ⊂ B.
-Proof. unfold subset, intersection; easy. Qed.
-
-Lemma subset_self : forall (A : Csubset),
-  A ⊂ A.
-Proof. easy. Qed. 
-
-Lemma subset_transitive : forall (A B C : Csubset),
-  A ⊂ B -> B ⊂ C -> A ⊂ C.
-Proof. unfold subset; intros. 
-       apply H0; apply H; easy. 
+Lemma Rsum_0_bounded : forall f n, (forall x, (x < n)%nat -> f x = 0) -> Rsum f n = 0. 
+Proof.
+  intros.
+  induction n.
+  - reflexivity.
+  - simpl.
+    rewrite IHn, H. 
+    lra.
+    lia.
+    intros.
+    apply H.
+    lia.
 Qed.
 
-#[global] Hint Resolve subset_cup_l subset_cup_r subset_cap_l subset_cap_r subset_self subset_transitive : Csub_db.
-
-Lemma subset_cup_reduce : forall (A B C : Csubset),
-  A ⊂ B \/ A ⊂ C -> A ⊂ (B ∪ C). 
-Proof. unfold subset, union; intros. 
-       destruct H.
-       - left; apply H; easy. 
-       - right; apply H; easy. 
+Lemma Rsum_eq_bounded : forall f g n, (forall x, (x < n)%nat -> f x = g x) -> Rsum f n = Rsum g n.
+Proof. 
+  intros f g n H. 
+  induction n.
+  + simpl. reflexivity.
+  + simpl. 
+    rewrite H by lia.
+    rewrite IHn by (intros; apply H; lia).
+    reflexivity.
 Qed.
 
-Lemma subset_cap_reduce : forall (A B C : Csubset),
-  A ⊂ B /\ A ⊂ C -> A ⊂ (B ∩ C). 
-Proof. unfold subset, intersection; intros. 
-       destruct H; split.
-       apply H; easy.
-       apply H1; easy.
+Lemma Rsum_plus : forall f g n, Rsum (fun x => (f x + g x)%R) n = (Rsum f n + Rsum g n)%R.
+Proof.
+  intros f g n.
+  induction n.
+  + simpl. lra.
+  + simpl. rewrite IHn. lra.
 Qed.
 
-Lemma subset_ball_l : forall (a : C) (ϵ1 ϵ2 : R),
-  B(a, Rmin ϵ1 ϵ2) ⊂ B(a, ϵ1).
-Proof. unfold subset, ϵ_disk; intros. 
-       eapply Rlt_le_trans; eauto.
-       apply Rmin_l.
+Lemma Rsum_mult_l : forall c f n, (c * Rsum f n = Rsum (fun x => c * f x) n)%R.
+Proof.
+  intros c f n.
+  induction n.
+  + simpl; lra.
+  + simpl.
+    rewrite Rmult_plus_distr_l.
+    rewrite IHn.
+    reflexivity.
 Qed.
 
-Lemma subset_ball_r : forall (a : C) (ϵ1 ϵ2 : R),
-  B(a, Rmin ϵ1 ϵ2) ⊂ B(a, ϵ2).
-Proof. unfold subset, ϵ_disk; intros. 
-       eapply Rlt_le_trans; eauto.
-       apply Rmin_r.
+Lemma Rsum_mult_r : forall c f n, (Rsum f n * c = Rsum (fun x => f x * c) n)%R.
+Proof.
+  intros c f n.
+  induction n.
+  + simpl; lra.
+  + simpl.
+    rewrite Rmult_plus_distr_r.
+    rewrite IHn.
+    reflexivity.
 Qed.
 
-Lemma subset_C_ : forall (A : Csubset),
-  A ⊂ C_.
-Proof. unfold subset; easy. Qed.
+Lemma Rsum_extend_r : forall n f, (Rsum f n + f n)%R = Rsum f (S n).
+Proof. reflexivity. Qed.
 
-#[global] Hint Resolve subset_cup_reduce subset_cap_reduce subset_ball_l subset_ball_r subset_C_ : Csub_db.
-
-Lemma subset_not : forall (A B : Csubset), 
-  ~ (A ⊂ B) -> (exists a, A a /\ B* a).
-Proof. intros. 
-       destruct (Classical_Prop.classic (exists a : C, A a /\ (B) * a)); auto. 
-       assert (H1 : forall a, ~ (A a /\ (B) * a)).
-       { unfold not; intros. 
-         apply H0; exists a; easy. }
-       assert (H2 : A ⊂ B).
-       { unfold subset; intros. 
-         assert (H' := H1 c). 
-         apply Classical_Prop.not_and_or in H'.
-         destruct H'; try easy.
-         unfold not, complement in H3.
-         apply Decidable.dec_not_not; auto. 
-         unfold Decidable.decidable.
-         apply Classical_Prop.classic. }
-       easy.
+Lemma Rsum_extend_l : forall n f, (f O + Rsum (fun x => f (S x)) n)%R = Rsum f (S n).
+Proof.
+  intros n f.
+  induction n.
+  + simpl; lra.
+  + simpl.
+    rewrite <- Rplus_assoc.
+    rewrite IHn.
+    simpl.
+    reflexivity.
 Qed.
 
-(** some lemmas about open/closed sets *)
-
-Lemma subset_equal : forall (A B : Csubset),
-  A ⊂ B -> B ⊂ A -> A = B.
-Proof. unfold subset; intros. 
-       apply functional_extensionality; intros. 
-       destruct (Classical_Prop.classic (A x)).
-       Admitted.
-
-Lemma Cmod_switch : forall (a b : C),
-  Cmod (a - b) = Cmod (b - a).
-Proof. intros. 
-       replace (b - a) with (- (a - b)) by lca. 
-       rewrite Cmod_opp; easy.
+Lemma Rsum_sum : forall m n f, Rsum f (m + n) = 
+                          (Rsum f m + Rsum (fun x => f (m + x)%nat) n)%R. 
+Proof.    
+  intros m n f.
+  induction m.
+  + simpl. rewrite Rplus_0_l. reflexivity. 
+  + simpl.
+    rewrite IHm.
+    repeat rewrite <- Rplus_assoc.
+    remember (fun y => f (m + y)%nat) as g.
+    replace (f m) with (g O) by (subst; rewrite plus_0_r; reflexivity).
+    replace (f (m + n)%nat) with (g n) by (subst; reflexivity).
+    replace (Rsum (fun x : nat => f (S (m + x))) n) with
+            (Rsum (fun x : nat => g (S x)) n).
+    2:{ apply Rsum_eq; subst. apply functional_extensionality.
+    intros; rewrite <- plus_n_Sm. reflexivity. }
+    repeat rewrite Rplus_assoc.
+    rewrite Rsum_extend_l.
+    rewrite Rsum_extend_r.
+    reflexivity.
 Qed.
 
-Lemma Cmod_triangle_le : forall (a b : C) (ϵ : R),
-  Cmod a + Cmod b < ϵ -> Cmod (a + b) < ϵ.
-Proof. intros. 
-       assert (H0 := Cmod_triangle a b).
-       lra. 
+Lemma Rsum_le : forall (f g : nat -> R) (n : nat),
+  (forall i, (i < n)%nat -> f i <= g i) ->
+  (Rsum f n) <= (Rsum g n).
+Proof. induction n as [| n']; simpl; try lra.  
+       intros.
+       apply Rplus_le_compat.
+       apply IHn'; intros. 
+       all : apply H; try lia. 
 Qed.
 
-Lemma Cmod_triangle_diff : forall (a b c : C) (ϵ : R),
-  Cmod (c - b) + Cmod (b - a) < ϵ -> Cmod (c - a) < ϵ.
-Proof. intros. 
-       replace (c - a) with ((c - b) + (b - a)) by lca. 
-       apply Cmod_triangle_le.
-       easy. 
+Lemma Rsum_ge_0 : forall (f : nat -> R) (n : nat),
+  (forall i, (i < n)%nat -> 0 <= f i) ->
+  0 <= Rsum f n.
+Proof. induction n as [| n'].
+       - intros; simpl; lra. 
+       - intros. simpl; apply Rplus_le_le_0_compat.
+         apply IHn'; intros; apply H; lia. 
+         apply H; lia. 
 Qed.
 
-Lemma emptyset_open : open empty_set.
-Proof. easy. Qed.
-
-Lemma C_open : open C_.
-Proof. unfold open, C_, is_in; intros. 
-       exists 1; split; try lra. 
-       easy. 
+Lemma Rsum_Cmod_0_all_0 : forall (f : nat -> C) (n : nat),
+  Rsum (fun i => Cmod (f i)) n = 0 -> 
+  forall i, (i < n)%nat -> f i = C0.
+Proof. induction n as [| n']; try nia.   
+       intros; simpl in H.
+       assert (H' := H).
+       rewrite Rplus_comm in H; apply Rplus_eq_0_l in H. 
+       apply Rplus_eq_0_l in H'.
+       all : try apply Rsum_ge_0; intros.
+       all : try apply Cmod_ge_0.
+       bdestruct (i <? n').
+       - apply IHn'; easy. 
+       - bdestruct (i =? n'); try lia; subst. 
+         apply Cmod_eq_0; try easy.
 Qed.
 
-Lemma ball_open : forall (a : C) (ϵ : R),
-  ϵ > 0 -> open (B(a,ϵ)).
-Proof. unfold open; intros.
-       unfold ϵ_disk in H0.
-       exists (ϵ - Cmod (c - a))%R.
-       split; try lra.
-       unfold subset; intros.
-       unfold ϵ_disk in *.
-       assert (H2 : Cmod (c0 - c) + Cmod (c - a) < ϵ). { lra. }
-       apply Cmod_triangle_diff in H2.
-       easy. 
-Qed.
-
-Lemma closed_ball_complement_open : forall (c : C) (r : R),
-  open (fun c' => Cmod (c' - c) > r).
-Proof. unfold open; intros.
-       exists (Cmod (c0 - c) - r)%R.
-       split; try lra. 
-       unfold subset, ϵ_disk; intros. 
-       assert (H' := Cmod_triangle (c1 - c) (c0 - c1)).
-       replace (c1 - c + (c0 - c1)) with (c0 - c) in H' by lca. 
-       rewrite Cmod_switch in H0; lra. 
-Qed.
-
-Lemma closed_ball_closed : forall (a : C) (ϵ : R),
-  closed (fun c' => Cmod (c' - a) <= ϵ).
-Proof. intros; unfold closed. 
-       assert (H' : (fun c' : C => Cmod (c' - a) <= ϵ) * = (fun c' : C => Cmod (c' - a) > ϵ)).
-       { apply subset_equal; unfold subset, complement; intros; lra. }
-       rewrite H'.
-       apply closed_ball_complement_open.
-Qed.
-
-Lemma cup_open : forall (A B : Csubset),
-  open A -> open B -> open (A ∪ B).
-Proof. unfold open; intros.  
-       unfold union in H1.
-       destruct H1.
-       - destruct ((H c) H1) as [ϵ [H2 H3] ].
-         exists ϵ.
-         split; eauto with Csub_db. 
-       - destruct ((H0 c) H1) as [ϵ [H2 H3] ].
-         exists ϵ.
-         split; eauto with Csub_db. 
-Qed.
-
-Lemma cap_open : forall (A B : Csubset),
-  open A -> open B -> open (A ∩ B).
-Proof. unfold open; intros.  
-       unfold intersection in H1.
-       destruct H1.
-       destruct ((H c) H1) as [ϵ1 [H3 H4] ].
-       destruct ((H0 c) H2) as [ϵ2 [H5 H6] ].
-       exists (Rmin ϵ1 ϵ2).
-       split. 
-       apply Rmin_Rgt_r; easy.       
-       eauto with Csub_db.
-Qed.
-
-
-
-
-(** lemmas about preimage *)
-
-(** some lemmas showing basic properties *)
-
-Lemma complement_involutive : forall (A : Csubset),
-  (A*)* = A.
-Proof. unfold complement; intros. 
-       apply subset_equal.
-       - unfold subset; intros. 
-         apply Classical_Prop.NNPP; easy. 
-       - unfold subset; intros. 
-         unfold not. intros.
+Lemma Csum_triangle : forall f n,
+  Cmod (Csum f n) <= Rsum (fun i => Cmod (f i)) n.
+Proof. induction n as [| n'].
+       - simpl. rewrite Cmod_0; lra.
+       - simpl.
+         eapply Rle_trans; try apply Cmod_triangle.
+         Search (_ + _ <= _ + _).
+         apply Rplus_le_compat_r.
          easy. 
 Qed.
 
-Lemma bounded_cup : forall (A B : Csubset),
-  bounded A -> bounded B -> bounded (A ∪ B).
+(*********************************************************************)
+(* defining poly_coef_norm and showing how it can be used as a bound *)
+(*********************************************************************)
+
+Definition poly_coef_norm (p : Polynomial) : R :=
+  Rsum (fun i => Cmod (nth i p C0)) (length p).
+
+Lemma poly_coef_norm_ge_0 : forall (p : Polynomial),
+  0 <= poly_coef_norm p.
 Proof. intros. 
-       destruct H as [ϵ1 H].
-       destruct H0 as [ϵ2 H0].
-       exists (Rmax ϵ1 ϵ2).
-       unfold subset, ϵ_disk in *; intros. 
-       destruct H1. 
-       - apply H in H1.
-         eapply Rlt_le_trans; eauto. 
-         apply Rmax_l.
-       - apply H0 in H1.
-         eapply Rlt_le_trans; eauto. 
-         apply Rmax_r.
+       apply Rsum_ge_0; intros. 
+       apply Cmod_ge_0.
+Qed.
+
+Lemma norm_0_iff_0 : forall (p : Polynomial),
+  p ≅ [] <-> poly_coef_norm p = 0.
+Proof. split; intros.
+       - apply Peq_0_eq_repeat_0 in H.
+         rewrite H.
+         unfold poly_coef_norm.
+         apply Rsum_0_bounded; intros.
+         rewrite nth_repeat, Cmod_0; easy.
+       - unfold poly_coef_norm in H.
+         assert (H' := (Rsum_Cmod_0_all_0 (fun i : nat => nth i p 0) (length p))).
+         simpl in H'. 
+         assert (H'' : forall i : nat, (i < length p)%nat -> nth i p 0 = 0). 
+         apply H'; apply H.
+         unfold Peq.
+         apply functional_extensionality; intros.
+         unfold Peval; simpl.
+         apply Csum_0_bounded; intros.
+         rewrite H''; try lca; easy.
+Qed.
+
+Lemma poly_coef_norm_compactify : forall (p : Polynomial),
+  poly_coef_norm p = poly_coef_norm (compactify p).
+Proof. intros. 
+       destruct (Peq_0_dec p).
+       - rewrite Peq_0_compactify_0; auto.
+         apply norm_0_iff_0 in p0; rewrite p0.
+         easy.
+       - apply C0_end_breakdown in n.
+         destruct n as [n [a [p' [H H0] ] ] ].
+         rewrite H0, app_C0_compactify_reduce, app_nonzero_compactify_reduce; auto.
+         unfold poly_coef_norm.
+         rewrite app_length, Rsum_sum, <- (Rplus_0_r).
+         apply f_equal_gen. 
+         apply f_equal_gen; auto.
+         apply Rsum_eq_bounded; intros. 
+         apply f_equal_gen; auto.
+         rewrite app_nth1; easy.
+         apply Rsum_0_bounded; intros. 
+         rewrite app_nth2, nth_repeat, Cmod_0; try lia; lra.
+Qed.
+
+Add Parametric Morphism : poly_coef_norm
+  with signature Peq ==> eq as polycoefnorm_mor.
+Proof. intros p1 p2 H. 
+       rewrite poly_coef_norm_compactify, (poly_coef_norm_compactify p2).
+       apply Peq_compactify_eq in H; rewrite H; easy.
+Qed.
+
+Lemma poly_bound_ge_1 : forall (p : Polynomial) (z : C),
+  1 <= Cmod z ->
+  Cmod (p[[z]]) <= (poly_coef_norm p) * (Cmod z)^(length p - 1).
+Proof. intros. 
+       destruct p as [| a].
+       - assert (H' : [] ≅ []). easy.
+         apply norm_0_iff_0 in H'; rewrite H'.
+         unfold Peval; simpl.
+         rewrite Cmod_0; lra.
+       - unfold Peval.
+         eapply Rle_trans.
+         apply Csum_triangle.
+         unfold poly_coef_norm.
+         rewrite Rsum_mult_r.
+         apply Rsum_le; intros. 
+         rewrite Cmod_mult.
+         apply Rmult_le_compat_l; try apply Cmod_ge_0.
+         rewrite Cmod_pow. 
+         apply Rle_pow; auto; lia.
+Qed.
+
+Lemma poly_bound_le_1 : forall (p : Polynomial) (z : C),
+  Cmod z <= 1 ->
+  Cmod ((C0 :: p)[[z]]) <= (poly_coef_norm p) * (Cmod z).
+Proof. intros. 
+       unfold Peval, poly_coef_norm; simpl length.
+       rewrite <- Csum_extend_l, Rsum_mult_r; simpl. 
+       rewrite Cmult_0_l, Cplus_0_l.
+       eapply Rle_trans; try apply Csum_triangle.
+       apply Rsum_le; intros. 
+       repeat rewrite Cmod_mult.
+       apply Rmult_le_compat_l.
+       apply Cmod_ge_0.
+       rewrite Cmod_pow.
+       rewrite <- Rmult_1_r.
+       apply Rmult_le_compat_l.
+       apply Cmod_ge_0.
+       apply Rpow_le1; split; auto.
+       apply Cmod_ge_0.
+Qed.
+
+Lemma half_norm_bound : forall (c z : C),
+  (Cmod c < (Cmod z) * /2)%R ->
+  ((Cmod z) * /2 < Cmod (z + c))%R.
+Proof. intros. 
+       assert (H0 := Cmod_triangle (z + c) (-c)).
+       replace (z + c + - c) with z in H0 by lca.
+       rewrite Cmod_opp in H0.
+       apply Rle_minus_l in H0.
+       eapply Rlt_le_trans; try apply H0.
+       apply Rlt_minus_r.
+       rewrite Rplus_comm.
+       apply Rlt_minus_r.
+       replace (Cmod z - Cmod z * / 2)%R with (Cmod z /2 + Cmod z /2 - Cmod z * / 2)%R.
+       lra.
+       rewrite <- (double_var (Cmod z)); easy.
+Qed.
+
+Lemma leading_term_dom : forall (p : Polynomial) (a c : C),
+  a <> C0 -> 
+  Cmod c > (2 * poly_coef_norm p / (Cmod a))%R -> Cmod c > 1 ->
+  Cmod p[[c]] < Cmod (a * c^(length p)) /2.
+Proof. intros. 
+       destruct p as [| a0].
+       - unfold Peval; simpl.
+         rewrite Cmult_1_r, Cmod_0.
+         apply Rdiv_lt_0_compat; try lra. 
+         apply Cmod_gt_0; easy.
+       - eapply Rle_lt_trans; try (apply poly_bound_ge_1; lra).
+         replace (length (a0 :: p) - 1)%nat with (length p) by (simpl; lia).
+         unfold Rdiv; simpl. 
+         rewrite Cmod_mult, Cmod_mult; simpl.         
+         rewrite Rmult_assoc, Rmult_assoc, 
+           (Rmult_comm _ (/ 2)), Cmod_pow; repeat rewrite <- Rmult_assoc.
+         apply Rmult_lt_compat_r; try (apply pow_lt; lra).
+         apply (Rmult_lt_reg_r 2 _ _); try lra.
+         repeat rewrite Rmult_assoc; rewrite Rinv_l, Rmult_1_r; try lra. 
+         apply (Rmult_lt_reg_l (/ Cmod a) _ _);
+           try (apply Rinv_0_lt_compat; apply Cmod_gt_0; easy).
+         do 2 rewrite <- Rmult_assoc; rewrite Rinv_l, Rmult_1_l; try lra.
+         unfold not; intros; apply H.
+         apply Cmod_eq_0; easy. 
+Qed.
+
+Lemma poly_bound_leading_term : forall (p : Polynomial) (a : C),
+  a <> C0 -> 
+  exists r, (forall c, Cmod c > r -> Cmod (p ++ [a])[[c]] > Cmod (a * c^(length p)) * /2).
+Proof. intros. 
+       exists (Rmax (2 * poly_coef_norm p / (Cmod a))%R 1); intros.        
+       apply Rmax_Rlt in H0; destruct H0.
+       rewrite app_eval_to_mul.
+       replace (c ^ length p * ([a]) [[c]]) with (a * c ^ (length p)).
+       rewrite Cplus_comm.
+       apply half_norm_bound.
+       apply leading_term_dom; auto; lra.
+       unfold Peval; simpl; lca.
+Qed.
+
+Lemma x_to_n_bounded_below : forall (a c : C) (M : R) (n : nat),
+  a <> C0 -> n <> 0%nat -> 
+  Cmod c > Rmax (2 * (M / Cmod a)) 1 -> 
+  Cmod (a * c^n) * /2 > M.
+Proof. intros. 
+       apply (Rmult_lt_reg_r 2 _ _); try lra.
+       rewrite Rmult_assoc, Rinv_l, Rmult_1_r, Cmod_mult; try lra. 
+       apply (Rmult_lt_reg_l (/ Cmod a) _ _);
+           try (apply Rinv_0_lt_compat; apply Cmod_gt_0; easy).
+       do 2 rewrite <- Rmult_assoc; rewrite Rinv_l, Rmult_1_l, Cmod_pow; try lra.
+       apply Rmax_Rlt in H1; destruct H1.
+       eapply Rlt_le_trans; try apply (Rle_pow _ 1 n); simpl; try lra.
+       destruct n; try easy; lia.
+       unfold not; intros; apply H.
+       apply Cmod_eq_0; easy.
 Qed.       
 
-
-(************************)
-(* Defining compactness *)
-(************************)
-
-Definition Ccover := Csubset -> Prop.
-
-Definition open_cover (G : Ccover) : Prop :=
-  forall A, G A -> open A.
-
-Definition subcover (G1 G2 : Ccover) : Prop :=
-  forall A, G1 A -> G2 A.
-
-Definition list_to_cover (l : list Csubset) : Ccover :=
-  fun A => In A l.
-
-Definition finite_cover (G : Ccover) : Prop :=
-  exists l, list_to_cover l = G.
-
-Definition big_cup (G : Ccover) : Csubset :=
-  fun c => (exists A, G A /\ A c).
-
-Definition big_cap (G : Ccover) : Csubset :=
-  fun c => (forall A, G A -> A c).
-
-Definition compact (A : Csubset) : Prop :=
-  forall G, open_cover G -> A ⊂ (big_cup G) -> 
-       (exists G', finite_cover G' /\ subcover G' G /\ A ⊂ (big_cup G')).
-
-(** now some lemmas *)
-
-Lemma open_cover_reduce : forall (l : list Csubset) (A : Csubset),
-  open_cover (list_to_cover (A :: l)) ->
-  open A /\ open_cover (list_to_cover l).
-Proof.  intros; split; unfold open_cover in H.
-        apply H; left; easy.  
-        unfold open_cover; intros. 
-        apply H; right; easy. 
-Qed.
-
-Lemma subcover_reduce : forall (l : list Csubset) (A : Csubset) (G : Ccover),
-  subcover (list_to_cover (A :: l)) G ->
-  G A /\ subcover (list_to_cover l) G.
-Proof. intros; split.       
-       apply H; left; easy. 
-       unfold subcover; intros. 
-       apply H; right; easy. 
-Qed.
-
-Lemma big_cup_extend_l : forall (l : list Csubset) (A : Csubset),
-  A ∪ (big_cup (list_to_cover l)) = big_cup (list_to_cover (A :: l)).
-Proof. intros.
-       unfold union, big_cup, list_to_cover; intros.        
-       apply subset_equal.
-       - unfold subset; intros. 
-         destruct H.
-         + exists A; split; try left; easy. 
-         + destruct H as [A0 [H H0] ]. 
-           exists A0. split; try right; easy. 
-       - unfold subset; intros. 
-         destruct H as [A0 [ [H | H] H0] ]; subst.
-         left; easy. 
-         right; exists A0; split; easy. 
-Qed.
-
-Lemma big_cap_extend_l : forall (l : list Csubset) (A : Csubset),
-  A ∩ (big_cap (list_to_cover l)) = big_cap (list_to_cover (A :: l)).
-Proof. intros.
-       unfold intersection, big_cap, list_to_cover; intros.        
-       apply subset_equal.
-       - unfold subset; intros. 
-         destruct H; destruct H0; subst; try easy.
-         apply H1; apply H0.
-       - unfold subset; intros. 
-         split.
-         apply H; left; easy. 
-         intros; apply H; right; apply H0.
-Qed.
-
-Lemma arb_cup_open : forall (G : Ccover),
-  open_cover G -> open (big_cup G).
-Proof. unfold open_cover, open, big_cup in *; intros. 
-       destruct H0 as [A [H0 H1] ].
-       destruct (H A H0 c) as [ϵ [H2 H3] ]; auto.
-       exists ϵ.
-       split; auto. 
-       eapply subset_transitive; eauto. 
-       unfold subset; intros. 
-       exists A; split; easy. 
-Qed.
-
-Lemma ltc_open : forall (l : list Csubset),
-  open_cover (list_to_cover l) -> open (big_cap (list_to_cover l)).
-Proof. induction l as [| h].
-       - intros. 
-         unfold list_to_cover, big_cap, open; intros. 
-         exists 1; split; try easy; lra. 
-       - intros. 
-         apply open_cover_reduce in H.
-         rewrite <- big_cap_extend_l.
-         apply cap_open; try easy. 
-         apply IHl; easy. 
-Qed.
-
-Lemma fin_cap_open : forall (G : Ccover),
-  open_cover G -> finite_cover G -> open (big_cap G).
+Lemma poly_to_inf_uniformly : forall (p : Polynomial) (M : R),
+  (Polynomial.degree p > 0)%nat -> 
+  exists r, r > 0 /\ (forall c, Cmod c > r -> Cmod p[[c]] > M).
 Proof. intros. 
-       unfold finite_cover in H0.
-       destruct H0 as [l H0].
-       rewrite <- H0.
-       apply ltc_open.
-       rewrite H0; easy. 
+       destruct (Peq_0_dec p).
+       - rewrite p0 in H; easy.
+       - assert (H0 := p_Peq_compactify_p p); simpl in H0.
+         apply compactify_breakdown in n.
+         destruct n as [a [p' [H1 H2] ] ].
+         destruct (poly_bound_leading_term p' a) as [r1 H3]; auto.
+         exists (Rmax r1 (Rmax (2 * (M / Cmod a)) 1)); split.
+         assert (H' : 1 <= Rmax r1 (Rmax (2 * (M / Cmod a)) 1)).
+         { apply Rmax_Rle; right.
+           apply Rmax_r. }
+         lra.
+         intros. 
+         apply Rmax_Rlt in H4; destruct H4.
+         rewrite H0, H2.
+         eapply Rgt_trans; try (apply H3; lra).
+         apply x_to_n_bounded_below; auto; try lra.
+         destruct p'; try easy.
+         unfold degree in H.
+         rewrite H2 in H; easy.
 Qed.
 
-(* we have not yet defined enough setup to define preimage for functions whose domains differ
-   from C_. This is fine when proving FTA, since polynomials are continuous everywhere.
-   Could be expanded if we want to make a general topology library *)
-Lemma continuous_preimage_open : forall (f : C -> C),
-  continuous_on f C_ -> (forall A, open A -> open f*{A}).
+
+
+(* We finally can show that polynomial take on a minimum value and use this to prove FTA *)
+
+Lemma poly_compact_closed_ball : forall (p : Polynomial) (r : R),
+  compact ((Peval p) @ (fun c' => Cmod (c') <= r)).
 Proof. intros. 
-       unfold open in *; intros. 
-       unfold preimage in H1. 
-       destruct (H0 (f c) H1) as [ϵ [H2 H3] ]. 
-       assert (H' : C_ c). easy. 
-       destruct (H c H' ϵ) as [δ [H4 H5] ]; auto.  
-       exists δ; split; auto.
-       unfold subset, preimage, ϵ_disk in *; intros.  
-       destruct (Ceq_dec c0 c); subst; try easy. 
-       apply H3; apply H5; try easy.  
-Qed.
-
-Lemma preimage_open_continuous : forall (f : C -> C),
-  (forall A, open A -> open f*{A}) -> continuous_on f C_.
-Proof. unfold continuous_on; intros. 
-       unfold continuous_at, limit_at_point; intros. 
-       assert (H2 := (H ( B(f c,ϵ) ) (ball_open (f c) ϵ H1))).
-       unfold open in H2. 
-       destruct (H2 c) as [δ [H3 H4] ].
-       unfold preimage, ϵ_disk. 
-       replace (f c - f c)%C with C0 by lca. 
-       rewrite Cmod_0; lra. 
-       exists δ; split; auto; intros. 
-       unfold preimage, subset, ϵ_disk in H4.
-       apply H4; easy.  
-Qed.
-
-(* we define the preimage of a cover *)
-Definition preimage_cover (f : C -> C) (G : Ccover) : Ccover :=
-  fun A => (exists A', G A' /\ A = f*{A'}).
-
-Lemma open_cover_preimage_open : forall (f : C -> C) (G : Ccover),
-  open_cover G -> continuous_on f C_ ->
-  open_cover (preimage_cover f G).
-Proof. intros. 
-       unfold open_cover, preimage_cover; intros. 
-       destruct H1 as [A' [H1 H2] ]; subst.
-       apply H in H1.
-       apply (continuous_preimage_open _ H0); easy.
-Qed.
-
-Lemma subset_preimage_pres : forall (f : C -> C) (A : Csubset) (G : Ccover),
-  ((f) @ (A)) ⊂ (big_cup G) ->
-  A ⊂ (big_cup (preimage_cover f G)).
-Proof. unfold subset; intros. 
-       unfold big_cup, preimage_cover.
-       assert (H' : big_cup G (f c)).
-       { apply H.
-         exists c; split; easy. }
-       unfold big_cup in H'.
-       destruct H' as [A0 [H1 H2] ].
-       exists (f*{A0}); split; try easy. 
-       exists A0; split; easy.
+       apply continuous_image_compact. 
+       unfold continuous_on, C_; intros. 
+       apply polynomial_continuous. 
+       apply Heine_Borel; split.  
+       assert (H : (fun c' : C => Cmod c' <= r) = (fun c' : C => Cmod (c' - 0) <= r)).
+       { apply functional_extensionality; intros. 
+         replace (x - 0) with x by lca; easy. }
+       rewrite H.
+       apply closed_ball_closed. 
+       exists (r + 1)%R; unfold subset, ϵ_disk; intros. 
+       replace (c - 0) with c by lca; lra.
 Qed.       
 
-Lemma extract_finite_image : forall (f : C -> C) (l : list Csubset) (A : Csubset) (G : Ccover),
-  subcover (list_to_cover l) (preimage_cover f G) -> 
-  A ⊂ (big_cup (list_to_cover l)) ->
-  exists l', subcover (list_to_cover l') G /\ (f @ A) ⊂ (big_cup (list_to_cover l')).
-Proof. induction l as [| A0].
-       - intros.
-         exists []; split; auto.  
-         unfold subcover; easy. 
-         unfold subset in *; intros. 
-         destruct H1 as [c0 [H1 H2] ].
-         apply H0 in H1.
-         unfold list_to_cover, big_cup in H1.
-         destruct H1; easy. 
-       - intros.
-         apply subcover_reduce in H.
-         destruct H. 
-         apply (IHl (A \ A0)) in H1.
-         destruct H as [A'0 [H H2] ].
-         destruct H1 as [l' [H1 H3] ].
-         exists (A'0 :: l'); split. 
-         unfold subcover, list_to_cover; intros. 
-         destruct H4; subst; try easy.
-         apply H1; easy.  
-         unfold subset in *; intros. 
-         rewrite <- big_cup_extend_l.
-         destruct (Classical_Prop.classic (A'0 c)).
-         left; easy. 
-         right; apply H3.
-         destruct H4 as [c' [H4 H6] ]. 
-         exists c'; repeat split; auto. 
-         unfold complement, not; intros. 
-         apply H5; rewrite H2 in H7.
-         unfold preimage in H7; subst; easy. 
-         unfold subset in *; intros. 
-         rewrite <- big_cup_extend_l in H0.
-         destruct H2; apply H0 in H2.
-         destruct H2; try easy.
-Qed.
-
-Lemma continuous_image_compact : forall (f : C -> C) (A : Csubset),
-  continuous_on f C_ -> compact A ->
-  compact (f @ A).
-Proof. intros. 
-       unfold compact; intros. 
-       assert (H3 := (subset_preimage_pres _ _ _ H2)). (*****)
-       apply H0 in H3.
-       destruct H3 as [G' [H3 [H4 H5] ] ].
-       destruct H3 as [l H3]; subst.
-       destruct (extract_finite_image f l A G) as [l' [H6 H7] ]; try easy.
-       exists (list_to_cover l'); repeat split; try easy.
-       exists l'; easy. 
-       apply open_cover_preimage_open; easy. 
-Qed.
-
-(**********************************************)
-(* Showing that compact is closed and bounded *)
-(**********************************************)
-
-Definition ball_cover : Ccover :=
-  fun G => open G /\ exists r, r > 0 /\ G ⊂ B(0,r).
-
-Lemma open_cover_ball_cover : open_cover ball_cover.
-Proof. unfold ball_cover; easy. Qed.
-      
-Lemma ball_cover_elems_bounded : forall (A : Csubset),
-  ball_cover A -> bounded A.
-Proof. intros. 
-       unfold ball_cover, bounded in *.
-       destruct H.
-       destruct H0 as [r [H0 H1] ].
-       exists r; easy.
-Qed.
-
-Lemma C_subset_ball_cover : 
-  C_ ⊂ (big_cup ball_cover).
-Proof. unfold subset, big_cup, ball_cover; intros. 
-       exists (B(0, Cmod c + 1)).
-       repeat split. 
-       apply ball_open; apply Rle_lt_0_plus_1; apply Cmod_ge_0.
-       exists ((Cmod c) + 1)%R. 
-       split; auto with Csub_db.
-       apply Rle_lt_0_plus_1; apply Cmod_ge_0.
-       unfold ϵ_disk. 
-       replace (c - 0) with c by lca. 
-       lra. 
-Qed.
-
-Lemma list_cover_ball_cover_bounded : forall (l : list Csubset),
-  subcover (list_to_cover l) ball_cover ->
-  bounded (big_cup (list_to_cover l)).
-Proof. induction l as [| A].
-       - intros. 
-         exists 1. 
-         unfold subset; intros. 
-         unfold big_cup, list_to_cover in H0.
-         destruct H0; easy.
-       - intros. 
-         rewrite <- big_cup_extend_l.
-         unfold subcover in H.
-         apply bounded_cup.
-         apply ball_cover_elems_bounded; apply H.
-         left; easy. 
-         apply IHl. 
-         unfold subcover; intros. 
-         apply H; right; easy. 
-Qed.
-
-Lemma fin_subcover_ball_cover_bounded : forall (G : Ccover),
-  finite_cover G -> subcover G ball_cover -> 
-  bounded (big_cup G).
-Proof. intros. 
-       destruct H as [l H]; subst.
-       apply list_cover_ball_cover_bounded; easy. 
-Qed.
-
-Lemma compact_implies_bounded : forall (A : Csubset),
-  compact A -> bounded A. 
-Proof. intros. 
-       unfold compact in H.
-       destruct (H ball_cover).
-       apply open_cover_ball_cover.
-       eapply subset_transitive.
-       eapply subset_C_.
-       apply C_subset_ball_cover.
-       destruct H0 as [H0 [H1 H2] ].
-       apply fin_subcover_ball_cover_bounded in H0; auto.
-       unfold bounded in *.
-       destruct H0 as [ϵ H0].
-       exists ϵ; eauto with Csub_db.
-Qed.
-
-Definition bad_point_cover (c : C) : Ccover :=
-  fun G => open G /\ exists r, r > 0 /\ G ⊂ (fun c' => Cmod (c' - c) > r).
-
-Lemma open_cover_bpc : forall c, open_cover (bad_point_cover c).
-Proof. unfold bad_point_cover; easy. Qed.
-
-Lemma bpc_covers_almost_all : forall (c : C) (A : Csubset),
-  A* c -> A ⊂ (big_cup (bad_point_cover c)).
-Proof. unfold subset; intros. 
-       unfold bad_point_cover, big_cup.
-       exists (fun c' => Cmod (c' - c) > Cmod (c0 - c) / 2).
-       assert (H' :  Cmod (c0 - c) > 0).
-       { apply Cmod_gt_0.
-         apply Cminus_eq_contra.
-         destruct (Ceq_dec c0 c); subst; easy. }
-       repeat split; try lra.
-       apply closed_ball_complement_open.
-       exists ((Cmod (c0 - c)) / 2)%R.
-       split; auto with Csub_db.
-       apply Rdiv_lt_0_compat; try lra. 
-Qed.
-
-Lemma bpc_separates_from_c : forall (c : C) (l : list Csubset),
-  subcover (list_to_cover l) (bad_point_cover c) ->
-  exists r, r > 0 /\ (big_cup (list_to_cover l)) ⊂ (fun c' => Cmod (c' - c) > r).
-Proof. induction l as [| A].
-       - intros; exists 1; split; try lra. 
-         unfold subset; intros. 
-         unfold list_to_cover, big_cup in H0. 
-         destruct H0; easy. 
-       - intros. 
-         apply subcover_reduce in H; repeat destruct H.
-         destruct H1 as [r1 [H1 H2] ].
-         apply IHl in H0.
-         destruct H0 as [r2 [H0 H3] ].
-         exists (Rmin r1 r2); split. 
-         apply Rmin_glb_lt; auto. 
-         unfold list_to_cover, big_cup, subset; intros. 
-         destruct H4 as [A0 [ [H4 | H4] H5] ]; subst. 
-         + apply H2 in H5.
-           eapply Rgt_ge_trans; eauto.
-           assert (H' := Rmin_l r1 r2). lra. 
-         + assert (H' : (big_cup (list_to_cover l)) c0).
-           { exists A0; split; easy. }
-           apply H3 in H'.
-           eapply Rgt_ge_trans; eauto.
-           assert (H'' := Rmin_r r1 r2). lra. 
-Qed.
-
-Lemma compact_implies_closed : forall (A : Csubset),
-  compact A -> closed A. 
-Proof. unfold compact, closed, open; intros. 
-       destruct (H (bad_point_cover c)) as [G' [H1 [H2 H3] ] ].
-       apply open_cover_bpc.
-       apply bpc_covers_almost_all; easy. 
-       destruct H1 as [l H1]; subst.
-       apply bpc_separates_from_c in H2.
-       destruct H2 as [r [H2 H4] ].
-       exists r; split; auto.
-       unfold complement, ϵ_disk, subset, not; intros. 
-       apply H3 in H5; apply H4 in H5; lra. 
-Qed.
-
-
-(****)
-(****)
-(****)
-
-
-
-
-
-
+(* we finally prove poly_min! is there a way to show this without compactness? *) 
 Lemma poly_min : forall (p : Polynomial), 
   exists m, (forall c, Cmod p[[m]] <= Cmod p[[c]]).
-Proof. Admitted.
+Proof. intros. 
+       destruct (Polynomial.degree p) as [| n] eqn:E.
+       - unfold degree in E.
+         exists 0; intros.  
+         destruct (compactify p) as [| a0] eqn:E0; 
+           rewrite p_Peq_compactify_p, E0; unfold Peval; simpl; try lra. 
+         destruct p0; try easy; simpl; lra. 
+       - assert (H' : compact ((Peval p) @ (fun c' => Cmod (c') <= 1))).
+         { apply poly_compact_closed_ball. } 
+         apply compact_contains_min_norn_elem in H'.
+         destruct H' as [mne [H H0] ].
+         assert (H' : (Polynomial.degree p > 0)%nat).
+         { rewrite E; lia. }
+         apply (poly_to_inf_uniformly _ (Cmod mne)) in H'.
+         destruct H' as [r [rgt0 H1] ]. 
+         assert (H' : compact ((Peval p) @ (fun c' => Cmod (c') <= (r + 1)))).
+         { apply poly_compact_closed_ball. }
+         apply compact_contains_min_norn_elem in H'.
+         all : try (exists p[[0]]; exists 0; split; try easy;
+                      rewrite Cmod_0; lra).
+         destruct H' as [mne' [H2 H3] ].
+         destruct H2 as [m [H2 H4] ].
+         exists m; intros; rewrite H4.
+         destruct (Rle_lt_dec (Cmod c) r).
+         + apply H3.
+           exists c; split; try lra; easy. 
+         + destruct H as [m' [H H5] ].
+           assert (H6 : Cmod mne' <= Cmod mne).
+           { apply H3.
+             exists m'; split; try lra; easy. }
+           left.
+           eapply Rle_lt_trans; try apply H6.
+           apply H1; lra.
+Qed.      
 
+Lemma first_nonzero_coef : forall (p : Polynomial),
+  Peval p <> Peval [] -> 
+  exists a n p', a <> C0 /\ p = (repeat C0 n) ++ [a] ++ p'.
+Proof. induction p as [| a0]; try easy.
+       intros. 
+       destruct (Ceq_dec a0 C0); subst.
+       - destruct (Peq_0_dec p).
+         + assert (H' : (C0 :: p) ≅ []).
+           rewrite p0; apply C0_Peq_nil.
+           easy.
+         + apply IHp in n.
+           destruct n as [a [n [p' [H0 H1] ] ] ].
+           exists a, (S n), p'; split; auto.
+           rewrite H1; easy.
+       - exists a0, O, p; split; easy.
+Qed.
+  
+Lemma eval_x_to_n_plus_a : forall (z a0 ak : C) (ϵ : R) (k : nat),
+  a0 <> C0 -> ak <> C0 -> 0 < ϵ < 1 ->
+  z ^ (k + 1) = (-a0 / ak) -> 
+  Cmod ((a0 :: repeat C0 k) ++ [ak]) [[ϵ * z]] = ((Cmod a0) * (1 - ϵ ^ (k + 1)))%R.
+Proof. intros.  
+       rewrite <- (Rabs_pos_eq (1 - ϵ ^ (k + 1))), <- Cmod_R, <- Cmod_mult.
+       apply f_equal_gen; auto.
+       rewrite app_eval_to_mul.
+       assert (H3 := p_Peq_compactify_p (a0 :: repeat C0 k)).
+       simpl in H3.
+       replace (a0 :: repeat C0 k) with ([a0] ++ repeat C0 k) in * by easy.
+       rewrite app_C0_compactify_reduce in H3.
+       rewrite H3.
+       unfold compactify, prune; simpl.
+       destruct (Ceq_dec a0 0); try easy; simpl. 
+       unfold Peval; simpl.
+       rewrite repeat_length.
+       rewrite Cpow_mul_l.
+       replace (ϵ * z * (ϵ ^ k * z ^ k)) with (z ^ k * z * ϵ * ϵ ^k) by lca.
+       rewrite Cpow_add_r in H2; simpl in H2; rewrite Cmult_1_r in H2.
+       do 2 rewrite Cmult_1_r, Cplus_0_l.
+       rewrite H2, Cmult_comm.
+       rewrite <- Cmult_assoc. 
+       replace (ϵ * ϵ ^ k) with (ϵ ^ (k + 1)).
+       rewrite Cmult_assoc.
+       replace (ak * (- a0 / ak)) with (- a0).
+       replace (RtoC (Rminus (IZR (Zpos xH)) (pow ϵ (Init.Nat.add k (S O))))) with
+         (Cminus (RtoC (IZR (Zpos xH))) (pow ϵ (Init.Nat.add k (S O)))) by lca.
+       rewrite RtoC_pow; lca.
+       unfold Cdiv.
+       rewrite Cmult_comm, <- Cmult_assoc, Cinv_l; try lca; easy.
+       rewrite Cpow_add_r; lca.
+       apply Rle_minus_r.
+       rewrite Rplus_0_l.
+       apply Rpow_le1; lra.
+Qed.    
 
-(******************)
-(* Must prove FTA *)
-(******************)
- 
+(* here ak is really a(k+1) *)
+Lemma bound_lemma1 : forall (z a0 ak : C) (ϵ : R) (k : nat) (p : Polynomial),
+  a0 <> C0 -> ak <> C0 -> 0 < ϵ < 1 ->
+  z ^ (k + 1) = (-a0 / ak) ->  
+  ϵ * Cmod z <= 1 -> 
+  Cmod (a0 :: (repeat C0 k) ++ [ak] ++ p)[[ϵ * z]] <= 
+    (Cmod a0) * (1 - ϵ^(k + 1)) + (poly_coef_norm p) * Cmod (z ^ (k + 2)) * ϵ^(k + 2).
+Proof. intros. 
+       destruct H1.
+       rewrite app_comm_cons, app_assoc, app_eval.
+       eapply Rle_trans; try apply Cmod_triangle.
+       rewrite eval_x_to_n_plus_a; try easy.
+       apply Rplus_le_compat_l.
+       assert (H5 : (repeat C0 (length ((a0 :: repeat C0 k) ++ [ak])) ++ p) = 
+                      (repeat C0 (k + 1)) ++ (C0 :: p)).
+       { replace (C0 :: p) with ([C0] ++ p) by easy.
+         rewrite app_assoc, <- repeat_cons; simpl. 
+         rewrite app_length, repeat_length; simpl; easy. }
+       rewrite H5, mul_by_x_to_n, Cpow_mul_l, (Cmult_comm (ϵ ^ (k + 1))), Cmult_assoc.
+       repeat rewrite Cmod_mult.
+       rewrite RtoC_pow, Cmod_R, Rabs_pos_eq; try (apply pow_le; lra).
+       replace (k + 2)%nat with (1 + (k + 1))%nat by lia.
+       rewrite (pow_add _ 1 (k + 1)).
+       repeat rewrite <- Rmult_assoc.
+       apply Rmult_le_compat_r; try (apply pow_le; lra).
+       rewrite Rmult_assoc, (Rmult_comm _ (ϵ ^ 1)), <- Rmult_assoc.
+       rewrite (Cpow_add_r _ 1), Cmod_mult, <- Rmult_assoc.
+       apply Rmult_le_compat_r; try (apply Cmod_ge_0). 
+       eapply Rle_trans; try apply poly_bound_le_1.
+       rewrite Cmod_mult, Cmod_R, Rabs_pos_eq; lra.
+       rewrite Cmod_mult, Cmod_R, Rabs_pos_eq; simpl; try lra.
+       rewrite Cmult_1_r; lra.
+Qed.
+
+Lemma bound_lemma2 : forall (z a0 ak : C) (ϵ : R) (k : nat) (p : Polynomial),
+  a0 <> C0 -> ak <> C0 -> 0 < ϵ < 1 ->
+  Peval p <> Peval [] -> 
+  z ^ (k + 1) = (-a0 / ak) ->  
+  ϵ <= 1 * / Cmod z ->
+  ϵ < (Cmod a0) / ((poly_coef_norm p) * (Cmod z) ^ (k + 2)) ->
+  (Cmod a0) * (1 - ϵ^(k + 1)) + (poly_coef_norm p) * Cmod (z ^ (k + 2)) * ϵ^(k + 2) <
+   Cmod a0.
+Proof. intros. 
+       assert (Hz : z <> C0).
+       { apply (nonzero_nth_root (-a0 / ak) z (k+1)); try lia; try easy.
+         unfold not; intros; apply H.
+         apply (Cmult_simplify _ _ (-1) (-1)) in H6; auto.
+         replace (- a0 / ak * -1) with (a0 * / ak) in H6 by lca.
+         apply (Cmult_simplify _ _ ak ak) in H6; auto.
+         rewrite <- Cmult_assoc, Cmult_0_l, Cmult_0_l, Cinv_l in H6; auto.
+         rewrite <- H6; lca. }
+       destruct (Req_dec (poly_coef_norm p) 0).
+       - apply norm_0_iff_0 in H6; easy.
+       - rewrite <- Rplus_0_r.
+         unfold Rminus.
+         rewrite Rmult_plus_distr_l, Rmult_1_r.
+         rewrite Rplus_assoc.
+         apply Rplus_lt_compat_l.
+         replace (Cmod a0 * - ϵ^(k+1) + poly_coef_norm p * Cmod (z^(k+2)) * ϵ^(k+2))%R
+           with ((poly_coef_norm p * Cmod (z^(k+2)) * ϵ^(k+2)) - (Cmod a0 * ϵ^(k+1)))%R by lra.
+         apply Rlt_minus_l.
+         rewrite Rplus_0_l.
+         replace (k + 2)%nat with (1 + (k + 1))%nat by lia.
+         rewrite (pow_add _ 1).
+         rewrite <- Rmult_assoc.
+         apply Rmult_lt_compat_r; simpl. 
+         apply pow_lt; easy.
+         replace (z * z ^ (k + 1)) with (z ^ (k + 2)).
+         rewrite Rmult_comm, Rmult_1_r. 
+         apply (Rmult_lt_reg_r (/ (poly_coef_norm p * Cmod z ^ (k + 2)))).
+         apply Rinv_0_lt_compat; apply Rmult_lt_0_compat.
+         destruct (poly_coef_norm_ge_0 p); try easy.
+         symmetry in H7; easy.
+         apply pow_lt.
+         apply Cmod_gt_0; auto.
+         rewrite Rmult_assoc. 
+         replace (poly_coef_norm p * Cmod (z ^ (k + 2)) * 
+                    / (poly_coef_norm p * Cmod z ^ (k + 2)))%R with 1.
+         rewrite Rmult_1_r; easy.
+         rewrite Cmod_pow, Rinv_r; auto.
+         apply Rmult_integral_contrapositive_currified; auto.
+         apply pow_nonzero.
+         unfold not; intros; apply Hz.
+         apply Cmod_eq_0; easy.
+         replace (k + 2)%nat with (1 + (k + 1))%nat by lia.
+         rewrite (Cpow_add_r _ 1); lca.
+Qed.
+
+(* this proof is pretty ugly and repetative. TODO: make better *)
+Lemma get_smaller_norm_output : forall (a0 ak : C) (k : nat) (p : Polynomial),
+  a0 <> C0 -> ak <> C0 -> 
+  exists c, Cmod (a0 :: (repeat C0 k) ++ [ak] ++ p)[[c]] < Cmod a0.
+Proof. intros. 
+       destruct (nth_root (-a0 / ak) (k+1)) as [z H1]; try lia.
+       assert (H2 : z <> C0).
+       { apply (nonzero_nth_root (-a0 / ak) z (k+1)); try lia; try easy.
+         unfold not; intros; apply H.
+         apply (Cmult_simplify _ _ (-1) (-1)) in H2; auto.
+         replace (- a0 / ak * -1) with (a0 * / ak) in H2 by lca.
+         apply (Cmult_simplify _ _ ak ak) in H2; auto.
+         rewrite <- Cmult_assoc, Cmult_0_l, Cmult_0_l, Cinv_l in H2; auto.
+         rewrite <- H2; lca. }
+       destruct (Peq_0_dec p).
+       - assert (H' : exists ϵ, 0 < ϵ < 1 /\ ϵ * Cmod z <= 1).
+         { exists (Rmin (/ 2) (/ Cmod z)); repeat split.
+           apply Rmin_glb_lt; apply Rinv_0_lt_compat; try lra.
+           apply Cmod_gt_0; auto.
+           eapply Rle_lt_trans; try apply Rmin_l; lra.
+           assert (H' := (Rmin_r (/ 2) (/ Cmod z))).
+           apply (Rmult_le_compat_r (Cmod z)) in H'.
+           rewrite Rinv_l in H'; try easy.
+           unfold not; intros; apply H2; apply Cmod_eq_0; easy.
+           apply Cmod_ge_0. }
+         destruct H' as [ϵ [H3 H4] ].
+         exists (ϵ * z).
+         apply (bound_lemma1 _ _ _ ϵ _ p) in H1; auto.
+         apply norm_0_iff_0 in p0; rewrite p0, Rmult_0_l, Rmult_0_l, Rplus_0_r in *.
+         eapply Rle_lt_trans; try apply H1.
+         rewrite <- Rmult_1_r.
+         apply Rmult_lt_compat_l; try (apply Cmod_gt_0; easy).
+         apply Rlt_minus_l.
+         assert (H' : 0 < ϵ ^ (k + 1)).
+         apply pow_lt; lra. 
+         lra. 
+       - assert (H' : exists ϵ, 0 < ϵ < 1 /\ ϵ <= 1 * / Cmod z /\ 
+                             ϵ < (Cmod a0) / ((poly_coef_norm p) * (Cmod z) ^ (k + 2))).
+         { exists (Rmin ((1 * / Cmod z) * /2) 
+                   (Rmin ((Cmod a0 / (poly_coef_norm p * Cmod z ^ (k + 2))) * /2) (/ 2))).
+           repeat split.
+           repeat apply Rmin_glb_lt; try lra.
+           repeat apply Rmult_lt_0_compat; try apply Rinv_0_lt_compat; try lra.
+           apply Cmod_gt_0; auto.
+           repeat apply Rdiv_lt_0_compat; try lra.
+           apply Cmod_gt_0; auto.
+           apply Rmult_lt_0_compat.
+           destruct (poly_coef_norm_ge_0 p); try easy.
+           symmetry in H3; apply norm_0_iff_0 in H3; easy.
+           apply pow_lt.
+           apply Cmod_gt_0; auto.
+           do 2 (eapply Rle_lt_trans; try apply Rmin_r); lra.
+           eapply Rle_trans; try apply Rmin_l. 
+           rewrite <- Rmult_1_r.
+           apply Rmult_le_compat_l; try lra.
+           replace (1 * / Cmod z)%R with (1 / Cmod z)%R by easy.
+           left; apply Rdiv_lt_0_compat; try lra.
+           apply Cmod_gt_0; auto.
+           eapply Rle_lt_trans; try apply Rmin_r. 
+           eapply Rle_lt_trans; try apply Rmin_l. 
+           rewrite <- Rmult_1_r.
+           apply Rmult_lt_compat_l; try lra.
+           apply Rdiv_lt_0_compat.
+           apply Cmod_gt_0; auto.
+           apply Rmult_lt_0_compat.
+           destruct (poly_coef_norm_ge_0 p); try easy.
+           symmetry in H3; apply norm_0_iff_0 in H3; easy.
+           apply pow_lt.
+           apply Cmod_gt_0; auto. }
+         destruct H' as [ϵ [H3 [H4 H5] ] ].
+         assert (H6 := H1).
+         apply (bound_lemma2 _ _ _ ϵ _ p) in H1; auto.
+         exists (ϵ * z).
+         eapply Rle_lt_trans; try apply H1.
+         apply bound_lemma1; auto.
+         apply (Rmult_le_reg_r (/ Cmod z)); try apply Rinv_0_lt_compat.
+         apply Cmod_gt_0; auto.
+         rewrite Rmult_assoc, Rinv_r; try lra.
+         unfold not; intros; apply H2.
+         apply Cmod_eq_0; easy.
+Qed.
+
+Lemma FTA_min_at_0 : forall (p : Polynomial) (a : C),
+  (Polynomial.degree (a :: p) > 0)%nat -> 
+  (forall c, Cmod (a :: p)[[C0]] <= Cmod (a :: p)[[c]]) ->
+  a = C0.
+Proof. intros. 
+       destruct (Ceq_dec a C0); try easy.
+       destruct (Peq_0_dec p).
+       rewrite p0 in H. 
+       unfold degree, compactify, prune in H; simpl in H.
+       destruct (Ceq_dec a C0); easy.
+       apply first_nonzero_coef in n0.
+       destruct n0 as [ak [k [p' [H1 H2] ] ] ].
+       destruct (get_smaller_norm_output a ak k p') as [z H3]; auto.
+       rewrite <- H2 in H3.
+       assert (H4 := H0 z).
+       assert (H' : (a :: p) [[C0]] = a).
+       { unfold Peval; simpl length.
+         rewrite <- Cplus_0_r, <- Csum_extend_l.
+         apply Cplus_simplify; try lca.
+         apply Csum_0_bounded; intros. 
+         simpl; lca. }
+       rewrite H' in H4.
+       lra.
+Qed.
 
 Theorem Fundamental_Theorem_Algebra : forall (p : Polynomial),
   (Polynomial.degree p > 0)%nat -> (exists c : Complex.C, p[[c]] = C0).
-Proof. Admitted. 
+Proof. intros.
+       destruct (poly_min p) as [min H0].
+       assert (H1 : forall c, Cmod (poly_shift p (-min))[[C0]] <= Cmod (poly_shift p (-min))[[c]]).
+       { intros. 
+         do 2 rewrite <- poly_shift_ver.
+         replace (0 - - min) with min by lca.
+         apply H0. }
+       assert (H2 := (poly_shift_degree p (-min))).
+       destruct (poly_shift p (- min)) as [| a] eqn:E.
+       rewrite H2 in H.
+       unfold degree, compactify, prune in H; simpl in H; lia.
+       apply FTA_min_at_0 in H1.
+       exists (0 - - min).
+       rewrite poly_shift_ver, E.
+       unfold Peval.
+       apply Csum_0_bounded; intros. 
+       destruct x; simpl; subst; lca.
+       rewrite <- H2; easy.
+Qed.
+
+
+(*****)
+(*****)
+

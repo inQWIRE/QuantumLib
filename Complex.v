@@ -690,6 +690,18 @@ Proof.
       assumption.
 Qed.  
 
+Lemma Cpow_add_r : forall (c : C) (a b : nat), c ^ (a + b) = c ^ a * c ^ b.
+Proof. induction a as [| a']; intros. 
+       - lca.
+       - simpl; rewrite IHa'; lca.
+Qed.
+
+Lemma Cpow_mul_l : forall (c1 c2 : C) (n : nat), (c1 * c2) ^ n = c1 ^ n * c2 ^ n.
+Proof. induction n as [| n']; intros. 
+       - lca.
+       - simpl; rewrite IHn'; lca.
+Qed.
+
 Lemma Cconj_simplify : forall (c1 c2 : C), c1^* = c2^* -> c1 = c2.
 Proof. intros. 
        assert (H1 : c1 ^* ^* = c2 ^* ^*). { rewrite H; easy. }

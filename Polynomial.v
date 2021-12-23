@@ -190,6 +190,34 @@ Proof. intros.
        rewrite repeat_length; lia. 
 Qed.
 
+Lemma nth_repeat : forall {X} (x : X) (i n : nat),
+  (nth i (repeat x n) x) = x.
+Proof. induction i as [| i'].
+       - destruct n; easy.
+       - destruct n; try easy.
+         simpl in *. 
+         apply IHi'.
+Qed.
+
+Lemma mul_by_x_to_n : forall (f : Polynomial) (n : nat) (c : C),
+  ((repeat C0 n) ++ f)[[c]] = f[[c]] * c^n.
+Proof. intros.   
+       unfold Peval.
+       rewrite app_length, Csum_sum, <- Cplus_0_l.
+       apply Cplus_simplify.
+       apply Csum_0_bounded; intros. 
+       rewrite app_nth1, nth_repeat; auto; lca.
+       rewrite Csum_mult_r.
+       apply Csum_eq_bounded; intros. 
+       rewrite app_nth2_plus, repeat_length, Cpow_add_r; lca.
+Qed.
+
+Lemma app_eval_to_mul : forall (f g : Polynomial) (c : C),
+  (f ++ g)[[c]] = f[[c]] + c^(length f) * g[[c]].
+Proof. intros. 
+       rewrite Cmult_comm, app_eval, mul_by_x_to_n; easy.
+Qed.
+ 
 (* Now we show that Peq is an equivalence relation, and we prove compatability lemmas *)
 
 
@@ -246,7 +274,6 @@ Proof. intros c p1 p2 H.
        do 2 rewrite cons_eval.
        rewrite H; easy. 
 Qed. 
-
 
 
 (* now we prove some basic lemmas *)
@@ -925,6 +952,13 @@ Proof. induction p as [| a]; try easy.
        left; easy. 
 Qed.
 
+Lemma Peq_0_eq_repeat_0 : forall (p : Polynomial),
+  p ≅ [] -> p = repeat C0 (length p).
+Proof. intros.  
+       apply same_elem_same_rev.
+       apply Peq_nil_contains_C0; easy. 
+Qed.
+
 Lemma Peq_nil_rev_Peq_nil : forall (p : Polynomial),
   p ≅ [] -> rev p = p. 
 Proof. intros.
@@ -1334,6 +1368,16 @@ Proof. apply ind_from_end; try easy.
          apply app_nil_end.
 Qed.
 
+Lemma compactify_breakdown : forall (p : Polynomial),
+  Peval p <> Peval [] ->
+  (exists a p', a <> C0 /\ compactify p = (p' ++ [a])).
+Proof. intros. 
+       apply C0_end_breakdown in H.
+       destruct H as [n [a [p' [H H0] ] ] ].
+       exists a, p'; split; auto.
+       rewrite H0, app_C0_compactify_reduce, app_nonzero_compactify_reduce; easy.
+Qed.
+
 Lemma compactify_Pmult : forall (p1 p2 : Polynomial),
   Peval p1 <> Peval [] -> Peval p2 <> Peval [] ->
   compactify p1 *, compactify p2 = compactify (p1 *, p2).
@@ -1429,7 +1473,7 @@ Qed.
 
 
 Lemma Psum_degree : forall (f : nat -> Polynomial) (n deg : nat), 
-  (forall i, degree (f i) <= deg) -> degree (Psum f n) <= deg.
+  (forall i, i < n -> degree (f i) <= deg) -> degree (Psum f n) <= deg.
 Proof. induction n as [| n'].
        - intros; simpl.  
          unfold degree, compactify; simpl.
@@ -1440,4 +1484,190 @@ Proof. induction n as [| n'].
          apply Max.max_lub; auto. 
 Qed.
 
+(* we can now prove the zero product property for polynomials *)
+Lemma Pmult_neq_0 : forall (p1 p2 : Polynomial),
+  Peval p1 <> Peval [] -> Peval p2 <> Peval [] ->
+  Peval (p1 *, p2) <> Peval []. 
+Proof. intros. 
+       destruct (length (compactify p1)) as [| n] eqn:E1. 
+       - destruct (compactify p1) eqn:E; try easy.
+         unfold not; intros; apply H.
+         rewrite p_Peq_compactify_p, E; easy.
+       - destruct n as [| n].
+         + destruct (compactify p1) eqn:E; try easy.
+           destruct p; try easy.
+           assert (H' : c <> C0).
+           { unfold not; intros; apply H.
+             rewrite (p_Peq_compactify_p p1), E, H1.
+             apply C0_Peq_nil. }
+           unfold not; intros; apply H0.
+           assert (H2 : (p1 *, p2) ≅ []). easy.
+           rewrite (p_Peq_compactify_p p1), E in H2.
+           apply functional_extensionality; intros. 
+           assert (H3 : ([c] *, p2)[[x]] = [] [[x]]). 
+           rewrite H2; easy. 
+           rewrite Pmult_eval in H3.
+           replace (([]) [[x]]) with C0 in * by easy.            
+           replace (([c]) [[x]]) with c in * by lca. 
+           destruct (Ceq_dec ((p2) [[x]]) C0); try easy. 
+           apply (Cmult_neq_0 c) in n; easy.
+         + apply (Pmult_degree p1 p2) in H; auto.
+           assert (H' : degree (p1 *, p2) > 0).
+           { rewrite H.
+             unfold degree.
+             rewrite E1; lia. }
+           destruct (Peq_0_dec (p1 *, p2)); try easy. 
+           rewrite p in H'.
+           easy.
+Qed.
 
+
+(*****************)
+(* Defining Ppow *)
+(*****************)
+
+Fixpoint Ppow (p : Polynomial) (n : nat) :=
+  match n with
+  | 0 => [C1]
+  | S n' => (Ppow p n') *, p
+  end.
+
+Add Parametric Morphism : Ppow
+  with signature Peq ==> eq ==> Peq as Ppow_mor.
+Proof. intros p1 p2 H n. 
+       induction n as [| n']; try easy.
+       simpl. 
+       rewrite IHn', H; easy.
+Qed.
+
+Lemma Ppow_eval : forall (p : Polynomial) (n : nat) (a : C),
+  (Ppow p n)[[a]] = ((p[[a]])^n)%C.
+Proof. induction n as [| n'].
+       - intros; unfold Peval; simpl; lca. 
+       - intros; simpl. 
+         rewrite Pmult_eval.
+         rewrite IHn'; lca.
+Qed.
+
+Lemma Ppow_neq_0 : forall (p : Polynomial) (n : nat),
+  Peval p <> Peval [] ->
+  Peval (Ppow p n) <> Peval [].
+Proof. induction n as [| n'].
+       - intros; simpl. 
+         unfold not; intros; apply C1_neq_C0.
+         apply (f_equal_gen _ _ C1 C1) in H0; try easy.
+         unfold Peval in H0; simpl in H0.
+         rewrite <- H0; lca.
+       - intros; simpl.
+         apply Pmult_neq_0; try apply IHn'; easy.
+Qed.
+
+Lemma Ppow_degree : forall (p : Polynomial) (n : nat),
+  degree (Ppow p n) = n * (degree p).
+Proof. induction n as [| n'].
+       - unfold degree, compactify, prune; simpl. 
+         destruct (Ceq_dec C1 C0); easy.
+       - destruct (Peq_0_dec p); simpl. 
+         + rewrite p0, Pmult_0_r.
+           unfold degree; simpl; lia.
+         + rewrite Pmult_degree, IHn'; try apply Ppow_neq_0; try easy.
+           lia. 
+Qed.
+
+(********************************************)
+(* Defining poly_shift, to shift polynomial *)
+(********************************************)
+
+Definition poly_shift (p : Polynomial) (m : C) : Polynomial :=
+  Psum (fun i => [nth i p C0] *, (Ppow [-m;  C1] i)) (length p).
+
+Lemma poly_shift_ver : forall (p : Polynomial) (m c : C),
+  p[[c - m]] = (poly_shift p m)[[c]].
+Proof. intros. 
+       unfold poly_shift. 
+       rewrite Psum_eval.
+       apply Csum_eq_bounded; intros. 
+       rewrite Pmult_eval, Ppow_eval. 
+       unfold Peval; simpl. 
+       replace (0%R + - m * C1 + C1 * (c * C1))%C with (c - m)%C by lca.
+       lca. 
+Qed.
+
+Add Parametric Morphism : poly_shift
+  with signature Peq ==> eq ==> Peq as polyshift_mor.
+Proof. intros p1 p2 H m. 
+       unfold Peq; apply functional_extensionality; intros. 
+       do 2 rewrite <- poly_shift_ver.
+       rewrite H; easy.
+Qed.
+
+Lemma poly_shift_const : forall (a m : C),
+  [a] ≅ (poly_shift [a] m).
+Proof. unfold Peq, Peval; intros. 
+       apply functional_extensionality; simpl. 
+       intros; lca.
+Qed.
+ 
+(* this proof got really long somehow *)
+Lemma poly_shift_degree : forall (p : Polynomial) (m : C),
+  degree p = degree (poly_shift p m).
+Proof. intros.
+       rewrite p_Peq_compactify_p.
+       destruct (length (compactify p)) as [| n] eqn:E.
+       - destruct (compactify p); try easy.
+         unfold poly_shift; simpl. 
+         rewrite C0_Peq_nil; easy.
+       - destruct (Peq_0_dec p).
+         + rewrite Peq_0_compactify_0 in E; easy.
+         + apply compactify_breakdown in n0.
+           destruct n0 as [a [p' [H H0] ] ]. 
+           destruct (length p') as [| n'] eqn:E1.
+           destruct p'; try easy.
+           rewrite H0; simpl. 
+           rewrite <- poly_shift_const; easy.
+           unfold poly_shift.  
+           rewrite H0, app_length, Nat.add_1_r; simpl.  
+            assert (H1 : degree (p' ++ [a]) =
+                          degree
+                            (map (Cmult (nth (Datatypes.length p') (p' ++ [a]) C0))
+                                 (Ppow [- m; C1] (Datatypes.length p')) +, [C0])).
+           { rewrite nth_middle.
+             replace (map (Cmult a) (Ppow [- m; C1] (Datatypes.length p')) +, [C0]) with
+               ([a] *, (Ppow [- m; C1] (Datatypes.length p'))) by easy.
+             rewrite Pmult_degree, Ppow_degree. 
+             unfold degree.
+             rewrite <- H0, compactify_idempotent, H0, app_length; simpl.
+             unfold compactify, prune; simpl.
+             destruct (Ceq_dec a C0); try easy.
+             assert (H' := C1_neq_C0).
+             destruct (Ceq_dec C1 C0); try easy; simpl; lia.
+             unfold not; intros. 
+             apply (f_equal_gen _ _ C1 C1) in H1; auto.
+             unfold Peval in H1; simpl in H1.
+             apply H; rewrite <- H1; lca.
+             apply Ppow_neq_0.
+             unfold not; intros; apply C1_neq_C0.
+             apply (f_equal_gen _ _ (m + C1)%C (m + C1)%C) in H1; auto.
+             unfold Peval in H1; simpl in H1; rewrite <- H1; lca. }
+           rewrite Pplus_degree2; try easy.
+           rewrite <- H1.
+           replace (degree (p' ++ [a])) with (length p') by 
+           (unfold degree; rewrite <- H0, compactify_idempotent, H0, app_length; simpl; lia). 
+           rewrite E1. 
+           apply le_lt_n_Sm; apply Psum_degree; intros. 
+           replace (map (Cmult (nth i (p' ++ [a]) C0)) (Ppow [- m; C1] i) +, [C0]) with
+             ([(nth i (p' ++ [a]) C0)] *, (Ppow [- m; C1] i)) by easy.
+           destruct (Peq_0_dec [nth i (p' ++ [a]) 0%R]).
+           rewrite p0; unfold degree, compactify, prune; simpl; lia.
+           rewrite Pmult_degree, Ppow_degree; try easy.
+           unfold degree, compactify, prune; simpl.
+           destruct (Ceq_dec C1 C0); try (apply C1_neq_C0 in e; easy).
+           destruct (Ceq_dec (nth i (p' ++ [a]) C0)); simpl; lia.
+           apply Ppow_neq_0.
+           unfold not; intros; apply C1_neq_C0.
+           apply (f_equal_gen _ _ (m + C1)%C (m + C1)%C) in H3; auto.
+           unfold Peval in H3; simpl in H3; rewrite <- H3; lca.
+Qed.
+
+
+(*****)

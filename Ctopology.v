@@ -63,7 +63,7 @@ Infix "⩦" := eq_set (at level 0) : topology_scope.
 Infix "\" := setminus (at level 0) : topology_scope.
 Infix "@" := image (at level 0) : topology_scope.
 Notation "f *{ A }" := (preimage f A) (at level 0) : topology_scope.
-Notation "A *" := (complement A) (at level 0) : topology_scope.
+Notation "A `" := (complement A) (at level 0) : topology_scope.
 Infix "∈" := is_in (at level 0) : topology_scope.
 Notation "B( a , ϵ )" := (ϵ_disk a ϵ) (at level 30, no associativity) : topology_scope.
 
@@ -72,7 +72,7 @@ Definition open (A : Cset) : Prop :=
   forall c, A c -> exists ϵ, ϵ > 0 /\ B(c,ϵ) ⊂ A.
 
 Definition closed (A : Cset) : Prop :=
-  open (A*).
+  open (A`).
 
 Definition empty_set : Cset :=
   fun _ => False. 
@@ -231,10 +231,10 @@ Proof. unfold subset, eq_set; intros.
 Qed.
 
 Lemma subset_not : forall (A B : Cset), 
-  ~ (A ⊂ B) -> (exists a, A a /\ B* a).
+  ~ (A ⊂ B) -> (exists a, A a /\ B` a).
 Proof. intros. 
-       destruct (Classical_Prop.classic (exists a : C, A a /\ (B) * a)); auto. 
-       assert (H1 : forall a, ~ (A a /\ (B) * a)).
+       destruct (Classical_Prop.classic (exists a : C, A a /\ (B) ` a)); auto. 
+       assert (H1 : forall a, ~ (A a /\ (B) ` a)).
        { unfold not; intros. 
          apply H0; exists a; easy. }
        assert (H2 : A ⊂ B).
@@ -249,6 +249,16 @@ Proof. intros.
        easy.
 Qed.
 
+
+(* some image and preimage relationships with subsets *)
+
+Lemma subset_image : forall (A B : Cset) (f : C -> C),
+  A ⊂ B -> (f @ A) ⊂ (f @ B).
+Proof. unfold subset; intros. 
+       destruct H0 as [x [H0 H1] ].
+       apply H in H0.
+       exists x; easy. 
+Qed.
 
 (* showing subset relationships between squares, circles, and rectangles *) 
 Lemma circle_in_square : forall (cen : C) (s : R),
@@ -314,8 +324,12 @@ Proof. intros.
          eapply Rle_lt_trans; try apply Rabs_triang; lra.
 Qed.
 
-       
-
+Lemma square_contains_center : forall (cen : C) (s : R),
+  s > 0 -> open_square cen s cen.
+Proof. intros. 
+       unfold open_square.
+       do 2 rewrite Rminus_eq_0, Rabs_R0; easy.
+Qed.
 
 (** some lemmas about open/closed sets *)
 
@@ -355,7 +369,7 @@ Qed.
 Lemma closed_ball_closed : forall (a : C) (ϵ : R),
   closed (fun c' => Cmod (c' - a) <= ϵ).
 Proof. intros; unfold closed. 
-       assert (H' : (fun c' : C => Cmod (c' - a) <= ϵ) * ⩦ (fun c' : C => Cmod (c' - a) > ϵ)).
+       assert (H' : (fun c' : C => Cmod (c' - a) <= ϵ) ` ⩦ (fun c' : C => Cmod (c' - a) > ϵ)).
        { apply subset_equal; unfold subset, complement; intros; lra. } 
        rewrite H'.
        apply closed_ball_complement_open.
@@ -405,7 +419,7 @@ Qed.
 (** some lemmas showing basic properties *)
 
 Lemma complement_involutive : forall (A : Cset),
-  (A*)* ⩦ A.
+  (A`)` ⩦ A.
 Proof. unfold complement; intros. 
        apply subset_equal.
        - unfold subset; intros. 
@@ -676,6 +690,50 @@ Proof. intros.
          intros; apply H; right; apply H0.
 Qed.
 
+Lemma app_union : forall (l1 l2 : list Cset),
+  (big_cup (list_to_cover (l1 ++ l2))) ⩦ 
+  ((big_cup (list_to_cover l1)) ∪ (big_cup (list_to_cover l2))).
+Proof. induction l1 as [| A].
+       - intros; simpl. 
+         apply subset_equal; auto with Csub_db.
+         unfold subset; intros. 
+         destruct H; try easy. 
+         destruct H; easy. 
+       - intros. 
+         rewrite <- app_comm_cons.
+         rewrite <- big_cup_extend_l.
+         rewrite IHl1.
+         rewrite <- big_cup_extend_l.
+         split; intros. 
+         + destruct H. 
+           left; left; easy.
+           destruct H. left; right; easy.
+           right; easy. 
+         + destruct H. destruct H. 
+           left; easy. 
+           right; left; easy. 
+           right; right; easy. 
+Qed.
+
+Lemma In'_app_or : forall (l1 l2 : list Cset) (A : Cset),
+  In' A (l1 ++ l2) -> In' A l1 \/ In' A l2.
+Proof. induction l1 as [| A0].
+       - intros; right; easy.
+       - intros. 
+         rewrite <- app_comm_cons in H.
+         destruct H.
+         left; left; easy.
+         apply IHl1 in H.
+         destruct H.
+         left; right; easy. 
+         right; easy.
+Qed.
+
+Lemma In'_map : forall {X} (l : list X) (f : X -> Cset) (A : Cset),  
+  In' A (map f l) -> exists (x : X), (f x) ⩦ A /\ In x l.
+Proof. induction l; firstorder (subst; auto).
+Qed.
+
 Lemma arb_cup_open : forall (G : Ccover),
   open_cover G -> open (big_cup G).
 Proof. unfold open_cover, open, big_cup in *; intros. 
@@ -838,16 +896,117 @@ Proof. intros.
 Qed.
 
 
-
 (*************************************************************************)
 (* We now introduce cube_compact and show that is is the same as compact *)
 (*************************************************************************)
 
 Definition cube_cover (G : Ccover) : Prop := 
-  forall A, G A -> exists s cen, A ⩦ (open_square cen s) 
+  forall A, G A -> exists s cen, s > 0 /\ A ⩦ (open_square cen s). 
 
+Definition cube_compact (A : Cset) : Prop :=
+  forall G, cube_cover G -> WF_cover G -> A ⊂ (big_cup G) -> 
+       (exists G', finite_cover G' /\ subcover G' G /\ A ⊂ (big_cup G')).
 
+(* we use this to turn covers to cube_covers *)
+Definition cover_to_cube_cover (G : Ccover) : Ccover :=
+  fun A => (exists s cen A', s > 0 /\ (A ⩦ (open_square cen s)) /\ G A' /\ (open_square cen s) ⊂ A').
 
+Lemma cube_cover_open_cover : forall (G : Ccover),
+  cube_cover G -> open_cover G.
+Proof. unfold open_cover, cube_cover; intros.
+       apply H in H0.
+       destruct H0 as [s [cen [H0 H1] ] ].
+       rewrite H1, square_is_rectangle.
+       apply rect_open; easy.
+Qed.
+
+Lemma WF_ctcc : forall (G : Ccover),
+  WF_cover (cover_to_cube_cover G).
+Proof. unfold WF_cover; intros. 
+       destruct H.
+       destruct H0 as [s [cen [A0 [H0 [H1 [H2 H3] ] ] ] ] ].
+       exists s, cen, A0; split; auto.
+       split; try easy.
+       rewrite <- H1; easy.
+Qed.
+
+Lemma cube_cover_ctcc : forall (G : Ccover),
+  cube_cover (cover_to_cube_cover G).
+Proof. unfold cube_cover; intros. 
+       destruct H as [s [cen [A0 [H0 [H1 [H2 H3] ] ] ] ] ].
+       exists s, cen.
+       split; easy.
+Qed.
+
+Lemma ctcc_in_cover : forall (G : Ccover),
+  open_cover G -> (big_cup G) ⩦ (big_cup (cover_to_cube_cover G)).
+Proof. intros; split; intros. 
+       - destruct H0 as [A [H0 H1] ].
+         assert (H0' := H0).
+         apply H in H0.
+         assert (H2 := H1); apply H0 in H1.
+         destruct H1 as [ϵ [H1 H3] ].
+         exists (open_square c (ϵ / √ 2)). 
+         split. 
+         unfold cover_to_cube_cover.
+         exists (ϵ / √ 2)%R, c, A; split.
+         apply lt_ep_helper in H1; easy. 
+         split; try easy.
+         split; try easy.
+         eapply subset_transitive; try apply H3.
+         apply square_in_circle.
+         apply square_contains_center.
+         apply (lt_ep_helper ϵ); easy.
+       - destruct H0 as [A [H0 H1] ].
+         destruct H0 as [s [cen [A0 [H0 [H2 [H3 H4] ] ] ] ] ].
+         exists A0; split; auto.
+         apply H4; apply H2; easy.
+Qed.
+
+Lemma fin_cubecover_gives_fin_cover : forall (l : list Cset) (G : Ccover),
+  WF_cover G ->
+  subcover (list_to_cover l) (cover_to_cube_cover G) -> 
+  exists l', subcover (list_to_cover l') G /\ 
+          (big_cup (list_to_cover l)) ⊂ (big_cup (list_to_cover l')).
+Proof. induction l as [| A].
+       - intros. exists []; split; try easy.
+       - intros.
+         apply subcover_reduce in H0; destruct H0.
+         apply IHl in H1; auto.
+         destruct H1 as [l' [H1 H2] ].
+         destruct H0 as [s [cen [A0 [H0 [H3 [H4 H5] ] ] ] ] ].
+         exists (A0 :: l').
+         split. 
+         unfold subcover, list_to_cover; intros. 
+         destruct H6.
+         apply (H A0 A1); easy.
+         apply H1; easy.
+         do 2 rewrite <- big_cup_extend_l.
+         unfold subset; intros. 
+         destruct H6. 
+         left; apply H5; apply H3; easy.
+         right; apply H2; easy.
+Qed.
+
+Lemma compact_is_cube_compact : forall (A : Cset),
+  compact A <-> cube_compact A.
+Proof. split; intros. 
+       - unfold cube_compact; intros. 
+         apply cube_cover_open_cover in H0.
+         apply H in H2; easy.
+       - unfold compact, cube_compact in *; intros. 
+         destruct (H (cover_to_cube_cover G)) as [G' [H3 [H4 H5] ] ].
+         apply cube_cover_ctcc.
+         apply WF_ctcc.
+         rewrite <- ctcc_in_cover; easy.
+         destruct H3 as [l H3].
+         destruct (fin_cubecover_gives_fin_cover l G) as [l' [H6 H7] ]; auto.
+         rewrite <- H3; easy.
+         exists (list_to_cover l'); repeat split; try easy.
+         exists l'; easy.
+         eapply subset_transitive; try apply H7.
+         rewrite <- H3; easy.
+Qed.
 
 (*******************************************)
 (* Showing that the closed ball is compact *)
@@ -886,7 +1045,7 @@ Proof. intros.
        left; easy. 
 Qed.
 
-Lemma plc_lt_subset : forall (x x' : R),
+Lemma plc_le_subset : forall (x x' : R),
   x' <= x -> 
   (partial_line x') ⊂ (partial_line x).
 Proof. unfold partial_line, subset; intros. 
@@ -905,7 +1064,7 @@ Proof. intros.
        destruct H0 as [G' [H0 [H1 H2] ] ].
        exists G'; repeat split; auto. 
        eapply subset_transitive.
-       apply plc_lt_subset; eauto.
+       apply plc_le_subset; eauto.
        easy. 
 Qed.
 
@@ -960,7 +1119,7 @@ Proof. unfold compact, unit_line; intros.
            destruct H9 as [ϵ [H9 H10] ].
            assert (H11 : ϵ / 2 > 0).
            { unfold Rdiv. apply Rmult_gt_0_compat; lra. } 
-           assert (H12 : partial_line_covered G (x - ϵ / 2)).
+           assert (H12 : partial_line_covered G (x - ϵ / 2)). 
            { apply (extract_elem_lt_lub (partial_line_covered G) 0 x (ϵ / 2)) in H11; try easy.
              destruct H11 as [x0 [H11 H12] ].
              apply (plc_less x0); auto; lra.  
@@ -1113,12 +1272,17 @@ Proof. intros.
        apply horiz_Cline_compact.
 Qed.
 
-
 (* now the main event, showing a cube is compact *)
+(* we use the same lub approach as before, but need some more lemmas *)
 
 Definition center_square (s : R) : Cset :=
   fun c => -s <= fst c <= s /\ -s <= snd c <= s.
 
+Definition partial_center_square (s x : R) : Cset :=
+  fun c => -s <= fst c <= x /\ -s <= snd c <= s.
+
+Definition partial_center_square_covered (G : Ccover) (s x : R) : Prop :=
+  exists G', finite_cover G' /\ subcover G' G /\ (partial_center_square s x) ⊂ (big_cup G').
 
 Lemma line_in_square : forall (s h : R), 
   -s <= h <= s -> 
@@ -1126,8 +1290,410 @@ Lemma line_in_square : forall (s h : R),
 Proof. unfold subset; intros. 
        unfold verti_Cline, center_square in *.
        destruct H0; subst. easy. 
+Qed.      
+
+Lemma zero_width_square : forall (s : R),
+  (partial_center_square s (-s)) ⩦ (verti_Cline (-s) s (-s)).
+Proof. split; intros. 
+       - unfold verti_Cline, partial_center_square in *.
+         split; try easy.
+         symmetry; apply Rle_le_eq; easy. 
+       - unfold verti_Cline, partial_center_square in *.
+         split; try easy.
+         destruct H; rewrite H0; lra.
+Qed.
+
+Lemma negc_always_covered : forall (G : Ccover) (s : R),
+  s > 0 ->
+  WF_cover G -> open_cover G ->
+  (center_square s) ⊂ (big_cup G) -> 
+  partial_center_square_covered G s (-s).
+Proof. intros. 
+       assert (H3 : (partial_center_square s (-s)) ⊂ (big_cup G)).
+       eapply subset_transitive; try apply H3.
+       rewrite zero_width_square.
+       apply line_in_square; try lra.
+       easy. 
+       rewrite zero_width_square in H3.
+       apply verti_Cline_compact in H3; auto.
+       destruct H3 as [G' H3]. 
+       exists G'; repeat split; try easy.
+       rewrite zero_width_square; easy.
+Qed. 
+
+Lemma pcs_le_subset : forall (s x x' : R),
+  x' <= x -> 
+  (partial_center_square s x') ⊂ (partial_center_square s x).
+Proof. unfold partial_center_square, subset; intros. 
+       repeat split; try easy. 
+       destruct H0 as [ [H0 H1] H2].
+       lra. 
 Qed.       
 
+(* same analogue as plc_less *)
+Lemma pcs_less : forall (s x x' : R) (G : Ccover),
+  x' <= x ->
+  partial_center_square_covered G s x ->
+  partial_center_square_covered G s x'.
+Proof. intros. 
+       unfold partial_center_square_covered in *.
+       destruct H0 as [G' [H0 [H1 H2] ] ].
+       exists G'; repeat split; auto. 
+       eapply subset_transitive.
+       apply pcs_le_subset; eauto.
+       easy. 
+Qed.
+
+Definition cover_to_centered_cube_cover (G : Ccover) (a b h : R) : Ccover :=
+  fun A => (exists s y A', s > 0 /\ A ⩦ (open_square (h, y) s) /\ G A' /\ (open_square (h, y) s) ⊂ A').
+
+Lemma WF_ctccc : forall (G : Ccover) (a b h : R),
+  WF_cover (cover_to_centered_cube_cover G a b h).
+Proof. unfold WF_cover; intros. 
+       destruct H.
+       destruct H0 as [s [y [A0 [H0 [H1 [H2 H3] ] ] ] ] ].
+       exists s, y, A0. 
+       split; auto.
+       split; auto.
+       rewrite <- H; easy. 
+Qed.
+
+Lemma cube_cover_ctccc : forall (G : Ccover) (a b h : R),
+  cube_cover (cover_to_centered_cube_cover G a b h).
+Proof. unfold cube_cover; intros.
+       destruct H as [s [y [A' [H [H1 [H2 H3] ] ] ] ] ].
+       exists s, (h, y); split; auto.
+Qed.
+
+Lemma ctccc_smaller : forall (G : Ccover) (a b h : R),
+  (big_cup (cover_to_centered_cube_cover G a b h)) ⊂ (big_cup G).
+Proof. unfold subset, big_cup; intros. 
+       destruct H as [A [H H0] ].
+       destruct H as [s [y [A' H] ] ].
+       exists A'; split; try easy. 
+       do 2 apply H; easy.
+Qed.
+
+Lemma ctccc_big_enough : forall (G : Ccover) (a b h : R),
+  open_cover G -> (verti_Cline a b h) ⊂ (big_cup G) ->
+  (verti_Cline a b h) ⊂ (big_cup (cover_to_centered_cube_cover G a b h)).
+Proof. intros. 
+       unfold subset; intros.  
+       assert (H' : fst c = h). apply H1.
+       apply H0 in H1.
+       destruct H1 as [A [H1 H2] ].
+       assert (H3 := H1); apply H in H3.
+       destruct (H3 c) as [ϵ [H4 H5] ]; auto.
+       assert (H6 := square_in_circle c ϵ).
+       exists (open_square c (ϵ / √ 2)); split.
+       exists (ϵ / √ 2)%R, (snd c), A.
+       split. 
+       apply (lt_ep_helper ϵ); easy.
+       split. 
+       destruct c; simpl in *; subst; easy.  
+       split; try easy.
+       eapply subset_transitive; try apply H5.
+       destruct c; simpl in *; subst; easy.  
+       apply square_contains_center.
+       apply (lt_ep_helper ϵ); easy.
+Qed.
+
+(* maps a pair to a square whose center is (w, fst p) with side lenght snd p *)
+Definition pair_to_sqaures (w : R) (p : R * R) : Cset := open_square (w, (fst p)) (snd p).
+
+Lemma pts_gives_cube_cover : forall (h : R) (l : list (R * R)),
+  (forall p, In p l -> snd p > 0) -> 
+  cube_cover (list_to_cover (map (pair_to_sqaures h) l)).
+Proof. induction l as [| p].
+       - unfold cube_cover; intros; easy.
+       - unfold cube_cover; intros. 
+         destruct H0.
+         exists (snd p), (h, fst p); split. 
+         apply (H p); left; easy.
+         rewrite H0; easy.
+         apply IHl in H0; try easy.
+         intros.
+         apply (H p0); right; easy. 
+Qed.         
+
+Lemma gen_ccc_list : forall (G : Ccover) (a b h : R) (l : list Cset),
+  subcover (list_to_cover l) (cover_to_centered_cube_cover G a b h) -> 
+  exists l', (forall p, In p l' -> snd p > 0) /\ 
+          eq_cover (list_to_cover (map (pair_to_sqaures h) l')) (list_to_cover l).
+Proof. induction l as [| A].
+       - intros; exists []; easy.  
+       - intros.
+         assert (H0 : subcover (list_to_cover l) (cover_to_centered_cube_cover G a b h)).
+         { unfold subcover; intros. 
+           apply H; right; easy. }
+         apply IHl in H0.
+         assert (H1 : (cover_to_centered_cube_cover G a b h) A).
+         { apply H; left; easy. }
+         assert (H2 : exists (s y : R), s > 0 /\ (A) ⩦ (open_square (h, y) s)).
+         { destruct H1 as [s [y [A0 [H1 H2] ] ] ].
+           exists s, y; easy. } 
+         destruct H2 as [s [y [H2 H3] ] ].
+         destruct H0 as [l' H0].
+         exists ((y, s) :: l').
+         split; intros. 
+         destruct H4; subst; simpl; auto.
+         apply H0; easy.
+         split; intros. 
+         + destruct H4.
+           left; rewrite H3, H4; easy.
+           right; apply H0 in H4; easy.
+         + destruct H4.
+           left; rewrite H4, H3; easy.
+           right; apply H0; easy.
+Qed.
+
+Lemma min_side_length : forall (p0 : R * R) (l : list (R * R)),
+  (forall p, In p (p0 :: l) -> snd p > 0) -> 
+  (exists min, 0 < min /\ (forall p, In p (p0 :: l) -> min < snd p)).
+Proof. induction l as [| p1].
+       - intros.  
+         exists ((snd p0) * /2)%R.
+         split. 
+         apply Rmult_lt_0_compat; try lra. 
+         apply (H p0); left; easy.
+         intros. 
+         destruct H0; try easy; subst.
+         rewrite <- Rmult_1_r.
+         apply Rmult_lt_compat_l; try lra. 
+         apply (H p); left; easy. 
+       - intros. 
+         assert (H' : (forall p : R * R, In p (p0 :: l) -> snd p > 0)).
+         { intros; apply (H p); destruct H0; try (left; easy); do 2 right; auto. }
+         apply IHl in H'.
+         destruct H' as [min [H0 H1] ]. 
+         exists (Rmin min ((snd p1) * /2))%R.
+         split. apply Rmin_glb_lt; auto.
+         apply Rmult_lt_0_compat; try lra. 
+         apply (H p1).
+         right; left; easy.  
+         intros.  
+         destruct H2. 
+         + eapply Rle_lt_trans; try apply Rmin_l.
+           apply H1; left; easy. 
+         + destruct H2; subst. 
+           eapply Rle_lt_trans; try apply Rmin_r.
+           assert (H' : snd p > 0). apply H; right; left; easy.
+           lra. 
+           eapply Rle_lt_trans; try apply Rmin_l.
+           apply H1; right; easy. 
+Qed.
+
+Lemma boost_line : forall (a b h : R) (O : Cset),
+  a < b ->
+  open O -> (verti_Cline a b h) ⊂ O ->
+  exists ϵ, ϵ > 0 /\ (verti_Cline (a - ϵ) (b + ϵ) h) ⊂ O.
+Proof. intros.
+       assert (H2 : (verti_Cline a b h) (h, a)).
+       { unfold verti_Cline; split; simpl; lra. }
+       assert (H3 : (verti_Cline a b h) (h, b)).
+       { unfold verti_Cline; split; simpl; lra. }
+       apply H1 in H2; apply H1 in H3.
+       apply H0 in H2; apply H0 in H3.
+       destruct H2 as [ϵ1 [H2 H4] ].
+       destruct H3 as [ϵ2 [H3 H5] ].
+       exists (Rmin (ϵ1 * /2) (ϵ2 * /2)) .
+       split; try (apply Rmin_Rgt_r; lra). 
+       unfold subset; intros. 
+       destruct H6 as [H6 H7].
+       destruct (Rlt_le_dec b (snd c)).
+       - apply H5.
+         unfold ϵ_disk; destruct c; simpl in *; subst.
+         destruct H6; unfold Cminus, Cmod; simpl. 
+         replace (h + - h)%R with 0 by lra. 
+         rewrite Rmult_0_l, Rplus_0_l, Rmult_1_r, sqrt_square; try lra.
+         assert (H' := (Rmin_r (ϵ1 * /2) (ϵ2 * /2))); lra. 
+       - destruct (Rlt_le_dec (snd c) a).
+         + apply H4.
+           unfold ϵ_disk; destruct c; simpl in *; subst.
+           destruct H6; unfold Cminus, Cmod; simpl. 
+           replace (h + - h)%R with 0 by lra.
+           rewrite Rmult_0_l, Rplus_0_l, Rmult_1_r.  
+           replace ((r2 + - a) * (r2 + - a))%R with (r2 + - a)² by easy.
+           rewrite sqrt_Rsqr_abs, Rabs_left1; try lra.
+           replace (- (r2 + - a))%R with (a - r2)%R by lra. 
+           assert (H' := (Rmin_l (ϵ1 * /2) (ϵ2 * /2))); lra. 
+         + apply H1.
+           unfold verti_Cline; easy.
+Qed.
+
+(* or is THIS the crucial lemma? *)
+Lemma rect_within_centered_sqaures : forall (a b h : R) (l : list (R * R)),
+  a < b -> (forall p, In p l -> snd p > 0) ->
+  (verti_Cline a b h) ⊂ (big_cup (list_to_cover (map (pair_to_sqaures h) l))) ->
+  exists h' s1 s2, s1 > 0 /\ s2 > 0 /\ (verti_Cline a b h) ⊂ (open_rect (h, h') s1 s2) /\
+             (open_rect (h, h') s1 s2) ⊂ (big_cup (list_to_cover (map (pair_to_sqaures h) l))).
+Proof. intros. 
+       destruct l as [| p].
+       - simpl in H1.
+         assert (H' : (verti_Cline a b h) (h, a)).
+         { unfold verti_Cline; split; simpl; try lra. }
+         apply H1 in H'.
+         destruct H'; try easy.
+       - exists ((b + a) * /2)%R.
+         apply boost_line in H1; auto.
+         destruct H1 as [ϵ [H1 H2] ].
+         apply min_side_length in H0.
+         destruct H0 as [min [H0 H3] ].
+         exists min, ((b - a) * /2 + ϵ)%R.
+         split; auto. split.
+         apply Rplus_lt_0_compat; auto.
+         apply Rmult_lt_0_compat; try lra.
+         split.
+         unfold subset, open_rect; intros. 
+         destruct H4; destruct c; subst; simpl in *. 
+         split.
+         rewrite Rminus_eq_0, Rabs_R0; auto.  
+         apply Rabs_def1; lra.
+         unfold subset; intros. 
+         destruct H4; simpl.
+         assert (H' : (verti_Cline (a - ϵ) (b + ϵ) h) (h, snd c)).
+         { split; simpl in *; try easy.
+           apply Rabs_def2 in H5; lra. } 
+         apply H2 in H'.
+         destruct H' as [A [H6 H7] ].
+         exists A; split; simpl; try easy. 
+         unfold list_to_cover in H6.
+         apply In'_map in H6.
+         destruct H6 as [p0 [H6 H8] ].
+         apply H3 in H8.
+         apply H6; apply H6 in H7.
+         destruct c; split; simpl in *; try lra.
+         destruct H7; simpl in *; easy.
+         apply arb_cup_open.
+         apply cube_cover_open_cover.
+         apply pts_gives_cube_cover; easy. 
+Qed.
+
+(* the crucial lemma *)
+Lemma rect_within_fin_cubecover : forall (a b h : R) (l : list Cset),
+  a < b ->
+  cube_cover (list_to_cover l) -> 
+  (verti_Cline a b h) ⊂ (big_cup (list_to_cover l)) -> 
+  exists h' s1 s2, s1 > 0 /\ s2 > 0 /\ (verti_Cline a b h) ⊂ (open_rect (h, h') s1 s2) /\
+                 (open_rect (h, h') s1 s2) ⊂ (big_cup (list_to_cover l)).
+Proof. intros. 
+       apply cube_cover_open_cover in H0. 
+       apply ctccc_big_enough in H1; try easy.
+       apply verti_Cline_compact in H1. 
+       destruct H1 as [G' [H1 [H2 H3] ] ].
+       destruct H1 as [l' H1]. 
+       assert (H2' := H2).
+       rewrite H1 in H2.
+       apply gen_ccc_list in H2.
+       destruct H2 as [l0 [H_ H2] ].       
+       rewrite H1, <- H2 in H3. 
+       apply rect_within_centered_sqaures in H3; auto.
+       destruct H3 as [h' [s1 [s2 [H3 [H4 [H5 H6] ] ] ] ] ].
+       exists h', s1, s2. 
+       split; auto. split; auto. split; auto.
+       eapply subset_transitive; try apply H6.
+       rewrite H2.
+       assert (H' := (ctccc_smaller (list_to_cover l) a b h)).
+       unfold subset; intros; apply H'.
+       assert (H8 : (big_cup G') ⩦ (big_cup ((list_to_cover l')))). rewrite H1; easy.
+       apply H8 in H7.
+       destruct H7 as [A [H7 H9] ].
+       exists A; split; auto.
+       apply cube_cover_open_cover.
+       apply cube_cover_ctccc.
+       apply WF_ctccc.
+Qed.       
+
+
+(** TODO: write a program that reads this proof and makes a more efficient FTA proof. 
+    There must be a better way than this... *)
+Theorem center_square_compact : forall (s : R),  
+  s > 0 -> compact (center_square s).
+Proof. intros. 
+       apply compact_is_cube_compact.
+       unfold cube_compact, center_square; intros. 
+       destruct (Classical_Prop.classic (partial_center_square_covered G s s)).
+       - destruct H3 as [G' H3].
+         exists G'; easy.
+       - destruct (Classical_Prop.classic 
+                     (is_upper_bound (partial_center_square_covered G s) s)).
+         + destruct (completeness (partial_center_square_covered G s)).
+           exists s; easy. 
+           exists (-s)%R. 
+           apply negc_always_covered; try easy. 
+           apply cube_cover_open_cover; easy. 
+           destruct i.
+           assert (H7 : x <= s). 
+           { apply H6; easy. }
+           assert (H8 : (-s) <= x). 
+           { apply H5; apply negc_always_covered; try easy. 
+             apply cube_cover_open_cover; easy. } 
+           assert (H9 :  (verti_Cline (-s) s x) ⊂ (big_cup G)).
+           { eapply subset_transitive; try apply H2.
+             apply line_in_square; easy. }
+           assert (H10 := verti_Cline_compact (-s) s x).
+           apply compact_is_cube_compact in H10.
+           apply H10 in H9; try easy.
+           destruct H9 as [G' [H9 [H11 H12] ] ].
+           destruct H9 as [l H9].
+           assert (H13 : cube_cover (list_to_cover l)).
+           { unfold cube_cover; intros. 
+             rewrite H9 in H11.
+             apply H11 in H13.
+             apply H0 in H13; easy. }
+           rewrite H9 in H12.
+           apply rect_within_fin_cubecover in H12; auto.
+           destruct H12 as [h' [s1 [s2 [H12 [H14 [H15 H16] ] ] ] ] ].
+           assert (H17 : s1 / 2 > 0).
+           { unfold Rdiv; apply Rmult_gt_0_compat; lra. } 
+           assert (H18 : partial_center_square_covered G s (x - s1 / 2)).
+           { apply (extract_elem_lt_lub 
+                      (partial_center_square_covered G s) (-s) x (s1 / 2)) in H17; try easy.
+             destruct H17 as [x0 [H17 H18] ].
+             apply (pcs_less _ x0); auto; lra.  
+             apply negc_always_covered; try easy. 
+             apply cube_cover_open_cover; easy. }
+           assert (H19 : partial_center_square_covered G s (x + s1 / 2)).
+           { destruct H18 as [G'' [H18 [H19 H20] ] ].
+             destruct H18 as [l' H18].
+             exists (list_to_cover (l ++ l')).
+             split. exists (l ++ l'); easy. 
+             split. 
+             unfold subcover; intros. 
+             apply In'_app_or in H21.
+             destruct H21.
+             rewrite H9 in H11; apply H11; easy.
+             rewrite H18 in H19; apply H19; easy.
+             unfold subset; intros. 
+             apply app_union.
+             destruct (Rle_dec (fst c) (x - s1 / 2)).
+             + right.
+               rewrite H18 in H20.
+               apply H20.
+               destruct H21.
+               split; try easy.
+             + left. 
+               apply Rnot_le_gt in n.
+               apply H16.
+               split; simpl. 
+               destruct H21. 
+               assert (H' : s1 / 2 < s1).
+               unfold Rdiv. rewrite <- Rmult_1_r. 
+               apply Rmult_lt_compat_l; lra.
+               destruct H21.  
+               apply Rabs_def1; lra.
+               assert (H22 :  (verti_Cline (- s) s x) (x, snd c)).
+               { destruct H21; split; try easy. }
+               apply H15 in H22.
+               destruct H22; easy. }
+           apply H5 in H19; lra.
+           lra.
+         + apply (not_ub_implies_larger_elem _ (-s)) in H4.
+           destruct H4 as [a' [H4 H5] ].
+           apply (pcs_less s a' s G) in H4; try lra; easy. 
+           apply negc_always_covered; try easy.
+           apply cube_cover_open_cover; easy. 
+Qed.
 
 
 (**********************************************)
@@ -1234,7 +1800,7 @@ Proof. unfold WF_cover, bad_point_cover; intros.
 Qed.
 
 Lemma bpc_covers_almost_all : forall (c : C) (A : Cset),
-  A* c -> A ⊂ (big_cup (bad_point_cover c)).
+  A` c -> A ⊂ (big_cup (bad_point_cover c)).
 Proof. unfold subset; intros. 
        unfold bad_point_cover, big_cup.
        exists (fun c' => Cmod (c' - c) > Cmod (c0 - c) / 2).
@@ -1295,14 +1861,14 @@ Qed.
 
 Lemma add_comp_covers_all : forall (A : Cset) (G : Ccover),
   WF_cover G -> A ⊂ (big_cup G) ->
-  C_ ⊂ (big_cup (fun A' : Cset => G A' \/ (A') ⩦ ((A) *) )).
+  C_ ⊂ (big_cup (fun A' : Cset => G A' \/ (A') ⩦ ((A) `) )).
 Proof. intros.
        unfold subset, C_, big_cup; intros. 
        destruct (Classical_Prop.classic (A c)).
        - apply H0 in H2.
          destruct H2 as [A' [H2 H3] ].
          exists A'; split; auto. 
-       - exists A*; split; auto. 
+       - exists A`; split; auto. 
          right; easy. 
 Qed.
 
@@ -1310,7 +1876,7 @@ Lemma closed_subset_compact : forall (A B : Cset),
   A ⊂ B -> compact B -> closed A -> 
   compact A.
 Proof. unfold compact; intros. 
-       destruct (H0 (fun A' => G A' \/ A' ⩦ ((A) *) )).
+       destruct (H0 (fun A' => G A' \/ A' ⩦ ((A) `) )).
        unfold open_cover; intros. 
        destruct H5; try (rewrite H5; easy). 
        apply H2 in H5; easy.
@@ -1322,7 +1888,7 @@ Proof. unfold compact; intros.
        eapply subset_C_.
        apply add_comp_covers_all; easy. 
        destruct H5. destruct H5 as [l H5].
-       exists (fun A' => x A' /\ ~ (A' ⩦ (A*))).
+       exists (fun A' => x A' /\ ~ (A' ⩦ (A`))).
        split; try split. 
        - apply (finite_cover_subset l).
          unfold WF_cover; intros. 
@@ -1350,29 +1916,190 @@ Proof. unfold compact; intros.
          apply H11; easy. 
 Qed.
 
-  
+Lemma closed_bounded_implies_compact : forall (A : Cset),
+  closed A -> bounded A ->
+  compact A.
+Proof. intros. 
+       destruct H0 as [ϵ H0].
+       assert (H1 : A ⊂ (center_square ϵ)).
+       { unfold subset; intros. 
+         apply H0 in H1.
+         unfold ϵ_disk in H1.
+         replace (c - 0)%C with c in H1 by lca. 
+         assert (H' := (Rmax_Cmod c)).
+         apply (Rle_lt_trans _ _ ϵ) in H'; auto.
+         split. 
+         + apply (Rle_lt_trans (Rabs (fst c)) _ ϵ) in H'; try apply Rmax_l.
+           apply Rabs_def2 in H'; lra.
+         + apply (Rle_lt_trans (Rabs (snd c)) _ ϵ) in H'; try apply Rmax_r.
+           apply Rabs_def2 in H'; lra. }
+       apply closed_subset_compact in H1; auto.
+       destruct (Rlt_le_dec 0 ϵ).
+       apply center_square_compact; easy.
+       unfold compact; intros. 
+       destruct (Rlt_le_dec ϵ 0).
+       exists (list_to_cover []); split. 
+       exists []; easy. split.
+       unfold subcover; intros; easy. 
+       unfold subset; intros. 
+       unfold center_square in H5; lra. 
+       apply Rle_antisym in r; auto; subst.
+       assert (H' : (big_cup G) 0).
+       apply H4. 
+       unfold center_square; simpl; lra.
+       destruct H' as [A' [H5 H6] ].
+       exists (list_to_cover [A']).
+       repeat split. 
+       exists [A']; easy.
+       unfold subcover; intros. 
+       destruct H7; try easy.
+       apply (H3 A' A0); easy. 
+       unfold subset; intros. 
+       destruct H7 as [ [H7 H8] [H9 H10] ]. 
+       replace (-0)%R with 0 in * by lra.
+       apply Rle_antisym in H7; auto.
+       apply Rle_antisym in H9; auto.
+       destruct c; simpl in *; subst. 
+       exists A'. split; auto.
+       left; easy.
+Qed.
 
-       
+Theorem Heine_Borel : forall (A : Cset),
+  compact A <-> closed A /\ bounded A.
+Proof. split; intros. 
+       split. 
+       apply compact_implies_closed; easy.
+       apply compact_implies_bounded; easy.
+       apply closed_bounded_implies_compact; easy.
+Qed.
+
+(** showing that closed sets have a minimum norm element *)
+
+
+Definition nonneg_real_line : Cset := 
+  fun c => fst c >= 0 /\ snd c = 0.
+
+Lemma continuous_Cmod : continuous_on Cmod C_.
+Proof. unfold continuous_on, C_, continuous_at, limit_at_point; intros. 
+       exists ϵ.
+       split; auto; intros. 
+       assert (H3 := Cmod_triangle (x - c) c).
+       assert (H4 := Cmod_triangle (c - x) x).
+       replace (Cminus (RtoC (Cmod x)) (RtoC (Cmod c))) with
+               (RtoC (Rminus (Cmod x) (Cmod c))) by lca.
+       rewrite Cmod_R.
+       apply Rabs_def1.
+       replace (x - c + c) with x in H3 by lca; lra. 
+       replace (c - x + x) with c in H4 by lca.
+       rewrite <- Ropp_minus_distr.
+       apply Ropp_lt_contravar.
+       rewrite Cmod_switch in H2; lra. 
+Qed.
+
+Lemma image_nnp : Cmod @ C_ ⩦ nonneg_real_line.
+Proof. unfold nonneg_real_line.
+       split; intros. 
+       destruct H as [c0 [_ H] ]; subst; simpl.  
+       split; try easy.
+       assert (H' := Cmod_ge_0 c0); lra. 
+       exists (fst c)%R.
+       split; try easy.
+       destruct H; destruct c; simpl in *; subst.
+       apply injective_projections; simpl; try easy.
+       rewrite Cmod_R, Rabs_right; lra.
+Qed.
+
+Lemma not_lb_implies_smaller_elem : forall (E : R -> Prop) (a b : R),
+  E a -> ~ (is_lower_bound E b) ->
+  exists a', E a' /\ a' < b.
+Proof. intros. 
+       destruct (Classical_Prop.classic (exists a' : R, E a' /\ a' < b)); auto. 
+       assert (H' : is_lower_bound E b). 
+       { unfold is_lower_bound; intros. 
+         destruct (Classical_Prop.classic (b <= x)); auto. 
+         apply Rnot_le_lt in H3.
+         assert (H'' : False).
+         apply H1. 
+         exists x; easy. 
+         easy. }
+       easy. 
+Qed.
+
+Lemma extract_elem_gt_glb : forall (E : R -> Prop) (a glb ϵ : R),
+  E a -> ϵ > 0 -> is_glb E glb ->
+  exists x, (E x /\ x < glb + ϵ). 
+Proof. intros. 
+       apply (not_lb_implies_smaller_elem _ a); auto. 
+       unfold not; intros. 
+       destruct H1.
+       apply H3 in H2.
+       lra. 
+Qed.
+
+Lemma closed_line_has_min : forall (A : Cset),
+  closed A -> A ⊂ nonneg_real_line -> 
+  (exists c, A c) ->
+  exists min, A (min, 0) /\ (forall p, A p -> min <= fst p).
+Proof. intros. 
+       assert (H2 : bounded_below (fun x => A (x, 0))).
+       { exists 0; unfold is_lower_bound; intros.
+         apply H0 in H2.
+         destruct H2; simpl in *; lra. }
+       destruct (glb_completeness (fun x : R => A (x, 0))) as [glb [H3 H4] ]; auto.
+       destruct H1; exists (fst x); destruct x; simpl in *.
+       destruct (H0 _ H1); simpl in *; subst; easy.
+       exists glb; split. 
+       destruct (Classical_Prop.classic (A (glb, 0))); auto.
+       unfold closed in H.
+       assert (H' : (A`) (glb, 0)). easy. 
+       apply H in H'.
+       destruct H' as [ϵ [H6 H7] ].
+       destruct H1 as [c0 H1].
+       destruct (extract_elem_gt_glb (fun x : R => A (x, 0)) (fst c0) glb ϵ) as [x [H8 H9] ]; auto.
+       destruct (H0 _ H1); destruct c0; simpl in *; subst; easy. 
+       split; auto. 
+       assert (H' : glb <= x).
+       { apply H3; easy. }
+       assert (H10 : A` (x, 0)).
+       { apply H7.
+         unfold ϵ_disk, Cmod; simpl. 
+         rewrite Ropp_0, Rplus_0_l, Rmult_0_l, Rplus_0_r, Rmult_1_r.
+         replace ((x + - glb) * (x + - glb))%R with ((x + - glb)²) by easy.
+         rewrite sqrt_Rsqr_abs.
+         apply Rabs_def1; try lra. } 
+       easy.
+       intros. 
+       apply H3.
+       destruct p; destruct (H0 _ H5); simpl in *; subst; easy. 
+Qed.
+
+Lemma compact_contains_min_norn_elem : forall (A : Cset),
+  (exists c, A c) -> compact A -> 
+  (exists mne, A mne /\ (forall c, A c -> Cmod mne <= Cmod c)).
+Proof. intros. 
+       apply (continuous_image_compact Cmod) in H0; try apply continuous_Cmod.
+       apply Heine_Borel in H0; destruct H0.
+       apply closed_line_has_min in H0.
+       destruct H0 as [min [H0 H2] ].
+       destruct H0 as [mne [H0 H3] ].
+       exists mne; split; auto.
+       intros. 
+       apply (f_equal fst) in H3; simpl in H3.
+       rewrite H3.
+       assert (H' : (fun x : C => Cmod x) @ (A) (Cmod c)).
+       { exists c; easy. }
+       apply H2 in H'; easy.  
+       rewrite <- image_nnp.
+       apply subset_image; easy. 
+       destruct H.
+       exists (Cmod x).
+       exists x; easy. 
+Qed.
+
+
 
 (****)
 (****)
 (****)
 
 
-
-
-
-
-Lemma poly_min : forall (p : Polynomial), 
-  exists m, (forall c, Cmod p[[m]] <= Cmod p[[c]]).
-Proof. Admitted.
-
-
-(******************)
-(* Must prove FTA *)
-(******************)
- 
-
-Theorem Fundamental_Theorem_Algebra : forall (p : Polynomial),
-  (Polynomial.degree p > 0)%nat -> (exists c : Complex.C, p[[c]] = C0).
-Proof. Admitted. 
