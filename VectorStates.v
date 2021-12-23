@@ -168,6 +168,31 @@ Lemma ket2bra : forall n, (ket n) † = bra n.
 Proof. destruct n; reflexivity. Qed.
 Hint Rewrite ket2bra : ket_db.
 
+(* TODO: add transpose and adjoint lemmas to ket_db? *)
+Lemma ket0_transpose_bra0 : (ket 0) ⊤ = bra 0.
+Proof. solve_matrix. Qed.
+
+Lemma ket1_transpose_bra1 : (ket 1) ⊤ = bra 1.
+Proof. solve_matrix. Qed.
+
+Lemma bra0_transpose_ket0 : (bra 0) ⊤ = ket 0.
+Proof. solve_matrix. Qed.
+
+Lemma bra1_transpose_ket1 : (bra 1) ⊤ = ket 1.
+Proof. solve_matrix. Qed.
+
+Lemma bra1_adjoint_ket1 : (bra 1) † = ket 1.
+Proof. solve_matrix. Qed.
+
+Lemma ket1_adjoint_bra1 : (ket 1) † = bra 1.
+Proof. solve_matrix. Qed.
+
+Lemma bra0_adjoint_ket0 : (bra 0) † = ket 0.
+Proof. solve_matrix. Qed.
+
+Lemma ket0_adjoint_bra0 : (ket 0) † = bra 0.
+Proof. solve_matrix. Qed.
+
 (* Examples using ket_db *)
 Lemma XYZ0 : -Ci .* σx × σy × σz × ∣ 0 ⟩ = ∣ 0 ⟩.
 Proof. autorewrite with ket_db C_db; easy. Qed.
