@@ -31,7 +31,7 @@ Lemma YtimesYid : σy × σy = I 2. Proof. lma'. Qed.
 Lemma ZtimesZid : σz × σz = I 2. Proof. lma'. Qed.
 Lemma HtimesHid : hadamard × hadamard = I 2. Proof. lma'; Hhelper. Qed.
 
-#[global] Hint Resolve ItimesIid XtimesXid YtimesYid ZtimesZid HtimesHid : id_db.
+#[export] Hint Resolve ItimesIid XtimesXid YtimesYid ZtimesZid HtimesHid : id_db.
 
 Lemma ZH_eq_HX : σz × hadamard = hadamard × σx. Proof. lma'. Qed.
 Lemma XH_eq_HZ : σx × hadamard = hadamard × σz. Proof. lma'. Qed.
@@ -44,7 +44,7 @@ Lemma cnotX2 : cnot × (I 2 ⊗ σx) = (I 2 ⊗ σx) × cnot. Proof. lma'. Qed.
 Lemma cnotZ1 : cnot × (σz ⊗ I 2) = (σz ⊗ I 2) × cnot. Proof. lma'. Qed.
 Lemma cnotZ2 : cnot × (I 2 ⊗ σz) = (σz ⊗ σz) × cnot. Proof. lma'. Qed.
 
-#[global] Hint Resolve ZH_eq_HX XH_eq_HZ SX_eq_YS SZ_eq_ZS cnotX1 cnotX2 cnotZ1 cnotZ2 : id_db.
+#[export] Hint Resolve ZH_eq_HX XH_eq_HZ SX_eq_YS SZ_eq_ZS cnotX1 cnotX2 cnotZ1 cnotZ2 : id_db.
 
 
 (************************************************************************)
@@ -1235,8 +1235,8 @@ Proof. intros. induction ls as [| h].
 Qed.
 
 
-#[global] Hint Resolve σx_unitary σy_unitary σz_unitary P_unitary H_unitary T_unitary : unit_db.
-#[global] Hint Resolve cnot_unitary notc_unitary id_unitary Mmult_unitary kron_unitary transpose_unitary unit_scale unit_big_kron: unit_db.
+#[export] Hint Resolve σx_unitary σy_unitary σz_unitary P_unitary H_unitary T_unitary : unit_db.
+#[export] Hint Resolve cnot_unitary notc_unitary id_unitary Mmult_unitary kron_unitary transpose_unitary unit_scale unit_big_kron: unit_db.
 
 
 
@@ -2240,7 +2240,7 @@ Lemma WF_qubitP : WF_Matrix ∣+⟩. Proof. show_wf. Qed.
 Lemma WF_qubitM : WF_Matrix ∣-⟩. Proof. show_wf. Qed.
 Lemma WF_EPRpair : WF_Matrix ∣Φ+⟩. Proof. unfold EPRpair. auto with wf_db.  Qed.
 
-#[global] Hint Resolve WF_qubitP WF_qubitM WF_EPRpair : wf_db. 
+#[export] Hint Resolve WF_qubitP WF_qubitM WF_EPRpair : wf_db. 
 
 Lemma EigenXp : Eigenpair σx (∣+⟩, C1).
 Proof. unfold Eigenpair. lma'.
@@ -2263,5 +2263,5 @@ Proof. unfold Eigenpair. lma'.
 Qed.
 
 
-#[global] Hint Resolve EigenXp EigenXm EigenZ0 EigenZ1 EigenXXB all_v_eigen_I : eig_db.
+#[export] Hint Resolve EigenXp EigenXm EigenZ0 EigenZ1 EigenXXB all_v_eigen_I : eig_db.
 

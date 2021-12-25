@@ -1,15 +1,15 @@
 -R . Top
 
 Complex.v
-Dirac.v
 Eigenvectors.v
 Matrix.v
-Monad.v
-Monoid.v
+Measurement.v
 Pad.v
+Permutations.v
 Polynomial.v
 Prelim.v
+Proportional.v
 Quantum.v
 RealAux.v
 VecSet.v
-
+VectorStates.v

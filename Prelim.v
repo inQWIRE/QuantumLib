@@ -7,7 +7,6 @@ Require Export List.
 
 Export ListNotations.
 
-
 (* Some more than basic nat lemmas that are useful to have *)
 
 Lemma easy_sub : forall (n : nat), S n - 1 = n. Proof. lia. Qed.
@@ -22,7 +21,6 @@ Qed.
 Lemma easy_sub6 : forall (a c b : nat), 
   b < c -> a < b -> c = (a + S (b - a) + (c - b - 1)).
 Proof. intros. lia. Qed.
-
 
 (* Boolean notations, lemmas *)
 
@@ -58,7 +56,7 @@ Proof.
   apply iff_reflect. symmetry. apply Nat.leb_le.
 Qed.
 
-#[global] Hint Resolve blt_reflect ble_reflect beq_reflect : bdestruct.
+#[export] Hint Resolve blt_reflect ble_reflect beq_reflect : bdestruct.
 
 Ltac bdestruct X :=
   let H := fresh in let e := fresh "e" in
@@ -76,7 +74,6 @@ Ltac bdestruct_all :=
   | |- context[?a <=? ?b] => bdestruct (a <=? b)                                       
   | |- context[?a =? ?b] => bdestruct (a =? b)
   end; try (exfalso; lia).
-
 
 (* Distribute functions over lists *)
 
@@ -230,7 +227,6 @@ Proof.
   Opaque skipn.
 Qed.
 
-
 (* option type *)
 
 Definition maybe {A} (o : option A) (default : A) : A :=
@@ -238,8 +234,6 @@ Definition maybe {A} (o : option A) (default : A) : A :=
   | Some a => a
   | None => default
   end.
-
-
 
 (************************************)
 (* Helpful, general purpose tactics *)
@@ -278,7 +272,6 @@ Ltac apply_with_obligations H :=
     [replace g with g'; [apply H|]|]|]|]|]|]|]; trivial end 
   end.
 
-
 (* From SF - up to five arguments *)
 Tactic Notation "gen" ident(X1) :=
   generalize dependent X1.
@@ -290,7 +283,6 @@ Tactic Notation "gen" ident(X1) ident(X2) ident(X3) ident(X4) :=
   gen X4; gen X3; gen X2; gen X1.
 Tactic Notation "gen" ident(X1) ident(X2) ident(X3) ident(X4) ident(X5) :=
   gen X5; gen X4; gen X3; gen X2; gen X1.
-
 
 (***************)
 (* Powers of 2 *)
@@ -311,7 +303,6 @@ Proof. intros. induction b; simpl; try lia;
   try (apply Nat.lt_0_mul'; split; lia). 
 Qed.  
 
-
 Ltac unify_pows_two :=
   repeat match goal with
   (* NB: this first thing is potentially a bad idea, do not do with 2^1 *)
@@ -328,12 +319,9 @@ Ltac unify_pows_two :=
   | [ |- (2^?x = 2^?y)%nat ]                => apply pow_components; try lia 
   end.
 
-
-
 (* general subset to be used in Heisenberg.v *)
 Definition subset_gen {X : Type} (l1 l2 : list X) :=
   forall (x : X), In x l1 -> In x l2.
-
 
 (* an alternate version of subset *)
 Fixpoint subset_gen' {X : Type} (l1 l2 : list X) :=
@@ -341,7 +329,6 @@ Fixpoint subset_gen' {X : Type} (l1 l2 : list X) :=
   | [] => True
   | (l :: l1') => In l l2 /\ subset_gen' l1' l2
   end.
-
 
 Lemma subset_is_subset' : forall (X : Type) (l1 l2 : list X),
     subset_gen' l1 l2 <-> subset_gen l1 l2.
@@ -363,10 +350,7 @@ Proof. intros X l1 l2. split.
              right. apply H'.
 Qed.           
 
-           
-  
 Infix "⊆" := subset_gen (at level 30, no associativity).
-
 
 Lemma subset_cons : forall (X : Type) (l1 l2 : list X) (x : X),
   l1 ⊆ l2 -> l1 ⊆ (x :: l2).
@@ -377,7 +361,6 @@ Proof. intros X l1 l2 x.
        apply H; apply H0.
 Qed.
 
-
 Lemma subset_concat_l : forall (X : Type) (l1 l2 : list X),
   l1 ⊆ (l1 ++ l2).
 Proof. intros X l1 l2.
@@ -385,7 +368,6 @@ Proof. intros X l1 l2.
        apply in_or_app.
        left; apply H.
 Qed.
-
 
 Lemma subset_concat_r : forall (X : Type) (l1 l2 : list X),
   l1 ⊆ (l2 ++ l1).
@@ -395,13 +377,11 @@ Proof. intros X l1 l2.
        right; apply H.
 Qed.
 
-
 Corollary subset_self : forall (X : Type) (l1 : list X),
   l1 ⊆ l1. 
 Proof. intros X l1. assert (H: l1 ⊆ (l1 ++ [])). { apply subset_concat_l. }
        rewrite <- app_nil_end in H. apply H. 
 Qed.
-
 
 Lemma subsets_add : forall (X : Type) (l1 l2 l3 : list X),
   l1 ⊆ l3 -> l2 ⊆ l3 -> (l1 ++ l2) ⊆ l3.
@@ -413,7 +393,6 @@ Proof. intros X l1 l2 l3.
        - apply H2; apply Hl2.
 Qed.
 
-
 Lemma subset_trans : forall (X : Type) (l1 l2 l3 : list X),
     l1 ⊆ l2 -> l2 ⊆ l3 -> l1 ⊆ l3.
 Proof. intros X l1 l2 l3.
@@ -423,9 +402,7 @@ Proof. intros X l1 l2 l3.
        apply H.
 Qed.
 
-
-#[global] Hint Resolve subset_concat_l subset_concat_r subset_self subsets_add subset_trans : sub_db.
-
+#[export] Hint Resolve subset_concat_l subset_concat_r subset_self subsets_add subset_trans : sub_db.
 
 Lemma firstn_subset : forall {X : Type} (n : nat) (ls : list X),
     firstn n ls ⊆ ls.
@@ -451,17 +428,14 @@ Proof. induction n as [| n'].
          right; apply IHn'; apply H.
 Qed.
 
-
-#[global] Hint Resolve firstn_subset skipn_subset : sub_db.
+#[export] Hint Resolve firstn_subset skipn_subset : sub_db.
 
 (******************************)
 (* Some more basic list stuff *)
 (******************************)
 
-
 Definition zipWith {X Y Z: Type} (f : X -> Y -> Z) (As : list X) (Bs : list Y) : list Z :=
   map (uncurry f) (combine As Bs).
-
 
 Lemma zipWith_len_pres : forall {X Y Z : Type} (f : X -> Y -> Z) (n : nat) 
                                 (As : list X) (Bs : list Y),
@@ -472,7 +446,6 @@ Proof. intros.
        rewrite combine_length.
        rewrite H, H0; lia.
 Qed.
-
 
 Lemma zipWith_app_product : forall {X Y Z: Type} (f : X -> Y -> Z) (n : nat) 
                                (l0s l2s : list X) (l1s l3s : list Y),
@@ -487,7 +460,6 @@ Proof. induction n as [| n'].
          reflexivity. 
 Qed.
 
-
 Lemma zipWith_cons : forall {X Y Z : Type} (f : X -> Y -> Z) (a : X) (b : Y) (A : list X) (B : list Y),
   zipWith f (a :: A) (b :: B) = (f a b) :: (zipWith f A B).
 Proof. intros. 
@@ -495,7 +467,6 @@ Proof. intros.
        unfold uncurry. 
        simpl. easy. 
 Qed.
-
 
 Fixpoint first_n (n : nat) : list nat :=
   match n with
@@ -527,7 +498,6 @@ Proof. split.
              apply H.
 Qed.
 
-
 (* defining switch and many lemmas having to do with switch and nth *)
 
 Fixpoint switch {X : Type} (ls : list X) (x : X) (n : nat) :=
@@ -549,7 +519,6 @@ Proof. induction n as [| n'].
          rewrite IHn'. 
          reflexivity. 
 Qed.
-
 
 Lemma switch_map : forall {X Y : Type} (n : nat) (ls : list X) (x : X) (f : X -> Y),
     map f (switch ls x n) = switch (map f ls) (f x) n.
@@ -581,8 +550,6 @@ Proof. intros.
        reflexivity. 
 Qed.
 
-
-
 Lemma nth_switch_hit : forall {X : Type} (n : nat) (ls : list X) (x def : X),
     n < length ls ->
     nth n (switch ls x n) def = x.
@@ -594,8 +561,6 @@ Proof. induction n as [| n'].
          simpl in H.
          nia. 
 Qed.
-
-
 
 Lemma nth_switch_miss : forall {X : Type} (sn n : nat) (ls : list X) (x def : X),
     n <> sn ->
@@ -614,7 +579,6 @@ Proof. induction sn as [| sn'].
            apply H'.
 Qed.
 
-
 Lemma switch_inc_helper : forall {X : Type} (n : nat) (l1 l2 : list X) (x : X),
     length l1 = n -> 
     switch (l1 ++ l2) x n = l1 ++ switch l2 x 0.
@@ -632,7 +596,6 @@ Proof. induction n as [| n'].
          easy. 
 Qed.
 
-
 Lemma switch_inc_helper2 : forall {X : Type} (n : nat) (ls : list X) (x : X),
     n < length ls -> switch ls x n = (firstn n ls) ++ switch (skipn n ls) x 0.
 Proof. intros. 
@@ -646,8 +609,6 @@ Proof. intros.
        nia.  
 Qed.
 
-
-
 Lemma skipn_nil_length : forall {X : Type} (n : nat) (ls : list X),
     skipn n ls = [] -> length ls <= n. 
 Proof. intros. 
@@ -656,7 +617,6 @@ Proof. intros.
        rewrite <- app_nil_end.
        apply firstn_le_length.
 Qed.
-
 
 Lemma skipskip : forall {X : Type} (ls : list X) (n : nat),
     skipn (S n) ls = skipn 1 (skipn n ls).
@@ -670,7 +630,6 @@ Proof. induction ls as [| h].
          reflexivity. 
 Qed.
 
-
 Lemma switch_inc_helper3 : forall {X : Type} (n : nat) (ls : list X) (x : X),
     n < length ls -> switch (skipn n ls) x 0 = [x] ++ (skipn (S n) ls).
 Proof. intros. destruct (skipn n ls) as [| h] eqn:E.
@@ -683,7 +642,6 @@ Proof. intros. destruct (skipn n ls) as [| h] eqn:E.
          reflexivity.
 Qed.
 
-
 Lemma switch_inc : forall {X : Type} (n : nat) (ls : list X) (x : X),
     n < length ls -> switch ls x n = (firstn n ls) ++ [x] ++ (skipn (S n) ls). 
 Proof. intros. 
@@ -693,7 +651,6 @@ Proof. intros.
        apply H. apply H.
 Qed.
 
-
 Lemma nth_base : forall {X : Type} (ls : list X) (x : X),
     ls <> [] -> ls = (nth 0 ls x) :: (skipn 1 ls).
 Proof. intros.
@@ -701,7 +658,6 @@ Proof. intros.
        easy. 
        reflexivity. 
 Qed.
-
 
 Lemma nth_helper : forall {X : Type} (n : nat) (ls : list X) (x : X),
     n < length ls -> skipn n ls = [nth n ls x] ++ skipn (S n) ls.
@@ -720,8 +676,6 @@ Proof. induction n as [| n'].
          apply H''' in H.
          easy.
 Qed.
-         
-
 
 Lemma nth_inc : forall {X : Type} (n : nat) (ls : list X) (x : X),
     n < length ls -> ls = (firstn n ls) ++ [nth n ls x] ++ (skipn (S n) ls). 
@@ -730,8 +684,6 @@ Proof. intros.
        rewrite (firstn_skipn n ls).
        reflexivity. easy. 
 Qed.
-
-
 
 Lemma length_change : forall {X : Type} (A B : list X) (x : X),
   2 ^ (length (A ++ [x] ++ B)) = (2 ^ (length A)) * (2 * (2 ^ (length B))).
@@ -742,9 +694,6 @@ Proof. intros.
        easy.
 Qed.
 
-
-
-
 (* a similar lemma to the one defined by Coq, but better for our purposes *)
 Lemma skipn_length' : forall {X : Type} (n : nat) (ls : list X),
     length (skipn (S n) ls) = length ls - n - 1.
@@ -752,5 +701,3 @@ Proof. intros.
        rewrite skipn_length.
        nia. 
 Qed.
-
-
