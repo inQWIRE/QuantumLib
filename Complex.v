@@ -77,16 +77,12 @@ Definition Cmult (x y : C) : C := (fst x * fst y - snd x * snd y, fst x * snd y 
 Definition Cinv (x : C) : C := (fst x / (fst x ^ 2 + snd x ^ 2), - snd x / (fst x ^ 2 + snd x ^ 2)).
 Definition Cdiv (x y : C) : C := Cmult x (Cinv y).
 
-
 Infix "+" := Cplus : C_scope.
 Notation "- x" := (Copp x) : C_scope.
 Infix "-" := Cminus : C_scope.
 Infix "*" := Cmult : C_scope.
 Notation "/ x" := (Cinv x) : C_scope.
 Infix "/" := Cdiv : C_scope.
-
-
-
 
 (* Added exponentiation *)
 Fixpoint Cpow (c : C) (n : nat) : C :=  
@@ -195,6 +191,7 @@ Proof.
   apply Rmax_case ; apply sqrt_le_1_alt, Rminus_le_0 ;
   unfold Rsqr; simpl ; ring_simplify ; try apply pow2_ge_0; auto.
 Qed.
+
 Lemma Cmod_2Rmax : forall x,
   Cmod x <= sqrt 2 * Rmax (Rabs (fst x)) (Rabs (snd x)).
 Proof.
@@ -208,13 +205,23 @@ Proof.
   apply Rsqr_le_abs_1 in H0 ; unfold pow; rewrite !Rmult_1_r; auto.
 Qed.
 
+Lemma C_neq_0 : forall c : C, c <> 0 -> (fst c) <> 0 \/ (snd c) <> 0.
+Proof.
+  intros.
+  apply Classical_Prop.not_and_or.
+  rewrite <- pair_equal_spec.
+  unfold not in *.
+  replace ((fst c, snd c)) with c by apply surjective_pairing.
+  replace (0, 0)%C with (RtoC 0) by reflexivity.
+  assumption.
+Qed.
+
 (* some lemmas to help simplify addition/multiplication scenarios *)
 Lemma Cplus_simplify : forall (a b c d : C),
     a = b -> c = d -> (a + c = b + d)%C.
 Proof. intros. 
        rewrite H, H0; easy.
 Qed.
-
 
 Lemma Cmult_simplify : forall (a b c d : C),
     a = b -> c = d -> (a * c = b * d)%C.
@@ -251,7 +258,6 @@ Proof. intros Hx. apply injective_projections ; simpl ; field ; auto. Qed.
 
 Lemma RtoC_div (x y : R) : (y <> 0)%R -> RtoC (x / y) = RtoC x / RtoC y.
 Proof. intros Hy. apply injective_projections ; simpl ; field ; auto. Qed.
-
 
 Lemma Cplus_comm (x y : C) : x + y = y + x.
 Proof. apply injective_projections ; simpl ; apply Rplus_comm. Qed.
@@ -320,8 +326,6 @@ Lemma Cmult_plus_distr_r (x y z : C) : (x + y) * z = x * z + y * z.
 Proof.
   apply injective_projections ; simpl ; ring.
 Qed.
-
-
 
 (* I'll be leaving out mixins and Canonical Structures :
 Definition C_AbelianGroup_mixin :=
@@ -484,12 +488,38 @@ Proof. intros c. intros N E. apply N. rewrite E. reflexivity. Qed.
 Lemma RtoC_neq : forall (r : R), r <> 0 -> RtoC r <> 0. 
 Proof. intros. apply C0_fst_neq. easy. Qed.
 
+Lemma Copp_neq_0_compat: forall c : C, c <> 0 -> (- c)%C <> 0.
+Proof.
+ intros c H.
+ apply C0_imp in H as [H | H].
+ apply C0_fst_neq.
+ apply Ropp_neq_0_compat.
+ assumption.
+ apply C0_snd_neq.
+ apply Ropp_neq_0_compat.
+ assumption.
+Qed.
+
 Lemma C1_neq_C0 : C1 <> C0.
 Proof. apply C0_fst_neq.
        simpl. 
        apply R1_neq_R0.
 Qed.
 
+Lemma Cconj_neq_0 : forall c : C, c <> 0 -> c^* <> 0.
+Proof.
+  intros.
+  unfold Cconj.
+  apply C_neq_0 in H.
+  destruct H.
+  - apply C0_fst_neq.
+    simpl.
+    assumption.
+  - apply C0_snd_neq.
+    simpl.
+    apply Ropp_neq_0_compat.
+    assumption.
+Qed.
 
 Lemma nonzero_div_nonzero : forall c : C, c <> C0 -> / c <> C0.
 Proof. intros. 
@@ -519,7 +549,6 @@ Proof.  intros.
         apply Cmult_neq_0; try easy.
         rewrite <- H' in H2. easy.
 Qed.
-
 
 Lemma Cinv_mult_distr : forall c1 c2 : C, c1 <> 0 -> c2 <> 0 -> / (c1 * c2) = / c1 * / c2.
 Proof.
@@ -633,6 +662,7 @@ Lemma Cplus_div2 : /2 + /2 = 1.           Proof. lca. Qed.
 Lemma Cconj_involutive : forall c, (c^*)^* = c. Proof. intros; lca. Qed.
 Lemma Cconj_plus_distr : forall (x y : C), (x + y)^* = x^* + y^*. Proof. intros; lca. Qed.
 Lemma Cconj_mult_distr : forall (x y : C), (x * y)^* = x^* * y^*. Proof. intros; lca. Qed.
+Lemma Cconj_minus_distr :  forall (x y : C), (x - y)^* = x^* - y^*. Proof. intros; lca. Qed.
 
 Lemma Cmult_conj_real : forall (c : C), snd (c * c^*) = 0.
 Proof.
@@ -655,13 +685,18 @@ Proof.
   lra.
 Qed.
 
-Lemma Cpow_add : forall (c : C) (n : nat), c * (c ^ n) = c ^ (S n).
+Lemma Cpow_add : forall (c : C) (n m : nat), (c ^ (n + m) = c^n * c^m)%C.
 Proof.
-  intros.
-  induction n.
-  - lca.
-  - reflexivity.
-Qed. 
+  intros. induction n. simpl. lca.
+  simpl. rewrite IHn. lca.
+Qed.
+
+Lemma Cpow_mult : forall (c : C) (n m : nat), (c ^ (n * m) = (c ^ n) ^ m)%C.
+Proof.
+  intros. induction m. rewrite Nat.mul_0_r. easy.
+  replace (n * (S m))%nat with (n * m + n)%nat by lia.
+  simpl. rewrite Cpow_add. rewrite IHm. lca.
+Qed.
 
 Lemma Cpow_inv : forall (c : C) (n : nat), (forall n', (n' <= n)%nat -> c ^ n' <> 0) -> (/ c) ^ n = / (c ^ n).
 Proof.
@@ -814,6 +849,28 @@ Proof.
     rewrite Rplus_comm.
     rewrite sin2_cos2.
     field.
+Qed.
+
+Lemma Cexp_plus_PI : forall x,
+  Cexp (x + PI) = (- (Cexp x))%C.
+Proof.
+  intros.
+  unfold Cexp.
+  rewrite neg_cos, neg_sin.
+  lca.
+Qed.
+
+Lemma Cexp_minus_PI: forall x : R, Cexp (x - PI) = (- Cexp x)%C.
+Proof.
+  intros x.
+  unfold Cexp.
+  rewrite cos_sym.
+  rewrite Ropp_minus_distr.
+  rewrite Rtrigo_facts.cos_pi_minus.
+  rewrite <- Ropp_minus_distr.
+  rewrite sin_antisym.
+  rewrite Rtrigo_facts.sin_pi_minus.
+  lca.
 Qed.
 
 Lemma Cexp_nonzero : forall θ, Cexp θ <> 0.
@@ -1063,7 +1120,7 @@ Qed.
   
 Hint Rewrite Cexp_0 Cexp_PI Cexp_PI2 Cexp_2PI Cexp_3PI2 Cexp_PI4 Cexp_PIm4
   Cexp_1PI4 Cexp_2PI4 Cexp_3PI4 Cexp_4PI4 Cexp_5PI4 Cexp_6PI4 Cexp_7PI4 Cexp_8PI4
-  Cexp_add Cexp_neg : Cexp_db.
+  Cexp_add Cexp_neg Cexp_plus_PI Cexp_minus_PI : Cexp_db.
 
 Opaque C.
 
@@ -1077,12 +1134,14 @@ Lemma Cdiv_unfold : forall c1 c2, (c1 / c2 = c1 */ c2)%C. Proof. reflexivity. Qe
 (* For proving goals of the form x <> 0 or 0 < x *)
 Ltac nonzero :=
   repeat split;
-   try match goal with
-       | |- not (@eq _ _ (RtoC (IZR Z0))) => apply RtoC_neq
-       | |- not (@eq _ (Cpow _ _) (RtoC (IZR Z0))) => apply Cpow_nonzero; try apply RtoC_neq
-       | |- not (@eq _ Ci (RtoC (IZR Z0))) => apply C0_snd_neq; simpl
-       | |- not (@eq _ (Cexp _) (RtoC (IZR Z0))) => apply Cexp_nonzero
-       end;
+  repeat
+    match goal with
+    | |- not (@eq _ (Copp _) (RtoC (IZR Z0))) => apply Copp_neq_0_compat
+    | |- not (@eq _ (Cpow _ _) (RtoC (IZR Z0))) => apply Cpow_nonzero
+    | |- not (@eq _ Ci (RtoC (IZR Z0))) => apply C0_snd_neq; simpl
+    | |- not (@eq _ (Cexp _) (RtoC (IZR Z0))) => apply Cexp_nonzero
+    | |- not (@eq _ _ (RtoC (IZR Z0))) => apply RtoC_neq
+    end;
   repeat
     match goal with
     | |- not (@eq _ (sqrt (pow _ _)) (IZR Z0)) => rewrite sqrt_pow
@@ -1096,11 +1155,12 @@ Ltac nonzero :=
     | |- Rlt (IZR Z0) (Rmult _ _) => apply Rmult_lt_0_compat
     | |- Rlt (IZR Z0) (Rinv _) => apply Rinv_0_lt_compat
     | |- Rlt (IZR Z0) (pow _ _) => apply pow_lt
-    end; match goal with
-         | |- not (@eq _ _ _) => lra
-         | |- Rlt _ _ => lra
-         | |- Rle _ _ => lra
-         end.
+    end;
+  match goal with
+  | |- not (@eq _ _ _) => lra
+  | |- Rlt _ _ => lra
+  | |- Rle _ _ => lra
+  end.
 
 Hint Rewrite Cminus_unfold Cdiv_unfold Ci2 Cconj_R Cconj_opp Cconj_rad2 
      Cinv_sqrt2_sqrt Cplus_div2
@@ -1121,6 +1181,9 @@ Hint Rewrite Cplus_0_l Cplus_0_r Cmult_0_l Cmult_0_r Copp_0
 Hint Rewrite Cmult_plus_distr_l Cmult_plus_distr_r Copp_plus_distr Copp_mult_distr_l 
               Copp_involutive : Cdist_db.
 
+Hint Rewrite <- RtoC_opp RtoC_mult RtoC_plus : RtoC_db.
+Hint Rewrite <- RtoC_inv using nonzero : RtoC_db.
+Hint Rewrite RtoC_pow : RtoC_db.
 
 Ltac Csimpl := 
   repeat match goal with
@@ -1179,7 +1242,13 @@ Ltac group_Cexp :=
   repeat rewrite <- Cexp_neg;
   repeat match goal  with
   | _ => rewrite <- Cexp_add
-  | |- context [ ?x * Cexp ?y ] => rewrite (Cmult_comm x (Cexp y))
-  | |- context [ ?x * (?y * ?z) ] => rewrite Cmult_assoc
-  end.  
-
+  | _ => rewrite <- Copp_mult_distr_l
+  | _ => rewrite <- Copp_mult_distr_r
+  | |- context [ ?x * ?y ] => tryif has_term Cexp x then fail 
+                            else (has_term Cexp y; rewrite (Cmult_comm x y)) 
+  | |- context [ ?x * ?y * ?z ] =>
+    tryif has_term Cexp y then fail 
+    else (has_term Cexp x; has_term Cexp z; rewrite <- (Cmult_assoc x y z)) 
+  | |- context [ ?x * (?y * ?z) ] => 
+    has_term Cexp x; has_term Cexp y; rewrite (Cmult_assoc x y z)
+  end.    

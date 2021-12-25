@@ -6,13 +6,14 @@ Dirac.v
 Eigenvectors.v
 FTA.v
 Matrix.v
-Monad.v
-Monoid.v
+Measurement.v
 Pad.v
+Permutations.v
 Polynomial.v
 Polar.v
 Prelim.v
+Proportional.v
 Quantum.v
 RealAux.v
 VecSet.v
-
+VectorStates.v

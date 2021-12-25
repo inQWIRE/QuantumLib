@@ -1,20 +1,220 @@
-Require Import Dirac.
-Require Import Pad.
-
-Local Close Scope C_scope.
-Local Close Scope R_scope.
+Require Export Pad.
 
 (* This file provides abstractions for describing quantum states as vectors.
    - f_to_vec describes classical states as boolean functions
    - basis_vector describes classiacal states as natural numbers
    - vsum describes superposition states
-   - vkron describes states as the tensor product of qubits *)
+   - vkron describes states as the tensor product of qubit states
+
+   It also provides automation (ket_db, f_to_vec_db) for simplifying
+   matrix × vector expressions. *)
+
+
+(************************************)
+(* Unitary Properties on Basis Kets *)
+(************************************)
+
+Notation "∣ + ⟩" := (/√2 .* ∣ 0 ⟩ .+ /√2 .* ∣ 1 ⟩).
+Notation "∣ - ⟩" := (/√2 .* ∣ 0 ⟩ .+ (-/√2) .* ∣ 1 ⟩).
+
+(* Bra-Ket properties *)
+
+Lemma bra0_equiv : ⟨0∣ = bra 0.
+Proof. reflexivity. Qed.
+
+Lemma bra1_equiv : ⟨1∣ = bra 1.
+Proof. reflexivity. Qed.
+
+Lemma ket0_equiv : ∣0⟩ = ket 0.
+Proof. reflexivity. Qed.
+
+Lemma ket1_equiv : ∣1⟩ = ket 1.
+Proof. reflexivity. Qed.
+
+Lemma bra0ket0 : bra 0 × ket 0 = I 1.
+Proof. lma'. Qed.
+
+Lemma bra0ket1 : bra 0 × ket 1 = Zero.
+Proof. lma'. Qed.
+
+Lemma bra1ket0 : bra 1 × ket 0 = Zero.
+Proof. lma'. Qed.
+
+Lemma bra1ket1 : bra 1 × ket 1 = I 1.
+Proof. lma'. Qed.
+
+(* Hadamard properties *)
+Lemma H0_spec : hadamard × ∣ 0 ⟩ = ∣ + ⟩.
+Proof. lma'. Qed.
+
+Lemma H1_spec : hadamard × ∣ 1 ⟩ = ∣ - ⟩.
+Proof. lma'. Qed.
+
+Lemma Hplus_spec : hadamard × ∣ + ⟩ = ∣ 0 ⟩.
+Proof. solve_matrix. Qed.
+
+Lemma Hminus_spec : hadamard × ∣ - ⟩ = ∣ 1 ⟩.
+Proof. solve_matrix.  Qed.
+
+Local Open Scope nat_scope. 
+
+Lemma H0_kron_n_spec : forall n,
+  n ⨂ hadamard × n ⨂ ∣0⟩ = n ⨂ ∣+⟩.
+Proof.
+  intros.
+  induction n; simpl.
+  - Msimpl_light. reflexivity.
+  - replace (2^n + (2^n + 0)) with (2^n * 2) by lia.
+    replace (1^n + 0) with (1*1) by (rewrite Nat.pow_1_l, plus_0_r; lia). 
+    rewrite Nat.pow_1_l.
+    rewrite kron_mixed_product.
+    rewrite <- IHn.
+    apply f_equal_gen; try reflexivity.
+    lma'.    
+Qed.
+
+Local Close Scope nat_scope. 
+
+(* X properties *)
+Lemma X0_spec : σx × ∣ 0 ⟩ = ∣ 1 ⟩.
+Proof. lma'. Qed.
+
+Lemma X1_spec : σx × ∣ 1 ⟩ = ∣ 0 ⟩.
+Proof. lma'. Qed.
+
+(* Y properties *)
+Lemma Y0_spec : σy × ∣ 0 ⟩ = Ci .* ∣ 1 ⟩.
+Proof. lma'. Qed.
+
+Lemma Y1_spec : σy × ∣ 1 ⟩ = -Ci .* ∣ 0 ⟩.
+Proof. lma'. Qed.
+
+(* Z properties *)
+Lemma Z0_spec : σz × ∣ 0 ⟩ = ∣ 0 ⟩.
+Proof. lma'. Qed.
+
+Lemma Z1_spec : σz × ∣ 1 ⟩ = -1 .* ∣ 1 ⟩.
+Proof. lma'. Qed.
+
+(* phase shift properties *)
+Lemma phase0_spec : forall ϕ, phase_shift ϕ × ket 0 = ket 0.
+Proof. intros. lma'. Qed.
+
+Lemma phase1_spec : forall ϕ, phase_shift ϕ × ket 1 = Cexp ϕ .* ket 1.
+Proof. intros. lma'. Qed.
+
+Definition b2R (b : bool) : R := if b then 1%R else 0%R.
+Local Coercion b2R : bool >-> R.
+Local Coercion Nat.b2n : bool >-> nat.
+
+Lemma phase_shift_on_ket : forall (θ : R) (b : bool),
+  phase_shift θ × ∣ b ⟩ = (Cexp (b * θ)) .* ∣ b ⟩.
+Proof.
+  intros.
+  destruct b; solve_matrix; autorewrite with R_db.
+  reflexivity.
+  rewrite Cexp_0; reflexivity.
+Qed.
+
+Lemma hadamard_on_ket : forall (b : bool),
+  hadamard × ∣ b ⟩ = /√2 .* (∣ 0 ⟩ .+ (-1)^b .* ∣ 1 ⟩).
+Proof.
+  intros.
+  destruct b; solve_matrix; autorewrite with R_db Cexp_db; lca.
+Qed.
+
+(* CNOT properties *)
+
+Lemma CNOT_spec : forall (x y : nat), (x < 2)%nat -> (y < 2)%nat -> cnot × ∣ x,y ⟩ = ∣ x, (x + y) mod 2 ⟩.
+Proof.
+  intros; destruct x as [| [|x]], y as [| [|y]]; try lia; lma'.
+Qed.
+
+Lemma CNOT00_spec : cnot × ∣ 0,0 ⟩ = ∣ 0,0 ⟩.
+Proof. lma'. Qed.
+
+Lemma CNOT01_spec : cnot × ∣ 0,1 ⟩ = ∣ 0,1 ⟩.
+Proof. lma'. Qed.
+
+Lemma CNOT10_spec : cnot × ∣ 1,0 ⟩ = ∣ 1,1 ⟩.
+Proof. lma'. Qed.
+                                        
+Lemma CNOT11_spec : cnot × ∣ 1,1 ⟩ = ∣ 1,0 ⟩.
+Proof. lma'. Qed.
+
+(* SWAP properties *)
+
+Lemma SWAP_spec : forall x y, swap × ∣ x,y ⟩ = ∣ y,x ⟩.
+Proof. intros. destruct x,y; lma'. Qed.
+
+(* Automation *)
+
+(* General matrix rewrites *)
+Hint Rewrite bra0_equiv bra1_equiv ket0_equiv ket1_equiv : ket_db.
+Hint Rewrite bra0ket0 bra0ket1 bra1ket0 bra1ket1 : ket_db.
+Hint Rewrite Mmult_plus_distr_l Mmult_plus_distr_r kron_plus_distr_l kron_plus_distr_r Mscale_plus_distr_r : ket_db.
+Hint Rewrite Mscale_mult_dist_l Mscale_mult_dist_r Mscale_kron_dist_l Mscale_kron_dist_r : ket_db.
+Hint Rewrite Mscale_assoc @Mmult_assoc : ket_db.
+Hint Rewrite Mmult_1_l Mmult_1_r kron_1_l kron_1_r Mscale_0_l Mscale_0_r Mscale_1_l Mplus_0_l Mplus_0_r using (auto with wf_db) : ket_db.
+Hint Rewrite kron_0_l kron_0_r Mmult_0_l Mmult_0_r : ket_db.
+Hint Rewrite @kron_mixed_product : ket_db.
+
+(* Quantum-specific identities *)
+Hint Rewrite H0_spec H1_spec Hplus_spec Hminus_spec X0_spec X1_spec Y0_spec Y1_spec
+     Z0_spec Z1_spec phase0_spec phase1_spec : ket_db.
+Hint Rewrite CNOT00_spec CNOT01_spec CNOT10_spec CNOT11_spec SWAP_spec : ket_db.
+
+Lemma ket2bra : forall n, (ket n) † = bra n. 
+Proof. destruct n; reflexivity. Qed.
+Hint Rewrite ket2bra : ket_db.
+
+(* TODO: add transpose and adjoint lemmas to ket_db? *)
+Lemma ket0_transpose_bra0 : (ket 0) ⊤ = bra 0.
+Proof. solve_matrix. Qed.
+
+Lemma ket1_transpose_bra1 : (ket 1) ⊤ = bra 1.
+Proof. solve_matrix. Qed.
+
+Lemma bra0_transpose_ket0 : (bra 0) ⊤ = ket 0.
+Proof. solve_matrix. Qed.
+
+Lemma bra1_transpose_ket1 : (bra 1) ⊤ = ket 1.
+Proof. solve_matrix. Qed.
+
+Lemma bra1_adjoint_ket1 : (bra 1) † = ket 1.
+Proof. solve_matrix. Qed.
+
+Lemma ket1_adjoint_bra1 : (ket 1) † = bra 1.
+Proof. solve_matrix. Qed.
+
+Lemma bra0_adjoint_ket0 : (bra 0) † = ket 0.
+Proof. solve_matrix. Qed.
+
+Lemma ket0_adjoint_bra0 : (ket 0) † = bra 0.
+Proof. solve_matrix. Qed.
+
+(* Examples using ket_db *)
+Lemma XYZ0 : -Ci .* σx × σy × σz × ∣ 0 ⟩ = ∣ 0 ⟩.
+Proof. autorewrite with ket_db C_db; easy. Qed.
+                                           
+Lemma XYZ1 : -Ci .* σx × σy × σz × ∣ 1 ⟩ = ∣ 1 ⟩.
+Proof. 
+  autorewrite with ket_db C_db.
+  replace (Ci * -1 * Ci) with (RtoC 1) by lca. 
+  rewrite Mscale_1_l; reflexivity.
+  Qed.
+
 
 (*******************************)
 (**      Classical States     **)
 (*******************************)
 
+Local Close Scope C_scope.
+Local Close Scope R_scope.
+Local Open Scope nat_scope. 
+
 (* General facts about (nat -> A) functions.
+
    TODO #1: These lemmas are probably already defined in Coq somewhere.
    TODO #2: For efficiency, instead of using functions indexed by natural
             numbers, we should use vectors/arrays. *)
@@ -95,11 +295,61 @@ Lemma shift_simplify : forall {A} (f : nat -> A) i j ,
   shift f i j = f (j + i).
 Proof. intros. unfold shift. reflexivity. Qed.
 
+Definition fswap {A} (f : nat -> A) x y :=
+  fun i => if i =? x then f y else if i =? y then f x else f i.
+
+Lemma fswap_simpl1 : forall A f x y, @fswap A f x y x = f y.
+Proof. 
+  intros. 
+  unfold fswap. 
+  rewrite Nat.eqb_refl. 
+  reflexivity. 
+Qed.
+
+Lemma fswap_simpl2 : forall A f x y, @fswap A f x y y = f x.
+Proof. 
+  intros.
+  unfold fswap. 
+  bdestruct (y =? x).
+  subst. reflexivity.
+  rewrite Nat.eqb_refl. 
+  reflexivity. 
+Qed.
+
+Lemma fswap_same : forall A f x, @fswap A f x x = f.
+Proof.
+  intros.
+  unfold fswap.
+  apply functional_extensionality.
+  intro i.
+  bdestruct_all; auto.
+Qed.
+
+Lemma fswap_neq : forall {A} (f : nat -> A) a b x, a <> x -> b <> x -> fswap f a b x = f x.
+Proof.
+  intros. unfold fswap. bdestructΩ (x =? a). bdestructΩ (x =? b). auto.
+Qed.
+
+Lemma fswap_rewrite : forall {A} (f : nat -> A) a b, 
+  fswap f a b = update (update f b (f a)) a (f b).
+Proof.
+  intros.
+  unfold fswap.
+  apply functional_extensionality.
+  intro x.
+  bdestruct_all; subst.
+  rewrite update_index_eq; auto.
+  rewrite update_index_neq by lia.
+  rewrite update_index_eq; auto.
+  rewrite update_index_neq by lia.
+  rewrite update_index_neq by lia.
+  reflexivity.
+Qed.
+
 (* Convert a boolean function to a vector; examples: 
      f_to_vec 3 f --> I 1 ⊗ ∣ f 0 ⟩ ⊗ ∣ f 1 ⟩ ⊗ | f 2 ⟩ 
      f_to_vec 2 (shift f 2) -->  I 1 ⊗ ∣ f 2 ⟩ ⊗ ∣ f 3 ⟩ 
 *)
-Local Coercion Nat.b2n : bool >-> nat.
 Fixpoint f_to_vec (n : nat) (f : nat -> bool) : Vector (2^n) :=
   match n with 
   | 0 => I 1
@@ -112,7 +362,7 @@ Proof.
   intros.
   induction n; simpl; try auto with wf_db.
 Qed.
-Hint Resolve f_to_vec_WF : wf_db.
+#[export] Hint Resolve f_to_vec_WF : wf_db.
 
 Lemma f_to_vec_eq : forall n f f',
   (forall i, i < n -> f i = f' i) ->
@@ -141,7 +391,7 @@ Proof.
   bdestructΩ (x =? i)%nat. reflexivity.
   bdestructΩ (y =? 0)%nat. rewrite andb_false_r. reflexivity.
 Qed.
-Hint Resolve basis_vector_WF : wf_db.
+#[export] Hint Resolve basis_vector_WF : wf_db.
 
 Lemma basis_vector_product_eq : forall d n,
   n < d -> (basis_vector d n)† × basis_vector d n = I 1.
@@ -156,6 +406,13 @@ Proof.
   bdestruct_all; simpl; lca.
   intros i Hi. bdestructΩ (i =? n). lca.
   all: apply Csum_0; intro i; bdestruct_all; simpl; lca.
+Qed.
+
+Lemma basis_vector_pure_state : forall n i,
+  (i < n)%nat -> Pure_State_Vector (basis_vector n i).
+Proof.
+  intros. split. apply basis_vector_WF. easy.
+  apply basis_vector_product_eq. easy.
 Qed.
 
 Lemma basis_vector_product_neq : forall d m n,
@@ -187,7 +444,7 @@ Proof.
   intros j' Hj.
   bdestruct_all; auto. 
   simpl. lca.
-Qed.  
+Qed.
 
 Lemma equal_on_basis_vectors_implies_equal : forall m n (A B : Matrix m n),
   WF_Matrix A -> 
@@ -201,6 +458,47 @@ Proof.
   rewrite <- matrix_times_basis_eq; trivial.
   rewrite H; trivial.
   rewrite matrix_times_basis_eq; easy.
+Qed.
+
+Lemma divmod_decomp : forall x y z r,
+    (r > 0)%nat ->
+    (z < r)%nat ->
+    (x = y * r + z <-> x / r = y /\ x mod r = z)%nat.
+Proof.
+  split; intros.
+  - split. symmetry. apply Nat.div_unique with (r := z); try lia.
+    symmetry. apply Nat.mod_unique with (q := y); try lia.
+  - destruct H1.
+    replace (y * r)%nat with (r * y)%nat by lia.
+    rewrite <- H1, <- H2.
+    apply Nat.div_mod.
+    lia.
+Qed.
+
+Lemma split_basis_vector : forall m n x y,
+  (x < 2 ^ m)%nat ->
+  (y < 2 ^ n)%nat ->
+  basis_vector (2 ^ (m + n)) (x * 2 ^ n + y)
+    = basis_vector (2 ^ m) x ⊗ basis_vector (2 ^ n) y.
+Proof.
+  intros m n x y Hx Hy.
+  unfold kron, basis_vector.
+  solve_matrix.
+  bdestruct (y0 =? 0).
+  - repeat rewrite andb_true_r.
+    assert (2^n > 0)%nat.
+    { assert (0 < 2^n)%nat by (apply pow_positive; lia). lia.
+    }
+    specialize (divmod_decomp x0 x y (2^n)%nat H0 Hy) as G.
+    bdestruct (x0 =? x * 2 ^ n + y).
+    + apply G in H1. destruct H1.
+      rewrite H1, H2. do 2 rewrite Nat.eqb_refl. lca.
+    + bdestruct (x0 / 2 ^ n =? x); bdestruct (x0 mod 2 ^ n =? y); try lca.
+      assert ((x0 / 2 ^ n)%nat = x /\ x0 mod 2 ^ n = y) by easy.
+      apply G in H4.
+      easy.
+  - repeat rewrite andb_false_r.
+    lca.
 Qed.
 
 (* f_to_vec and basis_vector allow us to represent the same set of states.
@@ -278,7 +576,7 @@ Proof.
     unfold I.
     prep_matrix_equality.
     bdestruct (x =? 0); bdestruct (x =? y); subst; simpl; trivial.
-    bdestruct_all; easy. 
+    bdestruct_all; easy.
     bdestructΩ (y <? 1); easy.
   - simpl.
     rewrite IHn.
@@ -747,29 +1045,15 @@ Qed.
 
 (* lemmas to describe the action of various gates on f_to_vec states *)
 
-Lemma f_to_vec_X : forall (n i : nat) (f : nat -> bool),
+Lemma f_to_vec_σx : forall (n i : nat) (f : nat -> bool),
   i < n ->
-  (smpl_U n i σx) × (f_to_vec n f) 
-      = f_to_vec n (update f i (¬ (f i))).
+  (pad_u n i σx) × (f_to_vec n f) = f_to_vec n (update f i (¬ (f i))).
 Proof.
-  induction n as [| n']; try lia. 
-  intros; simpl.
-  bdestruct (i <? n'); bdestruct (i =? n'); try lia. 
-  + rewrite <- IHn', update_index_neq; auto. 
-    unfold smpl_U, pad.
-
-
-
-
-
-
-
-
-    
-  autorewrite with eval_db.
-  rewrite (f_to_vec_split 0 n i f H). 
-  simpl; replace (n - 1 - i) with (n - (i + 1)) by lia.
+  intros.
+  unfold pad_u, pad.
+  rewrite (f_to_vec_split 0 n i f H).
   repad. 
+  replace (i + 1 + x - 1 - i) with x by lia.
   Msimpl.
   rewrite (f_to_vec_split 0 (i + 1 + x) i) by lia.
   rewrite f_to_vec_update_oob by lia.
@@ -779,13 +1063,12 @@ Proof.
   destruct (f i); simpl; autorewrite with ket_db; reflexivity.
 Qed.
 
-Lemma f_to_vec_CNOT : forall (n i j : nat) (f : nat -> bool),
+Lemma f_to_vec_cnot : forall (n i j : nat) (f : nat -> bool),
   i < n -> j < n -> i <> j ->
-  (uc_eval (SQIR.CNOT i j)) × (f_to_vec n f) 
-      = f_to_vec n (update f j (f j ⊕ f i)).
+  (pad_ctrl n i j σx) × (f_to_vec n f) = f_to_vec n (update f j (f j ⊕ f i)).
 Proof.
   intros.
-  autorewrite with eval_db.
+  unfold pad_ctrl, pad.
   repad.
   - repeat rewrite (f_to_vec_split 0 (i + (1 + d + 1) + x) i) by lia.
     rewrite f_to_vec_update_oob by lia.
@@ -817,18 +1100,16 @@ Proof.
     repeat rewrite <- kron_assoc by auto with wf_db.
     destruct (f j); destruct (f (j + 1 + d)); simpl; Msimpl.
     all: autorewrite with ket_db; reflexivity.
-Qed.    
+Qed.
 
-Local Transparent SWAP.
-Lemma f_to_vec_SWAP : forall (n i j : nat) (f : nat -> bool),
+Lemma f_to_vec_swap : forall (n i j : nat) (f : nat -> bool),
   i < n -> j < n -> i <> j ->
-  uc_eval (SWAP i j) × (f_to_vec n f) = 
-    f_to_vec n (update (update f j (f i)) i (f j)).
+  (pad_swap n i j) × (f_to_vec n f) = f_to_vec n (fswap f i j).
 Proof.
   intros n i j f ? ? ?.
-  unfold SWAP; simpl.
+  unfold pad_swap.
   repeat rewrite Mmult_assoc.
-  rewrite 3 f_to_vec_CNOT by auto.
+  rewrite 3 f_to_vec_cnot by auto.
   repeat rewrite update_index_eq.
   repeat rewrite update_index_neq by lia.
   repeat rewrite update_index_eq.
@@ -839,58 +1120,39 @@ Proof.
   reflexivity.
   all: destruct (f i); destruct (f j); auto.
 Qed.
-Local Opaque SWAP.
-                                  
-Definition b2R (b : bool) : R := if b then 1%R else 0%R.
-Local Coercion b2R : bool >-> R.
 
-Lemma phase_shift_on_basis_state : forall (θ : R) (b : bool),
-  phase_shift θ × ∣ b ⟩ = (Cexp (b * θ)) .* ∣ b ⟩.
-Proof.
-  intros.
-  destruct b; solve_matrix; autorewrite with R_db.
-  reflexivity.
-  rewrite Cexp_0; reflexivity.
-Qed.
-
-Lemma f_to_vec_Rz : forall (n i : nat) (θ : R) (f : nat -> bool),
+Lemma f_to_vec_phase_shift : forall (n i : nat) (θ : R) (f : nat -> bool),
   (i < n)%nat ->
-  (uc_eval (SQIR.Rz θ i)) × (f_to_vec n f) =
+  (pad_u n i (phase_shift θ)) × (f_to_vec n f) =
     (Cexp ((f i) * θ)) .* f_to_vec n f.
 Proof.
   intros.
-  autorewrite with eval_db.
+  unfold pad_u, pad.
   rewrite (f_to_vec_split 0 n i f H). 
   simpl; replace (n - 1 - i)%nat with (n - (i + 1))%nat by lia.
   repad. 
   Msimpl.
-  rewrite phase_shift_on_basis_state.
+  rewrite phase_shift_on_ket.
   rewrite Mscale_kron_dist_r.
   rewrite Mscale_kron_dist_l.
   reflexivity.
 Qed.
 
-Local Open Scope C_scope.
 Local Open Scope R_scope.
-Lemma hadamard_on_basis_state : forall (b : bool),
-  hadamard × ∣ b ⟩ = /√2 .* (∣ 0 ⟩ .+ (Cexp (b * PI)) .* ∣ 1 ⟩).
-Proof.
-  intros.
-  destruct b; solve_matrix; autorewrite with R_db Cexp_db; lca.
-Qed.
 
-Lemma f_to_vec_H : forall (n i : nat) (f : nat -> bool),
+Lemma f_to_vec_hadamard : forall (n i : nat) (f : nat -> bool),
   (i < n)%nat ->
-  (uc_eval (SQIR.H i)) × (f_to_vec n f) 
-      = /√2 .* ((f_to_vec n (update f i false)) .+ (Cexp ((f i) * PI)) .* f_to_vec n (update f i true)).
+  (pad_u n i hadamard) × (f_to_vec n f) 
+      = /√2 .* ((f_to_vec n (update f i false)) .+ 
+                (Cexp ((f i) * PI)) .* f_to_vec n (update f i true)).
 Proof.
   intros.
-  autorewrite with eval_db.
+  unfold pad_u, pad.
   rewrite (f_to_vec_split 0 n i f H). 
   simpl; replace (n - 1 - i)%nat with (n - (i + 1))%nat by lia.
   repad. 
   Msimpl.
-  rewrite hadamard_on_basis_state.
+  rewrite hadamard_on_ket.
   rewrite Mscale_kron_dist_r, Mscale_kron_dist_l.
   rewrite kron_plus_distr_l, kron_plus_distr_r.
   rewrite Mscale_kron_dist_r, Mscale_kron_dist_l.
@@ -900,217 +1162,15 @@ Proof.
   rewrite 2 update_index_eq.
   repeat rewrite f_to_vec_update_oob by lia.
   repeat rewrite f_to_vec_shift_update_oob by lia.
-  reflexivity.
+  do 3 (apply f_equal2; auto).
+  destruct (f i); simpl; autorewrite with R_db Cexp_db; lca.
 Qed.
-Local Close Scope C_scope.
+
 Local Close Scope R_scope.
 
-(* some facts about projections -- may move to another file *)
+Hint Rewrite f_to_vec_cnot f_to_vec_σx f_to_vec_phase_shift using lia : f_to_vec_db.
+Hint Rewrite (@update_index_eq bool) (@update_index_neq bool) (@update_twice_eq bool) (@update_same bool) using lia : f_to_vec_db.
 
-(* Projector onto the space where qubit q is in classical state b. *)
-Definition proj q dim (b : bool) := @pad 1 q dim (∣ b ⟩ × (∣ b ⟩)†).
-
-Lemma WF_proj : forall q dim b, WF_Matrix (proj q dim b).
-Proof. intros. unfold proj, pad. bdestruct_all; destruct b; auto with wf_db. Qed.
-Hint Resolve WF_proj : wf_db.
-
-Lemma proj_sum : forall q n,
-  q < n ->
-  proj q n true .+ proj q n false = I (2 ^ n).
-Proof.
-  intros.
-  unfold proj, pad.
-  bdestruct_all.
-  restore_dims.
-  rewrite <- kron_plus_distr_r, <- kron_plus_distr_l.
-  simpl.
-  replace (∣ 1 ⟩ × (∣ 1 ⟩) † .+ ∣ 0 ⟩ × (∣ 0 ⟩) †) with (I 2) by solve_matrix.
-  repeat rewrite id_kron.
-  apply f_equal.
-  unify_pows_two.
-Qed.
-
-Lemma f_to_vec_proj_eq : forall f q n b,
-  q < n -> f q = b -> 
-  proj q n b × (f_to_vec n f) = f_to_vec n f.
-Proof.
-  intros f q n b ? ?.
-  rewrite (f_to_vec_split 0 n q) by lia. 
-  replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
-  unfold proj, pad.
-  gridify. 
-  do 2 (apply f_equal2; try reflexivity). 
-  destruct (f q); solve_matrix.
-Qed.
-
-Lemma f_to_vec_proj_neq : forall f q n b,
-  q < n -> f q <> b ->
-  proj q n b × (f_to_vec n f) = Zero.
-Proof.
-  intros f q n b ? H.
-  rewrite (f_to_vec_split 0 n q) by lia. 
-  replace (n - 1 - q)%nat with (n - (q + 1))%nat by lia.
-  unfold proj, pad.
-  gridify. 
-  destruct (f q); destruct b; try easy; lma.
-Qed.
-
-Lemma proj_commutes_1q_gate : forall dim u q n b,
-  q <> n ->
-  proj q dim b × ueval_r dim n u = ueval_r dim n u × proj q dim b. 
-Proof.
-  intros dim u q n b neq.
-  dependent destruction u; simpl.
-  unfold proj, pad.
-  gridify; trivial.
-  all: destruct b; auto with wf_db.
-Qed.
-
-Lemma proj_commutes_2q_gate : forall dim q n1 n2 b,
-  q <> n1 -> q <> n2 ->
-  proj q dim b × ueval_cnot dim n1 n2 = ueval_cnot dim n1 n2 × proj q dim b. 
-Proof.
-  intros dim q n1 n2 b neq1 neq2.
-  unfold proj, ueval_cnot, pad.
-  gridify; trivial.
-Qed.
-
-Lemma proj_commutes : forall dim q1 q2 b1 b2,
-  proj q1 dim b1 × proj q2 dim b2 = proj q2 dim b2 × proj q1 dim b1.
-Proof.
-  intros dim q1 q2 b1 b2.
-  unfold proj, pad.
-  gridify; trivial.
-  destruct b1; destruct b2; Qsimpl; reflexivity. 
-Qed.
-
-Lemma proj_twice_eq : forall dim q b,
-  proj q dim b × proj q dim b = proj q dim b.
-Proof.
-  intros dim q b.
-  unfold proj, pad.
-  gridify.
-  destruct b; Qsimpl; reflexivity.
-Qed.
-
-Lemma proj_twice_neq : forall dim q b1 b2,
-  b1 <> b2 -> proj q dim b1 × proj q dim b2 = Zero.
-Proof.
-  intros dim q b1 b2 neq.
-  unfold proj, pad.
-  gridify.
-  destruct b1; destruct b2; try contradiction; Qsimpl; reflexivity.
-Qed.
-
-Lemma phase_shift_on_basis_state_adj : forall (θ : R) (b : bool),
-  (∣ b ⟩)† × phase_shift θ = (Cexp (b * θ)) .* (∣ b ⟩)†.
-Proof.
-  intros.
-  destruct b; solve_matrix; autorewrite with R_db.
-  reflexivity.
-  rewrite Cexp_0; reflexivity.
-Qed.
-
-Lemma proj_Rz_comm : forall dim q n b k,
-  proj q dim b × uc_eval (SQIR.Rz k n) = uc_eval (SQIR.Rz k n) × proj q dim b. 
-Proof.
-  intros dim q n b k.
-  unfold proj.
-  autorewrite with eval_db.
-  gridify.
-  all: destruct b; auto with wf_db.
-  all: repeat rewrite <- Mmult_assoc; rewrite phase_shift_on_basis_state.
-  all: repeat rewrite Mmult_assoc; rewrite phase_shift_on_basis_state_adj. 
-  all: rewrite Mscale_mult_dist_r, Mscale_mult_dist_l; reflexivity.
-Qed.
-
-Lemma proj_Rz : forall dim q b θ,
-  uc_eval (SQIR.Rz θ q) × proj q dim b = Cexp (b * θ) .* proj q dim b. 
-Proof.
-  intros dim q b θ.
-  unfold proj.
-  autorewrite with eval_db.
-  gridify.
-  destruct b.
-  all: repeat rewrite <- Mmult_assoc; rewrite phase_shift_on_basis_state.
-  all: rewrite Mscale_mult_dist_l, Mscale_kron_dist_r, Mscale_kron_dist_l; 
-       reflexivity.
-Qed.
-
-Lemma proj_CNOT_control : forall dim q m n b,
-  (q <> n \/ m = n) ->
-  proj q dim b × uc_eval (SQIR.CNOT m n) = uc_eval (SQIR.CNOT m n) × proj q dim b.
-Proof.
-  intros dim q m n b H.
-  destruct H.
-  bdestruct (m =? n).
-  (* badly typed case *)
-  1,3: subst; replace (uc_eval (SQIR.CNOT n n)) with (@Zero (2 ^ dim) (2 ^ dim));
-       Msimpl_light; try reflexivity.
-  1,2: autorewrite with eval_db; bdestructΩ (n <? n); reflexivity.
-  bdestruct (q =? m).
-  (* q = control *)
-  subst. unfold proj.
-  autorewrite with eval_db.
-  gridify.
-  destruct b; Qsimpl; reflexivity.
-  destruct b; Qsimpl; reflexivity.
-  (* disjoint qubits *)
-  bdestructΩ (q =? n).
-  apply proj_commutes_2q_gate; assumption.
-Qed.
-
-Lemma proj_CNOT_target : forall dim f q n,
-  proj q dim ((f q) ⊕ (f n)) × proj n dim (f n) × uc_eval (SQIR.CNOT n q) = proj n dim (f n) × uc_eval (SQIR.CNOT n q) × proj q dim (f q).
-Proof.
-  intros dim f q n.
-  unfold proj.
-  autorewrite with eval_db.
-  gridify. (* slow! *)
-  all: try (destruct (f n); destruct (f (n + 1 + d)%nat));        
-       try (destruct (f q); destruct (f (q + 1 + d)%nat));   
-       auto with wf_db.
-  all: simpl; Qsimpl; reflexivity.
-Qed.
-
-(* We can use 'proj' to state that qubit q is in classical state b. *)
-Definition classical {dim} q b (ψ : Vector (2 ^ dim)) := proj q dim b × ψ = ψ.
-
-Lemma f_to_vec_classical : forall n q f,
-  (q < n)%nat -> classical q (f q) (f_to_vec n f).
-Proof.
-  intros n q f Hq.
-  unfold classical, proj.
-  induction n; try lia.
-  unfold pad.
-  replace (q + 1)%nat with (S q) by lia. 
-  bdestructΩ (S q <=? S n); clear H.
-  bdestruct (q =? n).
-  - subst. replace (n - n)%nat with O by lia.
-    simpl. Msimpl_light.
-    restore_dims.
-    rewrite kron_mixed_product.
-    Msimpl_light; apply f_equal2; auto.
-    destruct (f n); solve_matrix.
-  - remember (n - q - 1)%nat as x.
-    replace (n - q)%nat with (x + 1)%nat by lia.
-    replace n with (q + 1 + x)%nat by lia.
-    replace (2 ^ (x + 1))%nat with (2 ^ x * 2)%nat by unify_pows_two.
-    rewrite <- id_kron.
-    rewrite <- kron_assoc by auto with wf_db.
-    replace (2 ^ (q + 1 + x) + (2 ^ (q + 1 + x) + 0))%nat with (2 ^ (q + 1 + x) * 2)%nat by lia.
-    repeat rewrite Nat.pow_add_r.
-    replace 1%nat with (1 * 1)%nat by lia. 
-    rewrite kron_mixed_product; simpl.
-    replace (q + 1 + x)%nat with n by lia.
-    subst.
-    Msimpl_light.
-    rewrite <- IHn at 2; try lia.
-    unfold pad. 
-    bdestructΩ (q + 1 <=? n); clear H0.
-    replace (n - (q + 1))%nat with (n - q - 1)%nat by lia.
-    restore_dims. reflexivity.
-Qed.
 
 (*******************************)
 (**        Indexed Sum        **)
@@ -1122,7 +1182,7 @@ Lemma vsum_WF : forall {d} n (f : nat -> Vector d),
   (forall i, (i < n)%nat -> WF_Matrix (f i)) -> 
   WF_Matrix (vsum n f).
 Proof. intros. unfold vsum. apply WF_Msum; auto. Qed.
-Hint Resolve vsum_WF : wf_db.
+#[export] Hint Resolve vsum_WF : wf_db.
 
 Lemma vsum_eq : forall {d} n (f f' : nat -> Vector d),
   (forall i, (i < n)%nat -> f i = f' i) -> vsum n f = vsum n f'.
@@ -1213,6 +1273,40 @@ Lemma vsum_diagonal :
     vsum n (fun i => vsum n (fun j => f i j)) = vsum n (fun i => f i i).
 Proof. intros. unfold vsum. apply Msum_diagonal. auto. Qed.
 
+Lemma vsum_Csum : forall {d n} (f : nat -> Vector d) x y,
+  vsum n f x y = Csum (fun i => f i x y) n.
+Proof.
+  intros d n f x y. induction n.
+  - easy.
+  - rewrite vsum_extend_r. unfold Mplus. rewrite IHn. easy.
+Qed.
+
+(* Any vector ψ can be written as a weighted sum over basis vectors. *)
+Lemma basis_vector_decomp : forall {d} (ψ : Vector d),
+  WF_Matrix ψ ->
+  ψ = vsum d (fun i => (ψ i O) .* basis_vector d i).
+Proof.
+  intros d ψ WF. 
+  do 2 (apply functional_extensionality; intros). 
+  rewrite vsum_Csum.
+  destruct (x <? d) eqn:Hx.
+  - apply Nat.ltb_lt in Hx. 
+    unfold scale. destruct x0.
+    + rewrite Csum_unique with (k:=ψ x O). easy.
+      exists x. split. easy.
+      split. unfold basis_vector. rewrite Nat.eqb_refl. simpl. lca.
+      intros. unfold basis_vector. apply Nat.eqb_neq in H. rewrite H. simpl. lca.
+    + unfold WF_Matrix in WF. rewrite WF by lia.
+      rewrite Csum_0. easy. intro.
+      unfold basis_vector. assert (S x0 <> 0)%nat by lia. apply Nat.eqb_neq in H.
+      rewrite H. rewrite andb_false_r. lca.
+  - apply Nat.ltb_ge in Hx.
+    unfold WF_Matrix in WF. rewrite WF by lia.
+    rewrite Csum_0_bounded. easy. intros. unfold scale.
+    unfold basis_vector. assert (x <> x1) by lia. apply Nat.eqb_neq in H0.
+    rewrite H0. simpl. lca.
+Qed.
+
 (* Two natural ways to split a vsum into two parts *)
 Lemma vsum_sum1 : forall d m n (f : nat -> Vector d),
   vsum (m + n) f = vsum m f .+ vsum n (shift f m).
@@ -1271,36 +1365,6 @@ Proof.
       unfold shift; simpl.
       replace (n - 1 - i + (i + 1))%nat with n by lia.
       reflexivity.
-Qed.
-
-Definition fswap (f : nat -> nat) x y :=
-  fun i => if i =? x then f y else if i =? y then f x else f i.
-
-Lemma fswap_simpl1 : forall f x y, fswap f x y x = f y.
-Proof. 
-  intros. 
-  unfold fswap. 
-  rewrite Nat.eqb_refl. 
-  reflexivity. 
-Qed.
-
-Lemma fswap_simpl2 : forall f x y, fswap f x y y = f x.
-Proof. 
-  intros.
-  unfold fswap. 
-  bdestruct (y =? x).
-  subst. reflexivity.
-  rewrite Nat.eqb_refl. 
-  reflexivity. 
-Qed.
-
-Lemma fswap_same : forall f x, fswap f x x = f.
-Proof.
-  intros.
-  unfold fswap.
-  apply functional_extensionality.
-  intro i.
-  bdestruct_all; auto.
 Qed.
 
 Lemma vsum_eq_up_to_fswap : forall {d} n f (v : nat -> Vector d) x y,
@@ -1363,102 +1427,6 @@ Proof.
     reflexivity.
 Qed.
 
-(* bijection on [0,...,n-1] *)
-Definition finite_bijection (n : nat) (f : nat -> nat) :=
-  exists g, forall x, x < n -> (f x < n /\ g x < n /\ g (f x) = x /\ f (g x) = x).
-
-Lemma finite_bijection_is_injective : forall n f,
-  finite_bijection n f -> 
-  forall x y, x < n -> y < n -> f x = f y -> x = y.
-Proof.
-  intros n f [g Hbij] x y Hx Hy H.
-  destruct (Hbij x Hx) as [_ [_ [H0 _]]].
-  destruct (Hbij y Hy) as [_ [_ [H1 _]]].
-  rewrite <- H0. 
-  rewrite <- H1.
-  rewrite H.
-  reflexivity.
-Qed.
-
-Lemma fswap_at_boundary_finite_bijection : forall n f x,
-  finite_bijection (S n) f ->
-  (x < S n)%nat -> f x = n ->
-  finite_bijection n (fswap f x n).
-Proof.
-  intros n f x Hf Hx Hfx.
-  assert (Hneq: forall x0, x0 < S n -> x0 <> x -> f x0 <> n).
-  { intros x0 Hx0 Hneq contra.
-    rewrite <- Hfx in contra.
-    eapply finite_bijection_is_injective in contra.
-    contradiction.
-    apply Hf.
-    assumption.
-    assumption. }  
-
-  destruct Hf as [g Hg].
-  exists (compose (fswap (fun x : nat => x) x n) g).
-  intros x0 Hx0.
-  unfold fswap, compose.
-  bdestructΩ (x0 =? n).
-  repeat split.
-  - bdestruct (x0 =? x).
-    subst x0.
-    assert (f n <> n).
-    apply Hneq; lia.
-    destruct (Hg n) as [? _]; lia.
-    assert (f x0 <> n).
-    apply Hneq; lia.
-    destruct (Hg x0) as [? _]; lia.
-  - assert (g x0 <> x).
-    intro contra. 
-    rewrite <- contra in Hfx.
-    destruct (Hg x0) as [_ [_ [_ ?]]]; lia.
-    bdestruct_all.
-    lia.
-    destruct (Hg x0) as [_ [? _]]; lia.
-  - bdestruct (x0 =? x).
-    subst x0.
-    destruct (Hg n) as [_ [_ [H1 _]]]; try lia.
-    rewrite H1.
-    bdestruct_all; trivial.
-    destruct (Hg x0) as [_ [_ [H1 _]]]; try lia.
-    rewrite H1.
-    bdestruct_all; trivial.
-  - assert (g x0 <> x).
-    intro contra. 
-    rewrite <- contra in Hfx.
-    destruct (Hg x0) as [_ [_ [_ ?]]]; lia.
-    bdestructΩ (g x0 =? x).
-    bdestruct (g x0 =? n).
-    bdestructΩ (x =? x).
-    destruct (Hg x0) as [_ [_ [_ ?]]]; try lia.
-    rewrite <- H2.
-    assumption.
-    bdestruct_all.
-    destruct (Hg x0) as [_ [_ [_ ?]]]; lia.
-Qed.
-  
-(* vsum terms can be arbitrarily reordered *)
-Lemma vsum_reorder : forall {d} n (v : nat -> Vector d) f,
-  finite_bijection n f ->
-  vsum n v = vsum n (fun i => v (f i)).
-Proof.
-  intros.
-  generalize dependent f.
-  induction n.
-  reflexivity.
-  intros f [g Hg].
-  destruct (Hg n) as [_ [H1 [_ H2]]]; try lia.
-  rewrite (vsum_eq_up_to_fswap _ f _ (g n) n) by auto.
-  repeat rewrite vsum_extend_r.
-  rewrite fswap_simpl2.
-  rewrite H2.
-  specialize (IHn (fswap f (g n) n)).
-  rewrite <- IHn.
-  reflexivity.
-  apply fswap_at_boundary_finite_bijection; auto.
-  exists g. auto.
-Qed.
 
 (*******************************)
 (** Indexed Kronecker Product **)
@@ -1479,13 +1447,13 @@ Proof.
   induction n; simpl; auto with wf_db.
   apply WF_kron; auto. lia.
 Qed.
-Hint Resolve WF_vkron: wf_db.
+#[export] Hint Resolve WF_vkron: wf_db.
 
 Lemma WF_shift : forall m n j k (f : nat -> Matrix m n),
   (forall i, WF_Matrix (f i)) ->
   WF_Matrix (shift f j k).
 Proof. intros. apply H. Qed.
-Hint Resolve WF_shift: wf_db.
+#[export] Hint Resolve WF_shift: wf_db.
   
 Lemma vkron_extend_r : forall n f, 
   vkron n f ⊗ f n = vkron (S n) f.
@@ -1534,8 +1502,7 @@ Proof.
 Qed.
 
 Lemma vkron_split : forall n i (f : nat -> Vector 2),
-  (forall j, WF_Matrix (f j)) -> (* ADDED *)
-(*  (forall j, j < n -> WF_Matrix (f j)) -> Maybe necessary? *)
+  (forall j, WF_Matrix (f j)) ->
   i < n ->
   vkron n f = (vkron i f) ⊗ f i ⊗ (vkron (n - 1 - i) (shift f (i + 1))).
 Proof.
@@ -1678,7 +1645,7 @@ Proof.
 Qed.
 Local Transparent Nat.mul Nat.div Nat.modulo.
 
-Lemma kron_n_0_is_0_vector : forall (n:nat), n ⨂ ∣0⟩ = basis_vector (2 ^ n) 0%nat.
+Lemma kron_n_0_is_0_vector : forall (n:nat), n ⨂ ∣0⟩ = basis_vector (2 ^ n) O.
 Proof.
   intros.
   induction n.
@@ -1926,4 +1893,3 @@ Proof.
   induction n; try reflexivity.
   simpl. rewrite IHn. reflexivity.
 Qed.
-

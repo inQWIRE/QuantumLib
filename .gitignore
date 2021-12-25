@@ -11,5 +11,9 @@ extra/*
 
 # Ignore coq_makefile-generated files
 .coqdeps.d
+.CoqMakefile.d
 CoqMakefile
 CoqMakefile.conf
+
+.nia.cache
+.nra.cache
