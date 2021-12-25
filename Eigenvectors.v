@@ -1,7 +1,7 @@
 Require Import List.     
 Require Export Complex.  
 Require Export Quantum. 
-Require Export Polynomial.
+Require Export FTA.
 
 
 

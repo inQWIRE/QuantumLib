@@ -270,6 +270,20 @@ Proof. intros. assert (H' := H). unfold sqrt in H. destruct (Rcase_abs x).
        - rewrite <- (sqrt_def x); try rewrite <- H'; lra.
 Qed.
 
+Lemma lt_ep_helper : forall (ϵ : R),
+  ϵ > 0 <-> ϵ / √ 2 > 0.
+Proof. intros; split; intros. 
+       - unfold Rdiv. 
+         apply Rmult_gt_0_compat; auto; 
+           apply Rinv_0_lt_compat; apply Rlt_sqrt2_0.
+       - rewrite <- (Rmult_1_r ϵ).
+         rewrite <- (Rinv_l (√ 2)), <- Rmult_assoc.
+         apply Rmult_gt_0_compat; auto. 
+         apply Rlt_sqrt2_0.
+         apply sqrt2_neq_0.
+Qed.
+
+
 (* Automation *)
 Ltac R_field_simplify := repeat field_simplify_eq [pow2_sqrt2 sqrt2_inv].
 Ltac R_field := R_field_simplify; easy.
@@ -359,3 +373,67 @@ Qed.
 
 
 Hint Rewrite sin_0 sin_PI4 sin_PI2 sin_PI cos_0 cos_PI4 cos_PI2 cos_PI sin_neg cos_neg : trig_db.
+
+
+
+(** some glb support! (this might exist already, but I could not find it) *) 
+
+
+Definition is_lower_bound (E:R -> Prop) (m:R) := forall x:R, E x -> m <= x.
+
+Definition bounded_below (E:R -> Prop) := exists m : R, is_lower_bound E m.
+
+Definition is_glb (E:R -> Prop) (m:R) :=
+  is_lower_bound E m /\ (forall b:R, is_lower_bound E b -> b <= m).
+
+Definition neg_Rset (E : R -> Prop) :=
+  fun r => E (-r).
+
+Lemma lb_negset_ub : forall (E : R -> Prop) (b : R),
+  is_lower_bound E b <-> is_upper_bound (neg_Rset E) (-b).
+Proof. unfold is_lower_bound, is_upper_bound, neg_Rset; split; intros.
+       - apply H in H0; lra. 
+       - rewrite <- Ropp_involutive in H0. 
+         apply H in H0; lra.
+Qed.
+
+Lemma ub_negset_lb : forall (E : R -> Prop) (b : R),
+  is_upper_bound E b <-> is_lower_bound (neg_Rset E) (-b).
+Proof. unfold is_lower_bound, is_upper_bound, neg_Rset; split; intros.
+       - apply H in H0; lra. 
+       - rewrite <- Ropp_involutive in H0. 
+         apply H in H0; lra.
+Qed.
+
+Lemma negset_bounded_above : forall (E : R -> Prop),
+  bounded_below E -> (bound (neg_Rset E)).
+Proof. intros. 
+       destruct H.
+       exists (-x).
+       apply lb_negset_ub; easy.
+Qed.
+
+Lemma negset_glb : forall (E : R -> Prop) (m : R),
+  is_lub (neg_Rset E) m -> is_glb E (-m).
+Proof. intros.  
+       destruct H; split. 
+       - apply lb_negset_ub.
+         rewrite Ropp_involutive; easy. 
+       - intros. 
+         apply lb_negset_ub in H1.
+           apply H0 in H1; lra.
+Qed.
+
+Lemma glb_completeness :
+  forall E:R -> Prop,
+    bounded_below E -> (exists x : R, E x) -> { m:R | is_glb E m }.
+Proof. intros.  
+       apply negset_bounded_above in H.
+       assert (H' : exists x : R, (neg_Rset E) x).
+       { destruct H0; exists (-x).
+         unfold neg_Rset; rewrite Ropp_involutive; easy. }
+       apply completeness in H'; auto.
+       destruct H' as [m [H1 H2] ].
+       exists (-m).
+       apply negset_glb; easy.
+Qed.

@@ -627,6 +627,31 @@ Proof.
   destruct c. simpl. nra.
 Qed.
 
+(* some more lemmas to help simplify Cmod *)
+Lemma Cmod_switch : forall (a b : C),
+  Cmod (a - b) = Cmod (b - a).
+Proof. intros. 
+       replace (b - a) with (- (a - b)) by lca. 
+       rewrite Cmod_opp; easy.
+Qed.
+
+Lemma Cmod_triangle_le : forall (a b : C) (ϵ : R),
+  Cmod a + Cmod b < ϵ -> Cmod (a + b) < ϵ.
+Proof. intros. 
+       assert (H0 := Cmod_triangle a b).
+       lra. 
+Qed.
+
+Lemma Cmod_triangle_diff : forall (a b c : C) (ϵ : R),
+  Cmod (c - b) + Cmod (b - a) < ϵ -> Cmod (c - a) < ϵ.
+Proof. intros. 
+       replace (c - a) with ((c - b) + (b - a)) by lca. 
+       apply Cmod_triangle_le.
+       easy. 
+Qed.
+
+
+
 (* Lemmas about Conjugates *)
 
 Lemma Cconj_R : forall r : R, r^* = r.         Proof. intros; lca. Qed.
@@ -699,6 +724,18 @@ Proof.
       apply le_S.
       assumption.
 Qed.  
+
+Lemma Cpow_add_r : forall (c : C) (a b : nat), c ^ (a + b) = c ^ a * c ^ b.
+Proof. induction a as [| a']; intros. 
+       - lca.
+       - simpl; rewrite IHa'; lca.
+Qed.
+
+Lemma Cpow_mul_l : forall (c1 c2 : C) (n : nat), (c1 * c2) ^ n = c1 ^ n * c2 ^ n.
+Proof. induction n as [| n']; intros. 
+       - lca.
+       - simpl; rewrite IHn'; lca.
+Qed.
 
 Lemma Cconj_simplify : forall (c1 c2 : C), c1^* = c2^* -> c1 = c2.
 Proof. intros. 
