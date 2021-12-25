@@ -560,7 +560,7 @@ Lemma get_smaller_norm_output : forall (a0 ak : C) (k : nat) (p : Polynomial),
   a0 <> C0 -> ak <> C0 -> 
   exists c, Cmod (a0 :: (repeat C0 k) ++ [ak] ++ p)[[c]] < Cmod a0.
 Proof. intros. 
-       destruct (nth_root (-a0 / ak) (k+1)) as [z H1]; try lia.
+       destruct (nth_root_C (-a0 / ak) (k+1)) as [z H1]; try lia.
        assert (H2 : z <> C0).
        { apply (nonzero_nth_root (-a0 / ak) z (k+1)); try lia; try easy.
          unfold not; intros; apply H.

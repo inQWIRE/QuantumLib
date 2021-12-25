@@ -2017,7 +2017,7 @@ Proof. intros.
 Qed.   
 
 (* a different case for when we consider (Mat -> Prop)s that are 
-   the same as lin_indep, invertible, etc... *)
+   the same as lin_dep, not_invertible, etc... *)
 Lemma mrp_step1_pzt_P0 : forall {n} (A : Square (S n)) (P P0: forall m o, Matrix m o -> Prop),
   invr_col_add P -> invr_col_scale P -> 
   invr_col_add P0 -> prop_zero_true P0 -> 
