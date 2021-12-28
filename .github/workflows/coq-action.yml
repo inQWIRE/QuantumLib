@@ -24,6 +24,10 @@ jobs:
         with:
           coq_version: ${{ matrix.coq_version }}
           ocaml_version: ${{ matrix.ocaml_version }}
+          before_script: |
+            startGroup "Workaround permission issue"
+              sudo chown -R coq:coq .
+            endGroup
           install: |
             startGroup "Install dependencies"
               opam install -y -j 2 coq-corn
@@ -32,3 +36,7 @@ jobs:
             startGroup "Build project"
               make -j2
             endGroup
+      - name: Revert permissions
+        # to avoid a warning at cleanup time
+        if: ${{ always() }}
+        run: sudo chown -R 1001:116 .
