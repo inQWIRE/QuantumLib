@@ -6,13 +6,7 @@ QuantumLib was co-developed with several other projects in inQWIRE, including [Q
 
 ## Compilation
 
-Requires Coq version 8.12-8.14 and the CoRN package.
-
-```
-opam repo add coq-released https://coq.inria.fr/opam/released
-opam update
-opam install coq-corn
-```
+Tested with Coq versions 8.12 -- 8.14.
 
 To compile run `make all`.
 

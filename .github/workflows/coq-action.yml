@@ -28,10 +28,6 @@ jobs:
             startGroup "Workaround permission issue"
               sudo chown -R coq:coq .
             endGroup
-          install: |
-            startGroup "Install dependencies"
-              opam install -y -j 2 coq-corn
-            endGroup
           script: |
             startGroup "Build project"
               make -j2
