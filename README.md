@@ -1,16 +1,12 @@
 # QuantumLib
 
+[![CI](https://github.com/inQWIRE/QuantumLib/actions/workflows/coq-action.yml/badge.svg)](https://github.com/inQWIRE/QuantumLib/actions/workflows/coq-action.yml)
+
 QuantumLib was co-developed with several other projects in inQWIRE, including [QWIRE](https://github.com/inQWIRE/QWIRE), [SQIR](https://github.com/inQWIRE/SQIR), and [VyZX](https://github.com/inQWIRE/VyZX).
 
 ## Compilation
 
-Requires Coq version 8.12-8.14 and the CoRN package.
-
-```
-opam repo add coq-released https://coq.inria.fr/opam/released
-opam update
-opam install coq-corn
-```
+Tested with Coq versions 8.12 -- 8.14.
 
 To compile run `make all`.
 
@@ -18,11 +14,14 @@ To compile run `make all`.
 
 **TODO** Improve summaries.
 * Complex.v - definition of Complex numbers, extending Coquelicot
+* Ctopology.v
 * Eigenvectors.v
+* FTA.v
 * Matrix.v - definition of matrices of complex numbers, associated lemmas and automation
 * Measurement.v - useful predicates for describing the result of measurement
 * Pad.v - definition of "pad" functions to extend a matrix to a larger space - useful for describing quantum gates
 * Permutation.v - facts about permutation matrices
+* Polar.v
 * Polynomial.v
 * Prelim.v - some utility definitions and proofs
 * Proportional.v - definition of equality up to a global phase
