@@ -2,15 +2,14 @@
 
 Complex.v
 Ctopology.v
-Dirac.v
 Eigenvectors.v
 FTA.v
 Matrix.v
 Measurement.v
 Pad.v
 Permutations.v
-Polynomial.v
 Polar.v
+Polynomial.v
 Prelim.v
 Proportional.v
 Quantum.v
