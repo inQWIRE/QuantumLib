@@ -1,13 +1,13 @@
-all: Makefile.coq
-	+make -f Makefile.coq all
+all:
+	@dune build
 
-clean: Makefile.coq
-	+make -f Makefile.coq clean
+clean:
+	@dune clean
 
-Makefile.coq:
-	$(COQBIN)coq_makefile -f _CoqProject -o Makefile.coq
+install:
+	@dune install
 
-%: Makefile.coq
-	+make -f Makefile.coq $@
+uninstall:
+	@dune uninstall
 
-.PHONY: all clean
+.PHONY: all clean install uninstall
