@@ -8,13 +8,13 @@
 (source (github inQWIRE/QuantumLib))
 (license MIT)
 (authors "inQWIRE")
-(maintainers "The inQWIRE Team")
+(maintainers "inQWIRE Developers")
 
 (package
  (name coq-quantumlib)
  (synopsis "Coq library for reasoning about quantum programs")
  (description "\| inQWIRE's QuantumLib is a Coq library for reasoning
-              "\|  about quantum programs.
+              "\|  about quantum computation and quantum programs.
  )
  (depends
    (coq (>= 8.12))))
