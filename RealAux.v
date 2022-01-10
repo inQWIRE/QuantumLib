@@ -1,9 +1,11 @@
+(** Supplement to Coq's axiomatized Reals *)
+
 Require Export Reals.
 Require Import Psatz.
 
-(******************************************)
-(** Relevant lemmas from Rcomplements.v. **)
-(******************************************)
+(** * Basic lemmas *)
+
+(** Relevant lemmas from Coquelicot's Rcomplements.v **)
 
 Open Scope R_scope.
 
@@ -19,14 +21,14 @@ Lemma Rminus_lt_0 : forall a b, a < b <-> 0 < b - a. Proof. intros. lra. Qed.
 Lemma Rminus_unfold : forall r1 r2, (r1 - r2 = r1 + -r2). Proof. reflexivity. Qed.
 Lemma Rdiv_unfold : forall r1 r2, (r1 / r2 = r1 */ r2). Proof. reflexivity. Qed.
 
-Hint Rewrite Rminus_unfold Rdiv_unfold Ropp_0 Ropp_involutive Rplus_0_l Rplus_0_r 
-             Rmult_0_l Rmult_0_r Rmult_1_l Rmult_1_r : R_db.
+Hint Rewrite Rminus_unfold Rdiv_unfold Ropp_0 Ropp_involutive Rplus_0_l 
+             Rplus_0_r Rmult_0_l Rmult_0_r Rmult_1_l Rmult_1_r : R_db.
 Hint Rewrite <- Ropp_mult_distr_l Ropp_mult_distr_r : R_db.
 Hint Rewrite Rinv_l Rinv_r sqrt_sqrt using lra : R_db.
 
 Notation "√ n" := (sqrt n) (at level 20) : R_scope.
 
-(* Useful Lemmas *)
+(** Other useful facts *)
 
 Lemma Rmult_div_assoc : forall (x y z : R), x * (y / z) = x * y / z.
 Proof. intros. unfold Rdiv. rewrite Rmult_assoc. reflexivity. Qed.
@@ -50,7 +52,6 @@ Proof.
   - specialize (pow_nonzero r2 2 H). intros NZ. lra.
 Qed.
 
-
 Lemma Rpow_le1: forall (x : R) (n : nat), 0 <= x <= 1 -> x ^ n <= 1.
 Proof.
   intros; induction n.
@@ -62,7 +63,8 @@ Proof.
 Qed.
     
 (* The other side of Rle_pow, needed below *)
-Lemma Rle_pow_le1: forall (x : R) (m n : nat), 0 <= x <= 1 -> (m <= n)%nat -> x ^ n <= x ^ m.
+Lemma Rle_pow_le1: forall (x : R) (m n : nat), 
+  0 <= x <= 1 -> (m <= n)%nat -> x ^ n <= x ^ m.
 Proof.
   intros x m n [G0 L1] L.
   remember (n - m)%nat as p.
@@ -76,9 +78,7 @@ Proof.
   apply Rpow_le1; lra.
 Qed.
 
-(******************)
-(* Sum Over Reals *)
-(******************)
+(** * Sums *)
 
 Definition Rsum (n : nat) (f : nat -> R) : R :=
   match n with
@@ -197,9 +197,7 @@ Proof.
   rewrite Rsum_extend, IHn, Hf. lra.
 Qed.
 
-(****************)
-(* Square Roots *)
-(****************)
+(** * Square roots *)
 
 Lemma pow2_sqrt : forall x:R, 0 <= x -> (√ x) ^ 2 = x.
 Proof. intros; simpl; rewrite Rmult_1_r, sqrt_def; auto. Qed.
@@ -283,12 +281,11 @@ Proof. intros; split; intros.
          apply sqrt2_neq_0.
 Qed.
 
-
 (* Automation *)
 Ltac R_field_simplify := repeat field_simplify_eq [pow2_sqrt2 sqrt2_inv].
 Ltac R_field := R_field_simplify; easy.
 
-(* Trigonometry *)
+(** * Trigonometry *)
 
 Lemma sin_upper_bound_aux : forall x : R, 0 < x < 1 -> sin x <= x.
 Proof.
@@ -371,13 +368,10 @@ Proof.
     apply sin_upper_bound_aux; lra.
 Qed.    
 
+Hint Rewrite sin_0 sin_PI4 sin_PI2 sin_PI cos_0 cos_PI4 cos_PI2 
+             cos_PI sin_neg cos_neg : trig_db.
 
-Hint Rewrite sin_0 sin_PI4 sin_PI2 sin_PI cos_0 cos_PI4 cos_PI2 cos_PI sin_neg cos_neg : trig_db.
-
-
-
-(** some glb support! (this might exist already, but I could not find it) *) 
-
+(** * glb support *) 
 
 Definition is_lower_bound (E:R -> Prop) (m:R) := forall x:R, E x -> m <= x.
 
