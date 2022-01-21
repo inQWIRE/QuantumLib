@@ -6,7 +6,7 @@ QuantumLib was co-developed with several other projects in inQWIRE, including [Q
 
 ## Compilation
 
-Tested with Coq versions 8.12 -- 8.14.
+Tested with Coq versions 8.12 -- 8.15.
 
 To compile run `make all`.
 
