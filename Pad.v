@@ -1,7 +1,10 @@
 Require Export Complex.
 Require Export Quantum.
 
-(* Padding; used to extend a matrix to a larger space *)
+(** This file provides padding functions to extend a matrix to a larger space.
+   This is useful for describing the effect of 1- and 2-qubit gates on a larger
+   quantum space. *)
+
 Definition pad {n} (start dim : nat) (A : Square (2^n)) : Square (2^dim) :=
   if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - (start + n))) else Zero.
 
@@ -40,7 +43,7 @@ Definition pad_ctrl (dim m n: nat) (u: Square 2) :=
 Definition pad_swap (dim m n: nat) :=
   pad_ctrl dim m n σx × pad_ctrl dim n m σx × pad_ctrl dim m n σx.
 
-(** Well-formedness **)
+(** Well-formedness *)
 
 Lemma WF_pad_u : forall dim n u, WF_Matrix u -> WF_Matrix (pad_u dim n u).
 Proof.
@@ -66,6 +69,8 @@ Lemma WF_pad_swap : forall dim m n, WF_Matrix (pad_swap dim m n).
 Qed.
 
 #[export] Hint Resolve WF_pad WF_pad_u WF_pad_ctrl WF_pad_swap : wf_db.
+
+(** Unitarity *)
 
 Lemma pad_unitary : forall n (u : Square (2^n)) start dim,
     (start + n <= dim)%nat -> 
@@ -131,7 +136,7 @@ Proof.
     apply pad_ctrl_unitary; auto; apply σx_unitary. 
 Qed.
 
-(* Lemmas about commutation *)
+(** Lemmas about commutation *)
 
 Lemma pad_A_B_commutes : forall dim m n A B,
   m <> n ->

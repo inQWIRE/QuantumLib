@@ -20,8 +20,6 @@ Run `make doc` to generate documentation.
 
 ## Directory Contents
 
-**TODO: Improve summaries. (Or remove entirely if the coqdoc documentation is sufficient.)**
-
 * Complex.v - Definition of Complex numbers, extending [Coquelicot](http://coquelicot.saclay.inria.fr/)'s.
 * Ctopology.v - A topology of open/closed sets is defined for the complex numbers, with lemmas about compactness.
 * DiscreteProb.v - Theory of discrete probability distributions and utility to describe running a quantum program ("apply_u") and sampling from the output distribution.

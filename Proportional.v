@@ -1,6 +1,8 @@
 Require Export Matrix.
 Require Import Setoid.
 
+(** Relation for equality up to a global phase. *)
+
 Definition proportional {m n : nat} (A B : Matrix m n) := 
   exists θ, A = Cexp θ .* B. 
 Infix "∝" := proportional (at level 70).

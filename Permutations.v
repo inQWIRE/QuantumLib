@@ -1,10 +1,10 @@
 Require Import VectorStates.
 
-(* Facts about permutations and matrices that implement them *)
+(** Facts about permutations and matrices that implement them. *)
 
 Local Open Scope nat_scope.
 
-(* permutation on [0,...,n-1] *)
+(** * Permutations on (0,...,n-1) *)
 Definition permutation (n : nat) (f : nat -> nat) :=
   exists g, forall x, x < n -> (f x < n /\ g x < n /\ g (f x) = x /\ f (g x) = x).
 
@@ -99,7 +99,7 @@ Proof.
     destruct (Hg x0) as [_ [_ [_ ?]]]; lia.
 Qed.
   
-(* vsum terms can be arbitrarily reordered *)
+(** vsum terms can be arbitrarily reordered *)
 Lemma vsum_reorder : forall {d} n (v : nat -> Vector d) f,
   permutation n f ->
   vsum n v = vsum n (fun i => v (f i)).
@@ -121,7 +121,7 @@ Proof.
   exists g. auto.
 Qed.
 
-(* Permutation matrices *)
+(** * Permutation matrices *)
 
 Definition perm_mat n (p : nat -> nat) : Square n :=
   (fun x y => if (x =? p y) && (x <? n) && (y <? n) then C1 else C0).
@@ -216,7 +216,7 @@ Proof.
   contradiction.
 Qed.
 
-(* Given a permutation p over n qubits, produce a permutation over 2^n indices. *)
+(** Given a permutation p over n qubits, construct a permutation over 2^n indices. *)
 Definition qubit_perm_to_nat_perm n (p : nat -> nat) :=
   fun x:nat => funbool_to_nat n ((nat_to_funbool n x) ∘ p)%prg.
 
@@ -252,6 +252,7 @@ Proof.
   rewrite nat_to_funbool_inverse; auto.
 Qed.  
 
+(** Transform a (0,...,n-1) permutation into a 2^n by 2^n matrix. *)
 Definition perm_to_matrix n p :=
   perm_mat (2 ^ n) (qubit_perm_to_nat_perm n p).
  

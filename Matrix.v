@@ -8,9 +8,9 @@ Require Import List.
 (* TODO: Use matrix equality everywhere, declare equivalence relation *)
 (* TODO: Make all nat arguments to matrix lemmas implicit *)
 
-(*******************************************)
-(** Matrix Definitions and Infrastructure **)
-(*******************************************)
+(*********************************************)
+(** * Matrix definitions and infrastructure **)
+(*********************************************)
 
 Declare Scope matrix_scope.
 Delimit Scope matrix_scope with M.
@@ -20,8 +20,6 @@ Local Open Scope nat_scope.
 
 Definition Matrix (m n : nat) := nat -> nat -> C.
 
-(* Definition Vector (n : nat) := Matrix n 1. *)
-
 Definition WF_Matrix {m n: nat} (A : Matrix m n) : Prop := 
   forall x y, x >= m \/ y >= n -> A x y = C0. 
 
@@ -29,14 +27,14 @@ Notation Vector n := (Matrix n 1).
 
 Notation Square n := (Matrix n n).
 
-(* Showing equality via functional extensionality *)
+(** Equality via functional extensionality *)
 Ltac prep_matrix_equality :=
   let x := fresh "x" in 
   let y := fresh "y" in 
   apply functional_extensionality; intros x;
   apply functional_extensionality; intros y.
 
-(* Matrix Equivalence *)
+(** Matrix equivalence *)
 
 Definition mat_equiv {m n : nat} (A B : Matrix m n) : Prop := 
   forall i j, i < m -> j < n -> A i j = B i j.
@@ -62,7 +60,7 @@ Proof.
   + rewrite WFA, WFB; trivial; left; try lia.
 Qed.
 
-(* Printing *)
+(** Printing *)
 
 Parameter print_C : C -> string.
 Fixpoint print_row {m n} i j (A : Matrix m n) : string :=
@@ -78,7 +76,7 @@ Fixpoint print_rows {m n} i j (A : Matrix m n) : string :=
 Definition print_matrix {m n} (A : Matrix m n) : string :=
   print_rows m n A.
 
-(* 2D List Representation *)
+(** 2D list representation *)
     
 Definition list2D_to_matrix (l : list (list C)) : 
   Matrix (length l) (length (hd [] l)) :=
@@ -104,7 +102,7 @@ Proof.
     simpl; lia.
 Qed.
 
-(* Example *)
+(** Example *)
 Definition M23 : Matrix 2 3 :=
   fun x y => 
   match (x, y) with
@@ -130,9 +128,9 @@ Proof.
   do 4 (try destruct x; try destruct y; simpl; trivial).
 Qed.
 
-(*****************************)
-(** Operands and Operations **)
-(*****************************)
+(*******************************)
+(** * Operands and operations **)
+(*******************************)
 
 Definition Zero {m n : nat} : Matrix m n := fun x y => 0%R.
 
@@ -142,7 +140,7 @@ Definition I (n : nat) : Square n :=
 (* Optional coercion to scalar (should be limited to 1 × 1 matrices):
 Definition to_scalar (m n : nat) (A: Matrix m n) : C := A 0 0.
 Coercion to_scalar : Matrix >-> C.
- *)
+*)
 
 (* This isn't used, but is interesting *)
 Definition I__inf := fun x y => if x =? y then C1 else C0.
@@ -180,14 +178,14 @@ Definition inner_product {n} (u v : Vector n) : C :=
 Definition outer_product {n} (u v : Vector n) : Square n := 
   Mmult u (adjoint v).
 
-(* Kronecker of n copies of A *)
+(** Kronecker of n copies of A *)
 Fixpoint kron_n n {m1 m2} (A : Matrix m1 m2) : Matrix (m1^n) (m2^n) :=
   match n with
   | 0    => I 1
   | S n' => kron (kron_n n' A) A
   end.
 
-(* Kronecker product of a list *)
+(** Kronecker product of a list *)
 Fixpoint big_kron {m n} (As : list (Matrix m n)) : 
   Matrix (m^(length As)) (n^(length As)) := 
   match As with
@@ -195,20 +193,21 @@ Fixpoint big_kron {m n} (As : list (Matrix m n)) :
   | A :: As' => kron A (big_kron As')
   end.
 
-(* Product of n copies of A *)
+(** Product of n copies of A *)
 Fixpoint Mmult_n n {m} (A : Square m) : Square m :=
   match n with
   | 0    => I m
   | S n' => Mmult A (Mmult_n n' A)
   end.
 
-(* Indexed sum over matrices *)
+(** Indexed sum over matrices *)
 Fixpoint Msum {m1 m2} n (f : nat -> Matrix m1 m2) : Matrix m1 m2 :=
   match n with
   | 0 => Zero
   | S n' => Mplus (Msum n' f) (f n')
 end.
 
+(** Notations *)
 Infix "∘" := dot (at level 40, left associativity) : matrix_scope.
 Infix ".+" := Mplus (at level 50, left associativity) : matrix_scope.
 Infix ".*" := scale (at level 40, left associativity) : matrix_scope.
@@ -307,9 +306,9 @@ Lemma Mscale_simplify : forall (n m: nat) (a b : Matrix n m) (c d : C),
 Proof. intros; subst; easy. 
 Qed.
 
-(**********************************)
-(** Proofs about Well-Formedness **)
-(**********************************)
+(************************************)
+(** * Proofs about well-formedness **)
+(************************************)
 
 Lemma WF_Matrix_dim_change : forall (m n m' n' : nat) (A : Matrix m n),
   m = m' ->
@@ -382,30 +381,6 @@ Proof.
   assumption.
 Qed. 
 
-
-(* More succinct but sometimes doesn't succeed 
-Lemma WF_kron : forall {m n o p: nat} (A : Matrix m n) (B : Matrix o p), 
-                  WF_Matrix A -> WF_Matrix B -> WF_Matrix (A ⊗ B).
-Proof.
-  unfold WF_Matrix, kron.
-  intros m n o p A B WFA WFB x y H.
-  bdestruct (o =? 0). rewrite WFB; [lca|lia]. 
-  bdestruct (p =? 0). rewrite WFB; [lca|lia].  
-  rewrite WFA.
-  rewrite Cmult_0_l; reflexivity.
-  destruct H.
-  unfold ge in *.
-  left. 
-  apply Nat.div_le_lower_bound; trivial.
-  rewrite Nat.mul_comm.
-  assumption.
-  right.
-  apply Nat.div_le_lower_bound; trivial.
-  rewrite Nat.mul_comm.
-  assumption.
-Qed. 
-*)
-
 Lemma WF_transpose : forall {m n : nat} (A : Matrix m n), 
                      WF_Matrix A -> WF_Matrix A⊤. 
 Proof. unfold WF_Matrix, transpose. intros m n A H x y H0. apply H. 
@@ -475,34 +450,13 @@ Qed.
 
 Local Close Scope nat_scope.
 
-(***************************************)
-(* Tactics for showing well-formedness *)
-(***************************************)
+(****************************************)
+(** Tactics for showing well-formedness *)
+(****************************************)
 
 Local Open Scope nat.
 Local Open Scope R.
 Local Open Scope C.
-
-(*
-Ltac show_wf := 
-  repeat match goal with
-  | [ |- WF_Matrix _ _ (?A × ?B) ]  => apply WF_mult 
-  | [ |- WF_Matrix _ _ (?A .+ ?B) ] => apply WF_plus 
-  | [ |- WF_Matrix _ _ (?p .* ?B) ] => apply WF_scale
-  | [ |- WF_Matrix _ _ (?A ⊗ ?B) ]  => apply WF_kron
-  | [ |- WF_Matrix _ _ (?A⊤) ]      => apply WF_transpose 
-  | [ |- WF_Matrix _ _ (?A†) ]      => apply WF_adjoint 
-  | [ |- WF_Matrix _ _ (I _) ]     => apply WF_I
-  end;
-  trivial;
-  unfold WF_Matrix;
-  let x := fresh "x" in
-  let y := fresh "y" in
-  let H := fresh "H" in
-  intros x y [H | H];
-    repeat (destruct x; try reflexivity; try lia);
-    repeat (destruct y; try reflexivity; try lia).
-*)
 
 (* Much less awful *)
 Ltac show_wf := 
@@ -522,10 +476,7 @@ Ltac show_wf :=
      WF_Mmult_n WF_Msum : wf_db.
 #[export] Hint Extern 2 (_ = _) => unify_pows_two : wf_db.
 
-(* Hint Resolve WF_Matrix_dim_change : wf_db. *)
-
-
-(** Basic Matrix Lemmas **)
+(** * Basic matrix lemmas *)
 
 Lemma WF0_Zero_l :forall (n : nat) (A : Matrix 0%nat n), WF_Matrix A -> A = Zero.
 Proof.
