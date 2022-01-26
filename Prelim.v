@@ -13,10 +13,16 @@ Export ListNotations.
 
 Lemma easy_sub : forall (n : nat), S n - 1 = n. Proof. lia. Qed.
 
-(** Boolean notations *)
+(** Boolean notation, lemmas *)
 
 Notation "¬ b" := (negb b) (at level 10).
 Infix  "⊕" := xorb (at level 20).
+
+Lemma xorb_involutive_l : forall b b', b ⊕ (b ⊕ b') = b'. Proof. destruct b, b'; easy. Qed.
+Lemma xorb_involutive_r : forall b b', b ⊕ b' ⊕ b' = b. Proof. destruct b, b'; easy. Qed.
+
+Lemma andb_xorb_dist : forall b b1 b2, b && (b1 ⊕ b2) = (b && b1) ⊕ (b && b2).
+Proof. destruct b, b1, b2; easy. Qed.
 
 (** Useful reflections from Software Foundations Vol 3 *)
 
