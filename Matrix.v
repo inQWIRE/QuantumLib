@@ -3,7 +3,7 @@ Require Import String.
 Require Import Program.
 Require Export Complex.
 Require Import List.
-
+Require Export Summation.
 
 (* TODO: Use matrix equality everywhere, declare equivalence relation *)
 (* TODO: Make all nat arguments to matrix lemmas implicit *)
@@ -148,15 +148,21 @@ Coercion to_scalar : Matrix >-> C.
 Definition I__inf := fun x y => if x =? y then C1 else C0.
 Notation "I∞" := I__inf : matrix_scope.
 
-(* sum to n exclusive *)
-Fixpoint Csum (f : nat -> C) (n : nat) : C := 
-  match n with
-  | 0 => C0
-  | S n' => (Csum f n' +  f n')%C
-  end.
+
+
+Instance nat_is_group : Group C :=
+  { id := C0
+  ; op := Cplus
+  }.
+
+
+Instance C_is_group_law : Group_Laws C.
+Proof. split; intros; simpl; try lca. 
+       all : exists (-g); lca.
+Qed.
 
 Definition trace {n : nat} (A : Square n) := 
-  Csum (fun x => A x x) n.
+  big_sum (fun x => A x x) n.
 
 Definition scale {m n : nat} (r : C) (A : Matrix m n) : Matrix m n := 
   fun x y => (r * A x y)%C.
