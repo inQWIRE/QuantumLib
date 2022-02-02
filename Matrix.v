@@ -3,7 +3,7 @@ Require Import String.
 Require Import Program.
 Require Export Complex.
 Require Import List.
-Require Export Summation.
+(* Require Export Summation. *)
 
 (* TODO: Use matrix equality everywhere, declare equivalence relation *)
 (* TODO: Make all nat arguments to matrix lemmas implicit *)
@@ -149,7 +149,7 @@ Definition I__inf := fun x y => if x =? y then C1 else C0.
 Notation "I∞" := I__inf : matrix_scope.
 
 
-
+(*
 Instance nat_is_group : Group C :=
   { id := C0
   ; op := Cplus
@@ -159,10 +159,19 @@ Instance nat_is_group : Group C :=
 Instance C_is_group_law : Group_Laws C.
 Proof. split; intros; simpl; try lca. 
        all : exists (-g); lca.
-Qed.
+Qed. *)
+
+
+(* sum to n exclusive *)
+Fixpoint Csum (f : nat -> C) (n : nat) : C := 
+  match n with
+  | 0 => C0
+  | S n' => (Csum f n' +  f n')%C
+  end.
+
 
 Definition trace {n : nat} (A : Square n) := 
-  big_sum (fun x => A x x) n.
+  Csum (fun x => A x x) n.
 
 Definition scale {m n : nat} (r : C) (A : Matrix m n) : Matrix m n := 
   fun x y => (r * A x y)%C.
@@ -1524,44 +1533,6 @@ Proof.
     rewrite H, H0; reflexivity.
 Qed.
 
-(* Inverses of square matrices *)
-
-Definition Minv {n : nat} (A B : Square n) : Prop := A × B = I n /\ B × A = I n.
-
-Lemma Minv_unique : forall (n : nat) (A B C : Square n),
-                      WF_Matrix A -> WF_Matrix B -> WF_Matrix C ->
-                      Minv A B -> Minv A C -> B = C.
-Proof.
-  intros n A B C WFA WFB WFC [HAB HBA] [HAC HCA].
-  replace B with (B × I n) by (apply Mmult_1_r; assumption).
-  rewrite <- HAC.
-  replace C with (I n × C) at 2 by (apply Mmult_1_l; assumption).
-  rewrite <- HBA.
-  rewrite Mmult_assoc.
-  reflexivity.
-Qed.
-
-Lemma Minv_symm : forall (n : nat) (A B : Square n), Minv A B -> Minv B A.
-Proof. unfold Minv; intuition. Qed.
-
-(* The left inverse of a square matrix is also its right inverse *)
-Axiom Minv_flip : forall (n : nat) (A B : Square n), A × B = I n -> B × A = I n.
-
-Lemma Minv_left : forall (n : nat) (A B : Square n), A × B = I n -> Minv A B.
-Proof.
-  intros n A B H.
-  unfold Minv. split; trivial.
-  apply Minv_flip.
-  assumption.
-Qed.
-
-Lemma Minv_right : forall (n : nat) (A B : Square n), B × A = I n -> Minv A B.
-Proof.
-  intros n A B H.
-  unfold Minv. split; trivial.
-  apply Minv_flip.
-  assumption.
-Qed.
 
 Local Open Scope nat_scope.
 
