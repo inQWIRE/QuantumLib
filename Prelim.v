@@ -24,11 +24,11 @@ Proof. intros. lia. Qed.
 
 (* Boolean notations, lemmas *)
 
-Notation "¬ b" := (negb b) (at level 10).
+Notation "¬ b" := (negb b) (at level 75, right associativity). (* Level/associativity defined such that it does not clash with the standard library *)
 Infix  "⊕" := xorb (at level 20).
 
-Lemma xorb_nb_b : forall b, ¬ b ⊕ b = true. Proof. destruct b; easy. Qed.
-Lemma xorb_b_nb : forall b, b ⊕ ¬ b = true. Proof. destruct b; easy. Qed.
+Lemma xorb_nb_b : forall b, (¬ b) ⊕ b = true. Proof. destruct b; easy. Qed.
+Lemma xorb_b_nb : forall b, b ⊕ (¬ b) = true. Proof. destruct b; easy. Qed.
 
 Lemma xorb_involutive_l : forall b b', b ⊕ (b ⊕ b') = b'. Proof. destruct b, b'; easy. Qed.
 Lemma xorb_involutive_r : forall b b', b ⊕ b' ⊕ b' = b. Proof. destruct b, b'; easy. Qed.
