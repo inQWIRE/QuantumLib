@@ -350,7 +350,7 @@ Proof. intros X l1 l2. split.
              right. apply H'.
 Qed.           
 
-Infix "⊆" := subset_gen (at level 30, no associativity).
+Infix "⊆" := subset_gen (at level 70, no associativity).
 
 Lemma subset_cons : forall (X : Type) (l1 l2 : list X) (x : X),
   l1 ⊆ l2 -> l1 ⊆ (x :: l2).
