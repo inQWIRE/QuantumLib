@@ -12,7 +12,7 @@ Require Export FTA.
 (* little Ltac for helping with √ 2 *)
 Ltac Hhelper :=
    unfold Mmult;
-   unfold Csum;
+   unfold big_sum;
    unfold I;
    simpl;
    C_field_simplify;
@@ -69,7 +69,7 @@ Definition WF_Orthonormal {n m} (S : Matrix n m) : Prop :=
 Lemma inner_product_is_mult : forall {n} (i j : nat) (S : Square n),
   inner_product (get_vec i S) (get_vec j S) = (S† × S) i j.
 Proof. intros. unfold inner_product, get_vec, Mmult, adjoint.
-       apply Csum_eq.
+       apply big_sum_eq.
        apply functional_extensionality; intros. simpl.
        reflexivity.
 Qed.
@@ -129,14 +129,14 @@ Fixpoint DeterminantP (n : nat) (A : SquareP n) : Polynomial :=
   match n with 
   | 0 => [C1]
   | S 0 => A 0 0
-  | S n' => (Psum (fun i => [(parity i)] *, (A i 0) *, (DeterminantP n' (reduceP A i 0)))%C n)
+  | S n' => (big_sum (fun i => [(parity i)] *, (A i 0) *, (DeterminantP n' (reduceP A i 0)))%C n)
   end.
 
 Arguments DeterminantP {n}. 
 
 Lemma DetP_simplify : forall {n} (A : SquareP (S (S n))),
   DeterminantP A =  
-  (Psum (fun i => [(parity i)] *, (A i 0) *, (DeterminantP (reduceP A i 0)))%C (S (S n))).
+  (big_sum (fun i => [(parity i)] *, (A i 0) *, (DeterminantP (reduceP A i 0)))%C (S (S n))).
 Proof. intros. easy. Qed.
 
 Lemma Peval_Det : forall {n} (A : SquareP n) (c : C),
@@ -148,7 +148,7 @@ Proof. induction n as [| n'].
          + simpl. easy. 
          + rewrite DetP_simplify, Det_simplify.
            rewrite Psum_eval.
-           apply Csum_eq_bounded; intros.
+           apply big_sum_eq_bounded; intros.
            rewrite reduceP_eval_mat, IHn'.
            do 2 rewrite Pmult_eval.
            repeat apply f_equal_gen; try easy.  
@@ -241,13 +241,11 @@ Proof. induction n as [| n'].
            replace (- - C1) with C1 in H' by lca. 
            apply C1_neq_C0 in H'; easy. 
          + rewrite DetP_simplify.
-           assert (H' : forall n f, Psum f (S n) = f 0 +, Psum (fun i => f (S i)) n). 
+           assert (H' : forall n f, big_sum f (S n) = f 0 +, big_sum (fun i => f (S i)) n). 
            { intros. 
              induction n. 
              + simpl. 
                destruct (f 0); try easy; simpl. 
-               rewrite Cplus_0_l, Cplus_0_r, Pplus_0_r. 
-               easy. 
              + simpl in *. 
                rewrite IHn, Pplus_assoc; easy. }
            assert (H0 : degree (prep_mat A 0 0) = 1). 
@@ -423,19 +421,19 @@ Proof. intros.
          assert (H0' : forall a b : C, a = C0 -> (b + a = b)%C). 
          { intros. rewrite H5. lca. }
          bdestruct (j =? x); bdestruct (j =? i).
-         all : try rewrite Msum_Csum. 
+         all : try rewrite Msum_big_sum. 
          all : try unfold scale. 
          rewrite H5 in *. rewrite <- H6.
          rewrite H0'. 
          unfold I. 
          bdestruct (x =? x); bdestruct (x <? S n); try lia. 
          rewrite Cinv_l; try easy. 
-         rewrite Csum_0_bounded; try easy.
+         rewrite big_sum_0_bounded; try easy.
          unfold e_i.
          intros. 
          bdestruct (x0 =? x); try lia; try lca. 
          bdestruct (x =? x0); try lia; lca.          
-         rewrite (Csum_unique (-C1 * (v i 0))).
+         rewrite (big_sum_unique (-C1 * (v i 0))%C).
          unfold I. bdestruct (i =? j); try lia; simpl. 
          lca. exists i. split; try easy. 
          split. simpl. 
@@ -521,7 +519,7 @@ Proof. intros. split.
          assert (H' : (0 < fst (inner_product v v))%R).
          { unfold inner_product.
            unfold Mmult. 
-           apply Csum_gt_0.
+           apply big_sum_gt_0.
            unfold adjoint. 
            intros.
            rewrite <- Cmod_sqr.
@@ -611,7 +609,7 @@ Qed.
 
 
 Definition gram_schmidt_on_v (n m : nat) (v : Vector n) (S : Matrix n m) :=
-  v .+ (Msum m (fun i => (-C1) .* (proj (get_vec i S) v))).
+  v .+ (big_sum (fun i => (-C1) .* (proj (get_vec i S) v)) m).
 
 
 Definition delta_T {n m} (T : Matrix n (S m)) (i : nat) : C := 
@@ -623,7 +621,7 @@ Definition delta_T {n m} (T : Matrix n (S m)) (i : nat) : C :=
 
 (* slightly different version thats easier to work with in general case *)
 Definition gram_schmidt_on_T (n m : nat) (T : Matrix n (S m)) : Vector n :=
-  Msum (S m) (fun i => (delta_T T) i .* (get_vec i T)).
+  big_sum (fun i => (delta_T T) i .* (get_vec i T)) (S m).
 
 
 
@@ -648,11 +646,11 @@ Proof. intros.
        unfold gram_schmidt_on_T, gram_schmidt_on_v.
        prep_matrix_equality. 
        unfold Mplus. 
-       do 2 rewrite Msum_Csum. 
+       do 2 rewrite Msum_big_sum. 
        rewrite Cplus_comm. 
-       rewrite <- Csum_extend_r.
+       rewrite <- big_sum_extend_r.
        apply Cplus_simplify.
-       - apply Csum_eq_bounded.
+       - apply big_sum_eq_bounded.
          intros. 
          unfold delta_T.
          bdestruct (x0 =? m); try lia. 
@@ -680,8 +678,8 @@ Proof. intros.
        rewrite Mmult_plus_distr_l.
        rewrite Mmult_Msum_distr_l.
        unfold Mplus. 
-       rewrite Msum_Csum. 
-       rewrite (Csum_unique (-C1 * ((get_vec i S) † × v) 0 0) _ m); try lca. 
+       rewrite Msum_big_sum. 
+       rewrite (big_sum_unique (-C1 * ((get_vec i S) † × v) 0 0)%C _ m); try lca. 
        exists i. split; try easy.
        split.
        - distribute_scale.
@@ -693,11 +691,11 @@ Proof. intros.
          unfold inner_product in H'.
          rewrite H'. 
          reflexivity. 
-       - intros. apply H in H2. 
+       - intros. apply H in H3. 
          unfold proj. 
          distribute_scale.
          unfold scale. 
-         rewrite H2. 
+         rewrite H3. 
          lca. 
 Qed.
 
@@ -716,12 +714,12 @@ Proof. intros.
 Qed.
 
 Lemma Msum_to_Mmult : forall {n m} (T : Matrix n (S m)) (f : nat -> C),
-  Msum (S m) (fun i => f i .* get_vec i T) = T × (f_to_vec (S m) f).              
+  big_sum (fun i => f i .* get_vec i T) (S m) = T × (f_to_vec (S m) f).              
 Proof. intros. 
        prep_matrix_equality. 
-       rewrite Msum_Csum. 
+       rewrite Msum_big_sum. 
        unfold Mmult. 
-       apply Csum_eq_bounded.
+       apply big_sum_eq_bounded.
        intros. 
        unfold f_to_vec, get_vec, scale.
        bdestruct (x0 <? S m); bdestruct (y =? 0); try lia; try lca. 
@@ -902,24 +900,24 @@ Proof. intros.
        unfold smash, col_append, gram_schmidt_on_T, col_add_many.
        bdestruct (y <? S m1); bdestruct (y =? m1); try lia; try easy.
        unfold delta_T, delta_T', gen_new_vec, f_to_vec, get_vec, scale.
-       do 2 rewrite Msum_Csum. 
-       rewrite <- Csum_extend_r.
+       do 2 rewrite Msum_big_sum. 
+       rewrite <- big_sum_extend_r.
        bdestruct (m1 =? m1); bdestruct (0 =? 0); try lia. 
        rewrite Cplus_comm.
        apply Cplus_simplify; try lca. 
        unfold get_vec.
        assert (p : S m1 + m2 = m1 + (S m2)). lia. 
        rewrite p. 
-       rewrite Csum_sum.
+       rewrite big_sum_sum.
        assert (p1 : forall a b : C, b = C0 -> (a + b = a)%C). 
        intros. rewrite H4. lca. 
        rewrite p1. 
-       apply Csum_eq_bounded; intros.
+       apply big_sum_eq_bounded; intros.
        bdestruct (x0 =? m1); bdestruct (x0 <? m1); try lia.
        simpl. 
        bdestruct (x0 <? m1 + m2); try lia. 
        bdestruct (x0 <? S m1); try lia; easy.
-       apply Csum_0_bounded; intros. 
+       apply (@big_sum_0_bounded C C_is_monoid); intros. 
        bdestruct (m1 + x0 <? m1 + m2); bdestruct (m1 + x0 <? m1); 
          try lia; simpl; lca.
 Qed.
@@ -1362,7 +1360,7 @@ Proof.
   split; auto with wf_db. 
   intros.
   unfold Mmult. 
-  apply Csum_0.
+  apply (@big_sum_0 C C_is_monoid).
   intro.
   bdestruct (x =? i).
   + rewrite H2; try lia; lca. 
@@ -1530,7 +1528,7 @@ Qed.
 
 
 (***********************************)
-(* Defining Cprod, similar to Csum *)
+(* Defining Cprod, similar to big_sum *)
 (***********************************)
 
 Fixpoint Cprod (f : nat -> C) (n : nat) : C := 
@@ -1637,7 +1635,7 @@ Lemma up_tri_mult : forall {n : nat} (A B : Square n),
 Proof.
   unfold upper_triangular, Mmult.
   intros n A B H H0 i j D.
-  apply Csum_0.
+  apply (@big_sum_0 C C_is_monoid).
   intros x.
   bdestruct (x <? i); bdestruct (j <? x); try lia.
   + rewrite H; try lca; lia.
@@ -1671,7 +1669,7 @@ Proof. induction n as [| n'].
              rewrite <- Cprod_extend_r.  
              rewrite <- Cmult_assoc; easy. }
            rewrite H'.
-           rewrite <- Csum_extend_l.
+           rewrite <- big_sum_extend_l.
            rewrite <- Cplus_0_r.
            rewrite <- Cplus_assoc.
            apply Cplus_simplify.
@@ -1682,7 +1680,7 @@ Proof. induction n as [| n'].
            rewrite H; try lia. 
            rewrite <- Cplus_0_r.
            apply Cplus_simplify; try lca. 
-           apply Csum_0_bounded.
+           apply (@big_sum_0_bounded C C_is_monoid).
            intros. 
            rewrite H; try lia; lca. 
 Qed.
@@ -1710,7 +1708,7 @@ Lemma diags_have_basis_eigens : forall (n : nat) (U : Square n) (i : nat),
 Proof. unfold WF_Diagonal, Eigenpair, e_i. intros.
        unfold Mmult, scale.
        prep_matrix_equality.
-       eapply Csum_unique. exists i. 
+       eapply big_sum_unique. exists i. 
        destruct H0 as [H0 H1].
        split. apply H.
        split.
@@ -1907,7 +1905,7 @@ Proof. intros n A H [c H0] i j H1.
          replace 1%R with (fst C1) in H4 by easy.
          apply (c_proj_eq (((get_vec 0 A†) † × get_vec 0 A†) 0 0) C1) in H4.
          unfold Mmult in H4.
-         rewrite <- Csum_extend_l in H4. 
+         rewrite <- big_sum_extend_l in H4. 
          assert (H' : ((get_vec 0 (A) †) † 0 0 * get_vec 0 (A) † 0 0)%C = C1).
          { unfold get_vec, adjoint. 
            simpl. rewrite Hc.
@@ -1921,7 +1919,7 @@ Proof. intros n A H [c H0] i j H1.
          rewrite Cplus_0_l in H4.
          rewrite H1 in *.
          destruct j; try lia. 
-         assert (H5 := Csum_squeeze (fun x : nat => ((get_vec 0 (A) †) † 0 (S x) * 
+         assert (H5 := big_sum_squeeze (fun x : nat => ((get_vec 0 (A) †) † 0 (S x) * 
                                                 get_vec 0 (A) † (S x) 0)%C) n).
          assert (H5' : forall x : nat,
        x < n ->
@@ -1957,7 +1955,7 @@ Proof. intros n A H [c H0] i j H1.
            rewrite adjoint_involutive in Hwf.
            rewrite Hwf; try lca; lia.
          + unfold Mmult. 
-           apply Csum_snd_0; intros. 
+           apply big_sum_snd_0; intros. 
            unfold get_vec, adjoint. 
            simpl. lra. 
        - rewrite H1. 
@@ -1986,9 +1984,9 @@ Proof. intros n A [Hwf Hu].
          bdestruct_all; try easy. }
        rewrite <- H2.
        unfold Mmult.
-       rewrite <- Csum_extend_l.
+       rewrite <- big_sum_extend_l.
        rewrite H, Cmult_0_r, Cplus_0_l.
-       apply Csum_eq_bounded; intros. 
+       apply big_sum_eq_bounded; intros. 
        unfold adjoint. 
        unfold reduce.
        apply Cmult_simplify.
@@ -2103,7 +2101,7 @@ Proof. intros n D1 D2 [H1wf H1d] [H2wf H2d] H.
            bdestruct_all; lca. }
          rewrite <- H', <- H1. 
          unfold Mmult. 
-         apply (Csum_unique (D2 x x)). 
+         apply (big_sum_unique (D2 x x)). 
          exists x. split; try easy.
          split. unfold e_i. 
          bdestruct_all; lca.

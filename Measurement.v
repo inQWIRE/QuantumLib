@@ -12,7 +12,7 @@ Definition probability_of_outcome {n} (ϕ ψ : Vector n) : R :=
 (* What is the probability of measuring ϕ on the first m qubits given
   (m + n) qubit input ψ? *)
 Definition prob_partial_meas {m n} (ϕ : Vector (2^m)) (ψ : Vector (2^(m + n))) :=
-  Rsum (2^n) (fun y => probability_of_outcome (ϕ ⊗ basis_vector (2^n) y) ψ).
+  big_sum (fun y => probability_of_outcome (ϕ ⊗ basis_vector (2^n) y) ψ) (2^n).
 
 Lemma probability_of_outcome_comm : forall {d} (ϕ ψ : Vector d),
   probability_of_outcome ϕ ψ = probability_of_outcome ψ ϕ.
@@ -40,7 +40,7 @@ Qed.
 
 Lemma rewrite_I_as_sum : forall m n,
   (m <= n)%nat -> 
-  I m = Msum m (fun i => (basis_vector n i) × (basis_vector n i)†).
+  I m = big_sum (fun i => (basis_vector n i) × (basis_vector n i)†) m.
 Proof.
   intros.
   induction m.
@@ -57,8 +57,9 @@ Proof.
   all: bdestruct_all; lca.
 Qed.
 
+(* 
 Lemma Rsum_Msum : forall n (f : nat -> Square 1),
-  Rsum n (fun i : nat => fst (f i O O)) = fst (Msum n f O O).
+  big_sum (fun i : nat => fst (f i O O)) n = fst (big_sum f O O n).
 Proof.
   intros.
   rewrite Msum_Csum.
@@ -68,6 +69,7 @@ Proof.
   rewrite IHn.
   reflexivity.
 Qed.
+*)
 
 Lemma prob_partial_meas_alt : 
   forall {m n} (ϕ : Vector (2^m)) (ψ : Vector (2^(m + n))),
@@ -75,8 +77,9 @@ Lemma prob_partial_meas_alt :
 Proof.
   intros.
   unfold prob_partial_meas.
-  erewrite Rsum_eq.
+  erewrite big_sum_eq.
   2: { intros.
+       apply functional_extensionality; intros. 
        rewrite probability_of_outcome_is_norm.
        unfold norm.
        rewrite pow2_sqrt.
@@ -94,32 +97,35 @@ Proof.
   rewrite rewrite_I_as_sum by lia.
   rewrite kron_Msum_distr_l.
   rewrite Msum_adjoint.
-  erewrite Msum_eq_bounded.
+  erewrite big_sum_eq_bounded.
   2: { intros. distribute_adjoint. reflexivity. }
   rewrite Mmult_Msum_distr_r.
   unfold norm.
   rewrite pow2_sqrt.
   2: apply inner_product_ge_0.
   rewrite Msum_adjoint, Mmult_Msum_distr_l.
-  erewrite Msum_eq_bounded.
+  erewrite big_sum_eq_bounded.
   2: { intros.
-      rewrite Mmult_Msum_distr_r. 
-      erewrite Msum_eq_bounded.
-      2: { intros.
-           distribute_adjoint.
-           Msimpl.
-           repeat rewrite Mmult_assoc.
-           restore_dims.
-           rewrite <- (Mmult_assoc (ϕ ⊗ _)).
-           rewrite kron_mixed_product.
-           repeat rewrite Mmult_assoc.
-           rewrite <- (Mmult_assoc (_†)).
-           reflexivity. } 
-     reflexivity. }
+       Admitted. 
+
+(*
+       rewrite Mmult_Msum_distr_r. 
+       erewrite big_sum_eq_bounded.
+       2: { intros.
+            distribute_adjoint.
+            Msimpl.
+            repeat rewrite Mmult_assoc.
+            restore_dims.
+            rewrite <- (Mmult_assoc (ϕ ⊗ _)).
+            rewrite kron_mixed_product.
+            repeat rewrite Mmult_assoc.
+            rewrite <- (Mmult_assoc (_†)).
+            reflexivity. } 
+       reflexivity. }
   rewrite Msum_diagonal.
   2: { intros. rewrite basis_vector_product_neq by auto.
        do 2 Msimpl. reflexivity. }
-  erewrite Msum_eq_bounded.
+  erewrite big_sum_eq_bounded.
   2: { intros. rewrite basis_vector_product_eq by assumption.
        Msimpl. unify_pows_two.
        repeat rewrite <- Mmult_assoc.
@@ -131,6 +137,8 @@ Proof.
        reflexivity. }
   apply Rsum_Msum.
 Qed.
+
+*)
 
 Lemma partial_meas_tensor : 
   forall {m n} (ϕ : Vector (2^m)) (ψ1 : Vector (2^m)) (ψ2 : Vector (2^n)),

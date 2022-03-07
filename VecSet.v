@@ -72,7 +72,7 @@ Proof. intros.
        prep_matrix_equality. 
        unfold Mmult, reduce, reduce_row. 
        bdestruct (x <? 0); try lia.  
-       rewrite <- Csum_extend_l.
+       rewrite <- big_sum_extend_l.
        assert (H' : A (1 + x) 0 = C0).
        { rewrite <- get_vec_conv.  
          rewrite H. unfold e_i. 
@@ -81,7 +81,7 @@ Proof. intros.
        rewrite H'. 
        rewrite Cmult_0_l. 
        rewrite Cplus_0_l.
-       apply Csum_eq_bounded. 
+       apply big_sum_eq_bounded. 
        intros. bdestruct (x0 <? 0); try lia; try easy.
 Qed.
 
@@ -92,7 +92,7 @@ Proof. intros.
        unfold Mmult, reduce, reduce_row.
        assert (H' : S n - 1 = n). { lia. }
        bdestruct (x <? n).  
-       - rewrite <- Csum_extend_r.
+       - rewrite <- big_sum_extend_r.
          assert (H'' : A x n = C0).
          { rewrite <- get_vec_conv.  
            rewrite H. unfold e_i. 
@@ -100,9 +100,9 @@ Proof. intros.
            easy. }
          rewrite H''. rewrite Cmult_0_l. 
          rewrite Cplus_0_r.
-         apply Csum_eq_bounded. 
+         apply big_sum_eq_bounded. 
          intros. bdestruct (x0 <? n); try lia; try easy.
-       - rewrite <- Csum_extend_r.
+       - rewrite <- big_sum_extend_r.
          assert (H'' : A (1 + x) n = C0).
          { rewrite <- get_vec_conv.  
            rewrite H. unfold e_i. 
@@ -110,7 +110,7 @@ Proof. intros.
            easy. }
          rewrite H''. rewrite Cmult_0_l. 
          rewrite Cplus_0_r.
-         apply Csum_eq_bounded. 
+         apply big_sum_eq_bounded. 
          intros.
          bdestruct (x0 <? n); try lia; try easy.
 Qed.
@@ -134,7 +134,7 @@ Proof. intros.
          bdestruct (m =? m); try lia; lca. }
        rewrite H'. 
        rewrite Cplus_0_r. 
-       apply Csum_eq_bounded. 
+       apply big_sum_eq_bounded. 
        intros. 
        unfold col_append, row_append. 
        bdestruct (x0 =? m); try lia; try easy.
@@ -145,13 +145,13 @@ Lemma matrix_by_basis : forall {n m} (T : Matrix n m) (i : nat),
 Proof. intros. unfold get_vec, e_i, Mmult.
        prep_matrix_equality.
        bdestruct (y =? 0). 
-       - rewrite (Csum_unique (T x i) _ m); try easy.
+       - rewrite (big_sum_unique (T x i) _ m); try easy.
          exists i. split.
          apply H. split.
          bdestruct (i =? i); bdestruct (i <? m); try lia; lca. 
          intros.
          bdestruct (x' =? i); try lia; lca. 
-       - rewrite Csum_0; try reflexivity.
+       - rewrite big_sum_0; try reflexivity.
          intros. rewrite andb_false_r. 
          rewrite Cmult_0_r. reflexivity.
 Qed.    
@@ -175,27 +175,27 @@ Proof. intros.
        destruct x. 
        - unfold pad1, col_wedge, row_wedge, e_i, scale.
          bdestruct_all. 
-         rewrite <- Csum_extend_l; simpl. 
+         rewrite <- big_sum_extend_l; simpl. 
          rewrite <- (Cplus_0_r (c1 * c2 * C1)).
          apply Cplus_simplify; try lca. 
-         rewrite Csum_0_bounded; try easy.
+         rewrite big_sum_0_bounded; try easy.
          intros; lca. 
-         rewrite Csum_0_bounded; try easy.
+         rewrite big_sum_0_bounded; try easy.
          simpl; intros. 
          bdestruct_all; lca. 
        - destruct y.
          unfold pad1, col_wedge, row_wedge, e_i, scale. 
          simpl. 
-         rewrite Csum_0_bounded; try lca.   
+         rewrite big_sum_0_bounded; try lca.   
          bdestruct_all; lca. 
          intros. bdestruct_all; lca. 
          rewrite pad1_conv.
-         rewrite <- Csum_extend_l.
-         rewrite <- (Cplus_0_l (Csum _ _)). 
+         rewrite <- big_sum_extend_l.
+         rewrite <- (Cplus_0_l (big_sum _ _)). 
          apply Cplus_simplify.
          unfold pad1, col_wedge, row_wedge, e_i, scale. 
          bdestruct_all; lca. 
-         apply Csum_eq_bounded; intros. 
+         apply big_sum_eq_bounded; intros. 
          do 2 rewrite pad1_conv; easy.
 Qed.
 
@@ -206,14 +206,14 @@ Proof. intros.
        destruct x.
        - unfold pad1, Mmult, col_wedge, row_wedge, scale, e_i.
          bdestruct_all;
-         rewrite Csum_0_bounded; try lca; intros;
+         rewrite big_sum_0_bounded; try lca; intros;
          bdestruct_all; lca. 
        - destruct y;
          unfold pad1, Mmult, col_wedge, row_wedge, scale, e_i;
          bdestruct_all;
-         rewrite <- Csum_extend_l, <- Cplus_0_l;
+         rewrite <- big_sum_extend_l, <- Cplus_0_l;
          apply Cplus_simplify; try lca;
-         apply Csum_eq_bounded; intros;  
+         apply big_sum_eq_bounded; intros;  
          bdestruct_all; do 2 rewrite easy_sub; easy. 
 Qed.
 
@@ -358,8 +358,8 @@ Proof. induction e as [| e].
            rewrite <- Cplus_0_l.
            rewrite Cplus_comm.
            apply Cplus_simplify; try easy.
-           rewrite Msum_Csum.
-           apply Csum_0_bounded; intros. 
+           rewrite Msum_big_sum.
+           apply (@big_sum_0_bounded C C_is_monoid); intros. 
            destruct col; simpl in *. 
            bdestruct (x0 =? 1); try lca. 
            destruct x0; try rewrite H2; try rewrite H1; try lca; try lia. 
@@ -604,27 +604,27 @@ Fixpoint Determinant (n : nat) (A : Square n) : C :=
   match n with 
   | 0 => C1
   | S 0 => A 0 0
-  | S n' => (Csum (fun i => (parity i) * (A i 0) * (Determinant n' (reduce A i 0)))%C n)
+  | S n' => (big_sum (fun i => (parity i) * (A i 0) * (Determinant n' (reduce A i 0)))%C n)
   end.
 
 Arguments Determinant {n}.
 
 Lemma Det_simplify : forall {n} (A : Square (S (S n))),
   Determinant A =  
-  (Csum (fun i => (parity i) * (A i 0) * (Determinant (reduce A i 0)))%C (S (S n))).
+  (big_sum (fun i => (parity i) * (A i 0) * (Determinant (reduce A i 0)))%C (S (S n))).
 Proof. intros. easy. Qed.
 
 
 Lemma Det_simplify_fun : forall {n} (A : Square (S (S (S n)))),
   (fun i : nat => parity i * A i 0 * Determinant (reduce A i 0))%C =
-  (fun i : nat => (Csum (fun j => 
+  (fun i : nat => (big_sum (fun j => 
            (parity i) * (A i 0) * (parity j) * ((reduce A i 0) j 0) * 
            (Determinant (reduce (reduce A i 0) j 0)))%C (S (S n))))%C.
 Proof. intros. 
        apply functional_extensionality; intros. 
        rewrite Det_simplify. 
-       rewrite Csum_mult_l. 
-       apply Csum_eq_bounded; intros. 
+       rewrite (@big_sum_mult_l C _ _ _ C_is_ring). 
+       apply big_sum_eq_bounded; intros. 
        lca. 
 Qed.
 
@@ -645,14 +645,14 @@ Proof. intros.
        induction n as [| n'].
        - easy.
        - simpl. destruct n'; try easy.
-         rewrite <- Csum_extend_l.
+         rewrite <- big_sum_extend_l.
          rewrite <- Cplus_0_r.
          rewrite <- Cplus_assoc.
          apply Cplus_simplify.
          rewrite reduce_I, IHn'.
          lca.
-         rewrite Csum_extend_r.
-         apply Csum_0_bounded; intros.
+         rewrite (@big_sum_extend_r C C_is_monoid).
+         apply (@big_sum_0_bounded C C_is_monoid); intros.
          replace (I (S (S n')) (S x) 0) with C0 by easy.
          lca. 
 Qed.
@@ -664,7 +664,7 @@ Proof. induction n as [| n'].
        - intros. 
          destruct n'; try easy. 
          do 2 rewrite Det_simplify. 
-         apply Csum_eq_bounded; intros. 
+         apply big_sum_eq_bounded; intros. 
          assert (H' : (reduce (make_WF A) x 0) = make_WF (reduce A x 0)).
          { prep_matrix_equality.
            unfold reduce, make_WF.
@@ -722,8 +722,8 @@ Proof. induction n.
            bdestruct (0 =? col); try lia; easy.
          - rewrite Cmult_plus_distr_l.
            apply Cplus_simplify.
-           * rewrite Csum_mult_l.
-             apply Csum_eq_bounded.
+           * rewrite (@big_sum_mult_l C _ _ _ C_is_ring).
+             apply big_sum_eq_bounded.
              intros. 
              destruct col. 
              rewrite col_scale_reduce_same; try lia. 
@@ -749,14 +749,14 @@ Qed.
 (* some helper lemmas *)
 Lemma Det_diff_1 : forall {n} (A : Square (S (S (S n)))),
   Determinant (col_swap A 0 1) = 
-  Csum (fun i => (Csum (fun j => ((A i 1) * (A (skip_count i j) 0) * (parity i) * (parity j) * 
+  big_sum (fun i => (big_sum (fun j => ((A i 1) * (A (skip_count i j) 0) * (parity i) * (parity j) * 
                              Determinant (reduce (reduce A i 0) j 0))%C)  
                              (S (S n)))) (S (S (S n))).
 Proof. intros. 
        rewrite Det_simplify.
        rewrite Det_simplify_fun.
-       apply Csum_eq_bounded; intros. 
-       apply Csum_eq_bounded; intros. 
+       apply big_sum_eq_bounded; intros. 
+       apply big_sum_eq_bounded; intros. 
        replace (col_swap A 0 1 x 0) with (A x 1) by easy. 
        assert (H' : @reduce (S (S n)) (col_swap A 0 1) x 0 x0 0 = A (skip_count x x0) 0).
        { unfold reduce, col_swap, skip_count. 
@@ -768,14 +768,14 @@ Qed.
 
 Lemma Det_diff_2 : forall {n} (A : Square (S (S (S n)))),
   Determinant A = 
-  Csum (fun i => (Csum (fun j => ((A i 0) * (A (skip_count i j) 1) * (parity i) * (parity j) * 
+  big_sum (fun i => (big_sum (fun j => ((A i 0) * (A (skip_count i j) 1) * (parity i) * (parity j) * 
                              Determinant (reduce (reduce A i 0) j 0))%C)  
                              (S (S n)))) (S (S (S n))).
 Proof. intros. 
        rewrite Det_simplify.
        rewrite Det_simplify_fun.
-       apply Csum_eq_bounded; intros. 
-       apply Csum_eq_bounded; intros. 
+       apply big_sum_eq_bounded; intros. 
+       apply big_sum_eq_bounded; intros. 
        apply Cmult_simplify; try easy. 
        assert (H' : @reduce (S (S n)) A x 0 x0 0 = A (skip_count x x0) 1).
        { unfold reduce, col_swap, skip_count. 
@@ -793,7 +793,7 @@ Proof. intros.
        destruct n.
        - simpl. unfold col_swap, reduce. lca. 
        - rewrite Det_diff_1, Det_diff_2.
-         apply Csum_rearrange; intros.
+         apply big_sum_rearrange; intros.
          + unfold skip_count. 
            bdestruct (x <? (S y)); bdestruct (y <? x); try lia.
            rewrite Cmult_assoc.
@@ -818,9 +818,9 @@ Proof. induction n as [| n'].
          destruct i. 
          + apply Determinant_swap_01; easy.
          + simpl. destruct n'; try lia.
-           do 2 rewrite Csum_extend_r.
-           rewrite Csum_mult_l.
-           apply Csum_eq_bounded; intros. 
+           do 2 rewrite (@big_sum_extend_r C C_is_monoid).
+           rewrite (@big_sum_mult_l C _ _ _ C_is_ring).
+           apply big_sum_eq_bounded; intros. 
            rewrite col_swap_reduce_before; try lia. 
            rewrite IHn'; try lia. 
            replace (col_swap A (S i) (S (S i)) x 0) with (A x 0) by easy.
@@ -866,14 +866,14 @@ Proof. intros n A [i [H H0]].
        rewrite <- H0. easy. 
        destruct i.
        - rewrite Det_simplify.
-         apply Csum_0_bounded; intros. 
+         apply (@big_sum_0_bounded C C_is_monoid); intros. 
          replace (A x 0) with (@Zero (S (S n)) 1 x 0) by (rewrite <- H0; easy). 
          unfold Zero; lca.
        - rewrite (col_swap_inv _ 0 (S i)).
          rewrite Determinant_swap; try lia.
          rewrite Det_simplify.
-         rewrite Csum_mult_l.
-         apply Csum_0_bounded; intros. 
+         rewrite (@big_sum_mult_l C _ _ _ C_is_ring).
+         apply (@big_sum_0_bounded C C_is_monoid); intros. 
          replace (col_swap A 0 (S i) x 0) with 
                  (@Zero (S (S n)) 1 x 0) by (rewrite <- H0; easy). 
          unfold Zero; lca.
@@ -932,8 +932,8 @@ Lemma Det_col_add_comm : forall {n} (T : Matrix (S n) n) (v1 v2 : Vector (S n)),
 Proof. intros. 
        destruct n; try easy.
        do 3 rewrite Det_simplify.
-       rewrite <- Csum_plus.
-       apply Csum_eq_bounded; intros. 
+       rewrite <- (@big_sum_plus C _ _ C_is_comm_group).
+       apply big_sum_eq_bounded; intros. 
        repeat rewrite reduce_is_redcol_redrow.
        repeat rewrite col_wedge_reduce_col_same.
        unfold col_wedge, Mplus.
@@ -1042,7 +1042,7 @@ Proof. apply invr_p; intros.
        - apply C1_neq_C0. 
        - unfold not; intros; apply H1.
          rewrite Det_simplify. 
-         apply Csum_0_bounded; intros. 
+         apply (@big_sum_0_bounded C C_is_monoid); intros. 
          destruct x. 
          + rewrite <- reduce_pad1, H0; lca. 
          + unfold pad1, col_wedge, row_wedge, e_i, scale.
@@ -1104,7 +1104,7 @@ Proof. apply invr_p; intros.
          easy.
        - rewrite Det_simplify in H1. 
          assert (H' : (c * Determinant (reduce (pad1 T c) 0 0) = C0)%C).
-         { rewrite <- H1, (Csum_unique (c * Determinant (reduce (pad1 T c) 0 0))%C).  
+         { rewrite <- H1, (big_sum_unique (c * Determinant (reduce (pad1 T c) 0 0))%C).  
            easy. 
            exists 0. split; try lia. 
            split. simpl parity. 
@@ -1245,14 +1245,14 @@ Proof. intros.
          apply WF_row_append; try easy.
          prep_matrix_equality. 
          unfold Mmult, row_append, Zero.  
-         rewrite <- Csum_extend_r. 
+         rewrite <- big_sum_extend_r. 
          bdestruct (m =? m); try lia. 
          autorewrite with C_db.
          assert (H' : (reduce_col A m × a) x y = C0).
          { rewrite H1; easy. }
          rewrite <- H'. 
          unfold Mmult. 
-         apply Csum_eq_bounded. 
+         apply big_sum_eq_bounded. 
          intros.
          unfold reduce_col.
          bdestruct (x0 =? m); bdestruct (x0 <? m); try lia. 
@@ -1280,7 +1280,7 @@ Proof. induction m2 as [| m2'].
          rewrite <- H1.
          unfold smash, Mmult. 
          prep_matrix_equality. 
-         apply Csum_eq_bounded.
+         apply big_sum_eq_bounded.
          intros. 
          bdestruct (x0 <? m1); try lia; easy.
        - intros.  
@@ -1377,7 +1377,7 @@ Proof. apply invr_p; intros.
        assert (H3 : @Mmult (S n) (S m) 1 (pad1 T c) (row_wedge a Zero 0) = Zero).
        { prep_matrix_equality. 
          destruct x. unfold Mmult. 
-         unfold Zero. apply Csum_0_bounded. 
+         unfold Zero. apply (@big_sum_0_bounded C C_is_monoid). 
          intros.
          unfold pad1, row_wedge, col_wedge, e_i, scale.
          bdestruct (x <? 0); bdestruct (x =? 0); try lia. lca. 
@@ -1388,14 +1388,14 @@ Proof. apply invr_p; intros.
          rewrite H2; easy.
          rewrite p. 
          rewrite <- H2'.
-         unfold Mmult. rewrite <- Csum_extend_l.  
+         unfold Mmult. rewrite <- big_sum_extend_l.  
          rewrite <- Cplus_0_l.
          apply Cplus_simplify.
          unfold pad1, row_wedge, col_wedge, e_i.
          bdestruct (x <? 0); bdestruct (x =? 0); try lia. 
          rewrite H4; simpl. lca. 
          rewrite easy_sub. lca. 
-         apply Csum_eq_bounded; intros. 
+         apply big_sum_eq_bounded; intros. 
          rewrite pad1_conv.
          unfold row_wedge.
          rewrite easy_sub. 
@@ -1419,7 +1419,7 @@ Proof. apply PZF; intros.
        assert (H2 : T × @e_i m i = Zero).
        { prep_matrix_equality.
          unfold Mmult, Zero, e_i; simpl.  
-         apply Csum_0_bounded; intros. 
+         apply (@big_sum_0_bounded C C_is_monoid); intros. 
          bdestruct_all; try lca; 
          rewrite <- get_vec_conv; subst.
          rewrite H1; lca. }
@@ -1530,20 +1530,20 @@ Proof. intros.
          rewrite Mscale_mult_dist_r.  
          unfold mat_equiv; intros. 
          unfold Mmult, scale.
-         assert (H' : (Csum (fun y : nat => reduce_col T x i y * reduce_row a x y j) m +
+         assert (H' : (big_sum (fun y : nat => reduce_col T x i y * reduce_row a x y j) m +
                        (a x 0) * get_vec x T i j = @Zero n 1 i j)%C).
          { rewrite <- H3. unfold Mmult.
            assert (H'' : m = x + (m - x)). lia. 
            rewrite H''. 
-           rewrite Csum_sum.
+           rewrite big_sum_sum.
            rewrite <- H''. 
            assert (H2' : S m = x + S (m - x)). lia. 
            rewrite H2'. 
-           rewrite Csum_sum.
-           rewrite <- Csum_extend_l.
+           rewrite big_sum_sum.
+           rewrite <- big_sum_extend_l.
            rewrite <- Cplus_assoc.
            apply Cplus_simplify. 
-           apply Csum_eq_bounded.
+           apply big_sum_eq_bounded.
            intros. unfold reduce_col, reduce_row. 
            bdestruct (x0 <? x); try lia; easy.
            rewrite Cplus_comm.
@@ -1552,13 +1552,13 @@ Proof. intros.
            bdestruct (j =? 0); try lia. 
            assert (p0 : x + 0 = x). lia. 
            rewrite p0, H7; lca.
-           apply Csum_eq_bounded.
+           apply big_sum_eq_bounded.
            intros. 
            unfold reduce_col, reduce_row.
            bdestruct (x + x0 <? x); try lia.
            assert (p1 : (1 + (x + x0)) = (x + S x0)). lia. 
            rewrite p1. easy. }
-         assert (H1' : (Csum (fun y : nat => reduce_col T x i y * reduce_row a x y j) m +
+         assert (H1' : (big_sum (fun y : nat => reduce_col T x i y * reduce_row a x y j) m +
                        (a x 0) * get_vec x T i j + (a x 0) * (- (get_vec x T i j)) = 
                        (- (a x 0)) * get_vec x T i j)%C).
          { rewrite H'. lca. }
@@ -1613,7 +1613,7 @@ Proof. intros.
          destruct i.  
          * unfold get_vec, e_i in H'; simpl in H'. 
            rewrite H'. unfold Zero. 
-           apply Csum_0_bounded. 
+           apply (@big_sum_0_bounded C C_is_monoid). 
            intros; simpl.  
            bdestruct (x =? col); bdestruct (x <? col); try lia; lca. 
          * unfold get_vec, e_i in H'; simpl in H'. 
@@ -1623,19 +1623,19 @@ Proof. intros.
            unfold Mmult, reduce_row, reduce_col.
            repeat rewrite easy_sub in *.
            assert (p : S m = col + (S m - col)). lia.
-           rewrite p, Csum_sum.
+           rewrite p, big_sum_sum.
            assert (p1 : S m - col = S (m - col)). lia. 
-           rewrite p1, <- Csum_extend_l. 
+           rewrite p1, <- big_sum_extend_l. 
            simpl. bdestruct (col + 0 =? col); bdestruct (col + 0 <? col); try lia. 
            assert (p2 : m = col + (m - col)). lia.
-           rewrite p2, Csum_sum, <- p2.
+           rewrite p2, big_sum_sum, <- p2.
            apply Cplus_simplify.
-           apply Csum_eq_bounded; intros. 
+           apply big_sum_eq_bounded; intros. 
            bdestruct (x <? col); bdestruct (x =? col); try lia.
            rewrite H'. lca. 
            rewrite <- Cplus_0_l.
            apply Cplus_simplify; try lca.
-           apply Csum_eq_bounded; intros.
+           apply big_sum_eq_bounded; intros.
            bdestruct (col + S x <? col); bdestruct (col + S x =? col); 
              bdestruct (col + x <? col); try lia. 
            assert (p4 : col + S x - 1 = col + x). lia. 
@@ -1668,8 +1668,8 @@ Proof. intros.
          bdestruct (col =? col); bdestruct (x <? 0); try lia. 
          apply Cplus_simplify. 
          easy. unfold gen_new_vec.
-         do 2 rewrite Msum_Csum.
-         apply Csum_eq_bounded; intros. 
+         do 2 rewrite Msum_big_sum.
+         apply big_sum_eq_bounded; intros. 
          unfold scale, get_vec; lca.  
        - apply (mat_prop_col_scale_conv _ _ col (/ (col_add_many col v T 0 col))); 
            try apply nonzero_div_nonzero; try easy.
@@ -1689,8 +1689,8 @@ Proof. intros.
            { unfold reduce_row, col_add_many, gen_new_vec, get_vec, scale.
              bdestruct (col =? col); bdestruct (i <? 0); try lia. 
              apply Cplus_simplify; try easy.
-             do 2 rewrite Msum_Csum. 
-             apply Csum_eq_bounded; intros. 
+             do 2 rewrite Msum_big_sum. 
+             apply big_sum_eq_bounded; intros. 
              bdestruct (i <? 0); try lia; easy. }
            rewrite r.  
            rewrite (H0' i); lca. 

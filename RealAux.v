@@ -1,5 +1,7 @@
 Require Export Reals.
 Require Import Psatz.
+Require Export Program.
+Require Export Summation.
 
 (******************************************)
 (** Relevant lemmas from Rcomplements.v. **)
@@ -436,4 +438,64 @@ Proof. intros.
        destruct H' as [m [H1 H2] ].
        exists (-m).
        apply negset_glb; easy.
+Qed.
+
+
+
+(* Showing that R is a field, and a vector space over itself *)
+
+Program Instance R_is_monoid : Monoid R := 
+  { Gzero := 0
+  ; Gplus := Rplus
+  }.
+Solve All Obligations with program_simpl; try lra.
+
+Program Instance R_is_group : Group R :=
+  { Gopp := Ropp }.
+Solve All Obligations with program_simpl; try lra.
+
+Program Instance R_is_comm_group : Comm_Group R.
+Solve All Obligations with program_simpl; lra. 
+
+Program Instance R_is_ring : Ring R :=
+  { Gone := 1
+  ; Gmult := Rmult
+  }.
+Solve All Obligations with program_simpl; lra. 
+
+Program Instance R_is_comm_ring : Comm_Ring R.
+Solve All Obligations with program_simpl; lra. 
+                                                     
+Program Instance R_is_field : Field R :=
+  { Ginv := Rinv }.
+Next Obligation. 
+  rewrite Rinv_r; easy.
+Qed.
+
+Program Instance R_is_vector_space : Vector_Space R R :=
+  { Vscale := Rmult }.
+Solve All Obligations with program_simpl; lra. 
+
+
+
+(* some big_sum lemmas specific to R *)
+
+Lemma Rsum_le : forall (f g : nat -> R) (n : nat),
+  (forall i, (i < n)%nat -> f i <= g i) ->
+  (big_sum f n) <= (big_sum g n).
+Proof. induction n as [| n']; simpl; try lra.  
+       intros.
+       apply Rplus_le_compat.
+       apply IHn'; intros. 
+       all : apply H; try lia. 
+Qed.
+
+Lemma Rsum_ge_0 : forall (f : nat -> R) (n : nat),
+  (forall i, (i < n)%nat -> 0 <= f i) ->
+  0 <= big_sum f n.
+Proof. induction n as [| n'].
+       - intros; simpl; lra. 
+       - intros. simpl; apply Rplus_le_le_0_compat.
+         apply IHn'; intros; apply H; lia. 
+         apply H; lia. 
 Qed.

@@ -8,7 +8,7 @@ Copyright (C) 2011-2015 Catherine Lelay
 Copyright (C) 2011-2015 Guillaume Melquiond
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
-License as published by the Free Software Foundation; either
+License as published by the Free Software Foundation; either 
 version 3 of the License, or (at your option) any later version.
 This library is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,8 +20,9 @@ or any other dependencies, as part of the QWIRE project
 by Robert Rand and Jennifer Paykin (June 2017).
 *)
 
-Require Export Prelim.
+Require Export Prelim. 
 Require Export RealAux.
+Require Export Summation. 
 
 (*********************)
 (** Complex Numbers **)
@@ -37,7 +38,7 @@ Definition C := (R * R)%type.
 
 Declare Scope C_scope.
 Delimit Scope C_scope with C.
-
+ 
 Open Scope nat_scope.
 Open Scope R_scope.
 Open Scope C_scope.
@@ -63,10 +64,21 @@ Proof.
   destruct (Req_EM_T y1 y2) as [Eqy | Neqy]; [subst; auto | right; congruence].
 Qed.
 
+(* lca, a great tactic for solving computations or basic equality checking *)
+Lemma c_proj_eq : forall (c1 c2 : C), fst c1 = fst c2 -> snd c1 = snd c2 -> c1 = c2.  
+Proof. intros c1 c2 H1 H2. destruct c1, c2. simpl in *. subst. reflexivity. Qed.
+
+(* essentially, we just bootsrap coq's lra *)
+Ltac lca := eapply c_proj_eq; simpl; lra.
+
+
 (** ** Constants and usual functions *)
 
 (** 0 and 1 for complex are defined as [RtoC 0] and [RtoC 1] *)
 Definition Ci : C := (0,1).
+Notation C0 := (RtoC 0). 
+Notation C1 := (RtoC 1).
+Notation C2 := (RtoC 2).
 
 (** *** Arithmetic operations *)
 
@@ -83,6 +95,47 @@ Infix "-" := Cminus : C_scope.
 Infix "*" := Cmult : C_scope.
 Notation "/ x" := (Cinv x) : C_scope.
 Infix "/" := Cdiv : C_scope.
+
+(* Showing that C is a field, and a vector space over itself *)
+            
+Program Instance C_is_monoid : Monoid C := 
+  { Gzero := C0
+  ; Gplus := Cplus
+  }.
+Solve All Obligations with program_simpl; try lca.
+
+Program Instance C_is_group : Group C :=
+  { Gopp := Copp }.
+Solve All Obligations with program_simpl; try lca.
+        
+Program Instance C_is_comm_group : Comm_Group C.
+Solve All Obligations with program_simpl; lca. 
+                                             
+Program Instance C_is_ring : Ring C :=
+  { Gone := C1
+  ; Gmult := Cmult
+  }.
+Solve All Obligations with program_simpl; lca. 
+
+Program Instance C_is_comm_ring : Comm_Ring C.
+Solve All Obligations with program_simpl; lca. 
+
+Program Instance C_is_field : Field C :=
+  { Ginv := Cinv }.
+Next Obligation.
+  assert (H := R1_neq_R0).
+  contradict H.  
+  apply (f_equal_gen fst fst) in H; simpl in H; easy. 
+Qed.
+Next Obligation.
+  apply injective_projections ; simpl ; field; 
+  contradict H; apply Rplus_sqr_eq_0 in H;
+  apply injective_projections ; simpl ; apply H.
+Qed.
+
+Program Instance C_is_vector_space : Vector_Space C C :=
+  { Vscale := Cmult }.
+Solve All Obligations with program_simpl; lca. 
 
 (* Added exponentiation *)
 Fixpoint Cpow (c : C) (n : nat) : C :=  
@@ -422,36 +475,13 @@ Proof.
 Qed.
 
 Lemma C_field_theory : field_theory (RtoC 0) (RtoC 1) Cplus Cmult Cminus Copp Cdiv Cinv eq.
-Proof.
-constructor.
-constructor.
-exact Cplus_0_l.
-exact Cplus_comm.
-exact Cplus_assoc.
-exact Cmult_1_l.
-exact Cmult_comm.
-exact Cmult_assoc.
-exact Cmult_plus_distr_r.
-easy.
-exact Cplus_opp_r.
-intros H.
-injection H.
-exact R1_neq_R0.
-easy.
-apply Cinv_l.
-Qed.
+Proof. apply (@G_field_theory C _ _ _ _ _ C_is_field). Qed.
 
 Add Field C_field_field : C_field_theory.
 
 (*****************************************)
 (** * Added Lemmas for QWIRE            **)
 (*****************************************)
-
-(** Notations *)
-
-Notation C0 := (RtoC 0). 
-Notation C1 := (RtoC 1).
-Notation C2 := (RtoC 2).
 
 Lemma RtoC_pow : forall r n, (RtoC r) ^ n = RtoC (r ^ n).
 Proof.
@@ -464,10 +494,6 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma c_proj_eq : forall (c1 c2 : C), fst c1 = fst c2 -> snd c1 = snd c2 -> c1 = c2.  
-Proof. intros c1 c2 H1 H2. destruct c1, c2. simpl in *. subst. reflexivity. Qed.
-
-Ltac lca := eapply c_proj_eq; simpl; lra.
 
 Lemma Ci2 : Ci * Ci = -C1. Proof. lca. Qed.
 Lemma Copp_mult_distr_r : forall c1 c2 : C, - (c1 * c2) = c1 * - c2.
@@ -588,6 +614,155 @@ Proof.
     * apply Rsum_nonzero. apply C0_imp in H. assumption.
     * apply Rsum_nonzero. apply C0_imp in H0. assumption.
 Qed.
+
+
+(* some C big_sum specific lemmas *)
+
+Local Open Scope nat_scope. 
+
+
+(* TODO: these should all probably have better names *)
+Lemma big_sum_rearrange : forall (n : nat) (f g : nat -> nat -> C),
+  (forall x y, x <= y -> f x y = (-C1) * (g (S y) x))%G ->
+  (forall x y, y <= x -> f (S x) y = (-C1) * (g y x))%G ->
+  big_sum (fun i => big_sum (fun j => f i j) n) (S n) = 
+  (-C1 * (big_sum (fun i => big_sum (fun j => g i j) n) (S n)))%G.
+Proof. induction n as [| n'].
+       - intros. lca. 
+       - intros. 
+         do 2 rewrite big_sum_extend_double.
+         rewrite (IHn' f g); try easy.
+         repeat rewrite Cmult_plus_distr_l.
+         repeat rewrite <- Cplus_assoc.
+         apply Cplus_simplify; try easy.
+         assert (H' : forall a b c, (a + (b + c) = (a + c) + b)%G). 
+         intros. lca. 
+         do 2 rewrite H'.
+         rewrite <- Cmult_plus_distr_l.
+         do 2 rewrite (@big_sum_extend_r C C_is_monoid). 
+         do 2 rewrite (@big_sum_mult_l C _ _ _ C_is_ring).  
+         rewrite Cplus_comm.
+         apply Cplus_simplify.
+         all : apply big_sum_eq_bounded; intros. 
+         apply H; lia. 
+         apply H0; lia. 
+Qed.
+
+Local Close Scope nat_scope.
+
+Lemma big_sum_ge_0 : forall f n, (forall x, 0 <= fst (f x)) -> (0 <= fst (big_sum f n))%R.
+Proof.
+  intros f n H.
+  induction n.
+  - simpl. lra. 
+  - simpl in *.
+    rewrite <- Rplus_0_r at 1.
+    apply Rplus_le_compat; easy.
+Qed.
+
+Lemma big_sum_gt_0 : forall f n, (forall x, 0 <= fst (f x)) -> 
+                              (exists y : nat, (y < n)%nat /\ 0 < fst (f y)) ->
+                              0 < fst (big_sum f n).
+Proof.
+  intros f n H [y [H0 H1]].
+  induction n.
+  - simpl. lia. 
+  - simpl in *.
+    bdestruct (y <? n)%nat; bdestruct (y =? n)%nat; try lia. 
+    + assert (H' : 0 <= fst (f n)). { apply H. } 
+      apply IHn in H2. lra. 
+    + apply (big_sum_ge_0 f n) in H.
+      rewrite H3 in H1.
+      lra. 
+Qed.
+
+Lemma big_sum_member_le : forall (f : nat -> C) (n : nat), (forall x, 0 <= fst (f x)) ->
+                      (forall x, (x < n)%nat -> fst (f x) <= fst (big_sum f n)).
+Proof.
+  intros f.
+  induction n.
+  - intros H x Lt. inversion Lt.
+  - intros H x Lt.
+    bdestruct (Nat.ltb x n).
+    + simpl.
+      rewrite <- Rplus_0_r at 1.
+      apply Rplus_le_compat.
+      apply IHn; easy.
+      apply H.
+    + assert (E: x = n) by lia.
+      rewrite E.
+      simpl.
+      rewrite <- Rplus_0_l at 1.
+      apply Rplus_le_compat.
+      apply big_sum_ge_0; easy.
+      lra.
+Qed.  
+
+Lemma big_sum_squeeze : forall (f : nat -> C) (n : nat), 
+  (forall x, (0 <= fst (f x)))%R -> big_sum f n = C0 ->
+  (forall x, (x < n)%nat -> fst (f x) = fst C0).
+Proof. intros. 
+       assert (H2 : (forall x, (x < n)%nat -> (fst (f x) <= 0)%R)).
+       { intros. 
+         replace 0%R with (fst (C0)) by easy.
+         rewrite <- H0.
+         apply big_sum_member_le; try easy. }
+       assert (H3 : forall r : R, (r <= 0 -> 0 <= r -> r = 0)%R). 
+       intros. lra. 
+       simpl. 
+       apply H3.
+       apply H2; easy.
+       apply H.
+Qed.
+
+Lemma big_sum_snd_0 : forall n f, (forall x, snd (f x) = 0) -> snd (big_sum f n) = 0.       
+Proof. intros. induction n.
+       - reflexivity.
+       - rewrite <- big_sum_extend_r.
+         unfold Cplus. simpl. rewrite H, IHn.
+         simpl; lra.
+Qed.
+
+Lemma Rsum_big_sum : forall n (f : nat -> R),
+  fst (big_sum (fun i => RtoC (f i)) n) = big_sum f n.
+Proof.
+  intros. induction n.
+  - easy.
+  - simpl. rewrite IHn.
+    easy. 
+Qed.
+
+Lemma big_sum_Cmod_0_all_0 : forall (f : nat -> C) (n : nat),
+  big_sum (fun i => Cmod (f i)) n = 0 -> 
+  forall i, (i < n)%nat -> f i = C0.
+Proof. induction n as [| n']; try nia.   
+       intros; simpl in H.
+       assert (H' := H).
+       rewrite Rplus_comm in H; apply Rplus_eq_0_l in H. 
+       apply Rplus_eq_0_l in H'.
+       all : try apply Rsum_ge_0; intros.
+       all : try apply Cmod_ge_0.
+       bdestruct (i <? n')%nat.
+       - apply IHn'; easy. 
+       - bdestruct (i =? n')%nat; try lia; subst. 
+         apply Cmod_eq_0; try easy.
+Qed.
+
+Lemma big_sum_triangle : forall f n,
+  Cmod (big_sum f n) <= big_sum (fun i => Cmod (f i)) n.
+Proof. induction n as [| n'].
+       - simpl. rewrite Cmod_0; lra.
+       - simpl.
+         eapply Rle_trans; try apply Cmod_triangle.
+         apply Rplus_le_compat_r.
+         easy. 
+Qed. 
+
+(*
+Definition Csum_0_bounded := (@big_sum_0_bounded C C_is_monoid).
+Definition Csum_eq := big_sum_eq.
+*)
+
 
 (* Lemmas about Cmod *)
 

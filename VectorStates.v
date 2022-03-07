@@ -400,12 +400,13 @@ Proof.
   prep_matrix_equality.
   unfold basis_vector, adjoint, Mmult, I.
   bdestruct (x =? y); bdestruct (x <? 1); simpl.
-  apply Csum_unique.
+  apply big_sum_unique.
   exists n.
   repeat split; auto.
   bdestruct_all; simpl; lca.
-  intros i Hi. bdestructΩ (i =? n). lca.
-  all: apply Csum_0; intro i; bdestruct_all; simpl; lca.
+  intros i Hi. bdestructΩ (i =? n).
+  intros. lca.
+  all: apply (@big_sum_0 C C_is_monoid); intro i; bdestruct_all; simpl; lca.
 Qed.
 
 Lemma basis_vector_pure_state : forall n i,
@@ -421,7 +422,7 @@ Proof.
   intros.
   prep_matrix_equality.
   unfold basis_vector, adjoint, Mmult, Zero.
-  apply Csum_0. 
+  apply (@big_sum_0 C C_is_monoid). 
   intro i; bdestruct_all; lca.
 Qed.
 
@@ -433,17 +434,18 @@ Proof.
   unfold basis_vector.
   unfold Mmult.
   bdestruct (j <? n).
-  2:{ rewrite Csum_0. rewrite WFA; auto. 
+  2:{ rewrite big_sum_0. rewrite WFA; auto. 
       intros j'. bdestruct (j' =? j); subst; simpl; try lca.
       rewrite WFA by auto. lca. }
-  erewrite Csum_unique.
+  erewrite big_sum_unique.
   reflexivity.
   exists j.
   repeat split; trivial.
   rewrite <- 2 beq_nat_refl; simpl; lca.
   intros j' Hj.
   bdestruct_all; auto. 
-  simpl. lca.
+  all : intros; simpl; try lca.
+  subst; easy.
 Qed.
 
 Lemma equal_on_basis_vectors_implies_equal : forall m n (A B : Matrix m n),
@@ -1175,8 +1177,8 @@ Hint Rewrite (@update_index_eq bool) (@update_index_neq bool) (@update_twice_eq 
 (*******************************)
 (**        Indexed Sum        **)
 (*******************************)
-
-Definition vsum {d} n (f : nat -> Vector d) : Vector d := Msum n f.
+ 
+Definition vsum {d} n (f : nat -> Vector d) : Vector d := big_sum f n.
 
 Lemma vsum_WF : forall {d} n (f : nat -> Vector d), 
   (forall i, (i < n)%nat -> WF_Matrix (f i)) -> 
@@ -1186,7 +1188,7 @@ Proof. intros. unfold vsum. apply WF_Msum; auto. Qed.
 
 Lemma vsum_eq : forall {d} n (f f' : nat -> Vector d),
   (forall i, (i < n)%nat -> f i = f' i) -> vsum n f = vsum n f'.
-Proof. intros. unfold vsum. apply Msum_eq_bounded; auto. Qed.
+Proof. intros. unfold vsum. apply big_sum_eq_bounded; auto. Qed.
 
 Lemma vsum_empty : forall {d} (f : nat -> Vector d), vsum O f = Zero.
 Proof. reflexivity. Qed.
@@ -1197,7 +1199,7 @@ Proof. reflexivity. Qed.
 
 Lemma vsum_extend_l : forall {d} n (f : nat -> Vector d),
   vsum (S n) f = (f O) .+ vsum n (shift f 1).
-Proof.
+Proof. 
   intros d n f.
   induction n.
   simpl. lma.
@@ -1223,22 +1225,24 @@ Proof. intros. unfold vsum. apply Mmult_Msum_distr_l. Qed.
 
 Lemma Mscale_vsum_distr_r : forall {d} x n (f : nat -> Vector d),
   x .* vsum n f = vsum n (fun i => x .* f i).
-Proof. intros. unfold vsum. apply Mscale_Msum_distr_r. Qed.
+Proof. intros. unfold vsum. 
+       eapply (@big_sum_scale_l _ C _ _ _ _ _ _ _ _ _ (M_is_vector_space d 1)). (* this is bad *)
+Qed.
 
 Lemma Mscale_vsum_distr_l : forall {d} n (f : nat -> C) (A : Vector d),
-  vsum n (fun i => (f i) .* A) = Csum f n .* A.
+  vsum n (fun i => (f i) .* A) = big_sum f n .* A.
 Proof. intros. unfold vsum. apply Mscale_Msum_distr_l. Qed.
 
 Lemma vsum_0 : forall {d} n (f : nat -> Vector d),
   (forall x, x < n -> f x = Zero) -> vsum n f = Zero.
-Proof. intros. unfold vsum. apply Msum_0. auto. Qed.
+Proof. intros. unfold vsum. apply (@big_sum_0_bounded _ (M_is_monoid d 1)). easy. Qed.
 
 Lemma vsum_constant : forall {d} n (v : Vector d),  vsum n (fun _ => v) = INR n .* v.
 Proof. intros. unfold vsum. apply Msum_constant. Qed.
 
 Lemma vsum_plus : forall d n (f1 f2 : nat -> Vector d),
   vsum n (fun i => (f1 i) .+ (f2 i)) = vsum n f1 .+ vsum n f2.
-Proof. intros. unfold vsum. apply Msum_plus. Qed.
+Proof. intros. unfold vsum. apply (@big_sum_plus _ _ _ (M_is_comm_group d 1)). Qed.
 
 Lemma vsum_swap_order : forall {d} m n (f : nat -> nat -> Vector d),
   vsum n (fun j => vsum m (fun i => f j i)) = vsum m (fun i => vsum n (fun j => f j i)).
@@ -1252,9 +1256,10 @@ Proof.
 Qed.
 
 Lemma vsum_unique : forall d n (f : nat -> Vector d) (v : Vector d),
-  (exists i, i < n /\ f i = v /\ (forall j, j < n -> j <> i -> f j = Zero)) -> 
+  (exists i, i < n /\ f i = v /\ (forall j, j < n -> i <> j -> f j = Zero)) -> 
   vsum n f = v.
-Proof. intros. unfold vsum. apply Msum_unique. auto. Qed.
+Proof. intros. unfold vsum. apply big_sum_unique. simpl; auto. 
+Qed.
 
 Lemma Mmult_adj_vsum_distr_l :
   forall {d} n (f : nat -> Vector d) (v : Vector d),
@@ -1273,8 +1278,8 @@ Lemma vsum_diagonal :
     vsum n (fun i => vsum n (fun j => f i j)) = vsum n (fun i => f i i).
 Proof. intros. unfold vsum. apply Msum_diagonal. auto. Qed.
 
-Lemma vsum_Csum : forall {d n} (f : nat -> Vector d) x y,
-  vsum n f x y = Csum (fun i => f i x y) n.
+Lemma vsum_big_sum : forall {d n} (f : nat -> Vector d) x y,
+  vsum n f x y = big_sum (fun i => f i x y) n.
 Proof.
   intros d n f x y. induction n.
   - easy.
@@ -1288,21 +1293,22 @@ Lemma basis_vector_decomp : forall {d} (ψ : Vector d),
 Proof.
   intros d ψ WF. 
   do 2 (apply functional_extensionality; intros). 
-  rewrite vsum_Csum.
+  rewrite vsum_big_sum.
   destruct (x <? d) eqn:Hx.
   - apply Nat.ltb_lt in Hx. 
     unfold scale. destruct x0.
-    + rewrite Csum_unique with (k:=ψ x O). easy.
+    + rewrite big_sum_unique with (k:=ψ x O). easy.
       exists x. split. easy.
       split. unfold basis_vector. rewrite Nat.eqb_refl. simpl. lca.
-      intros. unfold basis_vector. apply Nat.eqb_neq in H. rewrite H. simpl. lca.
+      intros. unfold basis_vector. 
+      bdestruct_all; lca.
     + unfold WF_Matrix in WF. rewrite WF by lia.
-      rewrite Csum_0. easy. intro.
+      rewrite big_sum_0. easy. intro.
       unfold basis_vector. assert (S x0 <> 0)%nat by lia. apply Nat.eqb_neq in H.
       rewrite H. rewrite andb_false_r. lca.
   - apply Nat.ltb_ge in Hx.
     unfold WF_Matrix in WF. rewrite WF by lia.
-    rewrite Csum_0_bounded. easy. intros. unfold scale.
+    rewrite big_sum_0_bounded. easy. intros. unfold scale.
     unfold basis_vector. assert (x <> x1) by lia. apply Nat.eqb_neq in H0.
     rewrite H0. simpl. lca.
 Qed.

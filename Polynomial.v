@@ -12,20 +12,23 @@ Open Scope poly_scope.
 (* some prelim lemmas that should be moved *)
 
 Lemma diff_pow_n : forall (n : nat) (a b : C),
-  (a^(S n) - b^(S n)) = (a - b) * (Csum (fun i => a^i * b^(n - i)) (S n)).
+  (a^(S n) - b^(S n)) = (a - b) * (big_sum (fun i => a^i * b^(n - i)) (S n)).
 Proof. intros.
        unfold Cminus. 
-       rewrite Cmult_plus_distr_r, Csum_mult_l, Csum_mult_l.
-       rewrite <- Csum_extend_r, <- Csum_extend_l, Nat.sub_diag, Nat.sub_0_r.      
-       replace (a * (a ^ n * b ^ 0)) with (a^ (S n)) by lca. 
-       replace (- b * (a ^ 0 * b ^ n)) with (- b^(S n)) by lca. 
+       rewrite Cmult_plus_distr_r.
+       do 2 rewrite (@big_sum_mult_l C _ _ _ C_is_ring). 
+       rewrite <- big_sum_extend_r, <- big_sum_extend_l, Nat.sub_diag, Nat.sub_0_r.
+       simpl. 
+       replace (a * (a ^ n * C1)) with (a^ (S n)) by lca. 
+       replace (- b * (C1 * b ^ n)) with (- b^(S n)) by lca. 
        rewrite (Cplus_comm _ (a ^ _)), <- Cplus_assoc. 
        apply Cplus_simplify; try easy. 
        rewrite Cplus_assoc, (Cplus_comm _ (- b ^ _)), <- (Cplus_0_r (- b ^ _)). 
-       do 2 rewrite <- Cplus_assoc. 
+       do 2 rewrite <- Cplus_assoc.
+       rewrite <- (Cplus_0_r (- (b * b ^ n))).
        apply Cplus_simplify; try easy. 
-       rewrite <- Csum_plus, Cplus_0_l.
-       rewrite Csum_0_bounded; auto.  
+       rewrite <- (@big_sum_plus C _ _ C_is_comm_group), Cplus_0_l.
+       rewrite big_sum_0_bounded; auto.  
        intros.
        replace (n - x)%nat with (S (n - S x))%nat by lia. 
        lca. 
@@ -73,7 +76,7 @@ Qed.
 Definition Polynomial := list C.
 
 Definition Peval (p : Polynomial) (x : Complex.C):=
-  Csum (fun i => (nth i p C0)* x^i) (length p).
+  big_sum (fun i => (nth i p C0)* x^i) (length p).
 
 Definition Peq (p1 p2 : Polynomial) :=
   Peval p1 = Peval p2. 
@@ -97,11 +100,28 @@ Fixpoint Pmult (p1 p2 : Polynomial) : Polynomial :=
 Definition Popp (p : Polynomial) : Polynomial :=
   Pmult [-C1] p.
 
+Program Instance P_is_monoid : Monoid Polynomial := 
+  { Gzero := []
+  ; Gplus := Pplus
+  }.
+Solve All Obligations with program_simpl; try lca.
+Next Obligation. induction g as [| g']; easy. Qed.
+Next Obligation. 
+assert (H' : forall p1 p2 p3, Pplus (Pplus p1 p2) p3 = Pplus p1 (Pplus p2 p3)).
+induction p1 as [| a]; try easy.    
+intros. 
+destruct p2; destruct p3; try easy; simpl. 
+rewrite IHp1, Cplus_assoc; easy. 
+rewrite H'; easy.
+Qed.
+
+(*
 Fixpoint Psum (f : nat -> Polynomial) (n : nat) : Polynomial := 
   match n with
   | 0 => [C0]
   | S n' => (Pplus (Psum f n') (f n'))
   end.
+*)
 
 Infix "≅" := Peq (at level 70) : poly_scope. 
 Infix "+," := Pplus (at level 50, left associativity) : poly_scope. 
@@ -115,9 +135,9 @@ Lemma cons_eval : forall (p1 : Polynomial) (a c : C),
 Proof. intros. 
        unfold Peval.
        simpl length. 
-       rewrite <- Csum_extend_l.
+       rewrite <- big_sum_extend_l.
        repeat apply f_equal_gen; try easy; try lca. 
-       rewrite Csum_mult_l; apply Csum_eq_bounded.
+       rewrite (@big_sum_mult_l C _ _ _ C_is_ring); apply big_sum_eq_bounded.
        intros. 
        lca. 
 Qed.
@@ -146,15 +166,15 @@ Proof. induction p1 as [| a1].
          apply f_equal_gen; try lca. 
          apply f_equal_gen; try easy. 
          unfold Peval.
-         rewrite map_length, Csum_mult_l.
-         apply Csum_eq_bounded; intros. 
+         rewrite map_length, (@big_sum_mult_l C _ _ _ C_is_ring).
+         apply big_sum_eq_bounded; intros. 
          replace C0 with (Cmult a1 C0) by lca. 
          rewrite map_nth, Cmult_0_r.
          lca. 
 Qed.
 
 Lemma Psum_eval : forall (f : nat -> Polynomial) (n : nat) (c : C),
-  (Psum f n)[[c]] = Csum (fun i => (f i)[[c]]) n.
+  (big_sum f n)[[c]] = big_sum (fun i => (f i)[[c]]) n.
 Proof. induction n as [| n'].
        - intros. unfold Peval; lca. 
        - intros; simpl.  
@@ -167,15 +187,15 @@ Lemma app_eval : forall (f g : Polynomial),
 Proof. intros. 
        apply functional_extensionality; intros.  
        unfold Peval.
-       rewrite app_length, Csum_sum. 
+       rewrite app_length, big_sum_sum. 
        apply Cplus_simplify.
-       apply Csum_eq_bounded; intros. 
+       apply big_sum_eq_bounded; intros. 
        rewrite app_nth1; easy.
-       rewrite app_length, Csum_sum.
+       rewrite app_length, big_sum_sum.
        rewrite repeat_length.  
-       assert (Csum (fun i : nat => nth i (repeat C0 (Datatypes.length f) ++ g) C0 * x ^ i) 
+       assert (big_sum (fun i : nat => nth i (repeat C0 (Datatypes.length f) ++ g) C0 * x ^ i) 
                     (length f) = C0).
-       { apply Csum_0_bounded; intros. 
+       { apply (@big_sum_0_bounded C C_is_monoid); intros. 
          rewrite app_nth1.
          destruct (nth_in_or_default x0 (repeat C0 (Datatypes.length f)) C0).
          - apply repeat_spec in i.
@@ -183,7 +203,7 @@ Proof. intros.
          - rewrite e; lca.
          - rewrite repeat_length; easy. }
        rewrite H, Cplus_0_l.
-       apply Csum_eq_bounded; intros. 
+       apply big_sum_eq_bounded; intros. 
        rewrite app_nth2_plus, app_nth2, repeat_length.
        replace (Datatypes.length f + x0 - Datatypes.length f)%nat with x0 by lia. 
        easy. 
@@ -203,12 +223,12 @@ Lemma mul_by_x_to_n : forall (f : Polynomial) (n : nat) (c : C),
   ((repeat C0 n) ++ f)[[c]] = f[[c]] * c^n.
 Proof. intros.   
        unfold Peval.
-       rewrite app_length, Csum_sum, <- Cplus_0_l.
+       rewrite app_length, big_sum_sum, <- Cplus_0_l.
        apply Cplus_simplify.
-       apply Csum_0_bounded; intros. 
+       apply (@big_sum_0_bounded C C_is_monoid); intros. 
        rewrite app_nth1, nth_repeat; auto; lca.
-       rewrite Csum_mult_r.
-       apply Csum_eq_bounded; intros. 
+       rewrite (@big_sum_mult_r C _ _ _ C_is_ring).
+       apply big_sum_eq_bounded; intros. 
        rewrite app_nth2_plus, repeat_length, Cpow_add_r; lca.
 Qed.
 
@@ -740,11 +760,11 @@ Lemma power_x_eval : forall (n : nat) (a x : C),
 Proof. intros.
        unfold Peval. 
        rewrite app_length; simpl. 
-       rewrite Nat.add_1_r, <- Csum_extend_r, <- (Nat.add_0_r (length (repeat C0 n))), 
+       rewrite Nat.add_1_r, <- big_sum_extend_r, <- (Nat.add_0_r (length (repeat C0 n))), 
        app_nth2_plus, Nat.add_0_r, repeat_length; simpl. 
        rewrite <- Cplus_0_l.
        apply Cplus_simplify; auto. 
-       apply Csum_0_bounded; intros.
+       apply (@big_sum_0_bounded C C_is_monoid); intros.
        rewrite app_nth1.
        destruct (nth_in_or_default x0 (repeat C0 n) C0).
        - apply repeat_spec in i.
@@ -845,7 +865,7 @@ Proof. intros.
        unfold Peq, Peval in H.
        apply (f_equal_inv C0) in H.
        simpl length in H.
-       rewrite (Csum_unique a1), (Csum_unique a2) in H; auto. 
+       rewrite (big_sum_unique a1), (big_sum_unique a2) in H; auto. 
        all : exists O; split; try lia; split; try lca.  
        all : intros; destruct x'; try easy; lca. 
 Qed.
@@ -858,21 +878,22 @@ Proof. intros.
        apply (f_equal_inv c) in H.
        unfold Peval in *.
        simpl length in *. 
-       do 2 rewrite <- Csum_extend_l in H.
+       do 2 rewrite <- big_sum_extend_l in H.
        simpl in H. 
        rewrite Cmult_0_l, Cplus_0_l, Cplus_0_l in H. 
-       rewrite <- Cmult_1_l, <- (Cinv_l c), <- Cmult_assoc, Csum_mult_l; auto. 
+       rewrite <- Cmult_1_l, <- (Cinv_l c), <- Cmult_assoc, (@big_sum_mult_l C _ _ _ C_is_ring); auto. 
        assert (H' : (fun x : nat => nth x p2 C0 * (c * c ^ x)) = 
                     (fun x : nat => c * (nth x p2 C0 * c ^ x))).
        { apply functional_extensionality; intros. 
          lca. }
+       simpl in *.
        rewrite <- H', <- H. 
        assert (H'' : (fun x : nat => nth x p1 C0 * (c * c ^ x)) = 
                     (fun x : nat => c * (nth x p1 C0 * c ^ x))).
        { apply functional_extensionality; intros. 
          lca. }
        rewrite H''. 
-       rewrite <- Csum_mult_l, Cmult_assoc, Cinv_l; auto; lca. 
+       rewrite <- (@big_sum_mult_l C _ _ _ C_is_ring), Cmult_assoc, Cinv_l; auto; lca. 
 Qed.
 
 
@@ -972,10 +993,10 @@ Proof. intros.
        unfold Peq, Peval. 
        apply functional_extensionality; intros. 
        rewrite app_length; simpl.
-       rewrite Nat.add_1_r, <- Csum_extend_r.
+       rewrite Nat.add_1_r, <- big_sum_extend_r.
        rewrite app_nth2, Nat.sub_diag; auto; simpl.
        rewrite Cmult_0_l, Cplus_0_r.
-       apply Csum_eq_bounded; intros.
+       apply big_sum_eq_bounded; intros.
        rewrite app_nth1; easy. 
 Qed.
 
@@ -1473,13 +1494,13 @@ Qed.
 
 
 Lemma Psum_degree : forall (f : nat -> Polynomial) (n deg : nat), 
-  (forall i, i < n -> degree (f i) <= deg) -> degree (Psum f n) <= deg.
+  (forall i, i < n -> degree (f i) <= deg) -> degree (big_sum f n) <= deg.
 Proof. induction n as [| n'].
        - intros; simpl.  
          unfold degree, compactify; simpl.
          destruct (Ceq_dec C0 C0); try easy; simpl; lia. 
        - intros; simpl. 
-         apply (Nat.le_trans _ (max (degree (Psum f n')) (degree (f n')))).
+         apply (Nat.le_trans _ (max (degree (big_sum f n')) (degree (f n')))).
          apply Pplus_degree1.
          apply Max.max_lub; auto. 
 Qed.
@@ -1579,14 +1600,14 @@ Qed.
 (********************************************)
 
 Definition poly_shift (p : Polynomial) (m : C) : Polynomial :=
-  Psum (fun i => [nth i p C0] *, (Ppow [-m;  C1] i)) (length p).
+  big_sum (fun i => [nth i p C0] *, (Ppow [-m;  C1] i)) (length p).
 
 Lemma poly_shift_ver : forall (p : Polynomial) (m c : C),
   p[[c - m]] = (poly_shift p m)[[c]].
 Proof. intros. 
        unfold poly_shift. 
        rewrite Psum_eval.
-       apply Csum_eq_bounded; intros. 
+       apply big_sum_eq_bounded; intros. 
        rewrite Pmult_eval, Ppow_eval. 
        unfold Peval; simpl. 
        replace (0%R + - m * C1 + C1 * (c * C1))%C with (c - m)%C by lca.
@@ -1615,8 +1636,6 @@ Proof. intros.
        rewrite p_Peq_compactify_p.
        destruct (length (compactify p)) as [| n] eqn:E.
        - destruct (compactify p); try easy.
-         unfold poly_shift; simpl. 
-         rewrite C0_Peq_nil; easy.
        - destruct (Peq_0_dec p).
          + rewrite Peq_0_compactify_0 in E; easy.
          + apply compactify_breakdown in n0.

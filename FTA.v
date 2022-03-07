@@ -5,6 +5,7 @@ Require Import Setoid.
 
 (* defining Rsum and some lemmas (does this exist already??) *)
 
+(*
 Fixpoint Rsum (f : nat -> R) (n : nat) : R := 
   match n with
   | 0 => 0
@@ -104,61 +105,17 @@ Proof.
     rewrite Rsum_extend_l.
     rewrite Rsum_extend_r.
     reflexivity.
-Qed.
+Qed. 
+*)
 
-Lemma Rsum_le : forall (f g : nat -> R) (n : nat),
-  (forall i, (i < n)%nat -> f i <= g i) ->
-  (Rsum f n) <= (Rsum g n).
-Proof. induction n as [| n']; simpl; try lra.  
-       intros.
-       apply Rplus_le_compat.
-       apply IHn'; intros. 
-       all : apply H; try lia. 
-Qed.
 
-Lemma Rsum_ge_0 : forall (f : nat -> R) (n : nat),
-  (forall i, (i < n)%nat -> 0 <= f i) ->
-  0 <= Rsum f n.
-Proof. induction n as [| n'].
-       - intros; simpl; lra. 
-       - intros. simpl; apply Rplus_le_le_0_compat.
-         apply IHn'; intros; apply H; lia. 
-         apply H; lia. 
-Qed.
-
-Lemma Rsum_Cmod_0_all_0 : forall (f : nat -> C) (n : nat),
-  Rsum (fun i => Cmod (f i)) n = 0 -> 
-  forall i, (i < n)%nat -> f i = C0.
-Proof. induction n as [| n']; try nia.   
-       intros; simpl in H.
-       assert (H' := H).
-       rewrite Rplus_comm in H; apply Rplus_eq_0_l in H. 
-       apply Rplus_eq_0_l in H'.
-       all : try apply Rsum_ge_0; intros.
-       all : try apply Cmod_ge_0.
-       bdestruct (i <? n').
-       - apply IHn'; easy. 
-       - bdestruct (i =? n'); try lia; subst. 
-         apply Cmod_eq_0; try easy.
-Qed.
-
-Lemma Csum_triangle : forall f n,
-  Cmod (Csum f n) <= Rsum (fun i => Cmod (f i)) n.
-Proof. induction n as [| n'].
-       - simpl. rewrite Cmod_0; lra.
-       - simpl.
-         eapply Rle_trans; try apply Cmod_triangle.
-         Search (_ + _ <= _ + _).
-         apply Rplus_le_compat_r.
-         easy. 
-Qed.
 
 (*********************************************************************)
 (* defining poly_coef_norm and showing how it can be used as a bound *)
 (*********************************************************************)
 
 Definition poly_coef_norm (p : Polynomial) : R :=
-  Rsum (fun i => Cmod (nth i p C0)) (length p).
+  big_sum (fun i => Cmod (nth i p C0)) (length p).
 
 Lemma poly_coef_norm_ge_0 : forall (p : Polynomial),
   0 <= poly_coef_norm p.
@@ -173,17 +130,17 @@ Proof. split; intros.
        - apply Peq_0_eq_repeat_0 in H.
          rewrite H.
          unfold poly_coef_norm.
-         apply Rsum_0_bounded; intros.
+         apply (@big_sum_0_bounded R R_is_monoid); intros. 
          rewrite nth_repeat, Cmod_0; easy.
        - unfold poly_coef_norm in H.
-         assert (H' := (Rsum_Cmod_0_all_0 (fun i : nat => nth i p 0) (length p))).
+         assert (H' := (big_sum_Cmod_0_all_0 (fun i : nat => nth i p 0) (length p))).
          simpl in H'. 
          assert (H'' : forall i : nat, (i < length p)%nat -> nth i p 0 = 0). 
          apply H'; apply H.
          unfold Peq.
          apply functional_extensionality; intros.
          unfold Peval; simpl.
-         apply Csum_0_bounded; intros.
+         apply (@big_sum_0_bounded C C_is_monoid); intros.
          rewrite H''; try lca; easy.
 Qed.
 
@@ -198,14 +155,14 @@ Proof. intros.
          destruct n as [n [a [p' [H H0] ] ] ].
          rewrite H0, app_C0_compactify_reduce, app_nonzero_compactify_reduce; auto.
          unfold poly_coef_norm.
-         rewrite app_length, Rsum_sum, <- (Rplus_0_r).
+         rewrite app_length, big_sum_sum, <- (Rplus_0_r).
          apply f_equal_gen. 
          apply f_equal_gen; auto.
-         apply Rsum_eq_bounded; intros. 
+         apply big_sum_eq_bounded; intros. 
          apply f_equal_gen; auto.
          rewrite app_nth1; easy.
-         apply Rsum_0_bounded; intros. 
-         rewrite app_nth2, nth_repeat, Cmod_0; try lia; lra.
+         apply (@big_sum_0_bounded R R_is_monoid); intros. 
+         rewrite app_nth2, nth_repeat, Cmod_0; try lia. simpl; lra.
 Qed.
 
 Add Parametric Morphism : poly_coef_norm
@@ -226,9 +183,9 @@ Proof. intros.
          rewrite Cmod_0; lra.
        - unfold Peval.
          eapply Rle_trans.
-         apply Csum_triangle.
+         apply big_sum_triangle.
          unfold poly_coef_norm.
-         rewrite Rsum_mult_r.
+         rewrite (@big_sum_mult_r R _ _ _ R_is_ring).
          apply Rsum_le; intros. 
          rewrite Cmod_mult.
          apply Rmult_le_compat_l; try apply Cmod_ge_0.
@@ -241,9 +198,9 @@ Lemma poly_bound_le_1 : forall (p : Polynomial) (z : C),
   Cmod ((C0 :: p)[[z]]) <= (poly_coef_norm p) * (Cmod z).
 Proof. intros. 
        unfold Peval, poly_coef_norm; simpl length.
-       rewrite <- Csum_extend_l, Rsum_mult_r; simpl. 
+       rewrite <- big_sum_extend_l, (@big_sum_mult_r R _ _ _ R_is_ring); simpl. 
        rewrite Cmult_0_l, Cplus_0_l.
-       eapply Rle_trans; try apply Csum_triangle.
+       eapply Rle_trans; try apply big_sum_triangle.
        apply Rsum_le; intros. 
        repeat rewrite Cmod_mult.
        apply Rmult_le_compat_l.
@@ -654,9 +611,9 @@ Proof. intros.
        assert (H4 := H0 z).
        assert (H' : (a :: p) [[C0]] = a).
        { unfold Peval; simpl length.
-         rewrite <- Cplus_0_r, <- Csum_extend_l.
+         rewrite <- Cplus_0_r, <- big_sum_extend_l.
          apply Cplus_simplify; try lca.
-         apply Csum_0_bounded; intros. 
+         apply (@big_sum_0_bounded C C_is_monoid); intros. 
          simpl; lca. }
        rewrite H' in H4.
        lra.
@@ -679,7 +636,7 @@ Proof. intros.
        exists (0 - - min).
        rewrite poly_shift_ver, E.
        unfold Peval.
-       apply Csum_0_bounded; intros. 
+       apply (@big_sum_0_bounded C C_is_monoid); intros. 
        destruct x; simpl; subst; lca.
        rewrite <- H2; easy.
 Qed.
