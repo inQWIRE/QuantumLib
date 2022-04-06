@@ -895,7 +895,7 @@ Proof.
   + unfold WF_Unitary in *.
     rewrite adjoint_involutive.
     destruct H as [H H0].
-    apply Minv_left in H0 as [_ S]; (* NB: admitted lemma *)
+    apply Minv_left in H0 as [_ S]; 
     auto with wf_db.
 Qed.
 
@@ -903,6 +903,18 @@ Lemma cnot_unitary : WF_Unitary cnot.
 Proof.
   split. 
   apply WF_cnot.
+  unfold Mmult, I.
+  prep_matrix_equality.
+  do 4 (try destruct x; try destruct y; try lca).
+  replace ((S (S (S (S x))) <? 4)) with (false) by reflexivity.
+  rewrite andb_false_r.
+  lca.
+Qed.
+
+Lemma notc_unitary : WF_Unitary notc.
+Proof.
+  split. 
+  apply WF_notc.
   unfold Mmult, I.
   prep_matrix_equality.
   do 4 (try destruct x; try destruct y; try lca).

@@ -3,7 +3,6 @@ Require Import String.
 Require Import Program.
 Require Export Complex. 
 Require Import List.
-(* Require Export Summation. *)
 
 
 (*******************************************)
@@ -12,7 +11,7 @@ Require Import List.
 
 
 
-(*
+(* TODO: make this file with general field
 Section LinearAlgebra.
   Variables (F : Type).
   Variable (H0 : Monoid F).
@@ -163,17 +162,6 @@ Definition I__inf := fun x y => if x =? y then C1 else C0.
 Notation "I∞" := I__inf : matrix_scope.
 
 
-(*
-Instance nat_is_group : Group C :=
-  { id := C0
-  ; op := Cplus
-  }.
-
-
-Instance C_is_group_law : Group_Laws C.
-Proof. split; intros; simpl; try lca. 
-       all : exists (-g); lca.
-Qed. *)
 
 
 (* sum to n exclusive *)
@@ -261,14 +249,6 @@ Program Instance M_is_vector_space : forall n m, Vector_Space (Matrix n m) C :=
   { Vscale := scale }.
 Solve All Obligations with program_simpl; prep_matrix_equality; lca. 
 
-(* Indexed sum over matrices *)
-(*
-Fixpoint Msum {m1 m2} n (f : nat -> Matrix m1 m2) : Matrix m1 m2 :=
-  match n with
-  | 0 => Zero
-  | S n' => Mplus (Msum n' f) (f n')
-end.
-*)
 
 
 Infix "∘" := dot (at level 40, left associativity) : matrix_scope.
@@ -279,7 +259,7 @@ Infix "⊗" := kron (at level 40, left associativity) : matrix_scope.
 Infix "≡" := mat_equiv (at level 70) : matrix_scope.
 Notation "A ⊤" := (transpose A) (at level 0) : matrix_scope. 
 Notation "A †" := (adjoint A) (at level 0) : matrix_scope. 
-Notation Σ := (@big_sum C C_is_monoid). 
+Notation Σ := (@big_sum C C_is_monoid).  (* we intoduce Σ notation here *)
 Notation "n ⨂ A" := (kron_n n A) (at level 30, no associativity) : matrix_scope.
 Notation "⨂ A" := (big_kron A) (at level 60): matrix_scope.
 Notation "n ⨉ A" := (Mmult_n n A) (at level 30, no associativity) : matrix_scope.
@@ -369,372 +349,10 @@ Lemma Mscale_simplify : forall (n m: nat) (a b : Matrix n m) (c d : C),
 Proof. intros; subst; easy. 
 Qed.
 
-(******************************)
-(** Proofs about finite sums **)
-(******************************)
-
-Local Close Scope nat_scope.
-(*
-Lemma Csum_0 : forall f n, (forall x, f x = C0) -> Csum f n = 0. 
-Proof.
-  intros.
-  induction n.
-  - reflexivity.
-  - simpl.
-    rewrite IHn, H. 
-    lca.
-Qed.
-
-Lemma Csum_1 : forall f n, (forall x, f x = C1) -> Csum f n = INR n. 
-Proof.
-  intros.
-  induction n.
-  - reflexivity.
-  - simpl.
-    rewrite IHn, H. 
-    destruct n; lca.    
-Qed.
-
-Lemma Csum_constant : forall c n, Csum (fun x => c) n = INR n * c.
-Proof.
-  intros c n.
-  induction n.
-  + simpl; lca.
-  + simpl.
-    rewrite IHn.
-    destruct n; lca.
-Qed.
-
-Lemma Csum_eq : forall f g n, f = g -> Csum f n = Csum g n.
-Proof. intros f g n H. subst. reflexivity. Qed.
-
-Lemma Csum_0_bounded : forall f n, (forall x, (x < n)%nat -> f x = C0) -> Csum f n = 0. 
-Proof.
-  intros.
-  induction n.
-  - reflexivity.
-  - simpl.
-    rewrite IHn, H. 
-    lca.
-    lia.
-    intros.
-    apply H.
-    lia.
-Qed.
-
-Lemma Csum_eq_bounded : forall f g n, (forall x, (x < n)%nat -> f x = g x) -> Csum f n = Csum g n.
-Proof. 
-  intros f g n H. 
-  induction n.
-  + simpl. reflexivity.
-  + simpl. 
-    rewrite H by lia.
-    rewrite IHn by (intros; apply H; lia).
-    reflexivity.
-Qed.
-
-Lemma Csum_plus : forall f g n, Csum (fun x => f x + g x) n = Csum f n + Csum g n.
-Proof.
-  intros f g n.
-  induction n.
-  + simpl. lca.
-  + simpl. rewrite IHn. lca.
-Qed.
-
-Lemma Csum_mult_l : forall c f n, c * Csum f n = Csum (fun x => c * f x) n.
-Proof.
-  intros c f n.
-  induction n.
-  + simpl; lca.
-  + simpl.
-    rewrite Cmult_plus_distr_l.
-    rewrite IHn.
-    reflexivity.
-Qed.
-
-Lemma Csum_mult_r : forall c f n, Csum f n * c = Csum (fun x => f x * c) n.
-Proof.
-  intros c f n.
-  induction n.
-  + simpl; lca.
-  + simpl.
-    rewrite Cmult_plus_distr_r.
-    rewrite IHn.
-    reflexivity.
-Qed.
-
-Lemma Csum_conj_distr : forall f n, (Csum f n) ^* = Csum (fun x => (f x)^* ) n.
-Proof. 
-  intros f n.
-  induction n.
-  + simpl; lca.
-  + simpl. 
-    rewrite Cconj_plus_distr.
-    rewrite IHn.
-    reflexivity.
-Qed.
-    
-Lemma Csum_extend_r : forall n f, Csum f n + f n = Csum f (S n).
-Proof. reflexivity. Qed.
-
-Lemma Csum_extend_l : forall n f, f O + Csum (fun x => f (S x)) n = Csum f (S n).
-Proof.
-  intros n f.
-  induction n.
-  + simpl; lca.
-  + simpl.
-    rewrite Cplus_assoc.
-    rewrite IHn.
-    simpl.
-    reflexivity.
-Qed.
-
-Lemma Csum_unique : forall k (f : nat -> C) n, 
-  (exists x, (x < n)%nat /\ f x = k /\ (forall x', x <> x' -> f x' = 0)) ->
-  Csum f n = k.
-Proof.                    
-  intros k f n [x [L [Eq Unique]]].
-  induction n; try lia.
-  rewrite <- Csum_extend_r.
-  destruct (Nat.eq_dec x n).
-  - subst. 
-    rewrite Csum_0_bounded.
-    lca.
-    intros.
-    apply Unique.
-    lia.
-  - rewrite Unique by easy.
-    Csimpl.
-    apply IHn.
-    lia.
-Qed.    
-
-Lemma Csum_sum : forall m n f, Csum f (m + n) = 
-                          Csum f m + Csum (fun x => f (m + x)%nat) n. 
-Proof.    
-  intros m n f.
-  induction m.
-  + simpl. rewrite Cplus_0_l. reflexivity. 
-  + simpl.
-    rewrite IHm.
-    repeat rewrite <- Cplus_assoc.
-    remember (fun y => f (m + y)%nat) as g.
-    replace (f m) with (g O) by (subst; rewrite plus_0_r; reflexivity).
-    replace (f (m + n)%nat) with (g n) by (subst; reflexivity).
-    replace (Csum (fun x : nat => f (S (m + x))) n) with
-            (Csum (fun x : nat => g (S x)) n).
-    2:{ apply Csum_eq. subst. apply functional_extensionality.
-    intros; rewrite <- plus_n_Sm. reflexivity. }
-    rewrite Csum_extend_l.
-    rewrite Csum_extend_r.
-    reflexivity.
-Qed.
-
-Lemma Csum_product : forall m n f g, n <> O ->
-                              Csum f m * Csum g n = 
-                              Csum (fun x => f (x / n)%nat * g (x mod n)%nat) (m * n). 
-Proof.
-  intros.
-  induction m.
-  + simpl; lca.
-  + simpl.      
-    rewrite Cmult_plus_distr_r.
-    rewrite IHm. clear IHm.
-    rewrite Csum_mult_l.    
-    remember ((fun x : nat => f (x / n)%nat * g (x mod n)%nat)) as h.
-    replace (Csum (fun x : nat => f m * g x) n) with
-            (Csum (fun x : nat => h ((m * n) + x)%nat) n). 
-    2:{
-      subst.
-      apply Csum_eq_bounded.
-      intros x Hx.
-      rewrite Nat.div_add_l by assumption.
-      rewrite Nat.div_small; trivial.
-      rewrite plus_0_r.
-      rewrite Nat.add_mod by assumption.
-      rewrite Nat.mod_mul by assumption.
-      rewrite plus_0_l.
-      repeat rewrite Nat.mod_small; trivial. }
-    rewrite <- Csum_sum.
-    rewrite plus_comm.
-    reflexivity.
-Qed.
-
-Lemma Csum_ge_0 : forall f n, (forall x, 0 <= fst (f x)) -> 0 <= fst (Csum f n).
-Proof.
-  intros f n H.
-  induction n.
-  - simpl. lra. 
-  - simpl in *.
-    rewrite <- Rplus_0_r at 1.
-    apply Rplus_le_compat; easy.
-Qed.
-
-Lemma Csum_gt_0 : forall f n, (forall x, 0 <= fst (f x)) -> 
-                              (exists y : nat, (y < n)%nat /\ 0 < fst (f y)) ->
-                              0 < fst (Csum f n).
-Proof.
-  intros f n H [y [H0 H1]].
-  induction n.
-  - simpl. lia. 
-  - simpl in *.
-    bdestruct (y <? n)%nat; bdestruct (y =? n)%nat; try lia. 
-    + assert (H' : 0 <= fst (f n)). { apply H. } 
-      apply IHn in H2. lra. 
-    + apply (Csum_ge_0 f n) in H.
-      rewrite H3 in H1.
-      lra. 
-Qed.
-
-Lemma Csum_member_le : forall (f : nat -> C) (n : nat), (forall x, 0 <= fst (f x)) ->
-                      (forall x, (x < n)%nat -> fst (f x) <= fst (Csum f n)).
-Proof.
-  intros f.
-  induction n.
-  - intros H x Lt. inversion Lt.
-  - intros H x Lt.
-    bdestruct (Nat.ltb x n).
-    + simpl.
-      rewrite <- Rplus_0_r at 1.
-      apply Rplus_le_compat.
-      apply IHn; easy.
-      apply H.
-    + assert (E: x = n) by lia.
-      rewrite E.
-      simpl.
-      rewrite <- Rplus_0_l at 1.
-      apply Rplus_le_compat.
-      apply Csum_ge_0; easy.
-      lra.
-Qed.  
-
-Lemma Csum_squeeze : forall (f : nat -> C) (n : nat), 
-  (forall x, (0 <= fst (f x)))%R -> Csum f n = C0 ->
-  (forall x, (x < n)%nat -> fst (f x) = fst C0).
-Proof. intros. 
-       assert (H2 : (forall x, (x < n)%nat -> (fst (f x) <= 0)%R)).
-       { intros. 
-         replace 0%R with (fst (C0)) by easy.
-         rewrite <- H0.
-         apply Csum_member_le; try easy. }
-       assert (H3 : forall r : R, (r <= 0 -> 0 <= r -> r = 0)%R). 
-       intros. lra. 
-       simpl. 
-       apply H3.
-       apply H2; easy.
-       apply H.
-Qed.
-
-Lemma Csum_snd_0 : forall n f, (forall x, snd (f x) = 0) -> snd (Csum f n) = 0.       
-Proof. intros. induction n.
-       - reflexivity.
-       - rewrite <- Csum_extend_r.
-         unfold Cplus. simpl. rewrite H, IHn.
-         lra.
-Qed.
-
-Lemma Csum_comm : forall f g n, 
-    (forall c1 c2 : C, g (c1 + c2) = g c1 + g c2) ->
-    Csum (fun x => g (f x)) n = g (Csum f n).
-Proof. intros. induction n as [| n'].
-       - simpl.
-         assert (H0 : g 0 - g 0 = g 0 + g 0 - g 0). 
-         { rewrite <- H. rewrite Cplus_0_r. easy. }
-         unfold Cminus in H0. 
-         rewrite <- Cplus_assoc in H0.
-         rewrite Cplus_opp_r in H0.
-         rewrite Cplus_0_r in H0. 
-         apply H0. 
-       - do 2 (rewrite <- Csum_extend_r).
-         rewrite IHn'.
-         rewrite H.
-         reflexivity.
-Qed.
-
-Local Open Scope nat_scope.
-
-Lemma Csum_double_sum : forall (f : nat -> nat -> C) (n m : nat),
-    Csum (fun x => (Csum (fun y => f x y) n)) m = Csum (fun z => f (z / n) (z mod n)) (n * m).
-Proof. induction m as [| m'].
-       - rewrite Nat.mul_0_r.
-         easy.
-       - rewrite Nat.mul_succ_r.
-         rewrite <- Csum_extend_r.
-         rewrite Csum_sum.
-         apply Cplus_simplify; try easy.
-         apply Csum_eq_bounded; intros.
-         rewrite mult_comm.
-         rewrite Nat.div_add_l; try lia. 
-         rewrite (plus_comm (m' * n)).
-         rewrite Nat.mod_add; try lia.
-         destruct (Nat.mod_small_iff x n) as [_ HD]; try lia.
-         destruct (Nat.div_small_iff x n) as [_ HA]; try lia.
-         rewrite HD, HA; try lia.
-         rewrite Nat.add_0_r.
-         easy.
-Qed.
-
-Lemma Csum_extend_double : forall (n m : nat) (f : nat -> nat -> C),
-  (Csum (fun i => Csum (fun j => f i j) (S m)) (S n)) = 
-  ((Csum (fun i => Csum (fun j => f i j) m) n) + (Csum (fun j => f n j) m) + 
-                      (Csum (fun i => f i m) n) + f n m)%C.
-Proof. intros. 
-       rewrite <- Csum_extend_r.
-       assert (H' : forall a b c d, (a + b + c + d = (a + c) + (b + d))%C). 
-       { intros. lca. }
-       rewrite H'.
-       apply Cplus_simplify; try easy.
-       rewrite <- Csum_plus.
-       apply Csum_eq_bounded; intros. 
-       easy.
-Qed.
-
-Lemma Csum_rearrange : forall (n : nat) (f g : nat -> nat -> C),
-  (forall x y, x <= y -> f x y = -C1 * g (S y) x)%C ->
-  (forall x y, y <= x -> f (S x) y = -C1 * g y x)%C ->
-  Csum (fun i => Csum (fun j => f i j) n) (S n) = 
-  (-C1 * (Csum (fun i => Csum (fun j => g i j) n) (S n)))%C.
-Proof. induction n as [| n'].
-       - intros. lca. 
-       - intros. 
-         do 2 rewrite Csum_extend_double.
-         rewrite (IHn' f g); try easy.
-         repeat rewrite Cmult_plus_distr_l.
-         repeat rewrite <- Cplus_assoc.
-         apply Cplus_simplify; try easy.
-         assert (H' : forall a b c, (a + (b + c) = (a + c) + b)%C). 
-         intros. lca. 
-         do 2 rewrite H'.
-         rewrite <- Cmult_plus_distr_l.
-         do 2 rewrite Csum_extend_r. 
-         do 2 rewrite Csum_mult_l.
-         rewrite Cplus_comm.
-         apply Cplus_simplify.
-         all : apply Csum_eq_bounded; intros. 
-         apply H; lia. 
-         apply H0; lia. 
-Qed.
-
-Lemma Rsum_Csum : forall n (f : nat -> R),
-  fst (Csum f n) = Rsum n f.
-Proof.
-  intros. induction n.
-  - easy.
-  - simpl. rewrite IHn.
-    destruct n.
-    + simpl. lra.
-    + rewrite tech5. simpl. easy.
-Qed.
-
-
-
-*)
 
 (**********************************)
 (** Proofs about Well-Formedness **)
 (**********************************)
-
-Local Open Scope nat_scope.
 
 
 Lemma WF_Matrix_dim_change : forall (m n m' n' : nat) (A : Matrix m n),
@@ -1835,6 +1453,10 @@ Proof.
 Qed.
 
 
+
+
+(** Summation lemmas specific to matrices **)
+
 (* due to dimension problems, we did not prove that Matrix m n is a ring with respect to either
    multiplication or kron. Thus all of these need to be proven *)
 Lemma kron_Msum_distr_l : 
@@ -1873,16 +1495,6 @@ Proof.
   rewrite Mmult_plus_distr_r, IHn. reflexivity.
 Qed.
 
-(*
-Lemma Mscale_Msum_distr_r : forall {d1 d2} x n (f : nat -> Matrix d1 d2),
-  x .* Msum n f = Msum n (fun i => x .* f i).
-Proof.
-  intros d1 d2 x n f.
-  induction n; simpl. lma.
-  rewrite Mscale_plus_distr_r, IHn. reflexivity.
-Qed.
-*)
-
 Lemma Mscale_Msum_distr_l : forall {d1 d2} n (f : nat -> C) (A : Matrix d1 d2),
   big_sum (fun i => (f i) .* A) n = big_sum f n .* A.
 Proof.
@@ -1890,17 +1502,6 @@ Proof.
   induction n; simpl. lma.
   rewrite Mscale_plus_distr_l, IHn. reflexivity.
 Qed.
-
-(*
-Lemma Msum_0 : forall {d1 d2} n (f : nat -> Matrix d1 d2),
-  (forall x, x < n -> f x = Zero) -> Msum n f = Zero.
-Proof.
-  intros d1 d2 n f Hf.
-  induction n; simpl. reflexivity.
-  rewrite IHn, Hf. lma.
-  lia. intros. apply Hf. lia.
-Qed.
-*)
 
 Lemma Msum_constant : forall {d1 d2} n (A : Matrix d1 d2),  big_sum (fun _ => A) n = INR n .* A.
 Proof.
@@ -1916,17 +1517,6 @@ Proof.
   lma.
 Qed.
 
-(*
-Lemma Msum_plus : forall {d1 d2} n (f1 f2 : nat -> Matrix d1 d2),
-  Msum n (fun i => (f1 i) + (f2 i)) = Msum n f1 + Msum n f2.
-Proof.
-  intros d1 d2 n f1 f2.
-  induction n; simpl. lma.
-  rewrite IHn. lma.
-Qed.
-*)
-
-
 Lemma Msum_adjoint : forall {d1 d2} n (f : nat -> Matrix d1 d2),
   (big_sum f n)† = big_sum (fun i => (f i)†) n.
 Proof.
@@ -1938,8 +1528,8 @@ Proof.
 Qed.
 
 
-Lemma Msum_big_sum : forall {d1 d2} n (f : nat -> Matrix d1 d2) i j,
-  big_sum f n i j = big_sum (fun x => f x i j) n.
+Lemma Msum_Csum : forall {d1 d2} n (f : nat -> Matrix d1 d2) i j,
+  (big_sum f n) i j = big_sum (fun x => (f x) i j) n.
 Proof.
   intros. 
   induction n; simpl.
@@ -1948,28 +1538,6 @@ Proof.
   rewrite IHn.
   reflexivity.
 Qed.
-
-
-
-
-(*
-Lemma Msum_unique : forall {d1 d2} n (f : nat -> Matrix d1 d2) (A : Matrix d1 d2),
-  (exists i, i < n /\ f i = A /\ (forall j, j < n -> j <> i -> f j = Zero)) -> 
-  Msum n f = A.
-Proof.
-  intros d1 d2 n f A H.
-  destruct H as [i [? [? H]]].
-  induction n; try lia.
-  simpl.
-  bdestruct (n =? i).
-  rewrite (Msum_eq_bounded _ _ (fun _ : nat => Zero)).
-  rewrite Msum_0. subst. lma. reflexivity.
-  intros x ?. apply H; lia.
-  rewrite IHn; try lia.
-  rewrite H by lia. lma.
-  intros. apply H; lia.
-Qed.
-*)
 
 Lemma Msum_diagonal :
   forall {d1 d2} n (f : nat -> nat -> Matrix d1 d2),
@@ -2568,11 +2136,11 @@ Proof. intros.
        bdestruct (y =? col); try lia; try easy. 
        bdestruct (x <? row); try lia. 
        apply Cplus_simplify; try easy. 
-       do 2 rewrite Msum_big_sum.
+       do 2 rewrite Msum_Csum.
        apply big_sum_eq_bounded; intros. 
        bdestruct (x <? row); try lia; easy.
        apply Cplus_simplify; try easy. 
-       do 2 rewrite Msum_big_sum.
+       do 2 rewrite Msum_Csum.
        apply big_sum_eq_bounded; intros. 
        bdestruct (x <? row); try lia; easy.
 Qed.
@@ -2875,7 +2443,7 @@ Lemma gen_new_vec_0 : forall {n m} (T : Matrix n m) (as' : Vector m),
 Proof. intros.
        unfold mat_equiv, gen_new_vec in *.
        prep_matrix_equality.
-       rewrite Msum_big_sum.
+       rewrite Msum_Csum.
        unfold Zero in *.
        apply (@big_sum_0_bounded C C_is_monoid); intros. 
        rewrite H; try lia. 
@@ -2888,7 +2456,7 @@ Lemma gen_new_row_0 : forall {n m} (T : Matrix n m) (as' : Matrix 1 n),
 Proof. intros.
        unfold mat_equiv, gen_new_row in *.
        prep_matrix_equality.
-       rewrite Msum_big_sum.
+       rewrite Msum_Csum.
        unfold Zero in *.
        apply (@big_sum_0_bounded C C_is_monoid); intros. 
        rewrite H; try lia. 
@@ -2920,7 +2488,7 @@ Lemma gen_new_vec_mat_equiv : forall {n m} (T : Matrix n m) (as' bs : Vector m),
   as' == bs -> gen_new_vec n m T as' = gen_new_vec n m T bs.
 Proof. unfold mat_equiv, gen_new_vec; intros.
        prep_matrix_equality.
-       do 2 rewrite Msum_big_sum.
+       do 2 rewrite Msum_Csum.
        apply big_sum_eq_bounded; intros. 
        rewrite H; try lia. 
        easy.
@@ -2930,7 +2498,7 @@ Lemma gen_new_row_mat_equiv : forall {n m} (T : Matrix n m) (as' bs : Matrix 1 n
   as' == bs -> gen_new_row n m T as' = gen_new_row n m T bs.
 Proof. unfold mat_equiv, gen_new_row; intros.
        prep_matrix_equality.
-       do 2 rewrite Msum_big_sum.
+       do 2 rewrite Msum_Csum.
        apply big_sum_eq_bounded; intros. 
        rewrite H; try lia. 
        easy.
@@ -2970,6 +2538,7 @@ Proof. intros.
        easy. 
 Qed.
 
+(* allows for induction on col_add_many *)
 Lemma col_add_many_col_add : forall {n m} (col e : nat) (T : Matrix n m) (as' : Vector m),
   col <> e -> e < m -> as' col 0 = C0 ->
   col_add_many col as' T = 
@@ -2983,7 +2552,7 @@ Proof. intros.
        apply Cplus_simplify; try easy.
        assert (H' : m = e + (m - e)). lia. 
        rewrite H'.
-       do 2 rewrite Msum_big_sum. 
+       do 2 rewrite Msum_Csum. 
        rewrite big_sum_sum.
        rewrite big_sum_sum.
        rewrite <- Cplus_assoc.
@@ -3005,6 +2574,7 @@ Proof. intros.
        rewrite plus_0_r; easy.
 Qed.
 
+(* shows that we can eliminate a column in a matrix using col_add_many *)
 Lemma col_add_many_cancel : forall {n m} (T : Matrix n (S m)) (as' : Vector (S m)) (col : nat),
   col < (S m) -> as' col 0 = C0 ->
   (reduce_col T col) × (reduce_row as' col) = -C1 .* (get_vec col T) -> 
@@ -3012,7 +2582,7 @@ Lemma col_add_many_cancel : forall {n m} (T : Matrix n (S m)) (as' : Vector (S m
 Proof. intros. 
        unfold col_add_many, gen_new_vec.
        bdestruct (col =? col); try lia. 
-       rewrite Msum_big_sum. 
+       rewrite Msum_Csum. 
        assert (H' : (big_sum (fun x : nat => (as' x 0 .* get_vec x T) i 0) (S m) = 
                      (@Mmult n m 1 (reduce_col T col) (reduce_row as' col)) i 0)%C).
        { unfold Mmult.
@@ -3044,17 +2614,18 @@ Proof. intros.
        rewrite <- (Cplus_0_r (S x y)).
        rewrite <- Cplus_assoc.
        apply Cplus_simplify; try lca.
-       do 2 rewrite Msum_big_sum.
+       do 2 rewrite Msum_Csum.
        rewrite <- (@big_sum_plus Complex.C _ _ C_is_comm_group).
        rewrite (@big_sum_0_bounded C C_is_monoid); try lca.
        intros. 
        unfold get_vec, scale.
        bdestruct (0 =? 0); bdestruct (x0 =? col); try lia; try lca.
-       rewrite Msum_big_sum.
+       rewrite Msum_Csum.
        bdestruct (0 =? 0); try lia. 
        rewrite H3, H. lca.
 Qed.
 
+(* like above, allows for induction on col_add_each *)
 Lemma col_add_each_col_add : forall {n m} (col e : nat) (S : Matrix n m) (as' : Matrix 1 m),
   col <> e -> (forall x, as' x col = C0) ->
               col_add_each col as' S = 
@@ -3081,7 +2652,7 @@ Proof. intros.
        rewrite H2. lca.
 Qed.
 
-(* must use make_col_zero here instead of just as' col 0 = C0, since def requires stronger supp *)
+(* must use make_col_zero here instead of just as' col 0 = C0, since def requires stronger hyp *)
 Lemma col_add_each_inv : forall {n m} (col : nat) (as' : Matrix 1 m) (T : Matrix n m),
   T = col_add_each col (make_col_zero col (-C1 .* as')) 
                    (col_add_each col (make_col_zero col as') T).
@@ -3100,8 +2671,9 @@ Proof. intros.
        simpl. bdestruct (x =? row); bdestruct (row =? row); try lia; try lca. 
 Qed.
 
-(* we can show that we get from col_XXX to row_XXX via transposing *)
 
+(* we can show that we get from col_XXX to row_XXX via transposing *)
+(* helpful, since we can bootstrap many lemmas on cols for rows *)
 Lemma get_vec_transpose : forall {n m} (A : Matrix n m) (i : nat),
   (get_vec i A)⊤ = get_row i (A⊤).
 Proof. intros. 
@@ -3174,7 +2746,7 @@ Proof. intros.
        bdestruct (x =? col); try easy. 
        apply Cplus_simplify; try easy.
        unfold gen_new_vec, gen_new_row, get_vec, get_row, scale.
-       do 2 rewrite Msum_big_sum.
+       do 2 rewrite Msum_Csum.
        apply big_sum_eq_bounded; intros. 
        easy. 
 Qed.
@@ -3187,7 +2759,7 @@ Proof. intros.
        bdestruct (y =? row); try easy. 
        apply Cplus_simplify; try easy.
        unfold gen_new_vec, gen_new_row, get_vec, get_row, scale.
-       do 2 rewrite Msum_big_sum.
+       do 2 rewrite Msum_Csum.
        apply big_sum_eq_bounded; intros. 
        easy. 
 Qed.
@@ -3212,6 +2784,11 @@ Proof. intros.
        easy.
 Qed.
 
+
+
+
+(* the idea is to show that col operations correspond to multiplication by special matrices.
+   Thus, we show that the col ops all satisfy various multiplication rules *)
 Lemma swap_preserves_mul_lt : forall {n m o} (A : Matrix n m) (B : Matrix m o) (x y : nat),
   x < y -> x < m -> y < m -> A × B = (col_swap A x y) × (row_swap B x y).
 Proof. intros. 
@@ -3380,7 +2957,7 @@ Proof. intros.
        rewrite Cplus_comm.
        apply Cplus_simplify; try easy. 
        unfold gen_new_vec.
-       do 2 rewrite Msum_big_sum.
+       do 2 rewrite Msum_Csum.
        apply big_sum_eq_bounded; intros. 
        unfold get_vec, scale; simpl.
        bdestruct (x0 =? col); try lca. 
@@ -3478,7 +3055,7 @@ Proof. intros.
          apply H; lia. 
 Qed.
 
-(* we can now prove this much more easily using transpose *)
+(* we can prove col_add_each version much more easily using transpose *)
 Lemma col_add_each_preserves_mul: forall (n m o col : nat) (A : Matrix n m) 
                                                          (B : Matrix m o) (v : Matrix 1 m),
   WF_Matrix v -> col < m -> v 0 col = C0 ->
@@ -3780,6 +3357,9 @@ Proof. induction n as [| n'].
          + exists n'. 
            apply n.
 Qed.
+
+
+(** Tactics **)
 
 (* Note on "using [tactics]": Most generated subgoals will be of the form
    WF_Matrix M, where auto with wf_db will work.
