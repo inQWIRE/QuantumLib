@@ -768,11 +768,11 @@ Proof.
   simpl.
   bdestructΩ (x =? y).
   - subst; simpl.
-    rewrite Csum_sum.
+    rewrite big_sum_sum.
     bdestructΩ (y <? n + (n + 0)).
     + bdestructΩ (n <=? y).
-      * rewrite Csum_0_bounded. Csimpl.
-        rewrite (Csum_eq _ (fun x => A x (y - n)%nat ^* * A x (y - n)%nat)).
+      * rewrite big_sum_0_bounded. Csimpl.
+        rewrite (big_sum_eq _ (fun x => A x (y - n)%nat ^* * A x (y - n)%nat)).
         ++ unfold control, adjoint, Mmult, I in U.
            rewrite Nat.add_0_r.
            eapply (equal_f) in U. 
@@ -791,8 +791,8 @@ Proof.
            rewrite andb_false_r.
            bdestructΩ (n <=? x).
            simpl. lca.
-      * rewrite (Csum_unique 1). 
-        rewrite Csum_0_bounded.
+      * rewrite (@big_sum_unique C C_is_monoid 1). 
+        rewrite big_sum_0_bounded.
         ++ lca.
         ++ intros.
            rewrite andb_false_r.
@@ -809,8 +809,9 @@ Proof.
            intros x Ne.
            bdestructΩ (y =? x ).
            repeat rewrite andb_false_r.
+           intros. 
            lca.
-    + rewrite 2 Csum_0_bounded; [lca| |].
+    + rewrite 2 big_sum_0_bounded; [lca| |].
       * intros x L.
         rewrite WF by (right; lia).
         bdestructΩ (n + x <? n).
@@ -823,12 +824,12 @@ Proof.
         bdestructΩ (n <=? x).
         simpl. lca.
   - simpl.
-    rewrite Csum_sum.
+    rewrite big_sum_sum.
     bdestructΩ (y <? n + (n + 0)).
     + bdestructΩ (n <=? y).
-      * rewrite Csum_0_bounded. Csimpl.
+      * rewrite big_sum_0_bounded. Csimpl.
         bdestructΩ (n <=? x).
-        rewrite (Csum_eq _ (fun z => A z (x - n)%nat ^* * A z (y - n)%nat)).
+        rewrite (big_sum_eq _ (fun z => A z (x - n)%nat ^* * A z (y - n)%nat)).
         ++ unfold control, adjoint, Mmult, I in U.
            rewrite Nat.add_0_r.
            eapply (equal_f) in U. 
@@ -842,7 +843,7 @@ Proof.
            bdestructΩ (n <=? n + z).
            rewrite minus_plus.
            easy.
-        ++ rewrite Csum_0. easy.
+        ++ rewrite big_sum_0. easy.
            intros z.
            bdestructΩ (n + z <? n).
            rewrite andb_false_r.
@@ -852,8 +853,8 @@ Proof.
            bdestructΩ (n <=? z).
            bdestructΩ (x =? z); bdestructΩ (y =? z); try lca. 
       * bdestructΩ (n <=? x).        
-        ++ rewrite Csum_0_bounded.
-           rewrite Csum_0_bounded. lca.
+        ++ rewrite big_sum_0_bounded.
+           rewrite big_sum_0_bounded. lca.
            ** intros z L.
               bdestructΩ (n + z <? n).
               rewrite andb_false_r.
@@ -864,14 +865,14 @@ Proof.
               bdestructΩ (x =? z); bdestructΩ (y =? z); try lca.
               bdestructΩ (n <=? z).
               lca.
-        ++ rewrite 2 Csum_0_bounded; [lca| |].
+        ++ rewrite 2 big_sum_0_bounded; [lca| |].
            ** intros z L.
               rewrite andb_false_r.
               bdestructΩ (x =? n + z); bdestructΩ (y =? n + z); rewrite andb_false_r; lca.
            ** intros z L.
               rewrite andb_false_r.
               bdestructΩ (x =? z); bdestructΩ (y =? z); rewrite andb_false_r; lca.
-    + rewrite 2 Csum_0_bounded; [lca| |].
+    + rewrite 2 big_sum_0_bounded; [lca| |].
       * intros z L.
         bdestructΩ (n + z <? n). 
         bdestructΩ (n <=? n + z). 
@@ -894,7 +895,7 @@ Proof.
   + unfold WF_Unitary in *.
     rewrite adjoint_involutive.
     destruct H as [H H0].
-    apply Minv_left in H0 as [_ S]; (* NB: admitted lemma *)
+    apply Minv_left in H0 as [_ S]; 
     auto with wf_db.
 Qed.
 
@@ -902,6 +903,18 @@ Lemma cnot_unitary : WF_Unitary cnot.
 Proof.
   split. 
   apply WF_cnot.
+  unfold Mmult, I.
+  prep_matrix_equality.
+  do 4 (try destruct x; try destruct y; try lca).
+  replace ((S (S (S (S x))) <? 4)) with (false) by reflexivity.
+  rewrite andb_false_r.
+  lca.
+Qed.
+
+Lemma notc_unitary : WF_Unitary notc.
+Proof.
+  split. 
+  apply WF_notc.
   unfold Mmult, I.
   prep_matrix_equality.
   do 4 (try destruct x; try destruct y; try lca).
@@ -1297,7 +1310,7 @@ Proof.
   end. 
   unfold I in H; simpl in H.
   rewrite <- H.
-  apply Csum_eq.
+  apply big_sum_eq.
   apply functional_extensionality.
   intros x.
   rewrite Cplus_0_l, Cmult_comm.
@@ -1344,7 +1357,7 @@ Proof.
       rewrite <- Rplus_0_r at 1.
       apply Rplus_le_compat; apply Rle_0_sqr.    
     + match goal with 
-      [ |- ?x <= fst (Csum ?f ?m)] => specialize (Csum_member_le f n) as res
+      [ |- ?x <= fst (big_sum ?f ?m)] => specialize (big_sum_member_le f n) as res
       end.
       simpl in *.
       unfold Rminus in *.
@@ -1407,7 +1420,7 @@ Definition norm {n} (ψ : Vector n) : R :=
 
 Lemma norm_real : forall {n} (v : Vector n), snd ((v† × v) 0%nat 0%nat) = 0%R. 
 Proof. intros. unfold Mmult, adjoint.
-        rewrite Csum_snd_0. easy.
+        rewrite big_sum_snd_0. easy.
         intros. rewrite Cmult_comm.
         rewrite Cmult_conj_real.
         reflexivity.
@@ -1421,7 +1434,7 @@ Lemma inner_product_ge_0 : forall {d} (ψ : Vector d),
 Proof.
   intros.
   unfold Mmult, adjoint.
-  apply Csum_ge_0.
+  apply big_sum_ge_0.
   intro.
   rewrite <- Cmod_sqr.
   simpl.
@@ -1503,11 +1516,11 @@ Proof. intros.
 Qed.
 
 Lemma rewrite_norm : forall {d} (ψ : Vector d),
-    fst (((ψ) † × ψ) O O) = Rsum d (fun i => Cmod (ψ i O) ^ 2)%R.
+    fst (((ψ) † × ψ) O O) = big_sum (fun i => Cmod (ψ i O) ^ 2)%R d.
 Proof.
   intros d ψ. unfold Mmult.
   replace (fun y : nat => (ψ† O y * ψ y O)%C) with (fun y : nat => RtoC (Cmod (ψ y O) ^ 2)).
-  apply Rsum_Csum.
+  apply Rsum_big_sum.
   apply functional_extensionality. intros.
   unfold adjoint. rewrite <- Cmod_sqr. symmetry. apply RtoC_pow.
 Qed.

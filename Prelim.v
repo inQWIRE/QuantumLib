@@ -15,8 +15,13 @@ Lemma easy_sub : forall (n : nat), S n - 1 = n. Proof. lia. Qed.
 
 (** Boolean notation, lemmas *)
 
-Notation "¬ b" := (negb b) (at level 10).
+Notation "¬ b" := (negb b) (at level 75, right associativity). (* Level/associativity defined such that it does not clash with the standard library *)
 Infix  "⊕" := xorb (at level 20).
+
+
+Lemma xorb_nb_b : forall b, (¬ b) ⊕ b = true. Proof. destruct b; easy. Qed.
+Lemma xorb_b_nb : forall b, b ⊕ (¬ b) = true. Proof. destruct b; easy. Qed.
+
 
 Lemma xorb_involutive_l : forall b b', b ⊕ (b ⊕ b') = b'. Proof. destruct b, b'; easy. Qed.
 Lemma xorb_involutive_r : forall b b', b ⊕ b' ⊕ b' = b. Proof. destruct b, b'; easy. Qed.
@@ -328,7 +333,7 @@ Proof. intros X l1 l2. split.
              right. apply H'.
 Qed.           
 
-Infix "⊆" := subset_gen (at level 30, no associativity).
+Infix "⊆" := subset_gen (at level 70, no associativity).
 
 Lemma subset_cons : forall (X : Type) (l1 l2 : list X) (x : X),
   l1 ⊆ l2 -> l1 ⊆ (x :: l2).

@@ -149,15 +149,15 @@ Proof.
   apply Nat.eqb_eq in H1.
   apply Nat.ltb_lt in H2.
   subst.
-  apply Csum_unique.
+  apply big_sum_unique.
   exists (p y).
   destruct (Hp y) as [? _]; auto.
   split; auto.
   split.
   bdestruct_all; simpl; lca.
-  intros x Hx.
+  intros.  
   bdestruct_all; simpl; lca.
-  apply Csum_0.
+  apply (@big_sum_0 C C_is_monoid).
   intros z.
   bdestruct_all; simpl; try lca.
   subst.
@@ -185,15 +185,15 @@ Proof.
   apply Nat.ltb_lt in H2.
   apply Nat.ltb_lt in H3.
   subst.
-  apply Csum_unique.
+  apply big_sum_unique.
   exists (g y).
   destruct (Hgbij y) as [? _]; auto.
   split; auto.
   split.
   bdestruct_all; simpl; lca.
-  intros x Hx.
+  intros.
   bdestruct_all; simpl; lca.
-  apply Csum_0.
+  apply (@big_sum_0 C C_is_monoid).
   intros z.
   bdestruct_all; simpl; try lca.
   subst.
@@ -269,7 +269,7 @@ Proof.
   apply andb_prop in H as [H1 H2].
   rewrite Nat.eqb_eq in H1.
   rewrite Nat.eqb_eq in H2.
-  apply Csum_unique.
+  apply big_sum_unique.
   exists (funbool_to_nat n f).
   split.
   apply funbool_to_nat_bound.
@@ -280,10 +280,10 @@ Proof.
   specialize (funbool_to_nat_bound n f) as ?.
   specialize (funbool_to_nat_bound n (fun x0 : nat => f (p x0))) as ?.
   bdestruct_all; lca.
-  intros z Hz.
+  intros z Hz H3.
   bdestructΩ (z =? funbool_to_nat n f).
   lca.
-  apply Csum_0.
+  apply (@big_sum_0 C C_is_monoid).
   intros z.
   bdestruct_all; simpl; try lca.
   rewrite andb_true_r in H.

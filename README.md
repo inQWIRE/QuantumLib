@@ -6,7 +6,7 @@ QuantumLib is a Coq library for reasoning about quantum programs. It was co-deve
 
 ## Compilation
 
-Tested with Coq versions 8.12 -- 8.14.
+Tested with Coq versions 8.12 -- 8.15.
 
 To compile run `make all`.
 

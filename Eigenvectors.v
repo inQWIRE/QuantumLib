@@ -1,7 +1,7 @@
-Require Import List.     
+Require Import List.      
 Require Export Complex.  
 Require Export Quantum. 
-Require Export FTA.
+Require Import FTA.
 
 
 
@@ -12,7 +12,7 @@ Require Export FTA.
 (* little Ltac for helping with √ 2 *)
 Ltac Hhelper :=
    unfold Mmult;
-   unfold Csum;
+   unfold big_sum;
    unfold I;
    simpl;
    C_field_simplify;
@@ -47,16 +47,15 @@ Lemma cnotZ2 : cnot × (I 2 ⊗ σz) = (σz ⊗ σz) × cnot. Proof. lma'. Qed.
 #[export] Hint Resolve ZH_eq_HX XH_eq_HZ SX_eq_YS SZ_eq_ZS cnotX1 cnotX2 cnotZ1 cnotZ2 : id_db.
 
 
-(************************************************************************)
-(* Defining a set of vectors, linear independence, other prelims etc... *)
-(************************************************************************)
+(*******************************)
+(* Defining orthonormal matrix *)
+(*******************************)
 
 
 Local Open Scope nat_scope. 
 
 Definition orthogonal {n m} (S : Matrix n m) : Prop := 
   forall i j, i <> j -> inner_product (get_vec i S) (get_vec j S) = C0.
-
 
 Definition orthonormal {n m} (S : Matrix n m) : Prop :=
   orthogonal S /\ (forall (i : nat), i < m -> norm (get_vec i S) = 1%R).
@@ -65,16 +64,13 @@ Definition orthonormal {n m} (S : Matrix n m) : Prop :=
 Definition WF_Orthonormal {n m} (S : Matrix n m) : Prop := 
   WF_Matrix S /\ orthonormal S. 
 
-
 Lemma inner_product_is_mult : forall {n} (i j : nat) (S : Square n),
   inner_product (get_vec i S) (get_vec j S) = (S† × S) i j.
 Proof. intros. unfold inner_product, get_vec, Mmult, adjoint.
-       apply Csum_eq.
+       apply big_sum_eq.
        apply functional_extensionality; intros. simpl.
        reflexivity.
 Qed.
-
-
 
 Lemma inner_product_comm_conj : forall {n} (v u : Vector n), 
   inner_product v u = Cconj (inner_product u v).
@@ -90,11 +86,9 @@ Qed.
 
 
 
-
 (***************************************************)
 (* showing that all matrices have some eigenvector *)
 (***************************************************)
-
 
 (* We first must define a new type to connect polynomials to matrices *)
 
@@ -102,10 +96,8 @@ Definition MatrixP (m n : nat) := nat -> nat -> Polynomial.
 
 Notation SquareP n := (MatrixP n n).
 
-
 Definition eval_matP {n m} (A : MatrixP n m) (c : C) : Matrix n m :=
   fun x y => (A x y)[[c]]. 
-
 
 Definition reduceP {n} (A : SquareP (S n)) (row col : nat) : SquareP n :=
   fun x y => (if x <? row 
@@ -124,19 +116,18 @@ Proof. intros.
        bdestruct_all; easy. 
 Qed.
 
-
 Fixpoint DeterminantP (n : nat) (A : SquareP n) : Polynomial :=
   match n with 
   | 0 => [C1]
   | S 0 => A 0 0
-  | S n' => (Psum (fun i => [(parity i)] *, (A i 0) *, (DeterminantP n' (reduceP A i 0)))%C n)
+  | S n' => (big_sum (fun i => [(parity i)] *, (A i 0) *, (DeterminantP n' (reduceP A i 0)))%C n)
   end.
 
 Arguments DeterminantP {n}. 
 
 Lemma DetP_simplify : forall {n} (A : SquareP (S (S n))),
   DeterminantP A =  
-  (Psum (fun i => [(parity i)] *, (A i 0) *, (DeterminantP (reduceP A i 0)))%C (S (S n))).
+  (big_sum (fun i => [(parity i)] *, (A i 0) *, (DeterminantP (reduceP A i 0)))%C (S (S n))).
 Proof. intros. easy. Qed.
 
 Lemma Peval_Det : forall {n} (A : SquareP n) (c : C),
@@ -148,7 +139,7 @@ Proof. induction n as [| n'].
          + simpl. easy. 
          + rewrite DetP_simplify, Det_simplify.
            rewrite Psum_eval.
-           apply Csum_eq_bounded; intros.
+           apply big_sum_eq_bounded; intros.
            rewrite reduceP_eval_mat, IHn'.
            do 2 rewrite Pmult_eval.
            repeat apply f_equal_gen; try easy.  
@@ -158,8 +149,6 @@ Qed.
 (* not really useful except for in the proof of connect *)
 Definition prep_mat {n} (A : Square n) : SquareP n := 
   (fun x y => if (x =? y) && (x <? n) then [A x y; -C1] else [A x y]).
-
-
 
 (* we must first show that degree (DeterminantP (prep_mat A)) = n *)
 
@@ -171,7 +160,6 @@ Lemma del1_reduce : forall {n} (A : SquareP (S n)) (i j : nat),
 Proof. unfold deg_elem_leq_1, reduceP in *; intros. 
        bdestruct_all; easy.
 Qed.
-
 
 Lemma bound_deg_matP : forall {n} (A : SquareP n),
   deg_elem_leq_1 A -> degree (DeterminantP A) <= n.
@@ -241,13 +229,11 @@ Proof. induction n as [| n'].
            replace (- - C1) with C1 in H' by lca. 
            apply C1_neq_C0 in H'; easy. 
          + rewrite DetP_simplify.
-           assert (H' : forall n f, Psum f (S n) = f 0 +, Psum (fun i => f (S i)) n). 
+           assert (H' : forall n f, big_sum f (S n) = f 0 +, big_sum (fun i => f (S i)) n). 
            { intros. 
              induction n. 
              + simpl. 
                destruct (f 0); try easy; simpl. 
-               rewrite Cplus_0_l, Cplus_0_r, Pplus_0_r. 
-               easy. 
              + simpl in *. 
                rewrite IHn, Pplus_assoc; easy. }
            assert (H0 : degree (prep_mat A 0 0) = 1). 
@@ -321,7 +307,6 @@ Proof. intros.
        rewrite H0; easy.
 Qed.
      
-
 Lemma exists_eigenvector : forall (n : nat) (A : Square (S n)),
   WF_Matrix A -> 
   exists (c : C) (v : Vector (S n)), WF_Matrix v /\ v <> Zero /\ A × v = c.* v.
@@ -342,8 +327,6 @@ Proof. intros.
        lma. 
 Qed.
     
-
-
 (************************************)
 (* Lemmas relating to forming bases *)
 (************************************)
@@ -353,7 +336,6 @@ Definition form_basis {n} (v : Vector n) (non_zero : nat) : Matrix n n :=
   fun x y => if (y =? non_zero) 
              then (v x 0)
              else (@e_i n y x 0).
-
 
 Lemma WF_form_basis : forall {n} (v : Vector n) (x : nat),
   WF_Matrix v -> x < n -> WF_Matrix (form_basis v x).
@@ -365,7 +347,6 @@ Proof. unfold WF_Matrix, form_basis, e_i.
        bdestruct (x0 =? y); try easy.
        bdestruct (x0 <? n); try lia; try easy.
 Qed.       
-
 
 Lemma get_v_in_basis : forall {n} (v : Vector n) (x : nat),
   WF_Matrix v -> get_vec x (form_basis v x) = v.
@@ -380,7 +361,6 @@ Proof. intros.
        destruct y; try lia; try easy.
 Qed.
 
-
 Lemma get_ei_in_basis : forall {n} (v : Vector n) (x y : nat),
   y < n -> y <> x -> get_vec y (form_basis v x) = e_i y.
 Proof. intros. 
@@ -392,8 +372,6 @@ Proof. intros.
        unfold e_i.
        bdestruct (x0 =? y); bdestruct (x0 <? n); bdestruct (y0 =? 0); try easy. 
 Qed.
-
-
 
 Lemma form_basis_ver : forall {n} (v : Vector n) (x : nat),
   v <> Zero -> WF_Matrix v -> v x 0 <> C0 -> x < n -> 
@@ -430,12 +408,12 @@ Proof. intros.
          unfold I. 
          bdestruct (x =? x); bdestruct (x <? S n); try lia. 
          rewrite Cinv_l; try easy. 
-         rewrite Csum_0_bounded; try easy.
+         rewrite big_sum_0_bounded; try easy.
          unfold e_i.
          intros. 
          bdestruct (x0 =? x); try lia; try lca. 
          bdestruct (x =? x0); try lia; lca.          
-         rewrite (Csum_unique (-C1 * (v i 0))).
+         rewrite (big_sum_unique (-C1 * (v i 0))%C).
          unfold I. bdestruct (i =? j); try lia; simpl. 
          lca. exists i. split; try easy. 
          split. simpl. 
@@ -454,10 +432,9 @@ Proof. intros.
        - apply get_v_in_basis; easy.
 Qed.
 
-
 Lemma lin_indep_out_of_v : forall {n} (v : Vector n),
   WF_Matrix v -> v <> Zero ->
-  exists S : Matrix n n, WF_Matrix S /\ linearly_independent S /\ get_vec 0 S = v. 
+  exists S : Square n, WF_Matrix S /\ linearly_independent S /\ get_vec 0 S = v. 
 Proof. intros. 
        destruct n. 
        - exists Zero. 
@@ -521,7 +498,7 @@ Proof. intros. split.
          assert (H' : (0 < fst (inner_product v v))%R).
          { unfold inner_product.
            unfold Mmult. 
-           apply Csum_gt_0.
+           apply big_sum_gt_0.
            unfold adjoint. 
            intros.
            rewrite <- Cmod_sqr.
@@ -587,10 +564,8 @@ Qed.
 Definition proj {n} (u v : Vector n) : Vector n :=
   ((inner_product u v) / (inner_product u u)) .* u.
 
-
 Definition proj_coef {n} (u v : Vector n) : C :=
   ((inner_product u v) / (inner_product u u)).
-
 
 Lemma proj_inner_product : forall {n} (u v : Vector n),
   (norm u) <> 0%R -> inner_product u (proj u v) = inner_product u v.
@@ -609,10 +584,8 @@ Proof. intros.
        easy. 
 Qed.
 
-
 Definition gram_schmidt_on_v (n m : nat) (v : Vector n) (S : Matrix n m) :=
-  v .+ (Msum m (fun i => (-C1) .* (proj (get_vec i S) v))).
-
+  v .+ (big_sum (fun i => (-C1) .* (proj (get_vec i S) v)) m).
 
 Definition delta_T {n m} (T : Matrix n (S m)) (i : nat) : C := 
   match i =? m with 
@@ -620,12 +593,9 @@ Definition delta_T {n m} (T : Matrix n (S m)) (i : nat) : C :=
   | _ => - (proj_coef (get_vec i T) (get_vec m T))
   end. 
 
-
 (* slightly different version thats easier to work with in general case *)
 Definition gram_schmidt_on_T (n m : nat) (T : Matrix n (S m)) : Vector n :=
-  Msum (S m) (fun i => (delta_T T) i .* (get_vec i T)).
-
-
+  big_sum (fun i => (delta_T T) i .* (get_vec i T)) (S m).
 
 Lemma WF_gs_on_T : forall {n m} (T : Matrix n (S m)),
   WF_Matrix T -> WF_Matrix (gram_schmidt_on_T n m T).
@@ -640,7 +610,6 @@ Proof. intros.
        - bdestruct (y =? 0); try lia; try easy. 
 Qed.
 
-
 Lemma gram_schmidt_compare : forall {n m} (T : Matrix n (S m)),
   inner_product (get_vec m T) (get_vec m T) <> C0 -> 
   gram_schmidt_on_T n m T = gram_schmidt_on_v n m (get_vec m T) (reduce_col T m).
@@ -650,9 +619,9 @@ Proof. intros.
        unfold Mplus. 
        do 2 rewrite Msum_Csum. 
        rewrite Cplus_comm. 
-       rewrite <- Csum_extend_r.
+       rewrite <- big_sum_extend_r.
        apply Cplus_simplify.
-       - apply Csum_eq_bounded.
+       - apply big_sum_eq_bounded.
          intros. 
          unfold delta_T.
          bdestruct (x0 =? m); try lia. 
@@ -668,7 +637,6 @@ Proof. intros.
          unfold scale. lca. 
 Qed.
 
-
 (* here, we show that gs_on_v preserves normalness *)
 Lemma gram_schmidt_orthogonal : forall {n m} (v : Vector n) (S : Matrix n m) (i : nat),
   orthonormal S -> i < m -> inner_product (get_vec i S) (gram_schmidt_on_v n m v S) = C0.
@@ -681,7 +649,7 @@ Proof. intros.
        rewrite Mmult_Msum_distr_l.
        unfold Mplus. 
        rewrite Msum_Csum. 
-       rewrite (Csum_unique (-C1 * ((get_vec i S) † × v) 0 0) _ m); try lca. 
+       rewrite (big_sum_unique (-C1 * ((get_vec i S) † × v) 0 0)%C _ m); try lca. 
        exists i. split; try easy.
        split.
        - distribute_scale.
@@ -693,19 +661,16 @@ Proof. intros.
          unfold inner_product in H'.
          rewrite H'. 
          reflexivity. 
-       - intros. apply H in H2. 
+       - intros. apply H in H3. 
          unfold proj. 
          distribute_scale.
          unfold scale. 
-         rewrite H2. 
+         rewrite H3. 
          lca. 
 Qed.
 
-
-
 Definition f_to_vec (n : nat) (f : nat -> C) : Vector n :=
   fun i j => if (j =? 0) && (i <? n) then f i else C0. 
-
 
 Lemma WF_f_to_vec : forall (n : nat) (f : nat -> C), WF_Matrix (f_to_vec n f).
 Proof. intros. 
@@ -716,12 +681,12 @@ Proof. intros.
 Qed.
 
 Lemma Msum_to_Mmult : forall {n m} (T : Matrix n (S m)) (f : nat -> C),
-  Msum (S m) (fun i => f i .* get_vec i T) = T × (f_to_vec (S m) f).              
+  big_sum (fun i => f i .* get_vec i T) (S m) = T × (f_to_vec (S m) f).              
 Proof. intros. 
        prep_matrix_equality. 
        rewrite Msum_Csum. 
        unfold Mmult. 
-       apply Csum_eq_bounded.
+       apply big_sum_eq_bounded.
        intros. 
        unfold f_to_vec, get_vec, scale.
        bdestruct (x0 <? S m); bdestruct (y =? 0); try lia; try lca. 
@@ -744,7 +709,6 @@ Proof. intros.
        apply WF_f_to_vec.
 Qed.
 
-
 Lemma inner_product_zero_normalize : forall {n} (u v : Vector n),
   inner_product u v = C0 -> inner_product u (normalize v) = C0.
 Proof. intros. 
@@ -755,8 +719,6 @@ Proof. intros.
        lca. 
 Qed.
 
-
-
 Lemma get_vec_reduce_append_miss : forall {n m} (T : Matrix n (S m)) (v : Vector n) (i : nat),
   i < m -> get_vec i (col_append (reduce_col T m) v) = get_vec i T.
 Proof. intros. 
@@ -764,7 +726,6 @@ Proof. intros.
        unfold get_vec, col_append, reduce_col.
        bdestruct_all; easy. 
 Qed.
-
 
 Lemma get_vec_reduce_append_hit : forall {n m} (T : Matrix n (S m)) (v : Vector n),
   WF_Matrix v -> get_vec m (col_append (reduce_col T m) v) = v.
@@ -776,7 +737,6 @@ Proof. intros.
        - rewrite H; try lia; easy.
 Qed.
 
-
 Lemma get_vec_reduce_append_over : forall {n m} (T : Matrix n (S m)) (v : Vector n) (i : nat),
   WF_Matrix T -> i > m -> 
   get_vec i (col_append (reduce_col T m) v) = Zero.
@@ -787,7 +747,6 @@ Proof. intros.
        rewrite H. easy.
        right. lia. 
 Qed.
-
 
 Lemma extend_onb_ind_step_part1 : forall {n m} (T : Matrix n (S m)),
   WF_Matrix T -> linearly_independent T -> orthonormal (reduce_col T m) ->
@@ -885,12 +844,10 @@ Proof. intros.
            apply H1; lia. 
 Qed.     
 
-
 Definition delta_T' {n m} (T : Matrix n m) (v : Vector n) (size : nat) : nat -> C := 
   fun i => if (i <? size)
            then - (proj_coef (get_vec i T) v) 
            else C0.
-
 
 Lemma gs_on_T_cols_add : forall {n m1 m2} (T1 : Matrix n m1) (T2 : Matrix n m2) (v : Vector n),
   WF_Matrix v ->
@@ -903,27 +860,26 @@ Proof. intros.
        bdestruct (y <? S m1); bdestruct (y =? m1); try lia; try easy.
        unfold delta_T, delta_T', gen_new_vec, f_to_vec, get_vec, scale.
        do 2 rewrite Msum_Csum. 
-       rewrite <- Csum_extend_r.
+       rewrite <- big_sum_extend_r.
        bdestruct (m1 =? m1); bdestruct (0 =? 0); try lia. 
        rewrite Cplus_comm.
        apply Cplus_simplify; try lca. 
        unfold get_vec.
        assert (p : S m1 + m2 = m1 + (S m2)). lia. 
        rewrite p. 
-       rewrite Csum_sum.
+       rewrite big_sum_sum.
        assert (p1 : forall a b : C, b = C0 -> (a + b = a)%C). 
        intros. rewrite H4. lca. 
        rewrite p1. 
-       apply Csum_eq_bounded; intros.
+       apply big_sum_eq_bounded; intros.
        bdestruct (x0 =? m1); bdestruct (x0 <? m1); try lia.
        simpl. 
        bdestruct (x0 <? m1 + m2); try lia. 
        bdestruct (x0 <? S m1); try lia; easy.
-       apply Csum_0_bounded; intros. 
+       apply (@big_sum_0_bounded C C_is_monoid); intros. 
        bdestruct (m1 + x0 <? m1 + m2); bdestruct (m1 + x0 <? m1); 
          try lia; simpl; lca.
 Qed.
-
 
 Lemma smash_scale : forall {n m1 m2} (T1 : Matrix n m1) (T2 : Matrix n m2) (v : Vector n),
   smash (col_append T1 (normalize v)) T2 = 
@@ -933,7 +889,6 @@ Proof. intros.
        prep_matrix_equality. 
        bdestruct (y <? S m1); bdestruct (y =? m1); try lia; try easy. 
 Qed.
-
 
 Lemma extend_onb_ind_step_part2 : forall {n m1 m2} (T1 : Matrix n m1) (T2 : Matrix n m2)
                                                    (v : Vector n),
@@ -970,8 +925,6 @@ Proof. intros.
        unfold f_to_vec, delta_T'.
        bdestruct (m1 <? m1 + m2); bdestruct (m1 <? m1); try lia; easy.
 Qed.       
-
-
 
 Lemma extend_onb_ind_step : forall {n m1 m2} (T1 : Matrix n m1) (T2 : Matrix n m2) (v : Vector n),
   WF_Matrix T1 -> WF_Matrix T2 -> WF_Matrix v -> 
@@ -1084,7 +1037,6 @@ Proof. induction m2 as [| m2'].
          easy. 
 Qed.
 
-
 Lemma get_vec_vec : forall {n} (v : Vector n),
   WF_Matrix v -> get_vec 0 v = v.
 Proof. intros. 
@@ -1097,7 +1049,6 @@ Proof. intros.
          right. 
          bdestruct (y <? 1); try lia.          
 Qed.
-
 
 Lemma orthonormal_normalize_v : forall {n} (v : Vector n),
   v <> Zero -> WF_Matrix v -> orthonormal (normalize v).
@@ -1131,7 +1082,8 @@ Proof. intros.
          auto with wf_db.
 Qed.
 
-
+(* the steps here are a bit confusing, but we use these lemmas to 
+   prove the following useful fact *)
 Theorem onb_out_of_v : forall {n} (v : Vector n),
   WF_Matrix v -> v <> Zero -> 
   exists T : Square n, WF_Orthonormal T /\ get_vec 0 T = normalize v.
@@ -1191,21 +1143,6 @@ Qed.
 
 Lemma P_unitary : WF_Unitary Sgate. Proof. apply phase_unitary. Qed.
 Lemma T_unitary : WF_Unitary Tgate. Proof. apply phase_unitary. Qed.
-
-
-Lemma notc_unitary : WF_Unitary notc.
-Proof.
-  split. 
-  apply WF_notc.
-  unfold Mmult, I.
-  prep_matrix_equality.
-  do 4 (try destruct x; try destruct y; try lca).
-  replace ((S (S (S (S x))) <? 4)) with (false) by reflexivity.
-  rewrite andb_false_r.
-  lca.
-Qed.
-
-
 
 
 Lemma unit_scale : forall {n} (c : C) (A : Square n),
@@ -1285,7 +1222,7 @@ Qed.
 
 Lemma unit_out_of_v : forall {n} (v : Vector n) (x : nat),
   WF_Matrix v -> v <> Zero -> 
-  exists S : Matrix n n, WF_Unitary S /\ get_vec 0 S = normalize v.
+  exists S : Square n, WF_Unitary S /\ get_vec 0 S = normalize v.
 Proof. intros.
        apply onb_out_of_v in H; try easy.
        destruct H as [S [H1 H2] ].
@@ -1362,7 +1299,7 @@ Proof.
   split; auto with wf_db. 
   intros.
   unfold Mmult. 
-  apply Csum_0.
+  apply (@big_sum_0 C C_is_monoid).
   intro.
   bdestruct (x =? i).
   + rewrite H2; try lia; lca. 
@@ -1386,7 +1323,6 @@ Proof. intros a b m H0 Hdiv Hmod.
        apply H0. apply H0.
 Qed.
 
-
 Lemma diag_kron : forall {n m : nat} (A : Square n) (B : Square m), 
                   WF_Diagonal A -> WF_Diagonal B -> WF_Diagonal (A ⊗ B).
 Proof.
@@ -1403,7 +1339,6 @@ Proof.
     + rewrite H2; try lca; easy. 
   - rewrite H0; try lca; easy. 
 Qed.
-
 
 Lemma diag_transpose : forall {n : nat} (A : Square n), 
                      WF_Diagonal A -> WF_Diagonal A⊤. 
@@ -1422,7 +1357,6 @@ Proof. intros n A [H H0].
        intros. 
        rewrite H0. lca. auto.
 Qed.
-
 
 Lemma diag_kron_n : forall (n : nat) {m : nat} (A : Square m),
    WF_Diagonal A ->  WF_Diagonal (kron_n n A).
@@ -1449,7 +1383,6 @@ Proof.
     intros A H'. apply H.
     simpl. auto.
 Qed. 
-
 
 Lemma diag_Mmult_n : forall n {m} (A : Square m),
    WF_Diagonal A -> WF_Diagonal (Mmult_n n A).
@@ -1479,12 +1412,10 @@ Proof. intros n A [H H0]. unfold WF_Diagonalizable.
        rewrite Mmult_1_r; auto with wf_db.  
 Qed.
 
-
 Lemma diagble_Zero : forall n : nat, WF_Diagonalizable (@Zero n n).
 Proof. intros. apply diag_imps_diagble. 
        apply diag_Zero.
 Qed.
-
 
 Lemma diagble_I : forall n : nat, WF_Diagonalizable (I n). 
 Proof. intros. apply diag_imps_diagble.
@@ -1493,8 +1424,6 @@ Qed.
 
 Lemma diagble_I1 : WF_Diagonal (I 1). Proof. apply diag_I. Qed.
   
-
-
 Lemma diagble_scale : forall {n : nat} (r : C) (A : Square n), 
   WF_Diagonalizable A -> WF_Diagonalizable (r .* A).
 Proof.
@@ -1514,7 +1443,6 @@ Proof.
   reflexivity. 
 Qed.
 
-
 Lemma diagble_switch : forall {n : nat} (A B X X' : Square n),
   WF_Matrix A -> WF_Matrix B -> WF_Matrix X -> WF_Matrix X' -> 
   X × X' = I n -> B = X × A × X' ->
@@ -1528,11 +1456,12 @@ Proof. intros.
        rewrite H3, Mmult_1_r; auto. 
 Qed.       
 
+(**************************************)
+(* Defining Cprod, similar to big_sum *)
+(**************************************)
 
-(***********************************)
-(* Defining Cprod, similar to Csum *)
-(***********************************)
-
+(* could define this using the multiplicative monoid on C, but this would 
+   lead to confusing notation, so I just left it *)
 Fixpoint Cprod (f : nat -> C) (n : nat) : C := 
   match n with
   | 0 => C1
@@ -1553,7 +1482,6 @@ Proof. intros.
            rewrite H2; lca.
 Qed.
 
-
 Lemma Cprod_eq_bounded : forall (f g : nat -> C) (n : nat),
   (forall i : nat, i < n -> f i = g i) -> Cprod f n = Cprod g n.
 Proof. intros.
@@ -1564,13 +1492,9 @@ Proof. intros.
          intros. apply H; lia. 
 Qed.
 
-
-         
-  
 Lemma Cprod_extend_r : forall (f : nat -> C) (n : nat),
   (Cprod f n * f n)%C = Cprod f (S n).
 Proof. easy. Qed.
-
 
 Lemma Cprod_extend_l : forall (f : nat -> C) (n : nat),
   (f 0 * (Cprod (fun x => f (S x)) n))%C = Cprod f (S n).
@@ -1584,7 +1508,6 @@ Proof. intros.
          reflexivity.
 Qed.
 
-
 Lemma Cprod_product : forall (f g h : nat -> C) (n : nat),
   (forall i, i < n -> h i = (f i * g i)%C) -> ((Cprod f n) * (Cprod g n))%C = Cprod h n.
 Proof. induction n.
@@ -1594,15 +1517,12 @@ Proof. induction n.
          intros. apply H; try lia. 
 Qed.
 
-
 (************************************)
 (* Defining upper triangular matrix *) 
 (************************************)
 
 Definition upper_triangular {n} (A : Square n) : Prop :=
   forall i j, i > j -> A i j = C0.
-
-
 
 Lemma up_tri_Zero : forall n : nat, upper_triangular (@Zero n n).
 Proof. intros n. unfold upper_triangular. reflexivity. Qed.
@@ -1637,14 +1557,13 @@ Lemma up_tri_mult : forall {n : nat} (A B : Square n),
 Proof.
   unfold upper_triangular, Mmult.
   intros n A B H H0 i j D.
-  apply Csum_0.
+  apply (@big_sum_0 C C_is_monoid).
   intros x.
   bdestruct (x <? i); bdestruct (j <? x); try lia.
   + rewrite H; try lca; lia.
   + rewrite H; try lca; lia.
   + rewrite H0; try lca; lia.
 Qed.
-
 
 Lemma up_tri_reduce_0 : forall {n : nat} (A : Square (S n)),
   upper_triangular A -> upper_triangular (reduce A 0 0).
@@ -1654,8 +1573,6 @@ Proof.
   bdestruct (i <? 0); bdestruct (j <? 0); try lia.
   apply H; lia. 
 Qed.
-
-
 
 Lemma det_up_tri_diags : forall {n : nat} (A : Square n),
   upper_triangular A -> 
@@ -1671,7 +1588,7 @@ Proof. induction n as [| n'].
              rewrite <- Cprod_extend_r.  
              rewrite <- Cmult_assoc; easy. }
            rewrite H'.
-           rewrite <- Csum_extend_l.
+           rewrite <- big_sum_extend_l.
            rewrite <- Cplus_0_r.
            rewrite <- Cplus_assoc.
            apply Cplus_simplify.
@@ -1682,11 +1599,10 @@ Proof. induction n as [| n'].
            rewrite H; try lia. 
            rewrite <- Cplus_0_r.
            apply Cplus_simplify; try lca. 
-           apply Csum_0_bounded.
+           apply (@big_sum_0_bounded C C_is_monoid).
            intros. 
            rewrite H; try lia; lca. 
 Qed.
-
 
 
 (**************************************************)
@@ -1704,13 +1620,12 @@ Proof. intros n v H. unfold Eigenpair.
        easy.
 Qed.
 
-
 Lemma diags_have_basis_eigens : forall (n : nat) (U : Square n) (i : nat),
   (i < n) -> WF_Diagonal U -> Eigenpair U (e_i i, U i i).
 Proof. unfold WF_Diagonal, Eigenpair, e_i. intros.
        unfold Mmult, scale.
        prep_matrix_equality.
-       eapply Csum_unique. exists i. 
+       eapply big_sum_unique. exists i. 
        destruct H0 as [H0 H1].
        split. apply H.
        split.
@@ -1721,7 +1636,6 @@ Proof. unfold WF_Diagonal, Eigenpair, e_i. intros.
 Qed.
 
 Local Close Scope nat_scope.
-
 
 Lemma eigen_scale : forall {n} (A : Square n) (v : Vector n) (c1 c2 : C),
   Eigenpair A (v, c1) -> Eigenpair (c2 .* A) (v, c1 * c2).
@@ -1760,8 +1674,6 @@ Proof. intros.
        rewrite Mmult_1_l; easy.
 Qed.
 
-
-
 Lemma eig_unit_conv : forall {n} (v : Vector n) (c : C) (U B : Square n),
   WF_Matrix v -> WF_Unitary U -> 
   Eigenpair B (U × v, c) -> Eigenpair (U† × B × U) (v, c).  
@@ -1775,9 +1687,6 @@ Proof. intros.
        rewrite H2.
        rewrite Mmult_1_l; easy.
 Qed.
-
-
-
 
 Lemma eig_unit_norm1 : forall {n} (U : Square n) (c : C),
   WF_Unitary U -> (exists v, WF_Matrix v /\ v <> Zero /\ Eigenpair U (v, c)) -> (c * c^* = C1)%C.
@@ -1811,6 +1720,12 @@ Proof. intros. destruct H0 as [v [H0 [H1 H2] ] ].
        apply H0; easy.
 Qed.
 
+
+(** Next, we show that unitary matrices are diagonalizable *)
+
+(* our approach is to show that there exists X such that XUX^-1 = pad1 c u where u is one 
+   fewer dimension than U. Then, by induction, we can show that U is diagonalizable. The 
+   reduction takes three steps, and then we induct to prove the result. *) 
 
 Lemma unit_has_eigen : forall {n} (A : Square (S n)),
   WF_Unitary A -> 
@@ -1907,7 +1822,7 @@ Proof. intros n A H [c H0] i j H1.
          replace 1%R with (fst C1) in H4 by easy.
          apply (c_proj_eq (((get_vec 0 A†) † × get_vec 0 A†) 0 0) C1) in H4.
          unfold Mmult in H4.
-         rewrite <- Csum_extend_l in H4. 
+         rewrite <- big_sum_extend_l in H4. 
          assert (H' : ((get_vec 0 (A) †) † 0 0 * get_vec 0 (A) † 0 0)%C = C1).
          { unfold get_vec, adjoint. 
            simpl. rewrite Hc.
@@ -1921,7 +1836,7 @@ Proof. intros n A H [c H0] i j H1.
          rewrite Cplus_0_l in H4.
          rewrite H1 in *.
          destruct j; try lia. 
-         assert (H5 := Csum_squeeze (fun x : nat => ((get_vec 0 (A) †) † 0 (S x) * 
+         assert (H5 := big_sum_squeeze (fun x : nat => ((get_vec 0 (A) †) † 0 (S x) * 
                                                 get_vec 0 (A) † (S x) 0)%C) n).
          assert (H5' : forall x : nat,
        x < n ->
@@ -1957,7 +1872,7 @@ Proof. intros n A H [c H0] i j H1.
            rewrite adjoint_involutive in Hwf.
            rewrite Hwf; try lca; lia.
          + unfold Mmult. 
-           apply Csum_snd_0; intros. 
+           apply big_sum_snd_0; intros. 
            unfold get_vec, adjoint. 
            simpl. lra. 
        - rewrite H1. 
@@ -1986,9 +1901,9 @@ Proof. intros n A [Hwf Hu].
          bdestruct_all; try easy. }
        rewrite <- H2.
        unfold Mmult.
-       rewrite <- Csum_extend_l.
+       rewrite <- big_sum_extend_l.
        rewrite H, Cmult_0_r, Cplus_0_l.
-       apply Csum_eq_bounded; intros. 
+       apply big_sum_eq_bounded; intros. 
        unfold adjoint. 
        unfold reduce.
        apply Cmult_simplify.
@@ -2004,8 +1919,7 @@ Proof. intros n A [Hwf Hu].
        4 : { destruct x; destruct y; try lia. 
              do 2 rewrite easy_sub; easy. }
        all : try rewrite (H x y); try lca; try lia. 
-Qed.
-       
+Qed.       
 
 Lemma diagble_pad1 : forall {n} (A : Square n) (c : C),
   WF_Diagonalizable A -> WF_Diagonalizable (pad1 A c).
@@ -2031,7 +1945,7 @@ Proof. intros n A c [H [X [X' [B [ [Hwf Hd] [H1 [H2 [H3 H4] ] ] ] ] ] ] ].
 Qed.         
 
          
-(* Now, we build up the main important theorem *)
+(* Now, we can induct and prove the theorem *)
 Theorem unit_implies_diagble : forall {n} (A : Square n),
   WF_Unitary A -> WF_Diagonalizable A.
 Proof. induction n as [| n']. 
@@ -2103,7 +2017,7 @@ Proof. intros n D1 D2 [H1wf H1d] [H2wf H2d] H.
            bdestruct_all; lca. }
          rewrite <- H', <- H1. 
          unfold Mmult. 
-         apply (Csum_unique (D2 x x)). 
+         apply (big_sum_unique (D2 x x)). 
          exists x. split; try easy.
          split. unfold e_i. 
          bdestruct_all; lca.
@@ -2194,8 +2108,6 @@ Proof. intros n D1 D2 [H1wf H1d] [H2wf H2d] H.
        do 2 rewrite Mmult_1_l in H8; auto. 
 Qed.
 
-
-
 Lemma eq_eigs_implies_eq_unit : forall {n} (U1 U2 : Square n),
   WF_Unitary U1 -> WF_Unitary U2 -> eq_eigs U1 U2 -> U1 = U2.
 Proof. intros. 
@@ -2204,7 +2116,6 @@ Proof. intros.
        apply eq_eigs_implies_eq_diagble; auto. 
 Qed.
 
-
 Theorem eigs_eq_gate : forall {n} (U1 U2 : Square n),
   WF_Unitary U1 -> WF_Unitary U2 -> (U1 = U2 <-> eq_eigs U1 U2).
 Proof. intros. split.
@@ -2212,8 +2123,6 @@ Proof. intros. split.
        - apply eq_eigs_implies_eq_unit.
          apply H. apply H0.
 Qed.
-
-
 
 Local Close Scope nat_scope.
 
