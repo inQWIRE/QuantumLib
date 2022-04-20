@@ -1,16 +1,13 @@
 Require Import VectorStates.
 
-(* ============================== *)
-(**    Measurement predicates    **)
-(* ============================== *)
+(** This file contains predicates for describing the outcomes of measurement. *)
 
-(* What is the probability of outcome ϕ given input ψ? *)
+(** * Probability of outcome ϕ given input ψ *)
 Definition probability_of_outcome {n} (ϕ ψ : Vector n) : R :=
   let c := (ϕ† × ψ) O O in
   (Cmod c) ^ 2.
 
-(* What is the probability of measuring ϕ on the first m qubits given
-  (m + n) qubit input ψ? *)
+(** * Probability of measuring ϕ on the first m qubits given (m + n) qubit input ψ *)
 Definition prob_partial_meas {m n} (ϕ : Vector (2^m)) (ψ : Vector (2^(m + n))) :=
   big_sum (fun y => probability_of_outcome (ϕ ⊗ basis_vector (2^n) y) ψ) (2^n).
 
