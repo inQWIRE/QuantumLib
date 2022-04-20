@@ -26,7 +26,7 @@ Qed.
    using a length n list of real numbers. We support sampling from this
    distribution using the 'sample' function. *)
 
-Definition sum_over_list (l : list R) := Rsum (length l) (fun i => nth i l 0).
+Definition sum_over_list (l : list R) := big_sum (fun i => nth i l 0) (length l).
 
 Definition distribution (l : list R) := 
   Forall (fun x => 0 <= x) l /\ sum_over_list l = 1.
@@ -40,7 +40,7 @@ Proof.
   intros x l.
   unfold sum_over_list.
   simpl length. 
-  rewrite Rsum_shift.
+  rewrite big_sum_shift.
   simpl nth.
   reflexivity.
 Qed.
@@ -176,7 +176,7 @@ Qed.
 (** Intuitively, the probability that an element satisfies boolean predicate 
    f is the sum over all element for which f holds. *)
 Definition pr_outcome_sum (l : list R) (f : nat -> bool) : R :=
-  Rsum (length l) (fun i => if f i then nth i l 0 else 0).
+  big_sum (fun i => if f i then nth i l 0 else 0) (length l).
 
 Lemma pr_outcome_sum_extend : forall x l f,
   pr_outcome_sum (x :: l) f 
@@ -187,7 +187,7 @@ Proof.
   intros x l f.
   unfold pr_outcome_sum.
   simpl length.
-  rewrite Rsum_shift.
+  rewrite big_sum_shift.
   destruct (f O); simpl.
   reflexivity.
   lra.
@@ -211,15 +211,15 @@ Qed.
 Lemma pr_outcome_sum_repeat_false : forall n f,
   pr_outcome_sum (repeat 0 n) f = 0.
 Proof.
-  intros n f.
-  unfold pr_outcome_sum, Rsum.
+  intros n f. 
+  unfold pr_outcome_sum.
   destruct n as [| n]; trivial.
-  simpl.
-  apply sum_eq_R0.
+  rewrite big_sum_0_bounded; try easy.
   intros x Hx.
   destruct (f x); trivial.
   destruct x; trivial.
   rewrite repeat_length in Hx.
+  simpl.
   replace n with (x + (S (n - x - 1)))%nat by lia.
   rewrite <- repeat_combine.
   simpl.
@@ -244,7 +244,7 @@ Lemma pr_outcome_sum_replace_f : forall l f1 f2,
 Proof.
   intros l f1 f2 H.
   unfold pr_outcome_sum.
-  apply Rsum_eq_bounded.
+  apply big_sum_eq_bounded.
   intros.
   rewrite H; auto.
 Qed.
@@ -343,7 +343,7 @@ Proof.
   - unfold pr_outcome_sum. simpl. lra.
   - inversion H; subst. unfold pr_outcome_sum.
     replace (length (a :: l)) with (S (length l)) by easy.
-    rewrite Rsum_shift. simpl.
+    rewrite big_sum_shift. simpl.
     specialize (IHl (fun x => f (S x)) H3).
     unfold pr_outcome_sum in IHl.
     destruct (f O); lra.
@@ -753,30 +753,30 @@ Proof.
   - simpl. constructor. apply Cmod2_ge_0. apply IHl.
 Qed.
 
-Local Opaque Rsum.
+Local Opaque big_sum.
 Lemma sum_over_list_Cmod2_vec_to_list' : forall d x l,
   sum_over_list (map Cmod2 (@vec_to_list' x d l)) = 
-    Rsum d (fun i : nat => (Cmod (l (i + x - d)%nat O) ^ 2)%R).
+    big_sum (fun i : nat => (Cmod (l (i + x - d)%nat O) ^ 2)%R) d.
 Proof.
   induction d; intros.
   - unfold sum_over_list. reflexivity.
   - simpl. rewrite sum_over_list_cons. rewrite IHd. simpl.
-    rewrite Rsum_shift.
+    rewrite big_sum_shift.
     replace (0 + x - S d)%nat with (x - S d)%nat by lia.
     rewrite Cmod2_Cmod_sqr. simpl.
     f_equal.
 Qed.
-Local Transparent Rsum.
+Local Transparent big_sum.
 
 Lemma sum_over_list_Cmod2_vec_to_list :
   forall d (l : Vector d),
     sum_over_list (map Cmod2 (vec_to_list l)) = 
-      Rsum d (fun i : nat => (Cmod (l i O) ^ 2)%R).
+      big_sum (fun i : nat => (Cmod (l i O) ^ 2)%R) d.
 Proof.
   intros. unfold vec_to_list.
   rewrite sum_over_list_Cmod2_vec_to_list'.
-  apply Rsum_eq_bounded. intros.
-  replace (i + d - d)%nat with i by lia.
+  apply big_sum_eq_bounded. intros.
+  replace (x + d - d)%nat with x by lia.
   reflexivity.
 Qed.
 
@@ -1320,10 +1320,12 @@ Proof.
   simpl. lra.
   unfold pr_outcome_sum in *.
   simpl length.
-  rewrite 2 Rsum_shift.
+  rewrite 2 big_sum_shift.
   simpl nth.
   rewrite IHl.
-  destruct (f O); lra.
+  destruct (f O).
+  rewrite Rmult_plus_distr_l; easy.
+  rewrite 2 Rplus_0_l; easy. 
 Qed.
 
 Lemma length_join' : forall x l1 l2 m,
@@ -1363,7 +1365,7 @@ Proof.
   unfold pr_outcome_sum.
   Local Opaque firstn.
   simpl length.
-  rewrite 2 Rsum_extend.
+  rewrite <- big_sum_extend_r, Rplus_comm.
   repeat rewrite firstn_length_le.
   assert (aux : forall a b c d, (a < 2 + d)%nat ->
             nth a (b :: c :: firstn d l) 0 = nth a (b :: c :: l) 0).
@@ -1377,10 +1379,11 @@ Proof.
     apply nth_firstn.
     lia. }
   apply f_equal2.
-  rewrite aux. reflexivity. simpl in Hn. lia.
+  rewrite aux. reflexivity. lia.
+  rewrite <- big_sum_extend_r, Rplus_comm.
   apply f_equal2.
-  rewrite aux. reflexivity. simpl in Hn. lia.
-  apply Rsum_eq_bounded.
+  rewrite aux. reflexivity. lia.
+  apply big_sum_eq_bounded.
   intros i Hi.
   rewrite aux by lia. 
   rewrite nth_firstn. reflexivity. lia.
@@ -1472,25 +1475,28 @@ Qed.
 Lemma rewrite_pr_outcome_sum : forall n k (u : Square (2 ^ (n + k))) f,
   WF_Matrix u ->
   pr_outcome_sum (apply_u u) (fun x => f (fst k x)) 
-  = Rsum (2 ^ n) (fun x => ((if f x then 1 else 0) *
+  = big_sum (fun x => ((if f x then 1 else 0) *
                          prob_partial_meas (basis_vector (2 ^ n) x) 
-                           (u × basis_vector (2 ^ (n + k)) 0))%R).
+                           (u × basis_vector (2 ^ (n + k)) 0))%R) (2 ^ n).
 Proof.
   intros n k u f WFu.
   unfold pr_outcome_sum.
-  unfold apply_u at 1.
+  unfold apply_u.
   rewrite map_length.
   rewrite vec_to_list_length.
-  rewrite nested_Rsum.
-  apply Rsum_eq_bounded.
+  rewrite nested_big_sum.
+  apply big_sum_eq_bounded.
   intros x Hx.
   destruct (f x) eqn:fx.
   rewrite Rmult_1_l.
-  erewrite Rsum_eq_bounded.
+  unfold prob_partial_meas.
+  apply big_sum_eq_bounded; intros. 
+  Admitted. (*
   2: { intros y Hy. 
        rewrite simplify_fst by assumption.
        rewrite fx.
        rewrite nth_apply_u_probability_of_outcome.
+       unfold probability_of_outcome. 
        reflexivity.
        replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
        nia. assumption.
@@ -1509,6 +1515,7 @@ Proof.
   apply Rsum_0.
   reflexivity.
 Qed.
+             *)
 
 
 (* ============================= *)

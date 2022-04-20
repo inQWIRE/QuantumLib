@@ -9,9 +9,7 @@ Delimit Scope group_scope with G.
 Open Scope group_scope.
 
 
-Search (Rmult _).
-
-(* try reserved notation *)
+(* TODO: try reserved notation *)
 Class Monoid G :=
   { Gzero : G
   ; Gplus : G -> G -> G
@@ -172,7 +170,6 @@ Proof. intros.
        repeat rewrite Ginv_l; auto. 
        assert (H' := @G_field_theory F H _ _ _ H3 H4).
        rewrite Gmult_1_l; easy. 
-       Set Printing All.
        (* field. *)
        Admitted. 
 
@@ -231,6 +228,16 @@ Proof.
     rewrite H0 by lia.
     rewrite IHn by (intros; apply H0; lia).
     reflexivity.
+Qed.
+
+Lemma big_sum_shift : forall {G} `{Monoid G} n (f : nat -> G),
+  big_sum f (S n) = f O + big_sum (fun x => f (S x)) n.
+Proof.
+  intros; simpl.
+  induction n; simpl.
+  rewrite Gplus_0_l, Gplus_0_r; easy.
+  rewrite IHn.
+  rewrite Gplus_assoc; easy.
 Qed.
 
 Lemma big_sum_plus : forall {G} `{Comm_Group G} f g n, 
@@ -364,6 +371,12 @@ Proof.
     reflexivity.
 Qed.
 
+Lemma big_sum_twice : forall {G} `{Monoid G} n f,
+  big_sum f (2 * n) = big_sum f n + big_sum (fun x => f (n + x)%nat) n.
+Proof.
+  intros. replace (2 * n)%nat with (n + n)%nat by lia. apply big_sum_sum.
+Qed.
+
 Lemma big_sum_product : forall {G} `{Ring G} m n f g, 
   n <> O ->
   big_sum f m * big_sum g n = big_sum (fun x => f (x / n)%nat * g (x mod n)%nat) (m * n). 
@@ -437,6 +450,29 @@ Proof. intros.
        rewrite <- big_sum_plus.
        apply big_sum_eq_bounded; intros. 
        easy.
+Qed.
+
+Lemma nested_big_sum : forall {G} `{Monoid G} m n f,
+  big_sum f (2 ^ (m + n))
+    = big_sum (fun x => big_sum (fun y => f (x * 2 ^ n + y)%nat) (2 ^ n)) (2 ^ m).
+Proof.
+  intros G H m n.
+  replace (2 ^ (m + n))%nat with (2 ^ n * 2 ^ m)%nat by (rewrite Nat.pow_add_r; lia).
+  induction m; intros.
+  simpl.
+  rewrite Nat.mul_1_r, Gplus_0_l.  
+  reflexivity.
+  replace (2 ^ n * 2 ^ S m)%nat with (2 * (2 ^ n * 2 ^ m))%nat by (simpl; lia).
+  replace (2 ^ S m)%nat with (2 * 2 ^ m)%nat by (simpl; lia).
+  rewrite 2 big_sum_twice.
+  rewrite 2 IHm.
+  apply f_equal2; try reflexivity.
+  apply big_sum_eq.
+  apply functional_extensionality; intros. 
+  apply big_sum_eq.
+  apply functional_extensionality; intros. 
+  apply f_equal.
+  lia.
 Qed.
 
 

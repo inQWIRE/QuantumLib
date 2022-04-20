@@ -9,10 +9,8 @@ Require Import List.
 (* TODO: Use matrix equality everywhere, declare equivalence relation *)
 (* TODO: Make all nat arguments to matrix lemmas implicit *)
 
-(*********************************************)
-(** * Matrix definitions and infrastructure **)
-(*********************************************)
 
+(** * Matrix definitions and infrastructure **)
 
 
 
@@ -146,9 +144,9 @@ Proof.
   do 4 (try destruct x; try destruct y; simpl; trivial).
 Qed.
 
-(*******************************)
+
 (** * Operands and operations **)
-(*******************************)
+
 
 Definition Zero {m n : nat} : Matrix m n := fun x y => 0%R.
 
@@ -163,9 +161,6 @@ Coercion to_scalar : Matrix >-> C.
 (* This isn't used, but is interesting *)
 Definition I__inf := fun x y => if x =? y then C1 else C0.
 Notation "I∞" := I__inf : matrix_scope.
-
-
-
 
 
 
@@ -230,9 +225,8 @@ Fixpoint Mmult_n n {m} (A : Square m) : Square m :=
   end.
 
 
-(* How can I account for WF_Matrices and ring of all matrices, not just Matrix n m? *)
 
-(* still can show that M is a vector space *)
+(** * Showing that M is a vector space *)
 Program Instance M_is_monoid : forall n m, Monoid (Matrix n m) := 
   { Gzero := @Zero n m
   ; Gplus := Mplus
@@ -354,9 +348,9 @@ Proof. intros; subst; easy.
 Qed.
 
 
-(************************************)
+
 (** * Proofs about well-formedness **)
-(************************************)
+
 
 
 Lemma WF_Matrix_dim_change : forall (m n m' n' : nat) (A : Matrix m n),
@@ -501,9 +495,9 @@ Qed.
 
 Local Close Scope nat_scope.
 
-(****************************************)
-(** Tactics for showing well-formedness *)
-(****************************************)
+
+(** * Tactics for showing well-formedness *)
+
 
 Local Open Scope nat.
 Local Open Scope R.
@@ -526,6 +520,7 @@ Ltac show_wf :=
      WF_adjoint WF_outer_product WF_big_kron WF_kron_n WF_kron 
      WF_Mmult_n WF_Msum : wf_db.
 #[export] Hint Extern 2 (_ = _) => unify_pows_two : wf_db.
+
 
 (** * Basic matrix lemmas *)
 
@@ -601,7 +596,7 @@ Proof.
   lca. 
 Qed.
 
-(* using <= because our form Csum is exclusive. *)
+(* using <= because our form big_sum is exclusive. *)
 Lemma Mmult_1_l_gen: forall (m n : nat) (A : Matrix m n) (x z k : nat), 
   (k <= m)%nat ->
   ((k <= x)%nat -> big_sum (fun y : nat => I m x y * A y z) k = 0) /\
@@ -1411,7 +1406,7 @@ Qed.
 
 
 
-(** Summation lemmas specific to matrices **)
+(** * Summation lemmas specific to matrices **)
 
 (* due to dimension problems, we did not prove that Matrix m n is a ring with respect to either
    multiplication or kron. Thus all of these need to be proven *)
@@ -1505,9 +1500,9 @@ Proof.
   exists x; split; simpl; auto.
 Qed.
 
-(*****************************************************)
-(* Defining matrix altering/col operations functions *)
-(*****************************************************)
+
+(** * Defining matrix altering/col operations functions *)
+
 
 Definition get_vec {n m} (i : nat) (S : Matrix n m) : Vector n :=
   fun x y => (if (y =? 0) then S x i else C0).   
@@ -1639,7 +1634,7 @@ Definition make_row_zero {n m} (row : nat) (S : Matrix n m) : Matrix n m :=
 Definition make_WF {n m} (S : Matrix n m) : Matrix n m :=
   fun i j => if (i <? n) && (j <? m) then S i j else C0.
 
-(* proving lemmas about these new functions *)
+(** * proving lemmas about these new functions *)
 
 Lemma WF_get_vec : forall {n m} (i : nat) (S : Matrix n m),
   WF_Matrix S -> WF_Matrix (get_vec i S). 
@@ -2743,8 +2738,8 @@ Qed.
 
 
 
-(* the idea is to show that col operations correspond to multiplication by special matrices.
-   Thus, we show that the col ops all satisfy various multiplication rules *)
+(** the idea is to show that col operations correspond to multiplication by special matrices. *)
+(** Thus, we show that the col ops all satisfy various multiplication rules *)
 Lemma swap_preserves_mul_lt : forall {n m o} (A : Matrix n m) (B : Matrix m o) (x y : nat),
   x < y -> x < m -> y < m -> A × B = (col_swap A x y) × (row_swap B x y).
 Proof. intros. 
@@ -3174,6 +3169,10 @@ Proof. intros.
        rewrite H'; easy.
 Qed.
 
+
+
+(** * Some more lemmas with these new concepts *)
+
 (* We can now show that matrix_equivalence is decidable *)
 Lemma vec_equiv_dec : forall {n : nat} (A B : Vector n), 
     { A == B } + { ~ (A == B) }.
@@ -3315,7 +3314,7 @@ Proof. induction n as [| n'].
 Qed.
 
 
-(** Tactics **)
+(** * Tactics **)
 
 (* Note on "using [tactics]": Most generated subgoals will be of the form
    WF_Matrix M, where auto with wf_db will work.
@@ -3370,9 +3369,9 @@ Proof.
   reflexivity.
 Qed.
 
-(*******************************)
-(* Restoring Matrix Dimensions *)
-(*******************************)
+
+(** Restoring Matrix Dimensions *)
+
 
 (** Restoring Matrix dimensions *)
 Ltac is_nat n := match type of n with nat => idtac end.
@@ -3497,9 +3496,9 @@ Tactic Notation "restore_dims" tactic(tac) := restore_dims tac.
 
 Tactic Notation "restore_dims" := restore_dims (repeat rewrite Nat.pow_1_l; try ring; unify_pows_two; simpl; lia).
 
-(*************************)
+
 (* Proofs depending on restore_dims *)
-(*************************)
+
 
 Lemma kron_n_m_split {o p} : forall n m (A : Matrix o p), 
   WF_Matrix A -> (n + m) ⨂ A = n ⨂ A ⊗ m ⨂ A.
@@ -3519,9 +3518,9 @@ Proof.
     reflexivity.
 Qed.
 
-(*************************)
-(* Matrix Simplification *)
-(*************************)
+
+(** Matrix Simplification *)
+
 
 (* Old: 
 Hint Rewrite kron_1_l kron_1_r Mmult_1_l Mmult_1_r id_kron id_adjoint_eq
@@ -3575,9 +3574,8 @@ Ltac distribute_adjoint :=
   | |- context [(?A ⊗ ?B)†] => rewrite (kron_adjoint A B)
   end.
 
-(*********************************************************)
+
 (** Tactics for solving computational matrix equalities **)
-(*********************************************************)
 
 
 (* Construct matrices full of evars *)
@@ -3764,9 +3762,10 @@ Ltac solve_matrix := assoc_least;
                      (* try to solve complex equalities *)
                      autorewrite with C_db; try lca.
 
-(*********************************************************)
-(**                         Gridify                     **)
-(*********************************************************)
+
+
+(** Gridify **)
+
 
 (** Gridify: Turns an matrix expression into a normal form with 
     plus on the outside, then tensor, then matrix multiplication.
@@ -3899,9 +3898,9 @@ Ltac gridify :=
   (* simplify *)
   Msimpl_light.
 
-(**************************************)
-(* Tactics to show implicit arguments *)
-(**************************************)
+
+(** Tactics to show implicit arguments *)
+
 
 Definition kron' := @kron.      
 Lemma kron_shadow : @kron = kron'. Proof. reflexivity. Qed.
