@@ -986,7 +986,7 @@ Proof.
   easy.
 Qed.
 
-Lemma unit_big_kron : forall (n : nat) (ls : list (Square n)), 
+Lemma big_kron_unitary : forall (n : nat) (ls : list (Square n)), 
   (forall a, In a ls -> WF_Unitary a) -> WF_Unitary (⨂ ls).
 Proof. intros. induction ls as [| h].
        - simpl. apply id_unitary.
