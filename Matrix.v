@@ -1,3 +1,6 @@
+
+(** In this file, we define matrices and prove many basic facts from linear algebra *)
+
 Require Import Psatz. 
 Require Import String.
 Require Import Program.
@@ -1501,7 +1504,7 @@ Proof.
 Qed.
 
 
-(** * Defining matrix altering/col operations functions *)
+(** * Defining matrix altering/col operations *)
 
 
 Definition get_vec {n m} (i : nat) (S : Matrix n m) : Vector n :=
@@ -1634,7 +1637,7 @@ Definition make_row_zero {n m} (row : nat) (S : Matrix n m) : Matrix n m :=
 Definition make_WF {n m} (S : Matrix n m) : Matrix n m :=
   fun i j => if (i <? n) && (j <? m) then S i j else C0.
 
-(** * proving lemmas about these new functions *)
+(** proving lemmas about these new functions *)
 
 Lemma WF_get_vec : forall {n m} (i : nat) (S : Matrix n m),
   WF_Matrix S -> WF_Matrix (get_vec i S). 
@@ -1993,7 +1996,7 @@ Lemma col_scale_reduce_before : forall {n : nat} (T : Square (S n)) (x y col : n
 Proof. intros. 
        prep_matrix_equality. 
        destruct col; try lia. 
-       rewrite easy_sub. 
+       rewrite Sn_minus_1. 
        unfold reduce, col_scale. 
        bdestruct (x0 <? x); bdestruct (y0 <? y); bdestruct (y0 =? S col);
          bdestruct (y0 =? col); bdestruct (1 + y0 =? S col); try lia; easy. 

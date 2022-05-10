@@ -1,3 +1,8 @@
+
+
+(** In this file, we define more advanced linear algebra concepts such as bases, linear independence, etc... *)
+
+
 Require Import Psatz.  
 Require Import Reals.
   
@@ -5,7 +10,7 @@ Require Export Matrix.
 
 
 (************************************)
-(* some preliminary defs and lemmas *)
+(** * some preliminary defs and lemmas *)
 (************************************)
 
 Local Open Scope nat_scope.
@@ -28,17 +33,17 @@ Proof. unfold WF_Matrix, pad1. split.
          bdestruct (x =? 0); bdestruct (x <? n); try lia; try easy.
          lca.  
          destruct y; try lia. 
-         rewrite easy_sub. 
+         rewrite Sn_minus_1. 
          bdestruct (x <? 0); bdestruct (x =? 0); try lia; try easy. 
          destruct x; try lia. 
-         rewrite easy_sub.
+         rewrite Sn_minus_1.
          apply H; lia. 
        - intros. 
          unfold col_wedge, row_wedge, e_i in H.
          rewrite <- (H (S x) (S y)); try lia. 
          bdestruct (S y <? 0); bdestruct (S y =? 0); try lia. 
          bdestruct (S x =? 0); bdestruct (S x <? 0); try lia; try easy.
-         do 2 rewrite easy_sub; easy.
+         do 2 rewrite Sn_minus_1; easy.
 Qed.
 
 Lemma WF_e_i : forall {n : nat} (i : nat),
@@ -164,7 +169,7 @@ Proof. intros.
        unfold pad1, col_wedge, row_wedge, e_i.
        bdestruct (S j <? 0); bdestruct (S j =? 0); try lia.
        bdestruct (S i <? 0); bdestruct (S i =? 0); try lia.
-       do 2 rewrite easy_sub.
+       do 2 rewrite Sn_minus_1.
        easy.
 Qed.
 
@@ -215,7 +220,7 @@ Proof. intros.
          rewrite <- big_sum_extend_l, <- Cplus_0_l;
          apply Cplus_simplify; try lca;
          apply big_sum_eq_bounded; intros;  
-         bdestruct_all; do 2 rewrite easy_sub; easy. 
+         bdestruct_all; do 2 rewrite Sn_minus_1; easy. 
 Qed.
 
 Lemma pad1_I : forall (n : nat), pad1 (I n) C1 = I (S n).
@@ -242,7 +247,7 @@ Proof. intros.
        destruct x; try lia. lca. 
        rewrite H; try lia; easy. 
        destruct x; destruct y; try lia. 
-       do 2 rewrite easy_sub in *.
+       do 2 rewrite Sn_minus_1 in *.
        bdestruct (x <? 0); bdestruct (y <? 0); try lia. 
        easy.
 Qed.
@@ -263,7 +268,7 @@ Proof. intros.
        unfold pad1, col_wedge, row_wedge, col_swap, e_i, scale. 
        prep_matrix_equality.
        bdestruct_all; try easy. 
-       all : rewrite easy_sub; easy.
+       all : rewrite Sn_minus_1; easy.
 Qed.
 
 Lemma pad1_col_scale : forall {n m : nat} (A : Matrix n m) (x : nat) (c1 c2 : C),
@@ -281,12 +286,12 @@ Proof. intros.
        unfold pad1, col_wedge, row_wedge, col_add, e_i, scale. 
        prep_matrix_equality.
        bdestruct_all; try easy. 
-       all : rewrite easy_sub; try easy.
+       all : rewrite Sn_minus_1; try easy.
        lca. 
 Qed.
 
 (***************************************************************************)
-(* Defining properties which are invarient under column operations, etc... *)
+(** * Defining properties which are invarient under column operations, etc... *)
 (***************************************************************************)
 
 Inductive invr_col_swap : (forall n m : nat, Matrix n m -> Prop) -> Prop :=
@@ -578,7 +583,7 @@ Proof. intros.
 Qed.
 
 (***********************************************************)
-(* Defining and proving lemmas relating to the determinant *)
+(** * Defining and proving lemmas relating to the determinant *)
 (***********************************************************)
 
 
@@ -732,7 +737,7 @@ Proof. induction n.
              unfold col_scale. bdestruct (0 =? 0); try lia. 
              lca. 
              rewrite col_scale_reduce_before; try lia.
-             rewrite easy_sub.
+             rewrite Sn_minus_1.
              rewrite IHn; try lia. 
              unfold col_scale. 
              bdestruct (0 =? S col); try lia; lca.
@@ -741,7 +746,7 @@ Proof. induction n.
              unfold col_scale. bdestruct (0 =? 0); try lia. 
              lca. 
              rewrite col_scale_reduce_before; try lia.
-             rewrite easy_sub.
+             rewrite Sn_minus_1.
              rewrite IHn; try lia. 
              unfold col_scale. 
              bdestruct (0 =? S col); try lia; lca. 
@@ -988,7 +993,7 @@ Proof. intros.
 Qed.
 
 
-(* We can now define some invariants for Determinant *)
+(** * We can now define some invariants for Determinant *)
 Definition det_neq_0 {n m : nat} (A : Matrix n m) : Prop :=
   n = m /\ @Determinant n A <> C0.
 
@@ -1159,7 +1164,7 @@ Qed.
 
 
 (***********************************************************)
-(* Defining linear independence, and proving lemmas etc... *)
+(** * Defining linear independence, and proving lemmas etc... *)
 (***********************************************************)
 
 
@@ -1388,11 +1393,11 @@ Proof. apply invr_p; intros.
          unfold pad1, row_wedge, col_wedge, e_i.
          bdestruct (x <? 0); bdestruct (x =? 0); try lia. 
          rewrite H4; simpl. lca. 
-         rewrite easy_sub. lca. 
+         rewrite Sn_minus_1. lca. 
          apply big_sum_eq_bounded; intros. 
          rewrite pad1_conv.
          unfold row_wedge.
-         rewrite easy_sub. 
+         rewrite Sn_minus_1. 
          easy. }
        apply H0 in H3.
        prep_matrix_equality. 
@@ -1400,7 +1405,7 @@ Proof. apply invr_p; intros.
        rewrite H3; easy.
        unfold Zero. rewrite <- H4.
        unfold row_wedge. 
-       rewrite easy_sub.
+       rewrite Sn_minus_1.
        easy.
        apply WF_row_wedge; try lia; easy.
 Qed.   
@@ -1502,8 +1507,7 @@ Qed.
 #[export] Hint Resolve lin_indep_pzf lin_dep_swap_invr lin_dep_scale_invr lin_dep_add_invr lin_dep_pzt : invr_db.
 
 
-(* we begin to prove that if n < m, then any Matrix n m is linearly_dependent *)
-(* this is quite useful, as we get a vector that can be used to cancel a column *)
+(** we begin to prove that if n < m, then any Matrix n m is linearly_dependent. This is quite useful, as we get a vector that can be used to cancel a column *)
 
 Lemma lin_dep_gen_elem : forall {m n} (T : Matrix n (S m)),
   WF_Matrix T -> linearly_dependent T -> 
@@ -1580,7 +1584,7 @@ Proof. intros.
        apply lin_dep_add_invr.
        unfold linearly_dependent in *.
        destruct H2 as [a [H3 [H4 H5]]]. 
-       repeat rewrite easy_sub in *.
+       repeat rewrite Sn_minus_1 in *.
        exists (row_wedge a (@Zero 1 1) col).
        split; auto with wf_db.
        split. 
@@ -1596,8 +1600,8 @@ Proof. intros.
          { rewrite H2. easy. }
          unfold row_wedge in *.
          bdestruct (S x <? col); bdestruct (S x =? col); try lia. 
-         rewrite easy_sub in *; easy. 
-       + repeat rewrite easy_sub in *.
+         rewrite Sn_minus_1 in *; easy. 
+       + repeat rewrite Sn_minus_1 in *.
          apply mat_equiv_eq; auto with wf_db.
          apply WF_mult; auto with wf_db.
          unfold mat_equiv; intros. 
@@ -1613,10 +1617,10 @@ Proof. intros.
            bdestruct (x =? col); bdestruct (x <? col); try lia; lca. 
          * unfold get_vec, e_i in H'; simpl in H'. 
            assert (H0' : (reduce_row (reduce_col T col) 0 × a) i j = @Zero (S n) 1 (S i) j).
-           repeat rewrite easy_sub in *; rewrite H5. easy.
+           repeat rewrite Sn_minus_1 in *; rewrite H5. easy.
            rewrite <- H0'.
            unfold Mmult, reduce_row, reduce_col.
-           repeat rewrite easy_sub in *.
+           repeat rewrite Sn_minus_1 in *.
            assert (p : S m = col + (S m - col)). lia.
            rewrite p, big_sum_sum.
            assert (p1 : S m - col = S (m - col)). lia. 
@@ -1733,7 +1737,7 @@ Proof. induction m as [| m'].
 Qed.
 
 (*****************************************************************************************)
-(* defining a new type of matrix which we will show is the lin_indep/invertible matrices *)
+(** * defining a new type of matrix which we will show is the lin_indep/invertible matrices *)
 (*****************************************************************************************)
 
 Inductive op_to_I {n : nat} : Square n -> Prop :=
@@ -1904,11 +1908,11 @@ Qed.
 
 
 (**********************************************)
-(* Now we prove more properties of invariants *) 
+(** *  Now we prove more properties of invariants *) 
 (**********************************************)
 
          
-(* a case for when we consider (Mat -> Prop)s that are the same as lin_indep, invertible, 
+(** a case for when we consider (Mat -> Prop)s that are the same as lin_indep, invertible, 
    etc... these props will satisfy 'prop_zero_false P' *)
 Lemma mpr_step1_pzf_P : forall {n} (A : Square (S n)) (P : forall m o, Matrix m o -> Prop),
   invr_col_add P -> invr_col_scale P -> 
@@ -2006,7 +2010,7 @@ Proof. intros.
          bdestruct (i <? i); bdestruct (i =? i); try lia; easy. 
 Qed.   
 
-(* a different case for when we consider (Mat -> Prop)s that are 
+(** a different case for when we consider (Mat -> Prop)s that are 
    the same as lin_dep, not_invertible, etc... *)
 Lemma mrp_step1_pzt_P0 : forall {n} (A : Square (S n)) (P P0: forall m o, Matrix m o -> Prop),
   invr_col_add P -> invr_col_scale P -> 
@@ -2106,7 +2110,7 @@ Proof. intros.
          bdestruct (i <? i); bdestruct (i =? i); try lia; easy. 
 Qed.   
 
-(* in both cases, we can use mrp_step2 when we get that (exists i, ... ) *) 
+(** in both cases, we can use mrp_step2 when we get that (exists i, ... ) *) 
 Lemma mpr_step2 : forall {n} (A : Square (S n)) (P : forall m o, Matrix m o -> Prop), 
   invr_col_add P -> invr_col_swap P -> 
   WF_Matrix A -> P (S n) (S n) A ->  
@@ -2170,7 +2174,7 @@ Proof. intros.
 Qed.    
 
 
-(* these two lemmas allow us to reduce our study of Square (S n) to Square n, allowing 
+(** these two lemmas allow us to reduce our study of Square (S n) to Square n, allowing 
    us to induct on n. Then, 'invr_pad1 P' allows us to jump from the n case to (S n) *) 
 Lemma mat_prop_reduce_pzf_P : forall {n} (A : Square (S n)) (P : forall m o, Matrix m o -> Prop), 
   invr_col_swap P -> invr_col_scale P -> 
@@ -2213,7 +2217,7 @@ Proof. intros.
 Qed.
 
 
-(* now, we prove some theorems with these powerful lemmas *)
+(** now, we prove some theorems with these powerful lemmas *)
 Theorem invr_P_implies_invertible_r : forall {n} (A : Square n) (P : forall m o, Matrix m o -> Prop), 
   invr_col_swap P -> invr_col_scale P -> 
   invr_col_add P -> prop_zero_false P ->   
@@ -2261,7 +2265,7 @@ Qed.
 
 
 (*******************************)
-(* Inverses of square matrices *)
+(** * Inverses of square matrices *)
 (*******************************) 
 
 Definition Minv {n : nat} (A B : Square n) : Prop := A × B = I n /\ B × A = I n.
@@ -2361,10 +2365,10 @@ Qed.
 
 
 (*********************************************)
-(* We finish proving lemmas about invarients *)
+(** * We finish proving lemmas about invarients *)
 (*********************************************)
 
-(* Finally, we show that if all 6 nice properties are true about two (Mat -> Prop)s, then
+(** Finally, we show that if all 6 nice properties are true about two (Mat -> Prop)s, then
    they are equivalent on well formed matrices *)
 Theorem invr_P_equiv_otI : forall {n} (A : Square n) (P : forall m o, Matrix m o -> Prop), 
   invr_col_swap P -> invr_col_scale P -> 
@@ -2388,7 +2392,7 @@ Proof. intros. split.
            apply H12; easy.
 Qed.
 
-(* slightly weaker version, if 4 nice properties are true, then op_to_I -> P *)
+(** slightly weaker version, if 4 nice properties are true, then op_to_I -> P *)
 Theorem invr_P_implies_otI_weak : forall {n} (A : Square n) (P : forall m o, Matrix m o -> Prop), 
   invr_col_swap P -> invr_col_scale P -> 
   invr_col_add P -> 
@@ -2476,7 +2480,7 @@ Proof. induction n as [| n'].
            assert (H' : row_wedge v Zero 0 (S x) y = C0). { rewrite H8; easy. }
            unfold Zero; rewrite <- H'.
            unfold row_wedge; bdestruct_all.  
-           rewrite easy_sub; easy. 
+           rewrite Sn_minus_1; easy. 
            apply WF_row_wedge; try lia;  auto with wf_db.
            rewrite <- Mmult_assoc, <- H2.
            rewrite pad1_row_wedge_mult, H5.
@@ -2499,7 +2503,7 @@ Proof. intros.
 Qed.
 
 (*************************************************************************************)
-(* we define another set of invariants to help show that Det A × Det B = Det (A × B) *)
+(** * we define another set of invariants to help show that Det A × Det B = Det (A × B) *)
 (*************************************************************************************)
 
 Definition Det_mult_comm_l (n m : nat) (A : Matrix n m) :=

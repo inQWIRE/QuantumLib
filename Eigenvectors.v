@@ -1,3 +1,6 @@
+
+(** This file contains more concepts relevent to quantum computing, as well as some more general linear algebra concepts such as Gram-Schmidt and eigenvectors/eigenvalues. *)
+
 Require Import List.      
 Require Export Complex.  
 Require Export Quantum. 
@@ -6,7 +9,7 @@ Require Import FTA.
 
 
 (****************************)
-(* Proving some indentities *)
+(** * Proving some indentities *)
 (****************************)
 
 (* little Ltac for helping with √ 2 *)
@@ -48,7 +51,7 @@ Lemma cnotZ2 : cnot × (I 2 ⊗ σz) = (σz ⊗ σz) × cnot. Proof. lma'. Qed.
 
 
 (*******************************)
-(* Defining orthonormal matrix *)
+(** * Defining orthonormal matrix *)
 (*******************************)
 
 
@@ -87,7 +90,7 @@ Qed.
 
 
 (***************************************************)
-(* showing that all matrices have some eigenvector *)
+(** * showing that all matrices have some eigenvector *)
 (***************************************************)
 
 (* We first must define a new type to connect polynomials to matrices *)
@@ -328,7 +331,7 @@ Proof. intros.
 Qed.
     
 (************************************)
-(* Lemmas relating to forming bases *)
+(** * Lemmas relating to forming bases *)
 (************************************)
 
 
@@ -476,7 +479,7 @@ Proof. intros.
 Qed.         
 
 (************************************)
-(* Quick proof of |x| = 0 iff x = 0 *)
+(** Quick proof of |x| = 0 iff x = 0 *)
 (************************************)
 
 Lemma inner_product_zero_iff_zero : forall {n} (v : Vector n),
@@ -556,7 +559,7 @@ Qed.
 
 
 (*****************************************************************************************)
-(* Defining and verifying the gram_schmidt algorythm and proving v can be part of an onb *)
+(** * Defining and verifying the gram_schmidt algorythm and proving v can be part of an onb *)
 (*****************************************************************************************)
 
 
@@ -1136,45 +1139,9 @@ Proof. intros.
 Qed.
 
 
-(********************************************************************)
-(* Defining unitary matrices and proving some basic lemmas/examples *)
-(********************************************************************)
-
-
-Lemma P_unitary : WF_Unitary Sgate. Proof. apply phase_unitary. Qed.
-Lemma T_unitary : WF_Unitary Tgate. Proof. apply phase_unitary. Qed.
-
-
-Lemma unit_scale : forall {n} (c : C) (A : Square n),
-  WF_Unitary A -> (c * c ^*)%C = C1 -> WF_Unitary (c .* A).
-Proof. intros. 
-       destruct H.
-       split; auto with wf_db.        
-       distribute_adjoint.
-       distribute_scale.
-       rewrite Cmult_comm.
-       rewrite H1, H0. 
-       lma'. 
-Qed.
-
-
-Lemma unit_big_kron : forall (n : nat) (ls : list (Square n)), 
-  (forall a, In a ls -> WF_Unitary a) -> WF_Unitary (⨂ ls).
-Proof. intros. induction ls as [| h].
-       - simpl. apply id_unitary.
-       - simpl.
-         apply kron_unitary.
-         apply (H h).
-         left. easy.
-         apply IHls.
-         intros. 
-         apply H. right. easy.
-Qed.
-
-
-#[export] Hint Resolve σx_unitary σy_unitary σz_unitary P_unitary H_unitary T_unitary : unit_db.
-#[export] Hint Resolve cnot_unitary notc_unitary id_unitary Mmult_unitary kron_unitary transpose_unitary unit_scale unit_big_kron: unit_db.
-
+(***********************************************)
+(** * some useful facts about unitary matrices *)
+(***********************************************)
 
 
 Lemma unit_is_orthonormal : forall {n} (U : Square n),
@@ -1251,7 +1218,7 @@ Qed.
 
 
 (***********************************************************************************)
-(* We now define diagonal matrices and diagonizable matrices, proving basic lemmas *)
+(** * We now define diagonal matrices and diagonizable matrices, proving basic lemmas *)
 (***********************************************************************************)
 
 Definition WF_Diagonal {n : nat} (A : Square n) : Prop := 
@@ -1393,7 +1360,7 @@ Proof.
   - apply diag_mult; assumption. 
 Qed.
 
-(* defining what it means to be diagonalizable *)
+(** defining what it means to be diagonalizable *)
 Definition WF_Diagonalizable {n : nat} (A : Square n) : Prop :=
   WF_Matrix A /\ (exists (X X' B: Square n), 
     WF_Diagonal B /\ WF_Matrix X /\ WF_Matrix X' /\ X × X' = I n /\ B = X × A × X').
@@ -1457,7 +1424,7 @@ Proof. intros.
 Qed.       
 
 (**************************************)
-(* Defining Cprod, similar to big_sum *)
+(** * Defining Cprod, similar to big_sum *)
 (**************************************)
 
 (* could define this using the multiplicative monoid on C, but this would 
@@ -1518,7 +1485,7 @@ Proof. induction n.
 Qed.
 
 (************************************)
-(* Defining upper triangular matrix *) 
+(** * Defining upper triangular matrix *) 
 (************************************)
 
 Definition upper_triangular {n} (A : Square n) : Prop :=
@@ -1606,7 +1573,7 @@ Qed.
 
 
 (**************************************************)
-(* Defining eignestates to be used in type system *)
+(** * Defining eignestates to be used in type system *)
 (**************************************************)
 
 
@@ -1915,9 +1882,9 @@ Proof. intros n A [Hwf Hu].
        bdestruct_all; simpl. 
        rewrite H1, H2; lca.
        3 : { destruct x; destruct y; try lia. 
-             do 2 rewrite easy_sub; easy. }
+             do 2 rewrite Sn_minus_1; easy. }
        4 : { destruct x; destruct y; try lia. 
-             do 2 rewrite easy_sub; easy. }
+             do 2 rewrite Sn_minus_1; easy. }
        all : try rewrite (H x y); try lca; try lia. 
 Qed.       
 
@@ -1931,7 +1898,7 @@ Proof. intros n A c [H [X [X' [B [ [Hwf Hd] [H1 [H2 [H3 H4] ] ] ] ] ] ] ].
          destruct i; destruct j; try lia;
            unfold pad1, col_wedge, row_wedge, scale, e_i;
            bdestruct_all; try easy; try lca.
-         do 2 rewrite easy_sub.
+         do 2 rewrite Sn_minus_1.
          apply Hd; lia.
          apply Hd; lia. 
        - split; try (apply WF_pad1; auto).
@@ -1995,7 +1962,7 @@ Qed.
 
 
 (************************************************************************************)
-(* Showing that certain types of matrices are equal when their eigenpairs are equal *)
+(** * Showing that certain types of matrices are equal when their eigenpairs are equal *)
 (************************************************************************************)
 
 
@@ -2127,7 +2094,7 @@ Qed.
 Local Close Scope nat_scope.
 
 (*******************************)
-(* Some actual examples/lemmas *)
+(** * Some actual examples/lemmas *)
 (*******************************)
 
 

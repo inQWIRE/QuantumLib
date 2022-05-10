@@ -58,6 +58,8 @@ Proof. solve_matrix.  Qed.
 
 Local Open Scope nat_scope. 
 
+
+(* TODO: make general *)                                            
 Lemma H0_kron_n_spec : forall n,
   n ⨂ hadamard × n ⨂ ∣0⟩ = n ⨂ ∣+⟩.
 Proof.
@@ -1177,7 +1179,9 @@ Hint Rewrite (@update_index_eq bool) (@update_index_neq bool) (@update_twice_eq 
 (*******************************)
 (**        Indexed Sum        **)
 (*******************************)
- 
+
+
+(* TODO: remove this and just use big_sum *)                                          
 Definition vsum {d} n (f : nat -> Vector d) : Vector d := big_sum f n.
 
 Lemma vsum_WF : forall {d} n (f : nat -> Vector d), 

@@ -1,3 +1,7 @@
+
+
+(** This file contains basic utility, definitions, and proofs. *)
+
 Require Export Bool.
 Require Export Arith.
 Require Export Reals.
@@ -7,11 +11,9 @@ Require Export List.
 
 Export ListNotations.
 
-(** This file contains basic utility definitions and proofs. *)
 
-(** Nat lemmas *)
+(***)
 
-Lemma easy_sub : forall (n : nat), S n - 1 = n. Proof. lia. Qed.
 
 (** Boolean notation, lemmas *)
 
@@ -28,6 +30,10 @@ Lemma xorb_involutive_r : forall b b', b ⊕ b' ⊕ b' = b. Proof. destruct b, b
 
 Lemma andb_xorb_dist : forall b b1 b2, b && (b1 ⊕ b2) = (b && b1) ⊕ (b && b2).
 Proof. destruct b, b1, b2; easy. Qed.
+
+(** Nat lemmas *)
+
+Lemma Sn_minus_1 : forall (n : nat), S n - 1 = n. Proof. lia. Qed.
 
 (** Useful reflections from Software Foundations Vol 3 *)
 

@@ -1,3 +1,6 @@
+
+(** In this file, we define specific objects/concepts specific to quantum computing and we prove lemmas about thems. *)
+
 Require Import Psatz.
 Require Import Reals.
 Require Export VecSet.
@@ -696,6 +699,10 @@ Proof.
     lca.
 Qed.
 
+Lemma S_unitary : WF_Unitary Sgate. Proof. apply phase_unitary. Qed.
+
+Lemma T_unitary : WF_Unitary Tgate. Proof. apply phase_unitary. Qed.
+
 Lemma rotation_unitary : forall θ ϕ λ, @WF_Unitary 2 (rotation θ ϕ λ).
 Proof.
   intros.
@@ -886,6 +893,10 @@ Proof.
         destruct ((n <=? z) && (n <=? y)); lca.
 Qed.
 
+#[export] Hint Resolve H_unitary S_unitary T_unitary σx_unitary σy_unitary σz_unitary : unit_db.
+#[export] Hint Resolve phase_unitary rotation_unitary x_rotation_unitary y_rotation_unitary control_unitary : unit_db.
+
+                                
 Lemma transpose_unitary : forall n (A : Matrix n n), WF_Unitary A -> WF_Unitary (A†).
 Proof.
   intros. 
@@ -975,6 +986,19 @@ Proof.
   easy.
 Qed.
 
+Lemma unit_big_kron : forall (n : nat) (ls : list (Square n)), 
+  (forall a, In a ls -> WF_Unitary a) -> WF_Unitary (⨂ ls).
+Proof. intros. induction ls as [| h].
+       - simpl. apply id_unitary.
+       - simpl.
+         apply kron_unitary.
+         apply (H h).
+         left. easy.
+         apply IHls.
+         intros. 
+         apply H. right. easy.
+Qed.
+
 Lemma Mmult_unitary : forall (n : nat) (A : Square n) (B : Square n),
   WF_Unitary A ->
   WF_Unitary B ->
@@ -990,6 +1014,26 @@ Proof.
   Msimpl.
   apply UB.
 Qed.
+
+Lemma scale_unitary : forall (n : nat) (c : C) (A : Square n),
+  WF_Unitary A ->
+  (c * c ^*)%C = C1 ->
+  WF_Unitary (c .* A).  
+Proof.
+  intros n c A [WFA UA] H.
+  split.
+  auto with wf_db.
+  distribute_adjoint.
+  distribute_scale.
+  rewrite UA, Cmult_comm, H. 
+  lma'.
+Qed.
+
+
+#[export] Hint Resolve transpose_unitary cnot_unitary notc_unitary id_unitary : unit_db.
+#[export] Hint Resolve swap_unitary zero_not_unitary kron_unitary unit_big_kron Mmult_unitary scale_unitary : unit_db.
+
+
 
 Lemma hadamard_st : hadamard ⊤ = hadamard.
 Proof. solve_matrix. Qed.
@@ -1260,6 +1304,16 @@ Proof.
   destruct H as [φ [[WFφ IP1] Eρ]]. 
   apply Minv_flip in IP1; auto with wf_db.
   rewrite Eρ; easy.
+Qed.
+
+Lemma pure_state_unitary_pres : forall {n} (ϕ : Vector n) (U : Square n),
+  Pure_State_Vector ϕ -> WF_Unitary U -> Pure_State_Vector (U × ϕ).
+Proof. 
+  unfold Pure_State_Vector.
+  intros n ϕ U [H H0] [H1 H2].
+  split; auto with wf_db.
+  distribute_adjoint.
+  rewrite Mmult_assoc, <- (Mmult_assoc _ U), H2, Mmult_1_l; auto.
 Qed.
 
 Lemma pure_state_vector_kron : forall {n m} (ϕ : Vector n) (ψ : Vector m),
