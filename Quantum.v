@@ -999,6 +999,20 @@ Proof. intros. induction ls as [| h].
          apply H. right. easy.
 Qed.
 
+(* alternate version for more general length application *)
+Lemma big_kron_unitary' : forall (n m : nat) (ls : list (Square n)), 
+  length ls = m -> (forall a, In a ls -> WF_Unitary a) -> @WF_Unitary (n^m) (⨂ ls).
+Proof. intros; subst. induction ls as [| h].
+       - simpl. apply id_unitary.
+       - simpl.
+         apply kron_unitary.
+         apply (H0 h).
+         left. easy.
+         apply IHls.
+         intros. 
+         apply H0. right. easy.
+Qed.
+
 Lemma Mmult_unitary : forall (n : nat) (A : Square n) (B : Square n),
   WF_Unitary A ->
   WF_Unitary B ->
@@ -1031,7 +1045,7 @@ Qed.
 
 
 #[export] Hint Resolve transpose_unitary cnot_unitary notc_unitary id_unitary : unit_db.
-#[export] Hint Resolve swap_unitary zero_not_unitary kron_unitary big_kron_unitary Mmult_unitary scale_unitary : unit_db.
+#[export] Hint Resolve swap_unitary zero_not_unitary kron_unitary big_kron_unitary big_kron_unitary' Mmult_unitary scale_unitary : unit_db.
 
 
 
