@@ -1031,7 +1031,7 @@ Qed.
 
 
 #[export] Hint Resolve transpose_unitary cnot_unitary notc_unitary id_unitary : unit_db.
-#[export] Hint Resolve swap_unitary zero_not_unitary kron_unitary unit_big_kron Mmult_unitary scale_unitary : unit_db.
+#[export] Hint Resolve swap_unitary zero_not_unitary kron_unitary big_kron_unitary Mmult_unitary scale_unitary : unit_db.
 
 
 
