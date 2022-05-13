@@ -1069,7 +1069,7 @@ Qed.
 
 Lemma f_to_vec_cnot : forall (n i j : nat) (f : nat -> bool),
   i < n -> j < n -> i <> j ->
-  (pad_ctrl n i j σx) × (f_to_vec n f) = f_to_vec n (update f j (f j ⊕ f i)).
+  (pad_ctrl n i j σx) × (f_to_vec n f) = f_to_vec n (update f j (f j ⊕⊕ f i)).
 Proof.
   intros.
   unfold pad_ctrl, pad.
@@ -1117,8 +1117,8 @@ Proof.
   repeat rewrite update_index_eq.
   repeat rewrite update_index_neq by lia.
   repeat rewrite update_index_eq.
-  replace ((f j ⊕ f i) ⊕ (f i ⊕ (f j ⊕ f i))) with (f i).
-  replace (f i ⊕ (f j ⊕ f i)) with (f j).
+  replace ((f j ⊕⊕ f i) ⊕⊕ (f i ⊕⊕ (f j ⊕⊕ f i))) with (f i).
+  replace (f i ⊕⊕ (f j ⊕⊕ f i)) with (f j).
   rewrite update_twice_neq by auto.
   rewrite update_twice_eq.
   reflexivity.

@@ -193,6 +193,10 @@ Definition kron {m n o p : nat} (A : Matrix m n) (B : Matrix o p) :
   Matrix (m*o) (n*p) :=
   fun x y => Cmult (A (x / o) (y / p)) (B (x mod o) (y mod p)).
 
+Definition direct_sum {m n o p : nat} (A : Matrix m n) (B : Matrix o p) :
+  Matrix (m+o) (n+p) :=
+  fun x y =>  if (x <? m) || (y <? n) then A x y else B (x - m) (y - n).
+
 Definition transpose {m n} (A : Matrix m n) : Matrix n m := 
   fun x y => A y x.
 
@@ -227,6 +231,12 @@ Fixpoint Mmult_n n {m} (A : Square m) : Square m :=
   | S n' => Mmult A (Mmult_n n' A)
   end.
 
+(** Direct sum of n copies of A *)
+Fixpoint direct_sum_n n {m1 m2} (A : Matrix m1 m2) : Matrix (n*m1) (n*m2) :=
+  match n with
+  | 0    => @Zero 0 0
+  | S n' => direct_sum A (direct_sum_n n' A)
+  end.
 
 
 (** * Showing that M is a vector space *)
@@ -249,14 +259,13 @@ Program Instance M_is_vector_space : forall n m, Vector_Space (Matrix n m) C :=
 Solve All Obligations with program_simpl; prep_matrix_equality; lca. 
 
 
-
-
 (** Notations *)
 Infix "∘" := dot (at level 40, left associativity) : matrix_scope.
 Infix ".+" := Mplus (at level 50, left associativity) : matrix_scope.
 Infix ".*" := scale (at level 40, left associativity) : matrix_scope.
 Infix "×" := Mmult (at level 40, left associativity) : matrix_scope.
 Infix "⊗" := kron (at level 40, left associativity) : matrix_scope.
+Infix "⊕" := direct_sum (at level 20) : matrix_scope. (* should have different level and assoc *)
 Infix "≡" := mat_equiv (at level 70) : matrix_scope.
 Notation "A ⊤" := (transpose A) (at level 0) : matrix_scope. 
 Notation "A †" := (adjoint A) (at level 0) : matrix_scope. 
@@ -427,6 +436,16 @@ Proof.
   assumption.
 Qed. 
 
+Lemma WF_direct_sum : forall {m n o p q r : nat} (A : Matrix m n) (B : Matrix o p), 
+                  q = m + o -> r = n + p -> 
+                  WF_Matrix A -> WF_Matrix B -> @WF_Matrix q r (A ⊕ B).
+Proof. 
+  unfold WF_Matrix, direct_sum. 
+  intros; subst.
+  destruct H3; bdestruct_all; simpl; try apply H1; try apply H2. 
+  all : lia.
+Qed.
+
 Lemma WF_transpose : forall {m n : nat} (A : Matrix m n), 
                      WF_Matrix A -> WF_Matrix A⊤. 
 Proof. unfold WF_Matrix, transpose. intros m n A H x y H0. apply H. 
@@ -484,6 +503,14 @@ Proof.
   - apply WF_mult; assumption. 
 Qed.
 
+Lemma WF_direct_sum_n : forall n {m1 m2} (A : Matrix m1 m2),
+   WF_Matrix A -> WF_Matrix (direct_sum_n n A).
+Proof.
+  intros.
+  induction n; simpl.
+  - apply WF_Zero.
+  - apply WF_direct_sum; try lia; assumption. 
+Qed.
 
 Lemma WF_Msum : forall d1 d2 n (f : nat -> Matrix d1 d2), 
   (forall i, (i < n)%nat -> WF_Matrix (f i)) -> 
@@ -1256,6 +1283,17 @@ Lemma kron_mixed_product' : forall (m n n' o p q q' r mp nq or: nat)
   (@kron m o p r (@Mmult m n o A C) (@Mmult p q r B D)).
 Proof. intros. subst. apply kron_mixed_product. Qed.
 
+
+Lemma direct_sum_assoc : forall {m n p q r s : nat}
+  (A : Matrix m n) (B : Matrix p q) (C : Matrix r s),
+  (A ⊕ B ⊕ C) = A ⊕ (B ⊕ C).
+Proof. intros. 
+       unfold direct_sum. 
+       prep_matrix_equality.
+       bdestruct_all; simpl; auto.
+       repeat (apply f_equal_gen; try lia); easy. 
+Qed.
+       
 Lemma outer_product_eq : forall m (φ ψ : Matrix m 1),
  φ = ψ -> outer_product φ φ = outer_product ψ ψ.
 Proof. congruence. Qed.

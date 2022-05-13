@@ -606,6 +606,76 @@ Qed.
 #[export] Hint Extern 2 (WF_Matrix (phase_shift _)) => apply WF_phase : wf_db.
 #[export] Hint Extern 2 (WF_Matrix (control _)) => apply WF_control : wf_db.
 
+
+
+(* how to make this proof shorter? *)
+Lemma direct_sum_decomp : forall (m n o p : nat) (A B : Matrix m n), 
+  WF_Matrix A -> WF_Matrix B -> 
+  A ⊕ B = ∣0⟩⟨0∣ ⊗ A .+ ∣1⟩⟨1∣ ⊗ B.
+Proof. 
+  intros. 
+  unfold direct_sum, kron, Mplus.
+  prep_matrix_equality.
+  bdestruct_all; try lia; simpl. 
+  - repeat (rewrite Nat.div_small, Nat.mod_small; try easy); lca.  
+  - rewrite H; auto.
+    destruct n. rewrite H, H0; try lca; try (right; lia).
+    rewrite (Nat.div_small x m), (Nat.mod_small x m); try easy.
+    replace (y / S n)%nat with (1 + (y - S n)/S n)%nat. 
+    unfold Mmult, adjoint; simpl. 
+    destruct (fst (Nat.divmod (y - S n) n 0 n)); try lca.
+    rewrite <- Nat.div_add_l; auto.
+    replace ((1 * S n + (y - S n)))%nat with y by lia; easy. 
+  - rewrite H; auto.
+    destruct m. rewrite H, H0; try lca; try (left; lia).
+    rewrite (Nat.div_small y n), (Nat.mod_small y n); try easy.
+    replace (x / S m)%nat with (1 + (x - S m)/S m)%nat. 
+    unfold Mmult, adjoint; simpl. 
+    destruct (fst (Nat.divmod (x - S m) m 0 m)); try lca.
+    rewrite <- Nat.div_add_l; auto.
+    replace ((1 * S m + (x - S m)))%nat with x by lia; easy. 
+  - destruct n; destruct m.
+    try (rewrite H, H0, H0; try lca);
+    try (left; lia); try (right; lia).
+    try (rewrite H, H0, H0; try lca);
+    try (left; lia); try (right; lia).
+    try (rewrite H, H0, H0; try lca);
+    try (left; lia); try (right; lia).
+    bdestruct (x - S m <? S m); bdestruct (y - S n <? S n).
+    replace (x / S m)%nat with 1%nat.
+    replace (y / S n)%nat with 1%nat.
+    replace (x mod S m) with (x - S m)%nat.
+    replace (y mod S n) with (y - S n)%nat.
+    lca. 
+    replace y with ((y - S n) + 1*(S n))%nat by lia. 
+    rewrite Nat.mod_add; try lia.
+    rewrite Nat.mod_small; lia.
+    replace x with ((x - S m) + 1*(S m))%nat by lia. 
+    rewrite Nat.mod_add; try lia.
+    rewrite Nat.mod_small; lia.
+    replace y with ((y - S n) + 1*(S n))%nat by lia. 
+    rewrite Nat.div_add; try lia.
+    rewrite Nat.div_small; lia.
+    replace x with ((x - S m) + 1*(S m))%nat by lia. 
+    rewrite Nat.div_add; try lia.
+    rewrite Nat.div_small; lia.
+    rewrite H0; try (right; easy).
+    bdestruct (y <? 2*(S n)); try lia. 
+    replace y with ((y - 2 * S n) + 2*(S n))%nat by lia. 
+    rewrite Nat.div_add; try lia.
+    rewrite WF_braqubit0, WF_braqubit1; try lca; try (right; lia).
+    rewrite H0; try (left; easy).
+    bdestruct (x <? 2*(S m)); try lia. 
+    replace x with ((x - 2 * S m) + 2*(S m))%nat by lia. 
+    rewrite Nat.div_add; try lia.
+    rewrite WF_braqubit0, WF_braqubit1; try lca; try (left; lia).
+    rewrite H0; try (left; easy).
+    bdestruct (x <? 2*(S m)); try lia. 
+    replace x with ((x - 2 * S m) + 2*(S m))%nat by lia. 
+    rewrite Nat.div_add; try lia.
+    rewrite WF_braqubit0, WF_braqubit1; try lca; try (left; lia).
+Qed.
+
 (***************************)
 (** Unitaries are unitary **)
 (***************************)
