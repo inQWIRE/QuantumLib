@@ -51,14 +51,14 @@ Proof.
 Qed.
 
 (* TODO: find actual function *) 
-Definition diff (a b : nat) := max (a - b) (b - a).
+Definition abs_diff (a b : nat) := max (a - b) (b - a).
   
 Definition pad_ctrl' (dim m n: nat) (u: Square 2) :=
   if m =? n then Zero
   else
     let b := m <? n in
     let μ := min m n in
-    let δ := diff m n in
+    let δ := abs_diff m n in
     @pad (1 + (δ - 1) + 1) μ dim 
     ((∣1⟩⟨1∣ <|b|> u) ⊗ 
     I (2^(δ-1)) ⊗ (u <|b|> ∣1⟩⟨1∣) .+
@@ -66,7 +66,7 @@ Definition pad_ctrl' (dim m n: nat) (u: Square 2) :=
                             I (2^(δ-1)) ⊗ (I 2 <|b|> ∣0⟩⟨0∣)).
        
 (* TODO: find actual lemma *)
-Lemma a_lt_b_diff_a_b : forall (a b : nat),
+Lemma a_lt_b_abs_diff_a_b : forall (a b : nat),
 (a < b)%nat -> ((a - b) < (b - a))%nat.
 Proof.
   intros. lia.
@@ -82,14 +82,13 @@ Lemma pad_ctrl_eq : forall dim m n u, pad_ctrl dim m n u = pad_ctrl' dim m n u.
 Proof.
   intros. unfold pad_ctrl, pad_ctrl'. bdestruct_all; try easy.
   assert (Init.Nat.min m n = m). { lia. }
-  all: unfold diff; simpl.
-  rewrite H1; apply a_lt_b_diff_a_b in H; apply lt_max in H; 
+  all: unfold abs_diff; simpl.
+  rewrite H1; apply a_lt_b_abs_diff_a_b in H; apply lt_max in H; 
   rewrite H; trivial.
   assert (Init.Nat.min m n = n). { lia. }
-  rewrite H2. apply a_lt_b_diff_a_b in H0; 
+  rewrite H2. apply a_lt_b_abs_diff_a_b in H0; 
   apply lt_max in H0. 
-  assert (Init.Nat.max (n - m) (m - n) = Init.Nat.max (m - n) (n - m)).
-  { lia. }
+  assert (Init.Nat.max (n - m) (m - n) = Init.Nat.max (m - n) (n - m)). { lia. }
   rewrite H3 in H0. rewrite H0. trivial.
   Qed.
 
@@ -118,6 +117,15 @@ Lemma WF_pad_ctrl : forall dim m n u, WF_Matrix u -> WF_Matrix (pad_ctrl dim m n
   bdestruct (m <? n); bdestruct (n <? m); try lia; auto with wf_db.
   all : apply WF_pad; rewrite H'; apply WF_plus; auto with wf_db.
 Qed.
+
+Lemma WF_pad_ctrl' : forall dim m n u, WF_Matrix u -> WF_Matrix (pad_ctrl' dim m n u).
+Proof.
+  intros. unfold pad_ctrl'. bdestruct_all; try easy.
+  - simpl; assert (Init.Nat.min m n = m). { lia. } rewrite H2;
+  apply WF_pad; restore_dims; auto with wf_db.
+  - simpl; assert (Init.Nat.min m n = n). { lia. } rewrite H2;
+  apply WF_pad; restore_dims; auto with wf_db.
+  Qed.
 
 Lemma WF_pad_swap : forall dim m n, WF_Matrix (pad_swap dim m n).
   intros.
