@@ -34,7 +34,7 @@ Lemma YtimesYid : σy × σy = I 2. Proof. lma'. Qed.
 Lemma ZtimesZid : σz × σz = I 2. Proof. lma'. Qed.
 Lemma HtimesHid : hadamard × hadamard = I 2. Proof. lma'; Hhelper. Qed.
 
-#[export] Hint Resolve ItimesIid XtimesXid YtimesYid ZtimesZid HtimesHid : id_db.
+Hint Rewrite ItimesIid XtimesXid YtimesYid ZtimesZid HtimesHid : id_db.
 
 Lemma ZH_eq_HX : σz × hadamard = hadamard × σx. Proof. lma'. Qed.
 Lemma XH_eq_HZ : σx × hadamard = hadamard × σz. Proof. lma'. Qed.
@@ -47,7 +47,7 @@ Lemma cnotX2 : cnot × (I 2 ⊗ σx) = (I 2 ⊗ σx) × cnot. Proof. lma'. Qed.
 Lemma cnotZ1 : cnot × (σz ⊗ I 2) = (σz ⊗ I 2) × cnot. Proof. lma'. Qed.
 Lemma cnotZ2 : cnot × (I 2 ⊗ σz) = (σz ⊗ σz) × cnot. Proof. lma'. Qed.
 
-#[export] Hint Resolve ZH_eq_HX XH_eq_HZ SX_eq_YS SZ_eq_ZS cnotX1 cnotX2 cnotZ1 cnotZ2 : id_db.
+Hint Rewrite ZH_eq_HX XH_eq_HZ SX_eq_YS SZ_eq_ZS cnotX1 cnotX2 cnotZ1 cnotZ2 : id_db.
 
 
 (*******************************)
@@ -2098,46 +2098,25 @@ Local Close Scope nat_scope.
 (*******************************)
 
 
-
-Definition qubitP : Vector 2 := / (√ 2) .* (∣0⟩ .+ ∣1⟩).
-Definition qubitM : Vector 2 := / (√ 2) .* (∣0⟩ .+ ((-1) .* ∣1⟩)).
-Definition EPRpair : Vector 4 := / (√ 2) .* (∣0,0⟩ .+ ∣1,1⟩).
-
-Lemma EPRpair_creation : cnot × (hadamard ⊗ I 2) × ∣0,0⟩ = EPRpair.
-Proof. unfold EPRpair. lma'.
-Qed.
-
-                                                                 
-Notation "∣+⟩" := qubitP.
-Notation "∣-⟩" := qubitM.
-Notation "∣Φ+⟩" := EPRpair.
-
-Lemma WF_qubitP : WF_Matrix ∣+⟩. Proof. show_wf. Qed.
-Lemma WF_qubitM : WF_Matrix ∣-⟩. Proof. show_wf. Qed.
-Lemma WF_EPRpair : WF_Matrix ∣Φ+⟩. Proof. unfold EPRpair. auto with wf_db.  Qed.
-
-#[export] Hint Resolve WF_qubitP WF_qubitM WF_EPRpair : wf_db. 
-
 Lemma EigenXp : Eigenpair σx (∣+⟩, C1).
-Proof. unfold Eigenpair. lma'.
-Qed.
+Proof. unfold Eigenpair. solve_matrix. Qed.
 
 Lemma EigenXm : Eigenpair σx (∣-⟩, -C1).
-Proof. unfold Eigenpair. lma'.
-Qed.
+Proof. unfold Eigenpair. solve_matrix. Qed.
 
-Lemma EigenZ0 : Eigenpair σz (∣0⟩, C1).
-Proof. unfold Eigenpair. lma'.
-Qed.
+Lemma EigenYp : Eigenpair σy (∣R⟩, C1).
+Proof. unfold Eigenpair. solve_matrix. Qed.
 
-Lemma EigenZ1 : Eigenpair σz (∣1⟩, -C1).
-Proof. unfold Eigenpair. lma'.
-Qed.
+Lemma EigenYm : Eigenpair σy (∣L⟩, -C1).
+Proof. unfold Eigenpair. solve_matrix. Qed.
+
+Lemma EigenZp : Eigenpair σz (∣0⟩, C1).
+Proof. unfold Eigenpair. solve_matrix. Qed.
+
+Lemma EigenZm : Eigenpair σz (∣1⟩, -C1).
+Proof. unfold Eigenpair. solve_matrix. Qed.
 
 Lemma EigenXXB : Eigenpair (σx ⊗ σx) (∣Φ+⟩, C1).
-Proof. unfold Eigenpair. lma'.
-Qed.
+Proof. unfold Eigenpair. lma'. Qed.
 
-
-#[export] Hint Resolve EigenXp EigenXm EigenZ0 EigenZ1 EigenXXB all_v_eigen_I : eig_db.
-
+#[export] Hint Resolve EigenXp EigenXm EigenYp EigenYm EigenZp EigenZm EigenXXB all_v_eigen_I : eig_db.

@@ -87,6 +87,26 @@ Proof.
   lca.
 Qed. 
 
+
+                                                          
+(* Defining other basis states *)
+                                                          
+Definition xbasis_plus : Vector 2 := / (√ 2) .* (∣0⟩ .+ ∣1⟩).
+Definition xbasis_minus : Vector 2 := / (√ 2) .* (∣0⟩ .+ ((-1) .* ∣1⟩)).
+Definition ybasis_plus : Vector 2 := / (√ 2) .* (∣0⟩ .+ Ci .* ∣1⟩).
+Definition ybasis_minus : Vector 2 := / (√ 2) .* (∣0⟩ .+ ((-Ci) .* ∣1⟩)).
+
+Notation "∣+⟩" := xbasis_plus.
+Notation "∣-⟩" := xbasis_minus.
+Notation "∣R⟩" := ybasis_plus.
+Notation "∣L⟩" := ybasis_minus.
+
+(* defining the EPR pair *)
+Definition EPRpair : Vector 4 := / (√ 2) .* (∣0,0⟩ .+ ∣1,1⟩).
+
+Notation "∣Φ+⟩" := EPRpair.
+                                                         
+                                                          
 (****************)
 (** * Unitaries *)
 (****************)
@@ -402,6 +422,10 @@ Lemma MmultZZ : σz × σz = I 2. Proof. solve_matrix. Qed.
 Lemma MmultHH : hadamard × hadamard = I 2. Proof. solve_matrix. Qed.
 Lemma Mplus01 : ∣0⟩⟨0∣ .+ ∣1⟩⟨1∣ = I 2. Proof. solve_matrix. Qed.
 Lemma Mplus10 : ∣1⟩⟨1∣ .+ ∣0⟩⟨0∣ = I 2. Proof. solve_matrix. Qed.
+
+Lemma EPRpair_creation : cnot × (hadamard ⊗ I 2) × ∣0,0⟩ = EPRpair.
+Proof. unfold EPRpair. solve_matrix.
+Qed.
                             
 Lemma σx_on_right0 : forall (q : Vector 2), (q × ⟨0∣) × σx = q × ⟨1∣.
 Proof. intros. rewrite Mmult_assoc, Mmult0X. reflexivity. Qed.
@@ -458,7 +482,7 @@ Proof.
 Qed.
 
 Hint Rewrite Mmult00 Mmult01 Mmult10 Mmult11 Mmult0X MmultX0 Mmult1X MmultX1 : Q_db.
-Hint Rewrite MmultXX MmultYY MmultZZ MmultHH Mplus01 Mplus10 : Q_db.
+Hint Rewrite MmultXX MmultYY MmultZZ MmultHH Mplus01 Mplus10 EPRpair_creation : Q_db.
 Hint Rewrite σx_on_right0 σx_on_right1 σx_on_left0 σx_on_left1 : Q_db.
 Hint Rewrite cancel00 cancel01 cancel10 cancel11 using (auto with wf_db) : Q_db.
 
@@ -571,9 +595,22 @@ Proof.
   apply IHl.
 Qed.
 
+
+Lemma WF_xbasis_plus : WF_Matrix ∣+⟩. Proof. show_wf. Qed.
+Lemma WF_xbasis_minus : WF_Matrix ∣-⟩. Proof. show_wf. Qed.
+Lemma WF_ybasis_plus : WF_Matrix ∣R⟩. Proof. show_wf. Qed.
+Lemma WF_ybasis_minus : WF_Matrix ∣L⟩. Proof. show_wf. Qed.
+
+
 #[export] Hint Resolve WF_bra0 WF_bra1 WF_qubit0 WF_qubit1 WF_braqubit0 WF_braqubit1 : wf_db.
 #[export] Hint Resolve WF_bool_to_ket WF_bool_to_matrix WF_bool_to_matrix' : wf_db.
 #[export] Hint Resolve WF_ket WF_bra WF_bools_to_matrix : wf_db.
+#[export] Hint Resolve WF_xbasis_plus WF_xbasis_minus WF_ybasis_plus WF_ybasis_minus : wf_db. 
+
+Lemma WF_EPRpair : WF_Matrix ∣Φ+⟩. Proof. unfold EPRpair. auto with wf_db. Qed.
+
+#[export] Hint Resolve WF_EPRpair : wf_db. 
+
 
 Lemma WF_hadamard : WF_Matrix hadamard. Proof. show_wf. Qed.
 Lemma WF_σx : WF_Matrix σx. Proof. show_wf. Qed.
