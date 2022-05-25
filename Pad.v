@@ -314,7 +314,7 @@ Proof.
     replace (Init.Nat.min o p) with o in * by lia.
     replace (Init.Nat.max (m - n) (n - m)) with (n - m)%nat in * by lia.
     replace (Init.Nat.max (o - p) (p - o)) with (p - o)%nat in * by lia.
-    
+    Admitted.
 
 
 
