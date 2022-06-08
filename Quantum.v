@@ -648,7 +648,7 @@ Qed.
 (* how to make this proof shorter? *)
 Lemma direct_sum_decomp : forall (m n o p : nat) (A B : Matrix m n), 
   WF_Matrix A -> WF_Matrix B -> 
-  A ⊕ B = ∣0⟩⟨0∣ ⊗ A .+ ∣1⟩⟨1∣ ⊗ B.
+  A .⊕ B = ∣0⟩⟨0∣ ⊗ A .+ ∣1⟩⟨1∣ ⊗ B.
 Proof. 
   intros. 
   unfold direct_sum, kron, Mplus.

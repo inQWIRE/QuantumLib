@@ -265,7 +265,7 @@ Infix ".+" := Mplus (at level 50, left associativity) : matrix_scope.
 Infix ".*" := scale (at level 40, left associativity) : matrix_scope.
 Infix "×" := Mmult (at level 40, left associativity) : matrix_scope.
 Infix "⊗" := kron (at level 40, left associativity) : matrix_scope.
-Infix "⊕" := direct_sum (at level 20) : matrix_scope. (* should have different level and assoc *)
+Infix ".⊕" := direct_sum (at level 20) : matrix_scope. (* should have different level and assoc *)
 Infix "≡" := mat_equiv (at level 70) : matrix_scope.
 Notation "A ⊤" := (transpose A) (at level 0) : matrix_scope. 
 Notation "A †" := (adjoint A) (at level 0) : matrix_scope. 
@@ -438,7 +438,7 @@ Qed.
 
 Lemma WF_direct_sum : forall {m n o p q r : nat} (A : Matrix m n) (B : Matrix o p), 
                   q = m + o -> r = n + p -> 
-                  WF_Matrix A -> WF_Matrix B -> @WF_Matrix q r (A ⊕ B).
+                  WF_Matrix A -> WF_Matrix B -> @WF_Matrix q r (A .⊕ B).
 Proof. 
   unfold WF_Matrix, direct_sum. 
   intros; subst.
@@ -1286,7 +1286,7 @@ Proof. intros. subst. apply kron_mixed_product. Qed.
 
 Lemma direct_sum_assoc : forall {m n p q r s : nat}
   (A : Matrix m n) (B : Matrix p q) (C : Matrix r s),
-  (A ⊕ B ⊕ C) = A ⊕ (B ⊕ C).
+  (A .⊕ B .⊕ C) = A .⊕ (B .⊕ C).
 Proof. intros. 
        unfold direct_sum. 
        prep_matrix_equality.
