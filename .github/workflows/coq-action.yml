@@ -17,7 +17,9 @@ jobs:
           - '8.14'
           - '8.15'
           - 'dev'
-        ocaml_version: ['4.07-flambda']
+        ocaml_version:
+          - '4.07-flambda'
+          - '4.12-flambda'
       fail-fast: false # don't stop jobs if one fails
     steps:
       - uses: actions/checkout@v2
