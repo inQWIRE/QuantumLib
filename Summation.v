@@ -21,6 +21,14 @@ Class Monoid G :=
 Infix "+" := Gplus : group_scope.
 Notation "0" := Gzero : group_scope.
 
+
+Fixpoint G_big_plus {G} `{Monoid G} (gs : list G) : G := 
+  match gs with
+  | nil => 0 
+  | g :: gs' => g + (G_big_plus gs')
+  end. 
+
+
 Class Group G `{Monoid G} :=
   { Gopp : G -> G
   ; Gopp_l : forall g, (Gopp g) + g = 0
@@ -50,6 +58,14 @@ Class Comm_Ring R `{Ring R} :=
 
 Infix "*" := Gmult : group_scope.
 Notation "1" := Gone : group_scope.
+
+
+Fixpoint G_big_mult {R} `{Ring R} (rs : list R) : R := 
+  match rs with
+  | nil => 1 
+  | r :: rs' => r * (G_big_mult rs')
+  end. 
+
 
 Class Field F `{Comm_Ring F} :=
   { Ginv : F -> F
@@ -161,17 +177,18 @@ Proof. intros.
          <- Gmult_assoc, H7, Gmult_0_r; auto.
 Qed.       
 
-Lemma Ginv_mult_distr : forall {F} `{Field F} (a b : F), a <> 0 -> b <> 0 -> / (a * b) = / a * / b.
+Lemma Ginv_mult_distr : forall {F} `{Field F} (a b : F),
+    a <> 0 -> b <> 0 ->
+    / (a * b) = / a * / b.
 Proof. intros. 
        apply (Gmult_cancel_r _ _ (a * b)).
        apply Gmult_neq_0; easy. 
        rewrite Ginv_l; try apply Gmult_neq_0; auto.
-       replace (/ a * / b * (a * b)) with ((/a * a) * (/b * b)). 
-       repeat rewrite Ginv_l; auto. 
-       assert (H' := @G_field_theory F H _ _ _ H3 H4).
-       rewrite Gmult_1_l; easy. 
-       (* field. *)
-       Admitted. 
+       rewrite <- Gmult_assoc, (Gmult_assoc _ a), (Gmult_comm _ a), <- (Gmult_assoc a).
+       rewrite Ginv_l, Gmult_1_r, Ginv_l; easy.
+Qed.
+
+
 
 (* showing that nat is a monoid *)
 
