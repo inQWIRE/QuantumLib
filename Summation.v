@@ -21,14 +21,7 @@ Class Monoid G :=
 Infix "+" := Gplus : group_scope.
 Notation "0" := Gzero : group_scope.
 
-
-Fixpoint G_big_plus {G} `{Monoid G} (gs : list G) : G := 
-  match gs with
-  | nil => 0 
-  | g :: gs' => g + (G_big_plus gs')
-  end. 
-
-
+      
 Class Group G `{Monoid G} :=
   { Gopp : G -> G
   ; Gopp_l : forall g, (Gopp g) + g = 0
@@ -58,14 +51,6 @@ Class Comm_Ring R `{Ring R} :=
 
 Infix "*" := Gmult : group_scope.
 Notation "1" := Gone : group_scope.
-
-
-Fixpoint G_big_mult {R} `{Ring R} (rs : list R) : R := 
-  match rs with
-  | nil => 1 
-  | r :: rs' => r * (G_big_mult rs')
-  end. 
-
 
 Class Field F `{Comm_Ring F} :=
   { Ginv : F -> F
@@ -201,7 +186,34 @@ Solve All Obligations with program_simpl; try lia.
 
 
 
-(* sum to n exclusive *)
+
+(*************************)
+(** Summation functions *)
+(*************************)
+
+
+
+
+Fixpoint times_n {G} `{Monoid G} (g : G) (n : nat) :=
+  match n with
+  | 0 => 0
+  | S n' => g + times_n g n'
+  end.
+      
+Fixpoint G_big_plus {G} `{Monoid G} (gs : list G) : G := 
+  match gs with
+  | nil => 0 
+  | g :: gs' => g + (G_big_plus gs')
+  end. 
+
+Fixpoint G_big_mult {R} `{Ring R} (rs : list R) : R := 
+  match rs with
+  | nil => 1 
+  | r :: rs' => r * (G_big_mult rs')
+  end. 
+
+
+(** sum to n exclusive *)
 Fixpoint big_sum {G : Type} `{Monoid G} (f : nat -> G) (n : nat) : G := 
   match n with
   | 0 => 0
@@ -255,6 +267,14 @@ Proof.
   rewrite Gplus_0_l, Gplus_0_r; easy.
   rewrite IHn.
   rewrite Gplus_assoc; easy.
+Qed.
+
+Lemma big_sum_constant : forall {G} `{Monoid G} g n,
+  big_sum (fun _ => g) n = times_n g n.
+Proof. induction n; try easy. 
+       rewrite big_sum_shift. 
+       rewrite IHn; simpl.
+       easy. 
 Qed.
 
 Lemma big_sum_plus : forall {G} `{Comm_Group G} f g n, 
