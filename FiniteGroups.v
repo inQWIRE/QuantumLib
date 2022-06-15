@@ -11,7 +11,7 @@ Require Import ListDec.
 
 
 
-Program Instance quat_is_monoid : forall {X}, Monoid (list X) := 
+Program Instance list_is_monoid : forall {X}, Monoid (list X) := 
   { Gzero := []
   ; Gplus := @app X
   }.
@@ -264,12 +264,12 @@ Proof. intros.
          inversion H6; easy. 
 Qed.
 
-
+(*
 
 
 Lemma cosets_add : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (l : list G) (a : G),
   inclusion_map H G f -> ~ (In a (G_big_plus (map (fun b -> map (Gplus b) (map f G_list_rep))))) ->
-   
+  *) 
 
 
 
@@ -380,12 +380,13 @@ Definition quatMul (q1 q2 : Quaternion) : Quaternion :=
   end.
 
 
-
+  
 Program Instance quat_is_monoid : Monoid Quaternion := 
   { Gzero := p_1
   ; Gplus := quatMul
   }.
 Solve All Obligations with program_simpl; destruct g; try easy; destruct h; destruct i; easy. 
+
 
 Program Instance quat_is_group : Group Quaternion :=
   { Gopp := quatInv }.
@@ -413,8 +414,8 @@ Proof. split.
        - repeat (apply NoDup_cons; unfold not; intros; 
                  repeat (destruct H; try easy)).
          apply NoDup_nil.
-       - intros. 
-         destruct g; simpl; 
+       - unfold Full; intros. 
+         destruct a; simpl; 
            repeat (try (left; easy); right).
 Qed.
 
