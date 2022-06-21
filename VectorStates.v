@@ -1632,7 +1632,6 @@ Proof.
   bdestruct (y =? 0); subst.
   2: repeat rewrite andb_false_r; lca.
   bdestruct (x =? 2 * k + 1); subst. 
-  Search ((_ + _)/ _).
   rewrite Nat.mul_comm. 
   rewrite Nat.div_add_l by auto.
   replace (1 / 2) with 0 by auto.

@@ -419,6 +419,8 @@ Proof. split.
            repeat (try (left; easy); right).
 Qed.
 
+Next Obligation. 
+Admitted.
 
 (* **) 
 

@@ -1536,7 +1536,6 @@ Proof.
       end.
       simpl in *.
       unfold Rminus in *.
-      Search (_ * - _)%R.
       rewrite <- Ropp_mult_distr_r.
       rewrite Ropp_mult_distr_l.
       apply res with (x := i); trivial. 
