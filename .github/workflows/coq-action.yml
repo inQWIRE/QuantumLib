@@ -35,7 +35,7 @@ jobs:
   deploy-docs:
     # only deploy when the reference is the main branch
     # if: ${{ github.ref == 'refs/heads/main' }}
-    needs: build
+    # needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
