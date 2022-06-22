@@ -36,6 +36,15 @@ jobs:
     # only deploy when the reference is the main branch
     # if: ${{ github.ref == 'refs/heads/main' }}
     # needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        coq-version-dummy:
+        - 'supported'
+        - 'latest'
+        - 'dev'
+    env:
+      coq-version: ${{ matrix.coq-version-dummy }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
