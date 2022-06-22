@@ -756,7 +756,6 @@ Qed.
 Next Obligation.
 Proof. destruct x; destruct y; try (left; easy); right; easy. Qed.
 
-  
 
 (* **) 
 

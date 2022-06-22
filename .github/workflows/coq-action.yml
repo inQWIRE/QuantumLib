@@ -7,7 +7,7 @@ on:
     branches: ['**'] # for all submitted Pull Requests
 
 jobs:
-  coq:
+  build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -17,7 +17,8 @@ jobs:
           - '8.14'
           - '8.15'
           - 'dev'
-        ocaml_version: ['4.07-flambda']
+        ocaml_version:
+          - 'default'
       fail-fast: false # don't stop jobs if one fails
     steps:
       - uses: actions/checkout@v2
@@ -25,3 +26,4 @@ jobs:
         with:
           coq_version: ${{ matrix.coq_version }}
           ocaml_version: ${{ matrix.ocaml_version }}
+
