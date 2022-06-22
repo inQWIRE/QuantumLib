@@ -45,7 +45,7 @@ jobs:
           ocaml_version: ${{ env.ocaml_version }}
           custom_script: make doc
       - name: Deploy 🚀
-        uses: JamesIves/github-pages-deploy-action@4.3.3
+        uses: JamesIves/github-pages-deploy-action@v4.3.3
         with:
           branch: ${{ env.deployment-branch }}
           folder: html
