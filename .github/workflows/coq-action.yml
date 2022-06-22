@@ -12,25 +12,25 @@ env:
   deployment-branch: 'gh-pages'
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        coq_version:
-          - '8.12'
-          - '8.13'
-          - '8.14'
-          - '8.15'
-          - 'dev'
-        ocaml_version:
-          - 'default'
-      fail-fast: false # don't stop jobs if one fails
-    steps:
-      - uses: actions/checkout@v2
-      - uses: coq-community/docker-coq-action@v1
-        with:
-          coq_version: ${{ matrix.coq_version }}
-          ocaml_version: ${{ matrix.ocaml_version }}
+  # build:
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       coq_version:
+  #         - '8.12'
+  #         - '8.13'
+  #         - '8.14'
+  #         - '8.15'
+  #         - 'dev'
+  #       ocaml_version:
+  #         - 'default'
+  #     fail-fast: false # don't stop jobs if one fails
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #     - uses: coq-community/docker-coq-action@v1
+  #       with:
+  #         coq_version: ${{ matrix.coq_version }}
+  #         ocaml_version: ${{ matrix.ocaml_version }}
 
   deploy-docs:
     # only deploy when the reference is the main branch
@@ -43,7 +43,8 @@ jobs:
         with:
           coq_version: ${{ env.coq_version }}
           ocaml_version: ${{ env.ocaml_version }}
-          custom_script: make doc
+          custom_script: |
+            make doc
       - name: Deploy 🚀
         uses: JamesIves/github-pages-deploy-action@v4.3.3
         with:
