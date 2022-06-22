@@ -51,3 +51,5 @@ CoqMakefile*
 Makefile.coq*
 
 _build
+
+docs

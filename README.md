@@ -4,7 +4,7 @@
 [![coqdoc][coqdoc-shield]][coqdoc-link]
 
 [coqdoc-shield]: https://img.shields.io/badge/docs-coqdoc-blue.svg
-[coqdoc-link]: https://coq-community.org/huffman/docs/latest/coqdoc/toc.html
+[coqdoc-link]: https://inqwire.github.io/QuantumLib/toc.html
 
 QuantumLib is a Coq library for reasoning about quantum programs. It was co-developed with (and is used in) several other projects in inQWIRE including [QWIRE](https://github.com/inQWIRE/QWIRE), [SQIR](https://github.com/inQWIRE/SQIR), and [VyZX](https://github.com/inQWIRE/VyZX).
 
@@ -19,6 +19,8 @@ To compile run `make all`.
 To install QuantumLib, run `opam pin coq-quantumlib https://github.com/inQWIRE/QuantumLib.git`. This should allow you to import QuantumLib files into other Coq files. To pull subsequent updates, run `opam install coq-quantumlib`. When importing/exporting specific files, refer to QuantumLib files as `QuantumLib.FILENAME`.
 
 ## Directory Contents
+
+Auto-generated documentation is available at https://inqwire.github.io/QuantumLib/toc.html.
 
 * Complex.v - Definition of Complex numbers, extending [Coquelicot](http://coquelicot.saclay.inria.fr/)'s.
 * Ctopology.v - A topology of open/closed sets is defined for the complex numbers, with lemmas about compactness.
