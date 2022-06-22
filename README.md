@@ -1,6 +1,10 @@
 # QuantumLib
 
 [![CI](https://github.com/inQWIRE/QuantumLib/actions/workflows/coq-action.yml/badge.svg)](https://github.com/inQWIRE/QuantumLib/actions/workflows/coq-action.yml)
+[![coqdoc][coqdoc-shield]][coqdoc-link]
+
+[coqdoc-shield]: https://img.shields.io/badge/docs-coqdoc-blue.svg
+[coqdoc-link]: https://coq-community.org/huffman/docs/latest/coqdoc/toc.html
 
 QuantumLib is a Coq library for reasoning about quantum programs. It was co-developed with (and is used in) several other projects in inQWIRE including [QWIRE](https://github.com/inQWIRE/QWIRE), [SQIR](https://github.com/inQWIRE/SQIR), and [VyZX](https://github.com/inQWIRE/VyZX).
 
@@ -10,15 +14,9 @@ Tested with Coq versions 8.12 -- 8.15.
 
 To compile run `make all`.
 
-## To Use With Other Projects
+## Using With Other Projects
 
-To install QuantumLib, simply run `opam pin coq-quantumlib https://github.com/inQWIRE/QuantumLib.git`. This should allow you to import QuantumLib files into other Coq files. Once QuantumLib is an official opam library, the command will be `opam install coq-quantumlib`. When importing/exporting specific files, one should refer to QuantumLib files as `QuantumLib.FILENAME`.
-
-## Documentation
-
-Run `make doc` to generate documentation.
-
-**TODO: host generated documentation on a GitHub page**
+To install QuantumLib, run `opam pin coq-quantumlib https://github.com/inQWIRE/QuantumLib.git`. This should allow you to import QuantumLib files into other Coq files. To pull subsequent updates, run `opam install coq-quantumlib`. When importing/exporting specific files, refer to QuantumLib files as `QuantumLib.FILENAME`.
 
 ## Directory Contents
 
