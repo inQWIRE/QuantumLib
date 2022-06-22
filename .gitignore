@@ -51,5 +51,3 @@ CoqMakefile*
 Makefile.coq*
 
 _build
-
-html
