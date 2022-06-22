@@ -33,8 +33,8 @@ jobs:
           ocaml_version: ${{ matrix.ocaml_version }}
 
   deploy-docs:
-    # only deploy when the reference is the master branch
-    if: ${{ github.ref == 'refs/heads/master' }}
+    # only deploy when the reference is the main branch
+    # if: ${{ github.ref == 'refs/heads/main' }}
     needs: build
     runs-on: ubuntu-latest
     steps:
