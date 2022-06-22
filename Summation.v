@@ -116,6 +116,38 @@ Proof. intros.
          <- (Gopp_r a), Gplus_assoc, H1, Gplus_assoc; easy. 
 Qed.
   
+Lemma Gopp_unique_l : forall {G} `{Group G} (g h : G),
+  h + g = 0 -> h = Gopp g.
+Proof. intros.
+       rewrite <- (Gopp_l g) in H1.
+       apply Gplus_cancel_r in H1.
+       easy.
+Qed.
+
+Lemma Gopp_unique_r : forall {G} `{Group G} (g h : G),
+  g + h = 0 -> h = - g.
+Proof. intros.
+       rewrite <- (Gopp_r g) in H1.
+       apply Gplus_cancel_l in H1.
+       easy.
+Qed.
+
+Lemma Gopp_involutive : forall {G} `{Group G} (g : G),
+  - (- g) = g.
+Proof. intros. 
+       rewrite <- (Gopp_unique_r (- g) g); auto.
+       apply Gopp_l.
+Qed. 
+
+
+Lemma Gopp_plus_distr : forall {G} `{Group G} (g h : G),
+  - (g + h) = - h + - g.
+Proof. intros. 
+       rewrite (Gopp_unique_r (g + h) (- h + - g)); auto.
+       rewrite Gplus_assoc, <- (Gplus_assoc g), Gopp_r, Gplus_0_r, Gopp_r.
+       easy. 
+Qed.
+
 Lemma Vscale_zero : forall {V F} `{Vector_Space V F} (c : F),
   c ⋅ 0 = 0.
 Proof. intros.
@@ -276,6 +308,26 @@ Proof. induction n; try easy.
        rewrite IHn; simpl.
        easy. 
 Qed.
+
+Lemma big_plus_constant : forall {G} `{Monoid G} (l : list G) (g : G),
+  (forall h, In h l -> h = g) -> G_big_plus l = (times_n g (length l))%nat.
+Proof. induction l; try easy.
+       intros; simpl. 
+       rewrite (IHl g), (H0 a); auto.
+       left; easy.
+       intros. 
+       apply H0; right; easy.
+Qed.
+
+(* could be generalized to semi-rings... *)
+Lemma times_n_nat : forall n k,
+  times_n k n = (k * n)%nat.
+Proof. induction n; try easy.
+       intros; simpl.
+       rewrite IHn. 
+       lia.
+Qed.
+
 
 Lemma big_sum_plus : forall {G} `{Comm_Group G} f g n, 
     big_sum (fun x => f x + g x) n = big_sum f n + big_sum g n.
