@@ -744,6 +744,11 @@ Qed.
 
 (* TODO: prove cauchy schwartz, and do it in a better way than this... *)
 
+Lemma Cplx_Cauchy :
+  forall n (u v : nat -> C),
+    ((big_sum (fun i => Cmod (u i) ^ 2) n) * (big_sum (fun i => Cmod (v i) ^ 2) n) >= Cmod (big_sum (fun i => ((u i)^* * (v i))%C) n) ^ 2)%R.
+Proof.
+Admitted.
 
 (*
 
