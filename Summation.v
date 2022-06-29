@@ -21,6 +21,7 @@ Class Monoid G :=
 Infix "+" := Gplus : group_scope.
 Notation "0" := Gzero : group_scope.
 
+
       
 Class Group G `{Monoid G} :=
   { Gopp : G -> G
@@ -35,6 +36,7 @@ Definition Gminus {G} `{Group G} (g1 g2 : G) := g1 + (Gopp g2).
 
 Notation "- x" := (Gopp x) : group_scope.
 Infix "-" := Gminus : group_scope.
+
 
 Class Ring R `{Comm_Group R} :=
   { Gone : R
@@ -319,6 +321,23 @@ Proof. induction l; try easy.
        apply H0; right; easy.
 Qed.
 
+Lemma big_plus_app : forall {G} `{Monoid G} (l1 l2 : list G),
+  G_big_plus l1 + G_big_plus l2 = G_big_plus (l1 ++ l2).
+Proof. intros. 
+       induction l1; simpl.
+       - apply Gplus_0_l.
+       - rewrite <- IHl1, Gplus_assoc; easy.
+Qed.
+
+Lemma big_plus_inv : forall {G} `{Group G} (l : list G),
+  - (G_big_plus l) = G_big_plus (map Gopp (rev l)).
+Proof. induction l; simpl.
+       rewrite <- (Gopp_unique_l 0 0); auto.
+       rewrite Gplus_0_r; easy. 
+       rewrite Gopp_plus_distr, map_app, <- big_plus_app, <- IHl; simpl. 
+       rewrite Gplus_0_r; easy. 
+Qed.
+
 (* could be generalized to semi-rings... *)
 Lemma times_n_nat : forall n k,
   times_n k n = (k * n)%nat.
@@ -563,6 +582,198 @@ Proof.
   apply f_equal.
   lia.
 Qed.
+
+
+
+
+
+(*
+ *
+ *
+ *)
+
+(* developing l_a tactics for all these new typeclasses *)
+
+
+  
+Inductive mexp {G} : Type :=
+| Ident : mexp
+| Var : G -> mexp
+| Op : mexp -> mexp -> mexp.
+
+
+(* turns mexp into g *)
+Fixpoint mdenote {G} `{Monoid G} (me : mexp) : G :=
+  match me with
+  | Ident => 0
+  | Var v => v
+  | Op me1 me2 => mdenote me1 + mdenote me2
+  end.
+
+(* we also want something that takes list G to G, this is done by G_big_plus *)
+
+(* turns mexp into list G *)
+Fixpoint flatten {G} `{Monoid G} (me : mexp) : list G :=
+  match me with
+  | Ident => nil
+  | Var x => x :: nil
+  | Op me1 me2 => flatten me1 ++ flatten me2
+  end.
+
+Theorem flatten_correct : forall {G} `{Monoid G} me, 
+  mdenote me = G_big_plus (flatten me).
+Proof. 
+  induction me; simpl; auto.
+  rewrite Gplus_0_r; easy.
+  rewrite <- big_plus_app, IHme1, IHme2.  
+  easy. 
+Qed.
+
+
+Theorem monoid_reflect : forall {G} `{Monoid G} me1 me2,
+  G_big_plus (flatten me1) = G_big_plus (flatten me2) -> 
+  mdenote me1 = mdenote me2.
+Proof.
+  intros; repeat rewrite flatten_correct; assumption.
+Qed.
+
+
+Ltac reify_mon me :=
+  match me with
+  | 0 => Ident
+  | ?me1 + ?me2 =>
+      let r1 := reify_mon me1 in
+      let r2 := reify_mon me2 in
+      constr:(Op r1 r2)
+  | _ => constr:(Var me)
+  end.
+
+Ltac solve_monoid :=
+  match goal with
+  | [ |- ?me1 = ?me2 ] =>
+      let r1 := reify_mon me1 in
+      let r2 := reify_mon me2 in
+      change (mdenote r1 = mdenote r2);
+      apply monoid_reflect; simpl;
+      repeat (rewrite Gplus_0_l); 
+      repeat (rewrite Gplus_0_r);
+      repeat (rewrite Gplus_assoc); try easy  
+  end.
+
+ 
+Lemma test : forall {G} `{Monoid G} a b c d, a + b + c + d = a + (b + c) + d.
+Proof. intros.
+       solve_monoid.
+Qed.
+
+
+(* there is a lot of repeated code here, perhaps could simplify things *)
+Inductive gexp {G} : Type :=
+| Gident : gexp
+| Gvar : G -> gexp
+| Gop : gexp -> gexp -> gexp
+| Gmin : gexp -> gexp.
+
+Fixpoint gdenote {G} `{Group G} (ge : gexp) : G :=
+  match ge with
+  | Gident => 0
+  | Gvar v => v
+  | Gop me1 me2 => gdenote me1 + gdenote me2
+  | Gmin v => - gdenote v
+  end.
+
+Fixpoint gflatten {G} `{Group G} (ge : gexp) : list G :=
+  match ge with
+  | Gident => nil
+  | Gvar x => x :: nil
+  | Gop ge1 ge2 => gflatten ge1 ++ gflatten ge2
+  | Gmin ge' => map Gopp (rev (gflatten ge'))
+  end.
+
+Theorem gflatten_correct : forall {G} `{Group G} ge, 
+    gdenote ge = G_big_plus (gflatten ge).
+Proof. 
+  induction ge; simpl; auto.
+  rewrite Gplus_0_r; easy.
+  rewrite <- big_plus_app, IHge1, IHge2.  
+  easy. 
+  rewrite IHge, big_plus_inv. 
+  easy.
+Qed.
+  
+
+Theorem group_reflect : forall {G} `{Group G} ge1 ge2,
+  G_big_plus (gflatten ge1) = G_big_plus (gflatten ge2) -> 
+  gdenote ge1 = gdenote ge2.
+Proof.
+  intros; repeat rewrite gflatten_correct; assumption.
+Qed.
+
+Lemma big_plus_reduce : forall {G} `{Group G} a l,
+  G_big_plus (a :: l) = a + G_big_plus l.
+Proof. intros. easy. Qed.
+  
+Lemma big_plus_inv_r : forall {G} `{Group G} a l,
+  G_big_plus (a :: -a :: l) = G_big_plus l.
+Proof. 
+  intros; simpl. 
+  rewrite Gplus_assoc, Gopp_r, Gplus_0_l; easy.
+Qed.
+
+Lemma big_plus_inv_l : forall {G} `{Group G} a l,
+  G_big_plus (-a :: a :: l) = G_big_plus l.
+Proof. 
+  intros; simpl. 
+  rewrite Gplus_assoc, Gopp_l, Gplus_0_l; easy.
+Qed.
+
+Ltac reify_grp ge :=
+  match ge with
+  | 0 => Gident
+  | ?ge1 + ?ge2 =>
+      let r1 := reify_grp ge1 in
+      let r2 := reify_grp ge2 in
+      constr:(Gop r1 r2)
+  | ?ge1 - ?ge2 =>
+      let r1 := reify_grp ge1 in
+      let r2 := reify_grp ge2 in
+      constr:(Gop r1 (Gmin r2))             
+  | -?ge => 
+      let r := reify_grp ge in
+      constr:(Gmin r)
+  | _ => constr:(Gvar ge)
+  end.
+
+Ltac solve_group :=
+  unfold Gminus;
+  match goal with
+  | [ |- ?me1 = ?me2 ] =>
+      let r1 := reify_grp me1 in
+      let r2 := reify_grp me2 in
+      change (gdenote r1 = gdenote r2);
+      apply group_reflect; simpl gflatten;
+      repeat (rewrite Gopp_involutive);
+      repeat (try (rewrite big_plus_inv_r); 
+              try (rewrite big_plus_inv_l); 
+              try rewrite big_plus_reduce); simpl;
+      repeat (rewrite Gplus_0_l); repeat (rewrite Gplus_0_r);
+      repeat (rewrite Gplus_assoc); try easy      
+  end.
+
+
+  Lemma test2 : forall {G} `{Group G} a b c d, a + b + c + d - d = a + (b + c) + d - d.
+  Proof. intros.
+         solve_group.
+  Qed.
+ 
+  Lemma test3 : forall {G} `{Group G} a b c, - (a + b + c) + a  = 0 - c - b.
+  Proof. intros.
+         solve_group.
+  Qed.
+
+
+   
+
 
 
 

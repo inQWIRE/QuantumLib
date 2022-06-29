@@ -9,13 +9,10 @@ Require Import Setoid.
 (* in the following sections, we expand on these list functions *)
 
 
-Section TestSect.
-
-Variable X : Type.
 
 
 
-Program Instance list_is_monoid : Monoid (list X) := 
+Program Instance list_is_monoid {X} : Monoid (list X) := 
   { Gzero := []
   ; Gplus := @app X
   }.
@@ -23,7 +20,7 @@ Next Obligation. rewrite app_nil_end; easy. Qed.
 Next Obligation. rewrite app_assoc; easy. Qed.
 
 
-Lemma big_sum_list_length : forall (l : list (list X)) (l' : list X),
+Lemma big_sum_list_length : forall {X} (l : list (list X)) (l' : list X),
   G_big_plus l = l' -> G_big_plus (map (@length X) l) = length l'.
 Proof. induction l.
        - intros.  
@@ -33,13 +30,13 @@ Proof. induction l.
          rewrite app_length, (IHl (G_big_plus l)); easy. 
 Qed.
 
-Lemma length_big_sum_list : forall (l : list (list X)),
+Lemma length_big_sum_list : forall {X} (l : list (list X)),
   length (G_big_plus l) = G_big_plus (map (@length X) l).
 Proof. intros. 
        rewrite (big_sum_list_length _ (G_big_plus l)); easy.
 Qed.
 
-Lemma In_big_sum_list_In_part : forall (l : list (list X)) (x : X),
+Lemma In_big_sum_list_In_part : forall {X} (l : list (list X)) (x : X),
   In x (G_big_plus l) -> 
   exists l1, In l1 l /\ In x l1.
 Proof. induction l. 
@@ -55,7 +52,7 @@ Proof. induction l.
          easy. 
 Qed.
 
-Lemma In_part_In_big_sum_list : forall (l : list (list X)) (x : X),
+Lemma In_part_In_big_sum_list : forall {X} (l : list (list X)) (x : X),
   (exists l1, In l1 l /\ In x l1) ->
   In x (G_big_plus l).
 Proof. induction l.
@@ -72,17 +69,17 @@ Proof. induction l.
 Qed.
 
 
-Inductive eq_mod_perm (l1 l2 : list X) : Prop := 
+Inductive eq_mod_perm {X} (l1 l2 : list X) : Prop := 
   | eq_list : NoDup l1 -> NoDup l2 -> incl l1 l2 -> incl l2 l1 -> eq_mod_perm l1 l2.
 
 Infix "⩦" := eq_mod_perm (at level 70).
 
 
-Definition disjoint (l1 l2 : list X) : Prop := NoDup (l1 ++ l2).
+Definition disjoint {X} (l1 l2 : list X) : Prop := NoDup (l1 ++ l2).
 
 
 
-Lemma In_EMP_compat : forall (l1 l2 : list X) (x : X),
+Lemma In_EMP_compat : forall {X} (l1 l2 : list X) (x : X),
   l1 ⩦ l2 -> (iff (In x l1) (In x l2)).
 Proof. intros; split; intros; inversion H.
        apply H3; easy.
@@ -92,14 +89,14 @@ Qed.
 
 
 
-Add Parametric Morphism : (@In X)
+Add Parametric Morphism {X} : (@In X)
   with signature eq ==> eq_mod_perm ==> iff as Pplusf_mor.
 Proof. intros x l1 l2 H. 
        apply In_EMP_compat; easy. 
 Qed.
 
 
-Lemma NoDup_app : forall (l1 l2 : list X),
+Lemma NoDup_app : forall {X} (l1 l2 : list X),
   NoDup l1 -> NoDup l2 ->
   (forall x, In x l1 -> ~ (In x l2)) ->
   NoDup (l1 ++ l2).
@@ -116,7 +113,8 @@ Proof. induction l1; intros.
          apply H1; right; easy.
 Qed.
 
-Lemma length_lt_new_elem : forall (l2 l1 : list X) (eq_dec : forall x y : X, {x = y} + {x <> y}),
+Lemma length_lt_new_elem : forall {X} (l2 l1 : list X) 
+                                  (eq_dec : forall x y : X, {x = y} + {x <> y}),
   length l1 < length l2 ->
   NoDup l2 -> 
   exists x, In x l2 /\ ~ (In x l1).
@@ -137,7 +135,7 @@ Proof. induction l2; intros.
          exists a; split; auto.
 Qed.         
 
-Lemma length_gt_EMP : forall (l1 l2 : list X),
+Lemma length_gt_EMP : forall {X} (l1 l2 : list X),
   NoDup l1 -> NoDup l2 -> 
   incl l1 l2 -> 
   length l1 >= length l2 ->
@@ -147,7 +145,7 @@ Proof. intros.
        apply NoDup_length_incl; auto; lia.
 Qed.
 
-Lemma EMP_reduce : forall (l1 l21 l22 : list X) (a : X), 
+Lemma EMP_reduce : forall {X} (l1 l21 l22 : list X) (a : X), 
   (a :: l1) ⩦ (l21 ++ (a::l22)) -> l1 ⩦ (l21 ++ l22). 
 Proof. intros; inversion H.
        apply eq_list. 
@@ -175,7 +173,7 @@ Proof. intros; inversion H.
        subst; easy.
 Qed.
 
-Lemma EMP_eq_length : forall (l1 l2 : list X), 
+Lemma EMP_eq_length : forall {X} (l1 l2 : list X), 
   l1 ⩦ l2 -> length l1 = length l2.
 Proof. induction l1; intros; inversion H.
        - apply incl_l_nil in H3; subst; easy.
@@ -217,7 +215,7 @@ Proof. induction l1.
 
 
 (* quick little lemma useing FinFun's Listing *)
-Lemma list_rep_length_eq : forall (l1 l2 : list X),
+Lemma list_rep_length_eq : forall {X} (l1 l2 : list X),
   Listing l1 -> Listing l2 -> length l1 = length l2.
 Proof. intros. 
        destruct H; destruct H0.
@@ -232,17 +230,6 @@ Lemma test : NoDup [1;2;3;4;5]%nat.
 Proof. repeat (apply NoDup_cons; unfold not; intros; repeat (destruct H; try lia)).
        apply NoDup_nil.
 Qed.
-
-
-End TestSect.
-
-
-
-
-(* where should these go? Should I have to redeclare the infix notation? *)
-Arguments eq_mod_perm {X}.
-Infix "⩦" := eq_mod_perm (at level 70).
-
 
 
 
@@ -390,12 +377,12 @@ Proof. split; intros.
          apply in_map_iff in H7; destruct H7 as [x [H7 H8]].
          apply in_map_iff. 
          exists x; split; auto.
-         rewrite <- H7, Gplus_assoc, Gopp_l, Gplus_0_l; easy. 
+         rewrite <- H7; solve_group.  
        - rewrite map_map.
          apply in_map_iff in H7; destruct H7 as [x [H7 H8]].
          apply in_map_iff. 
          exists x; split; auto.
-         rewrite H7, Gplus_assoc, Gopp_r, Gplus_0_l; easy. 
+         rewrite H7; solve_group.
 Qed.
 
 Lemma cosets_same1 : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (a b : G),
@@ -464,19 +451,36 @@ Proof. intros.
        intros. 
        unfold not; intros; apply H7.
        apply (In_EMP_compat _ (map (Gplus b) (map f G_list_rep))).
-       apply (cosets_same1 _ _ _ b a); auto.
+       apply (cosets_same1 _ _ _ a b H6); auto.
        exists x; split; easy. 
        apply (in_own_coset _ _ _ b); auto.
 Qed.
 
 
+(*
+Ltac lfa (
 
 
+ lfa H. instead, assert F is a field, use tactic, then prove assertion.
+ Put all in Ltac. use frech H, etc... like in prep_mat_eq 
+
+
+instead of 
+`assert (H : field G) by auto`,
+do
+let H := fresh “H” in assert ...
+
+... clear H
+
+
+*)
+
+
+       
 (* how do I avoid having to state list_monoid_G here? *)
 Definition coset_rep_list_to_cosets H G `{FiniteGroup H} `{FiniteGroup G} 
                                       (f : H -> G) (l : list G) : list G :=
-(@G_big_plus _ (list_is_monoid G))
-                    (map (fun g => map (Gplus g) (map f G_list_rep)) l).
+(G_big_plus (map (fun g => map (Gplus g) (map f G_list_rep)) l)).
 
 
 
