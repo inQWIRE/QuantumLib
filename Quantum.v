@@ -1699,6 +1699,30 @@ Proof.
   unfold adjoint. rewrite <- Cmod_sqr. symmetry. apply RtoC_pow.
 Qed.
 
+
+(* "Quick" proof of |x| = 0 iff x = 0 *)
+Lemma norm_zero_iff_zero : forall {n} (v : Vector n),
+  WF_Matrix v -> (norm v = 0%R <-> v = Zero). 
+Proof. intros. split. 
+       - intros. 
+         unfold norm in H0.
+         apply inner_product_zero_iff_zero in H.
+         unfold inner_product in H. 
+         apply sqrt_eq_0 in H0.
+         apply H. 
+         apply c_proj_eq.
+         apply H0.
+         apply norm_real.
+         apply inner_product_ge_0.
+       - intros. 
+         rewrite H0. 
+         unfold norm.
+         rewrite Mmult_0_r. 
+         simpl. apply sqrt_0. 
+Qed.     
+
+
+
 (** Density matrices and superoperators **)
 
 Definition Superoperator m n := Density m -> Density n.
