@@ -381,6 +381,8 @@ Qed.
 
 (* Convert a natural number to a vector *)
 
+
+(* TODO: this is very similar to e_i in VecSet.v. Could use just e_i? *)
 Definition basis_vector (n k : nat) : Vector n :=
   fun i j => if (i =? k) && (j =? 0) then C1 else C0.
 
@@ -1182,7 +1184,7 @@ Hint Rewrite (@update_index_eq bool) (@update_index_neq bool) (@update_twice_eq 
 
 
 (* TODO: remove this and just use big_sum *)                                          
-Definition vsum {d} n (f : nat -> Vector d) : Vector d := big_sum f n.
+(* Definition vsum {d} n (f : nat -> Vector d) : Vector d := big_sum f n.
 
 Lemma vsum_WF : forall {d} n (f : nat -> Vector d), 
   (forall i, (i < n)%nat -> WF_Matrix (f i)) -> 
@@ -1289,18 +1291,18 @@ Proof.
   - easy.
   - rewrite vsum_extend_r. unfold Mplus. rewrite IHn. easy.
 Qed.
+*)
 
 (* Any vector ψ can be written as a weighted sum over basis vectors. *)
 Lemma basis_vector_decomp : forall {d} (ψ : Vector d),
   WF_Matrix ψ ->
-  ψ = vsum d (fun i => (ψ i O) .* basis_vector d i).
+  ψ = big_sum (fun i => (ψ i O) .* basis_vector d i) d.
 Proof.
   intros d ψ WF. 
   do 2 (apply functional_extensionality; intros). 
-  rewrite vsum_big_sum.
-  destruct (x <? d) eqn:Hx.
-  - apply Nat.ltb_lt in Hx. 
-    unfold scale. destruct x0.
+  rewrite Msum_Csum.
+  bdestruct (x <? d).
+  - unfold scale. destruct x0.
     + rewrite big_sum_unique with (k:=ψ x O). easy.
       exists x. split. easy.
       split. unfold basis_vector. rewrite Nat.eqb_refl. simpl. lca.
@@ -1308,55 +1310,49 @@ Proof.
       bdestruct_all; lca.
     + unfold WF_Matrix in WF. rewrite WF by lia.
       rewrite big_sum_0. easy. intro.
-      unfold basis_vector. assert (S x0 <> 0)%nat by lia. apply Nat.eqb_neq in H.
-      rewrite H. rewrite andb_false_r. lca.
-  - apply Nat.ltb_ge in Hx.
-    unfold WF_Matrix in WF. rewrite WF by lia.
+      unfold basis_vector. assert (S x0 <> 0)%nat by lia.
+      bdestruct_all; simpl; lca.
+  - unfold WF_Matrix in WF. rewrite WF by lia. 
     rewrite big_sum_0_bounded. easy. intros. unfold scale.
-    unfold basis_vector. assert (x <> x1) by lia. apply Nat.eqb_neq in H0.
-    rewrite H0. simpl. lca.
+    unfold basis_vector. assert (x <> x1) by lia.
+    bdestruct_all; simpl; lca.
 Qed.
+
+(* TODO: move these lemmas to summation and define shift in summation.v *)
 
 (* Two natural ways to split a vsum into two parts *)
 Lemma vsum_sum1 : forall d m n (f : nat -> Vector d),
-  vsum (m + n) f = vsum m f .+ vsum n (shift f m).
+  big_sum f (m + n) = big_sum f m .+ big_sum (shift f m) n.
 Proof.
   intros d m n f.
-  induction m.
-  simpl. Msimpl. rewrite shift_0. reflexivity.
-  replace (S m + n)%nat with (S (m + n))%nat  by lia.
-  rewrite vsum_extend_r. rewrite IHm.
-  repeat rewrite Mplus_assoc.
-  replace (S m) with (1 + m) by reflexivity. rewrite <- shift_plus.
-  remember (shift f m) as f'.
-  replace (f (m + n)) with (f' n).
-  rewrite vsum_extend_r.
-  replace (f m) with (f' 0).
-  rewrite Mplus_assoc.
-  rewrite <- vsum_extend_l.
-  reflexivity.
-  subst. rewrite shift_simplify. rewrite Nat.add_0_l. reflexivity.
-  subst. rewrite shift_simplify. rewrite Nat.add_comm. reflexivity.
+  rewrite big_sum_sum.
+  apply f_equal_gen; auto.
+  apply big_sum_eq_bounded; intros.
+  unfold shift.
+  apply f_equal; lia.
 Qed.
 
 Local Opaque Nat.mul.
 Lemma vsum_sum2 : forall d n (f : nat -> Vector d),
-  vsum (2 * n) f = vsum n (fun i => f (2 * i)%nat) .+ vsum n (fun i => f (2 * i + 1)%nat).
+  big_sum f (2 * n) =
+  big_sum (fun i => f (2 * i)%nat) n .+ big_sum (fun i => f (2 * i + 1)%nat) n.
 Proof.
   intros d n f.
   induction n.
   rewrite Nat.mul_0_r. simpl. Msimpl. reflexivity.
   replace (2 * S n)%nat with (S (S (2 * n)))%nat  by lia.
-  repeat rewrite vsum_extend_r.
+  repeat rewrite <- big_sum_extend_r.
   rewrite IHn; clear.
   replace (2 * n + 1)%nat with (S (2 * n)) by lia.
   lma.
 Qed.
 Local Transparent Nat.mul.
 
+Search (WF_Matrix (big_sum _ _)).
+
 Lemma vsum_split : forall {d} (n i : nat) (v : nat -> Vector d),
   (i < n)%nat ->
-  vsum n v = (vsum i v) .+ v i .+ (vsum (n - 1 - i) (shift v (i + 1))).
+  big_sum v n = (big_sum v i) .+ v i .+ (big_sum (shift v (i + 1)) (n - 1 - i)).
 Proof.
   intros.
   induction n.
@@ -1364,85 +1360,71 @@ Proof.
   - bdestruct (i =? n).
     + subst.
       replace (S n - 1 - n)%nat with O by lia.
-      rewrite vsum_extend_r. Msimpl.
+      rewrite <- big_sum_extend_r. Msimpl.
       reflexivity.
     + assert (i < n)%nat by lia.
       specialize (IHn H1).
       replace (S n - 1 - i)%nat with (S (n - 1 - i))%nat by lia.
-      repeat rewrite vsum_extend_r.
+      repeat rewrite <- big_sum_extend_r.
       rewrite IHn.
       repeat rewrite Mplus_assoc. 
       unfold shift; simpl.
       replace (n - 1 - i + (i + 1))%nat with n by lia.
-      reflexivity.
+      lma. 
 Qed.
 
 Lemma vsum_eq_up_to_fswap : forall {d} n f (v : nat -> Vector d) x y,
   (x < n)%nat -> (y < n)%nat ->
-  vsum n (fun i => v (f i)) = vsum n (fun i => v (fswap f x y i)).
+  big_sum (fun i => v (f i)) n = big_sum (fun i => v (fswap f x y i)) n.
 Proof.
   intros d n f v x y Hx Hy.
   bdestruct (x =? y).
   subst.
-  apply vsum_eq.
-  intros i Hi.
+  apply big_sum_eq.
+  apply functional_extensionality; intros. 
   unfold fswap.
   bdestruct_all; subst; reflexivity.
   bdestruct (x <? y).
   - rewrite 2 (vsum_split n y) by auto.
     rewrite 2 (vsum_split y x) by auto.
     rewrite fswap_simpl1, fswap_simpl2.
-    unfold shift.
-    erewrite (vsum_eq x (fun _ => v (fswap _ _ _ _))).
-    2: { intros i Hi.
-         unfold fswap.
-         bdestruct_all.
-         reflexivity. }
-    erewrite (vsum_eq (y - 1 - x) (fun _ => v (fswap _ _ _ _))).
-    2: { intros i Hi.
-         unfold fswap.
-         bdestruct_all.
-         reflexivity. }
-    erewrite (vsum_eq (n - 1 - y) (fun _ => v (fswap _ _ _ _))).
-    2: { intros i Hi.
-         unfold fswap.
-         bdestruct_all.
-         reflexivity. }
-    repeat rewrite (Mplus_comm _ _ _ (v _)).
-    repeat rewrite <- Mplus_assoc.
-    rewrite (Mplus_comm _ _ (v (f x))).
-    reflexivity.
+    apply f_equal_gen; try apply f_equal.
+    repeat (rewrite Mplus_assoc).
+    apply f_equal_gen; try apply f_equal.
+    apply big_sum_eq_bounded; intros. 
+    unfold fswap; bdestruct_all; try lia; auto. 
+    rewrite Mplus_comm, (Mplus_comm _ _ (v (f y))).
+    repeat rewrite Mplus_assoc.
+    apply f_equal_gen; try apply f_equal.
+    apply big_sum_eq_bounded; intros. 
+    unfold shift, fswap; bdestruct_all; try lia; auto. 
+    lma. 
+    apply big_sum_eq_bounded; intros. 
+    unfold shift, fswap; bdestruct_all; try lia; auto. 
   - rewrite 2 (vsum_split n x) by auto.
     rewrite 2 (vsum_split x y) by lia.
     rewrite fswap_simpl1, fswap_simpl2.
-    unfold shift.
-    erewrite (vsum_eq y (fun _ => v (fswap _ _ _ _))).
-    2: { intros i Hi.
-         unfold fswap.
-         bdestruct_all.
-         reflexivity. }
-    erewrite (vsum_eq (x - 1 - y) (fun _ => v (fswap _ _ _ _))).
-    2: { intros i Hi.
-         unfold fswap.
-         bdestruct_all.
-         reflexivity. }
-    erewrite (vsum_eq (n - 1 - x) (fun _ => v (fswap _ _ _ _))).
-    2: { intros i Hi.
-         unfold fswap.
-         bdestruct_all.
-         reflexivity. }
-    repeat rewrite (Mplus_comm _ _ _ (v _)).
-    repeat rewrite <- Mplus_assoc.
-    rewrite (Mplus_comm _ _ (v (f y))).
-    reflexivity.
+    apply f_equal_gen; try apply f_equal.
+    repeat (rewrite Mplus_assoc).
+    apply f_equal_gen; try apply f_equal.
+    apply big_sum_eq_bounded; intros. 
+    unfold fswap; bdestruct_all; try lia; auto. 
+    rewrite Mplus_comm, (Mplus_comm _ _ (v (f x))).
+    repeat rewrite Mplus_assoc.
+    apply f_equal_gen; try apply f_equal.
+    apply big_sum_eq_bounded; intros. 
+    unfold shift, fswap; bdestruct_all; try lia; auto. 
+    lma. 
+    apply big_sum_eq_bounded; intros. 
+    unfold shift, fswap; bdestruct_all; try lia; auto. 
 Qed.
-
 
 (*******************************)
 (** Indexed Kronecker Product **)
 (*******************************)
 
 (* This could also be defined over (f : nat -> Vector d) *)
+(* TODO: switch order of arguments to match big_sum. may mess of SQIR stuff though... *)
 Fixpoint vkron n (f : nat -> Vector 2) : Vector (2 ^ n) :=
   match n with
   | 0    => I 1
@@ -1675,13 +1657,13 @@ Qed.
 Lemma vkron_to_vsum1 : forall n (c : R),
   n > 0 -> 
   vkron n (fun k => ∣0⟩ .+ Cexp (c * 2 ^ (n - k - 1)) .* ∣1⟩) = 
-    vsum (2 ^ n) (fun k => Cexp (c * INR k) .* basis_vector (2 ^ n) k).
+    big_sum (fun k => Cexp (c * INR k) .* basis_vector (2 ^ n) k) (2 ^ n).
 Proof.
   intros n c Hn.
   destruct n; try lia.
   induction n.
   simpl. 
-  repeat rewrite vsum_extend_r; rewrite vsum_empty.
+  repeat rewrite <- big_sum_extend_r.
   Msimpl. 
   rewrite Rmult_0_r, Cexp_0, Mscale_1_l.
   replace (basis_vector 2 0) with ∣0⟩ by solve_matrix.
@@ -1706,23 +1688,19 @@ Proof.
   2: { subst. unify_pows_two. }
   clear - HN.
   rewrite kron_plus_distr_r.
-  rewrite 2 kron_vsum_distr_l.
+  rewrite 2 kron_Msum_distr_l.
   replace (2 * N) with (N + N) by lia.
   rewrite vsum_sum1.
   replace (N + N) with (2 * N) by lia.
-  rewrite (vsum_eq _ (fun i : nat => ∣0⟩ ⊗ (Cexp (c * INR i) .* basis_vector N i)) (fun k : nat => Cexp (c * INR k) .* basis_vector (2 * N) k)).
-  rewrite (vsum_eq _ (fun i : nat => Cexp (c * INR N) .* ∣1⟩ ⊗ (Cexp (c * INR i) .* basis_vector N i)) (shift (fun k : nat => Cexp (c * INR k) .* basis_vector (2 * N) k) N)).
+  apply f_equal_gen; try apply f_equal; apply big_sum_eq_bounded; intros.
+  distribute_scale. 
+  rewrite basis_vector_prepend_0 by lia.
   reflexivity.
-  intros i Hi.
   rewrite shift_simplify.
   distribute_scale.
   rewrite <- Cexp_add, <- Rmult_plus_distr_l, <- plus_INR. 
   rewrite basis_vector_prepend_1 by lia.
   rewrite Nat.add_comm.
-  reflexivity.
-  intros i Hi.
-  distribute_scale.
-  rewrite basis_vector_prepend_0 by lia.
   reflexivity.
 Qed.
 
@@ -1791,7 +1769,8 @@ Local Opaque Nat.mul.
 Lemma vkron_to_vsum2 : forall n (f : nat -> bool),
   (n > 0)%nat -> 
   vkron n (fun k => ∣0⟩ .+ (-1) ^ f k .* ∣1⟩) = 
-    vsum (2 ^ n) (fun k => (-1) ^ (product f (nat_to_funbool n k) n) .* basis_vector (2 ^ n) k).
+    big_sum 
+      (fun k => (-1) ^ (product f (nat_to_funbool n k) n) .* basis_vector (2 ^ n) k) (2^n).
 Proof.
   intros n f ?.
   destruct n; try lia.
@@ -1799,7 +1778,7 @@ Proof.
   induction n.
   - simpl.
     repeat rewrite Nat.mul_1_r.
-    repeat rewrite vsum_extend_r; rewrite vsum_empty.
+    repeat rewrite <- big_sum_extend_r.
     Msimpl.
     unfold nat_to_funbool; simpl.
     rewrite 2 update_index_eq.
@@ -1811,10 +1790,11 @@ Proof.
     rewrite IHn; clear.
     replace (2 ^ S n')%nat with (2 * 2 ^ n')%nat by reflexivity. 
     rewrite vsum_sum2.
-    rewrite <- vsum_plus.
-    rewrite kron_vsum_distr_r.
-    replace (2 * 2 ^ n')%nat with (2 ^ n' * 2)%nat by lia.
-    apply vsum_eq.
+    rewrite kron_Msum_distr_r.
+    assert (H' := (@big_sum_plus _ _ _ (M_is_comm_group (2 * 2 ^ n')%nat 1%nat))).
+    simpl in H'.
+    rewrite <- H'.
+    apply big_sum_eq_bounded.
     intros i Hi.
     distribute_plus.
     distribute_scale.
@@ -1866,7 +1846,7 @@ Qed.
 
 Lemma H_kron_n_spec : forall n x, (n > 0)%nat ->
   n ⨂ hadamard × f_to_vec n x = 
-    /√(2 ^ n) .* vsum (2 ^ n) (fun k => (-1) ^ (product x (nat_to_funbool n k) n) .* basis_vector (2 ^ n) k).
+    /√(2 ^ n) .* big_sum (fun k => (-1) ^ (product x (nat_to_funbool n k) n) .* basis_vector (2 ^ n) k) (2 ^ n).
 Proof. 
   intros n x Hn. 
   rewrite kron_n_f_to_vec.
@@ -1887,14 +1867,14 @@ Qed.
 
 Lemma H0_kron_n_spec_alt : forall n, (n > 0)%nat ->
   n ⨂ hadamard × n ⨂ ∣0⟩ = 
-    /√(2 ^ n) .* vsum (2 ^ n) (fun k => basis_vector (2 ^ n) k).
+    /√(2 ^ n) .* big_sum (fun k => basis_vector (2 ^ n) k) (2 ^ n).
 Proof. 
   intros.
   replace (n ⨂ ∣0⟩) with (f_to_vec n (fun _ => false)).
   replace (1^n)%nat with (S O).
   rewrite H_kron_n_spec by assumption.
   apply f_equal2; try reflexivity.
-  apply vsum_eq.
+  apply big_sum_eq_bounded.
   intros.
   rewrite product_0; simpl. lma.
   symmetry. apply Nat.pow_1_l. 

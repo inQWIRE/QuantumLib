@@ -203,8 +203,10 @@ Definition transpose {m n} (A : Matrix m n) : Matrix n m :=
 Definition adjoint {m n} (A : Matrix m n) : Matrix n m := 
   fun x y => (A y x)^*.
 
+(* note that the convention of quantum computing differs from abstract math, 
+   hence this def *)
 Definition inner_product {n} (u v : Vector n) : C := 
-  Mmult (adjoint v) (u) 0 0.
+  Mmult (adjoint u) (v) 0 0.
 
 Definition outer_product {n} (u v : Vector n) : Square n := 
   Mmult u (adjoint v).
@@ -3360,7 +3362,7 @@ Local Close Scope nat_scope.
 
 (* some inner product lemmas *)
 Lemma inner_product_scale_l : forall {n} (u v : Vector n) (c : C),
-  ⟨c .* u, v⟩ = c * ⟨u,v⟩.
+  ⟨c .* u, v⟩ = c^* * ⟨u,v⟩.
 Proof. intros.
        unfold inner_product, scale, adjoint, Mmult.
        rewrite (@big_sum_mult_l C _ _ _ C_is_ring).
@@ -3369,7 +3371,7 @@ Proof. intros.
 Qed.       
 
 Lemma inner_product_scale_r : forall {n} (u v : Vector n) (c : C),
-  ⟨u, c .* v⟩ = c^* * ⟨u,v⟩.
+  ⟨u, c .* v⟩ = c * ⟨u,v⟩.
 Proof. intros.
        unfold inner_product, scale, adjoint, Mmult.
        rewrite (@big_sum_mult_l C _ _ _ C_is_ring).
@@ -3399,7 +3401,7 @@ Lemma inner_product_big_sum_l : forall {n} (u : Vector n) (f : nat -> Vector n) 
   ⟨big_sum f k, u⟩ = big_sum (fun i => ⟨f i, u⟩) k.
 Proof. induction k.
        - unfold inner_product; simpl.
-         rewrite Mmult_0_r; easy.
+         rewrite zero_adjoint_eq, Mmult_0_l; easy.
        - simpl. 
          rewrite inner_product_plus_l, IHk.
          reflexivity.
@@ -3409,7 +3411,7 @@ Lemma inner_product_big_sum_r : forall {n} (u : Vector n) (f : nat -> Vector n) 
   ⟨u, big_sum f k⟩ = big_sum (fun i => ⟨u, f i⟩) k.
 Proof. induction k.
        - unfold inner_product; simpl.
-         rewrite zero_adjoint_eq, Mmult_0_l; easy.
+         rewrite Mmult_0_r; easy.
        - simpl. 
          rewrite inner_product_plus_r, IHk.
          reflexivity.
@@ -3544,6 +3546,14 @@ Proof. intros.
        apply inner_product_ge_0.
 Qed.
 
+Lemma norm_squared : forall {d} (ψ : Vector d),
+  ((norm ψ) ^2)%R = fst ⟨ ψ, ψ ⟩.
+Proof. intros.
+       unfold norm.
+       rewrite pow2_sqrt; auto.
+       apply inner_product_ge_0.
+Qed.
+
 (* "Quick" proof of |x| = 0 iff x = 0 *)
 Lemma inner_product_zero_iff_zero : forall {n} (v : Vector n),
   WF_Matrix v -> (⟨v,v⟩ = C0 <-> v = Zero). 
@@ -3621,7 +3631,7 @@ Local Close Scope nat_scope.
 
 (* We can now prove Cauchy-Schwartz for vectors with inner_product *)
 Lemma CS_key_lemma : forall {n} (u v : Vector n),
-  fst ⟨ (⟨v,v⟩ .* u .+ -1 * ⟨u,v⟩ .* v), (⟨v,v⟩ .* u .+ -1 * ⟨u,v⟩ .* v) ⟩ =
+  fst ⟨ (⟨v,v⟩ .* u .+ -1 * ⟨v,u⟩ .* v), (⟨v,v⟩ .* u .+ -1 * ⟨v,u⟩ .* v) ⟩ =
     ((fst ⟨v,v⟩) * ((fst ⟨v,v⟩)* (fst ⟨u,u⟩) - (Cmod ⟨u,v⟩)^2 ))%R.
 Proof. intros. 
        replace ((fst ⟨v,v⟩) * ((fst ⟨v,v⟩)* (fst ⟨u,u⟩) - (Cmod ⟨u,v⟩)^2 ))%R with
@@ -3629,12 +3639,12 @@ Proof. intros.
        - apply f_equal.
          repeat rewrite inner_product_plus_l; repeat rewrite inner_product_plus_r;
            repeat rewrite inner_product_scale_l; repeat rewrite inner_product_scale_r. 
-         replace (-1 * ⟨ u, v ⟩ * ((-1 * ⟨ u, v ⟩) ^* * ⟨ v, v ⟩)) with 
-           ( ⟨ u, v ⟩^* * ⟨ u, v ⟩ * ⟨ v, v ⟩ ) by lca.
+         replace ((-1 * ⟨ v, u ⟩) ^* * (-1 * ⟨ v, u ⟩ * ⟨ v, v ⟩)) with 
+           ( ⟨ v, u ⟩^* * ⟨ v, u ⟩ * ⟨ v, v ⟩ ) by lca.       
+         replace ((-1 * ⟨ v, u ⟩) ^* * (⟨ v, v ⟩ * ⟨ v, u ⟩) +
+                    ⟨ v, u ⟩ ^* * ⟨ v, u ⟩ * ⟨ v, v ⟩) with C0 by lca.
          rewrite (inner_product_conj_sym v u), <- (inner_product_conj_sym v v).
-         replace (-1 * ⟨ u, v ⟩ * (⟨ v, v ⟩ * ⟨ u, v ⟩ ^*) + ⟨ u, v ⟩ ^* * ⟨ u, v ⟩ * ⟨ v, v ⟩)
-         with C0 by lca. 
-         rewrite Cplus_0_r, Cconj_mult_distr, <- Cmult_assoc.   
+         rewrite <- Cmult_assoc.   
          replace (⟨ u, v ⟩ ^* * ⟨ u, v ⟩) with (Cmod ⟨ u, v ⟩ ^ 2) by apply Cmod_sqr.
          lca.
        - assert (H := norm_real v).
@@ -3674,7 +3684,7 @@ Proof. intros.
            unfold norm; rewrite H.
            apply sqrt_0. }
          unfold inner_product.
-         rewrite H', zero_adjoint_eq, Mmult_0_l.
+         rewrite H', Mmult_0_r.
          unfold Zero.
          rewrite Cmod_0.
          lra.
@@ -3707,16 +3717,11 @@ Lemma Cplx_Cauchy_vector :
      Cmod (big_sum (fun i => ((u i O)^* * (v i O))%C) n) ^ 2)%R.
 Proof. intros.
        assert (H := Cauchy_Schwartz_ver1 u v).
-
        replace (big_sum (fun i : nat => (Cmod (u i 0%nat) ^ 2)%R) n) with (fst ⟨ u, u ⟩).
        replace (big_sum (fun i : nat => (Cmod (v i 0%nat) ^ 2)%R) n) with (fst ⟨ v, v ⟩).
-       rewrite <- Cmod_Cconj.
-       replace ((Σ (fun i : nat => (u i 0%nat) ^* * v i 0%nat) n) ^*) with (⟨ u, v ⟩).
+       replace (Σ (fun i : nat => (u i 0%nat) ^* * v i 0%nat) n) with (⟨ u, v ⟩).
        lra.
-       rewrite (@big_sum_func_distr C C _ C_is_group _ C_is_group).
-       all : unfold inner_product, adjoint, Mmult. 
-       apply big_sum_eq_bounded; intros; lca.
-       intros; lca.
+       all : unfold inner_product, adjoint, Mmult; try easy. 
        all : rewrite (@big_sum_func_distr C R _ C_is_group _ R_is_group).
        all : try apply big_sum_eq_bounded; intros.
        all : try rewrite <- Cmod_sqr. 

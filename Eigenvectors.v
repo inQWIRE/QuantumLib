@@ -7,7 +7,6 @@ Require Export Quantum.
 Require Import FTA.
 
 
-Search (inner_product _ _).
 (****************************)
 (** * Proving some indentities *)
 (****************************)
@@ -68,7 +67,7 @@ Definition WF_Orthonormal {n m} (S : Matrix n m) : Prop :=
   WF_Matrix S /\ orthonormal S. 
 
 Lemma inner_product_is_mult : forall {n} (i j : nat) (S : Square n),
-  inner_product (get_vec i S) (get_vec j S) = (S† × S) j i.
+  inner_product (get_vec i S) (get_vec j S) = (S† × S) i j.
 Proof. intros. unfold inner_product, get_vec, Mmult, adjoint.
        apply big_sum_eq.
        apply functional_extensionality; intros. simpl.
@@ -486,27 +485,26 @@ Qed.
 
 (* proj of v onto u *)
 Definition proj {n} (u v : Vector n) : Vector n :=
-  ((inner_product v u) / (inner_product u u)) .* u.
+  ((inner_product u v) / (inner_product u u)) .* u.
 
 Definition proj_coef {n} (u v : Vector n) : C :=
-  ((inner_product v u) / (inner_product u u)).
+  ((inner_product u v) / (inner_product u u)).
 
 Lemma proj_inner_product : forall {n} (u v : Vector n),
   (norm u) <> 0%R -> inner_product u (proj u v) = inner_product u v.
-Proof. intros. 
-       unfold proj.
-       rewrite inner_product_scale_r.
-       unfold Cdiv.
-       rewrite (inner_product_conj_sym u u), <- Cconj_mult_distr, 
-         <- inner_product_conj_sym, <- Cmult_assoc, Cinv_l, Cmult_1_r.
-       rewrite <- inner_product_conj_sym.
-       reflexivity.
+Proof. intros.
+       unfold proj, inner_product. 
+       distribute_scale.
+       unfold scale. 
+       unfold Cdiv.  
+       rewrite <- Cmult_assoc. 
+       rewrite Cinv_l.
+       lca. 
        unfold norm in H.
        intro. apply H.
-       unfold inner_product in H0.
        rewrite H0. simpl. 
        rewrite sqrt_0.
-       easy. 
+       easy.
 Qed.
 
 Definition gram_schmidt_on_v (n m : nat) (v : Vector n) (S : Matrix n m) :=
@@ -673,16 +671,15 @@ Proof. intros.
          bdestruct (m <? i); bdestruct (m <? j); try lia. 
          + rewrite get_vec_reduce_append_over; try easy.
            unfold inner_product.
-           rewrite Mmult_0_r.
+           rewrite zero_adjoint_eq, Mmult_0_l.
            easy. 
          + rewrite get_vec_reduce_append_over; try easy.
            unfold inner_product.
-           rewrite Mmult_0_r.
+           rewrite zero_adjoint_eq, Mmult_0_l.
            easy. 
          + rewrite (get_vec_reduce_append_over _ _ j); try easy.
            unfold inner_product.
-           rewrite zero_adjoint_eq.
-           rewrite Mmult_0_l.
+           rewrite Mmult_0_r.
            easy. 
          + bdestruct (i =? m); bdestruct (j =? m); try lia. 
            * rewrite H5.
@@ -975,16 +972,13 @@ Proof. intros.
            unfold get_vec, normalize.
            bdestruct (y =? 0); try easy.
            unfold scale. rewrite H0; try lia; lca. }
-         rewrite H'.
-         rewrite zero_adjoint_eq.
-         rewrite Mmult_0_l; easy.
+         rewrite H', Mmult_0_r; easy.
        + assert (H' : get_vec (S i) (normalize v) = Zero).
          { prep_matrix_equality. 
            unfold get_vec, normalize.
            bdestruct (y =? 0); try easy.
            unfold scale. rewrite H0; try lia; lca. }
-         rewrite H'.
-         rewrite Mmult_0_r; easy.
+         rewrite H', zero_adjoint_eq, Mmult_0_l; easy.
        + intros. 
          destruct i; try lia. 
          rewrite get_vec_vec.
@@ -1064,7 +1058,7 @@ Proof. intros n U. split.
            rewrite inner_product_is_mult.
            destruct H as [H1 H].   
            rewrite H. 
-           unfold I. bdestruct (j =? i); try lia; easy.
+           unfold I. bdestruct (i =? j); try lia; easy.
          * intros. unfold norm.
            assert (H1 : ((get_vec i U) † × get_vec i U) 0%nat 0%nat = 
                         inner_product (get_vec i U) (get_vec i U)).
