@@ -1490,6 +1490,14 @@ Proof.
   rewrite Mmult_plus_distr_r, IHn. reflexivity.
 Qed.
 
+Lemma Mscale_Msum_distr_r : forall {d1 d2} n (c : C) (f : nat -> Matrix d1 d2),
+  big_sum (fun i => c .* (f i)) n = c .* big_sum f n.
+Proof.
+  intros d1 d2 n c f.
+  induction n; simpl. lma.
+  rewrite Mscale_plus_distr_r, IHn. reflexivity.
+Qed.
+
 Lemma Mscale_Msum_distr_l : forall {d1 d2} n (f : nat -> C) (A : Matrix d1 d2),
   big_sum (fun i => (f i) .* A) n = big_sum f n .* A.
 Proof.
@@ -1522,7 +1530,6 @@ Proof.
   reflexivity.
 Qed.
 
-
 Lemma Msum_Csum : forall {d1 d2} n (f : nat -> Matrix d1 d2) i j,
   (big_sum f n) i j = big_sum (fun x => (f x) i j) n.
 Proof.
@@ -1543,6 +1550,17 @@ Proof.
   apply big_sum_unique. 
   exists x; split; simpl; auto.
 Qed.
+
+Lemma Msum_plus : forall n {d1 d2} (f g : nat -> Matrix d1 d2), 
+    big_sum (fun x => f x .+ g x) n = big_sum f n .+ big_sum g n.
+Proof.
+  clear.
+  intros.
+  induction n; simpl.
+  lma.
+  rewrite IHn. lma.
+Qed.
+
 
 
 (** * Defining matrix altering/col operations *)
