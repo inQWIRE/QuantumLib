@@ -583,9 +583,24 @@ Proof.
   lia.
 Qed.
 
+Lemma big_sum_swap_order : forall {G} `{Comm_Group G} (f : nat -> nat -> G) m n,
+  big_sum (fun j => big_sum (fun i => f j i) m) n = 
+    big_sum (fun i => big_sum (fun j => f j i) n) m.
+Proof.
+  intros.
+  induction n; simpl.
+  rewrite big_sum_0 by auto. reflexivity.
+  rewrite IHn. rewrite <- big_sum_plus. reflexivity.
+Qed.
 
-
-
+Lemma big_sum_diagonal : forall {G} `{Monoid G} (f : nat -> nat -> G) n,
+    (forall i j, (i < n)%nat -> (j < n)%nat -> (i <> j)%nat -> f i j = 0) ->
+    big_sum (fun i => big_sum (fun j => f i j) n) n = big_sum (fun i => f i i) n.
+Proof.
+  intros. apply big_sum_eq_bounded. intros.
+  apply big_sum_unique. 
+  exists x; split; simpl; auto.
+Qed.
 
 (*
  *

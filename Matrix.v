@@ -1541,16 +1541,6 @@ Proof.
   reflexivity.
 Qed.
 
-Lemma Msum_diagonal :
-  forall {d1 d2} n (f : nat -> nat -> Matrix d1 d2),
-    (forall i j, (i < n)%nat -> (j < n)%nat -> (i <> j)%nat -> f i j = Zero) ->
-    big_sum (fun i => big_sum (fun j => f i j) n) n = big_sum (fun i => f i i) n.
-Proof.
-  intros. apply big_sum_eq_bounded. intros.
-  apply big_sum_unique. 
-  exists x; split; simpl; auto.
-Qed.
-
 Lemma Msum_plus : forall n {d1 d2} (f g : nat -> Matrix d1 d2), 
     big_sum (fun x => f x .+ g x) n = big_sum f n .+ big_sum g n.
 Proof.
