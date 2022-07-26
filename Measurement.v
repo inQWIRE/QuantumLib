@@ -50,20 +50,6 @@ Proof.
   all: bdestruct_all; lca.
 Qed.
 
-(* 
-Lemma Rsum_Msum : forall n (f : nat -> Square 1),
-  big_sum (fun i : nat => fst (f i O O)) n = fst (big_sum f O O n).
-Proof.
-  intros.
-  rewrite Msum_Csum.
-  rewrite <- Rsum_Csum.
-  induction n; simpl.
-  reflexivity.
-  rewrite IHn.
-  reflexivity.
-Qed.
-*)
-
 Lemma prob_partial_meas_alt : 
   forall {m n} (ϕ : Vector (2^m)) (ψ : Vector (2^(m + n))),
   @prob_partial_meas m n ϕ ψ = ((norm ((ϕ ⊗ I (2 ^ n))† × ψ)) ^ 2)%R.
@@ -98,7 +84,6 @@ Proof.
   intros.
   destruct a; destruct b; easy. 
 Qed.
-  
 
 Lemma partial_meas_tensor : 
   forall {m n} (ϕ : Vector (2^m)) (ψ1 : Vector (2^m)) (ψ2 : Vector (2^n)),

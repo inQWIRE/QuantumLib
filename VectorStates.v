@@ -1179,119 +1179,8 @@ Hint Rewrite (@update_index_eq bool) (@update_index_neq bool) (@update_twice_eq 
 
 
 (*******************************)
-(**        Indexed Sum        **)
+(**   Indexed Vector Sum      **)
 (*******************************)
-
-
-(* TODO: remove this and just use big_sum *)                                          
-(* Definition vsum {d} n (f : nat -> Vector d) : Vector d := big_sum f n.
-
-Lemma vsum_WF : forall {d} n (f : nat -> Vector d), 
-  (forall i, (i < n)%nat -> WF_Matrix (f i)) -> 
-  WF_Matrix (vsum n f).
-Proof. intros. unfold vsum. apply WF_Msum; auto. Qed.
-#[export] Hint Resolve vsum_WF : wf_db.
-
-Lemma vsum_eq : forall {d} n (f f' : nat -> Vector d),
-  (forall i, (i < n)%nat -> f i = f' i) -> vsum n f = vsum n f'.
-Proof. intros. unfold vsum. apply big_sum_eq_bounded; auto. Qed.
-
-Lemma vsum_empty : forall {d} (f : nat -> Vector d), vsum O f = Zero.
-Proof. reflexivity. Qed.
-
-Lemma vsum_extend_r : forall {d} n (f : nat -> Vector d), 
-  vsum (S n) f = vsum n f .+ f n.
-Proof. reflexivity. Qed.
-
-Lemma vsum_extend_l : forall {d} n (f : nat -> Vector d),
-  vsum (S n) f = (f O) .+ vsum n (shift f 1).
-Proof. 
-  intros d n f.
-  induction n.
-  simpl. lma.
-  rewrite vsum_extend_r.
-  rewrite IHn; clear IHn.  
-  rewrite vsum_extend_r.
-  rewrite shift_simplify.
-  replace (n + 1)%nat with (S n) by lia. 
-  lma.
-Qed.
-
-Lemma kron_vsum_distr_l : forall d1 d2 n (f : nat -> Vector d1) (ψ : Vector d2),
-  ψ ⊗ vsum n f = vsum n (fun i => ψ ⊗ (f i)).
-Proof. intros. unfold vsum. rewrite kron_Msum_distr_l. reflexivity. Qed.
-
-Lemma kron_vsum_distr_r : forall d1 d2 n (f : nat -> Vector d1) (ψ : Vector d2),
-  vsum n f ⊗ ψ = vsum n (fun i => (f i) ⊗ ψ).
-Proof. intros. unfold vsum. rewrite kron_Msum_distr_r. reflexivity. Qed.
-
-Lemma Mmult_vsum_distr_l : forall {d m} n (f : nat -> Vector d) (U : Matrix m d),
-  U × vsum n f = vsum n (fun i => U × (f i)).
-Proof. intros. unfold vsum. apply Mmult_Msum_distr_l. Qed.
-
-Lemma Mscale_vsum_distr_r : forall {d} x n (f : nat -> Vector d),
-  x .* vsum n f = vsum n (fun i => x .* f i).
-Proof. intros. unfold vsum. 
-       eapply (@big_sum_scale_l _ C _ _ _ _ _ _ _ _ _ (M_is_vector_space d 1)). (* this is bad *)
-Qed.
-
-Lemma Mscale_vsum_distr_l : forall {d} n (f : nat -> C) (A : Vector d),
-  vsum n (fun i => (f i) .* A) = big_sum f n .* A.
-Proof. intros. unfold vsum. apply Mscale_Msum_distr_l. Qed.
-
-Lemma vsum_0 : forall {d} n (f : nat -> Vector d),
-  (forall x, x < n -> f x = Zero) -> vsum n f = Zero.
-Proof. intros. unfold vsum. apply (@big_sum_0_bounded _ (M_is_monoid d 1)). easy. Qed.
-
-Lemma vsum_constant : forall {d} n (v : Vector d),  vsum n (fun _ => v) = INR n .* v.
-Proof. intros. unfold vsum. apply Msum_constant. Qed.
-
-Lemma vsum_plus : forall d n (f1 f2 : nat -> Vector d),
-  vsum n (fun i => (f1 i) .+ (f2 i)) = vsum n f1 .+ vsum n f2.
-Proof. intros. unfold vsum. apply (@big_sum_plus _ _ _ (M_is_comm_group d 1)). Qed.
-
-Lemma vsum_swap_order : forall {d} m n (f : nat -> nat -> Vector d),
-  vsum n (fun j => vsum m (fun i => f j i)) = vsum m (fun i => vsum n (fun j => f j i)).
-Proof.
-  intros d m n f.
-  induction n.
-  rewrite vsum_empty. 
-  rewrite vsum_0 by auto. reflexivity.
-  rewrite vsum_extend_r.
-  rewrite IHn. rewrite <- vsum_plus. reflexivity.
-Qed.
-
-Lemma vsum_unique : forall d n (f : nat -> Vector d) (v : Vector d),
-  (exists i, i < n /\ f i = v /\ (forall j, j < n -> i <> j -> f j = Zero)) -> 
-  vsum n f = v.
-Proof. intros. unfold vsum. apply big_sum_unique. simpl; auto. 
-Qed.
-
-Lemma Mmult_adj_vsum_distr_l :
-  forall {d} n (f : nat -> Vector d) (v : Vector d),
-    (vsum n f) † × v = vsum n (fun i => (f i) † × v).
-Proof.
-  intros.
-  induction n. 
-  rewrite vsum_empty. Msimpl. reflexivity.
-  rewrite vsum_extend_r. 
-  rewrite Mplus_adjoint. rewrite Mmult_plus_distr_r, IHn. reflexivity.
-Qed.
-
-Lemma vsum_diagonal :
-  forall n (f : nat -> nat -> Vector 1),
-    (forall i j, (i < n)%nat -> (j < n)%nat -> (i <> j)%nat -> f i j = Zero) ->
-    vsum n (fun i => vsum n (fun j => f i j)) = vsum n (fun i => f i i).
-Proof. intros. unfold vsum. apply Msum_diagonal. auto. Qed.
-
-Lemma vsum_big_sum : forall {d n} (f : nat -> Vector d) x y,
-  vsum n f x y = big_sum (fun i => f i x y) n.
-Proof.
-  intros d n f x y. induction n.
-  - easy.
-  - rewrite vsum_extend_r. unfold Mplus. rewrite IHn. easy.
-Qed.
-*)
 
 (* Any vector ψ can be written as a weighted sum over basis vectors. *)
 Lemma basis_vector_decomp : forall {d} (ψ : Vector d),
@@ -1318,22 +1207,8 @@ Proof.
     bdestruct_all; simpl; lca.
 Qed.
 
-(* TODO: move these lemmas to summation and define shift in summation.v *)
-
-(* Two natural ways to split a vsum into two parts *)
-Lemma vsum_sum1 : forall d m n (f : nat -> Vector d),
-  big_sum f (m + n) = big_sum f m .+ big_sum (shift f m) n.
-Proof.
-  intros d m n f.
-  rewrite big_sum_sum.
-  apply f_equal_gen; auto.
-  apply big_sum_eq_bounded; intros.
-  unfold shift.
-  apply f_equal; lia.
-Qed.
-
 Local Opaque Nat.mul.
-Lemma vsum_sum2 : forall d n (f : nat -> Vector d),
+Lemma vsum_sum : forall d n (f : nat -> Vector d),
   big_sum f (2 * n) =
   big_sum (fun i => f (2 * i)%nat) n .+ big_sum (fun i => f (2 * i + 1)%nat) n.
 Proof.
@@ -1347,8 +1222,6 @@ Proof.
   lma.
 Qed.
 Local Transparent Nat.mul.
-
-Search (WF_Matrix (big_sum _ _)).
 
 Lemma vsum_split : forall {d} (n i : nat) (v : nat -> Vector d),
   (i < n)%nat ->
@@ -1690,13 +1563,12 @@ Proof.
   rewrite kron_plus_distr_r.
   rewrite 2 kron_Msum_distr_l.
   replace (2 * N) with (N + N) by lia.
-  rewrite vsum_sum1.
+  rewrite big_sum_sum.
   replace (N + N) with (2 * N) by lia.
   apply f_equal_gen; try apply f_equal; apply big_sum_eq_bounded; intros.
   distribute_scale. 
   rewrite basis_vector_prepend_0 by lia.
   reflexivity.
-  rewrite shift_simplify.
   distribute_scale.
   rewrite <- Cexp_add, <- Rmult_plus_distr_l, <- plus_INR. 
   rewrite basis_vector_prepend_1 by lia.
@@ -1789,7 +1661,7 @@ Proof.
     simpl vkron.
     rewrite IHn; clear.
     replace (2 ^ S n')%nat with (2 * 2 ^ n')%nat by reflexivity. 
-    rewrite vsum_sum2.
+    rewrite vsum_sum.
     rewrite kron_Msum_distr_r.
     assert (H' := (@big_sum_plus _ _ _ (M_is_comm_group (2 * 2 ^ n')%nat 1%nat))).
     simpl in H'.

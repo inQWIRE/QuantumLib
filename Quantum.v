@@ -1872,22 +1872,6 @@ Proof.
   reflexivity.
 Qed.
 
-
-(* This is compose_super_correct 
-Lemma WF_Superoperator_compose : forall m n p (s : Superoperator n p) (s' : Superoperator m n),
-    WF_Superoperator s ->
-    WF_Superoperator s' ->
-    WF_Superoperator (compose_super s s').
-Proof.
-  unfold WF_Superoperator.
-  intros m n p s s' H H0 ρ H1.
-  unfold compose_super.
-  apply H.
-  apply H0.
-  easy.
-Qed.
-*)
-
 (**************)
 (* Automation *)
 (**************)

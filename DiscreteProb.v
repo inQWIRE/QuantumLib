@@ -1501,7 +1501,6 @@ Proof.
     rewrite <- le_plus_minus in H0.
     rewrite plus_comm in H0.
     assumption.
-    Search (?a <= _ * ?a)%nat.
     destruct (mult_O_le (2^k) (2^n))%nat; auto.
     assert (2 <> 0)%nat by lia.
     apply (pow_positive 2 n) in H2.
