@@ -17,4 +17,4 @@
               "\|  about quantum computation and quantum programs.
  )
  (depends
-   (coq (and (>= 8.12) (<= 8.15)))))
+   (coq (>= 8.12))))
