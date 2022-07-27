@@ -102,7 +102,7 @@ Qed.
 (** vsum terms can be arbitrarily reordered *)
 Lemma vsum_reorder : forall {d} n (v : nat -> Vector d) f,
   permutation n f ->
-  vsum n v = vsum n (fun i => v (f i)).
+  big_sum v n = big_sum (fun i => v (f i)) n.
 Proof.
   intros.
   generalize dependent f.
@@ -111,7 +111,7 @@ Proof.
   intros f [g Hg].
   destruct (Hg n) as [_ [H1 [_ H2]]]; try lia.
   rewrite (vsum_eq_up_to_fswap _ f _ (g n) n) by auto.
-  repeat rewrite vsum_extend_r.
+  repeat rewrite <- big_sum_extend_r.
   rewrite fswap_simpl2.
   rewrite H2.
   specialize (IHn (fswap f (g n) n)).

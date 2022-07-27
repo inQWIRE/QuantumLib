@@ -3,7 +3,7 @@ Require Import Prelim.
 Require Import Summation. 
 Require Import FinFun. 
 Require Import ListDec.
-
+Require Import Setoid.
 
 (* two important list functions used are NoDup and incl *)
 (* in the following sections, we expand on these list functions *)
@@ -11,7 +11,8 @@ Require Import ListDec.
 
 
 
-Program Instance list_is_monoid : forall {X}, Monoid (list X) := 
+
+Program Instance list_is_monoid {X} : Monoid (list X) := 
   { Gzero := []
   ; Gplus := @app X
   }.
@@ -29,6 +30,43 @@ Proof. induction l.
          rewrite app_length, (IHl (G_big_plus l)); easy. 
 Qed.
 
+Lemma length_big_sum_list : forall {X} (l : list (list X)),
+  length (G_big_plus l) = G_big_plus (map (@length X) l).
+Proof. intros. 
+       rewrite (big_sum_list_length _ (G_big_plus l)); easy.
+Qed.
+
+Lemma In_big_sum_list_In_part : forall {X} (l : list (list X)) (x : X),
+  In x (G_big_plus l) -> 
+  exists l1, In l1 l /\ In x l1.
+Proof. induction l. 
+       - easy.
+       - intros. 
+         simpl in H; apply in_app_or in H.
+         destruct H. 
+         exists a; split; try left; easy. 
+         apply IHl in H.
+         destruct H as [l1 [H H0]].
+         exists l1; split.
+         right; easy. 
+         easy. 
+Qed.
+
+Lemma In_part_In_big_sum_list : forall {X} (l : list (list X)) (x : X),
+  (exists l1, In l1 l /\ In x l1) ->
+  In x (G_big_plus l).
+Proof. induction l.
+       - intros. 
+         destruct H; easy. 
+       - intros. 
+         destruct H as [l1 [H H0]].
+         destruct H; subst.
+         simpl; apply in_or_app; left; easy.
+         simpl; apply in_or_app; right. 
+         apply IHl.
+         exists l1.
+         easy. 
+Qed.
 
 
 Inductive eq_mod_perm {X} (l1 l2 : list X) : Prop := 
@@ -40,6 +78,72 @@ Infix "⩦" := eq_mod_perm (at level 70).
 Definition disjoint {X} (l1 l2 : list X) : Prop := NoDup (l1 ++ l2).
 
 
+
+Lemma In_EMP_compat : forall {X} (l1 l2 : list X) (x : X),
+  l1 ⩦ l2 -> (iff (In x l1) (In x l2)).
+Proof. intros; split; intros; inversion H.
+       apply H3; easy.
+       apply H4; easy.
+Qed.
+
+
+
+
+Add Parametric Morphism {X} : (@In X)
+  with signature eq ==> eq_mod_perm ==> iff as Pplusf_mor.
+Proof. intros x l1 l2 H. 
+       apply In_EMP_compat; easy. 
+Qed.
+
+
+Lemma NoDup_app : forall {X} (l1 l2 : list X),
+  NoDup l1 -> NoDup l2 ->
+  (forall x, In x l1 -> ~ (In x l2)) ->
+  NoDup (l1 ++ l2).
+Proof. induction l1; intros. 
+       - easy. 
+       - simpl; apply NoDup_cons.
+         unfold not; intros; apply (H1 a);  try (left; easy). 
+         apply in_app_or in H2.
+         destruct H2; auto.
+         inversion H; easy.
+         apply IHl1; auto.
+         inversion H; auto.
+         intros. 
+         apply H1; right; easy.
+Qed.
+
+Lemma length_lt_new_elem : forall {X} (l2 l1 : list X) 
+                                  (eq_dec : forall x y : X, {x = y} + {x <> y}),
+  length l1 < length l2 ->
+  NoDup l2 -> 
+  exists x, In x l2 /\ ~ (In x l1).
+Proof. induction l2; intros. 
+       - destruct l1; try easy.
+       - destruct (In_dec eq_dec a l1); simpl in *.
+         apply (remove_length_lt eq_dec l1 a) in i.
+         assert (H' : length (remove eq_dec a l1) < length l2). lia. 
+         apply IHl2 in H'; auto.
+         destruct H' as [x [H1 H2]].
+         exists x; split.
+         right; easy.
+         unfold not; intros; apply H2.
+         apply in_in_remove; auto.
+         destruct (eq_dec x a); auto; subst.
+         inversion H0; easy.
+         inversion H0; easy.
+         exists a; split; auto.
+Qed.         
+
+Lemma length_gt_EMP : forall {X} (l1 l2 : list X),
+  NoDup l1 -> NoDup l2 -> 
+  incl l1 l2 -> 
+  length l1 >= length l2 ->
+  l1 ⩦ l2.
+Proof. intros. 
+       split; auto.
+       apply NoDup_length_incl; auto; lia.
+Qed.
 
 Lemma EMP_reduce : forall {X} (l1 l21 l22 : list X) (a : X), 
   (a :: l1) ⩦ (l21 ++ (a::l22)) -> l1 ⩦ (l21 ++ l22). 
@@ -85,6 +189,8 @@ Proof. induction l1; intros; inversion H.
 Qed.
 
 
+
+
 (* Could work, but needs eq decidability 
 Lemma eq_length_gives_map : forall {X} (h : decidable_eq X) (l1 l2 : list X),
   NoDup l1 -> NoDup l2 -> length l1 = length l2 ->
@@ -108,10 +214,18 @@ Proof. induction l1.
 *)
 
 
+(* quick little lemma useing FinFun's Listing *)
+Lemma list_rep_length_eq : forall {X} (l1 l2 : list X),
+  Listing l1 -> Listing l2 -> length l1 = length l2.
+Proof. intros. 
+       destruct H; destruct H0.
+       apply Nat.le_antisymm; apply NoDup_incl_length; auto; unfold incl; intros. 
+       apply H2.
+       apply H1.
+Qed.
 
 
-
-
+(* testing for NoDup tactic, to be developted... *)
 Lemma test : NoDup [1;2;3;4;5]%nat.                                            
 Proof. repeat (apply NoDup_cons; unfold not; intros; repeat (destruct H; try lia)).
        apply NoDup_nil.
@@ -119,15 +233,6 @@ Qed.
 
 
 
-(* quick little lemma useing FinFun's Listing *)
-Lemma list_rep_length_le : forall G `{Monoid G} (gs1 gs2 : list G),
-  Listing gs1 -> Listing gs2 -> length gs1 = length gs2.
-Proof. intros. 
-       destruct H0; destruct H1.
-       apply Nat.le_antisymm; apply NoDup_incl_length; auto; unfold incl; intros. 
-       apply H3.
-       apply H2.
-Qed.
 
 
 
@@ -135,13 +240,21 @@ Qed.
 Class FiniteGroup G `{Group G} :=
   { G_list_rep : list G
   ; G_finite_ver : Listing G_list_rep      
-  ; G_eq_dec : decidable_eq G
+  ; G_eq_dec : forall x y : G, {x = y} + {x <> y}
   }.
 
 Infix "·" := Gplus (at level 40) : group_scope.
 
 Definition group_size G `{FiniteGroup G} := length G_list_rep.
 
+Lemma group_size_gt_0 : forall G `{FiniteGroup G},
+  group_size G > 0.
+Proof. intros. 
+       assert (H' : In 0 G_list_rep).
+       { apply G_finite_ver. }
+       unfold group_size.
+       destruct G_list_rep; try easy; simpl; lia.
+Qed.
 
 Lemma finitegroup_finite : forall G `{FiniteGroup G},
   Finite' G.
@@ -182,9 +295,7 @@ Proof. intros.
          rewrite Gplus_assoc, Gopp_r, Gplus_0_l; easy. 
 Qed.
 
-
-
-
+  
 
 (* defining homomorphisms between groups *)
 
@@ -211,7 +322,7 @@ Proof. intros.
 Qed.
 
 Lemma homo_inv : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (h : H),
-  group_homomorphism H G f -> f (Gopp h) = Gopp (f h).
+  group_homomorphism H G f -> f (- h) = - (f h).
 Proof. intros. 
        apply (Gplus_cancel_l _ _ (f h)).
        rewrite Gopp_r, <- H6, Gopp_r.
@@ -219,8 +330,62 @@ Proof. intros.
        easy. 
 Qed.
 
+Lemma sub_group_closed_under_inv : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (a : G),
+  inclusion_map H G f -> 
+  In a (map f G_list_rep) -> In (- a) (map f G_list_rep).
+Proof. intros.
+       apply in_map_iff in H7; destruct H7 as [x [H7 H8]].
+       apply in_map_iff.
+       exists (-x); split.
+       rewrite <- H7; apply (homo_inv H G).
+       inversion H6; easy.
+       apply G_finite_ver.
+Qed.
 
-Lemma cosets_same : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (a b : G),
+Lemma sub_group_closed_under_mul : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (a b : G),
+  inclusion_map H G f -> 
+  In a (map f G_list_rep) -> In b (map f G_list_rep) ->
+  In (a · b) (map f G_list_rep).
+Proof. intros. 
+       apply in_map_iff in H7; destruct H7 as [xa [H7 H9]].
+       apply in_map_iff in H8; destruct H8 as [xb [H8 H10]].
+       apply in_map_iff.
+       exists (xa · xb); split.
+       inversion H6.
+       rewrite H12; subst; easy.
+       apply G_finite_ver.
+Qed.
+
+Lemma in_own_coset : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (a : G),
+  inclusion_map H G f -> 
+  In a (map (Gplus a) (map f G_list_rep)).
+Proof. intros. 
+       rewrite map_map.
+       apply in_map_iff.
+       exists 0; split.
+       erewrite homo_id, Gplus_0_r; auto.
+       inversion H6; easy. 
+       apply G_finite_ver.
+Qed.
+
+
+Lemma in_coset_cancel : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (a b : G),
+  inclusion_map H G f -> 
+  In a (map (Gplus b) (map f G_list_rep)) <-> In ((- b) · a) (map f G_list_rep).
+Proof. split; intros. 
+       - rewrite map_map in H7.
+         apply in_map_iff in H7; destruct H7 as [x [H7 H8]].
+         apply in_map_iff. 
+         exists x; split; auto.
+         rewrite <- H7; solve_group.  
+       - rewrite map_map.
+         apply in_map_iff in H7; destruct H7 as [x [H7 H8]].
+         apply in_map_iff. 
+         exists x; split; auto.
+         rewrite H7; solve_group.
+Qed.
+
+Lemma cosets_same1 : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (a b : G),
   inclusion_map H G f -> 
   (exists x, In x (map (Gplus a) (map f G_list_rep)) /\ In x (map (Gplus b) (map f G_list_rep))) ->
   (map (Gplus a) (map f G_list_rep)) ⩦ (map (Gplus b) (map f G_list_rep)).
@@ -264,8 +429,182 @@ Proof. intros.
          inversion H6; easy. 
 Qed.
 
-(*
+Lemma cosets_same2 : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (a b : G),
+  inclusion_map H G f -> 
+  (In b (map (Gplus a) (map f G_list_rep))) ->
+  (map (Gplus a) (map f G_list_rep)) ⩦ (map (Gplus b) (map f G_list_rep)).
+Proof. intros. 
+       apply (cosets_same1 _ _ _ a b); auto.
+       exists b; split; auto.
+       apply (in_own_coset _ _ _ b); auto.
+Qed.
 
+Lemma cosets_diff : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (a b : G),
+  inclusion_map H G f ->
+  ~ (In b (map (Gplus a) (map f G_list_rep))) ->
+  NoDup ((map (Gplus a) (map f G_list_rep)) ++ (map (Gplus b) (map f G_list_rep))).
+Proof. intros.
+       inversion H6; subst.
+       apply NoDup_app.
+       all : repeat (try apply Injective_map_NoDup; try apply Gplus_injective); auto. 
+       all : try (apply G_finite_ver).
+       intros. 
+       unfold not; intros; apply H7.
+       apply (In_EMP_compat _ (map (Gplus b) (map f G_list_rep))).
+       apply (cosets_same1 _ _ _ a b H6); auto.
+       exists x; split; easy. 
+       apply (in_own_coset _ _ _ b); auto.
+Qed.
+
+
+(*
+Ltac lfa (
+
+
+ lfa H. instead, assert F is a field, use tactic, then prove assertion.
+ Put all in Ltac. use frech H, etc... like in prep_mat_eq 
+
+
+instead of 
+`assert (H : field G) by auto`,
+do
+let H := fresh “H” in assert ...
+
+... clear H
+
+
+*)
+
+
+       
+(* how do I avoid having to state list_monoid_G here? *)
+Definition coset_rep_list_to_cosets H G `{FiniteGroup H} `{FiniteGroup G} 
+                                      (f : H -> G) (l : list G) : list G :=
+(G_big_plus (map (fun g => map (Gplus g) (map f G_list_rep)) l)).
+
+
+
+Lemma extend_coset_rep_list : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (l : list G),
+  inclusion_map H G f -> 
+  NoDup (coset_rep_list_to_cosets H G f l) ->
+  length (coset_rep_list_to_cosets H G f l) < group_size G ->
+  exists g, NoDup (coset_rep_list_to_cosets H G f (g::l)).
+Proof. intros.
+       apply length_lt_new_elem in H8.
+       destruct H8 as [x [H8 H9]].
+       exists x; unfold coset_rep_list_to_cosets; simpl. 
+       apply NoDup_app.
+       repeat (try apply Injective_map_NoDup; try apply Gplus_injective); 
+         inversion H6; auto; apply G_finite_ver.
+       apply H7.
+       intros. 
+       unfold not; intros; apply H9.
+       unfold coset_rep_list_to_cosets.
+       apply In_big_sum_list_In_part in H11. 
+       destruct H11 as [l1 [H11 H12]].
+       apply (in_coset_cancel H G) in H10; auto.
+       apply in_map_iff in H11.
+       destruct H11 as [a [H11 H13]]; subst.
+       apply (in_coset_cancel H G) in H12; auto. 
+       apply (sub_group_closed_under_inv H G) in H10; auto.  
+       rewrite Gopp_plus_distr, Gopp_involutive in H10.
+       apply (sub_group_closed_under_mul H G f (- a · x0) (- x0 · x)) in H10; auto.
+       rewrite Gplus_assoc, <- (Gplus_assoc _ x0), Gopp_r, Gplus_0_r in H10.
+       apply In_part_In_big_sum_list.
+       exists (map (Gplus a) (map f G_list_rep)); split.
+       apply in_map_iff.
+       exists a; split; easy.
+       apply (in_coset_cancel H G); auto.
+       apply G_eq_dec.
+       apply G_finite_ver.
+Qed.       
+
+Lemma length_cosets : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (l : list G),
+  inclusion_map H G f -> 
+  length (coset_rep_list_to_cosets H G f l) = (group_size H * length l)%nat.
+Proof. intros.  
+       unfold coset_rep_list_to_cosets.
+       rewrite length_big_sum_list.
+       rewrite (big_plus_constant _ (group_size H)).
+       rewrite times_n_nat, map_map, map_length; easy. 
+       intros.
+       rewrite map_map in H7.
+       apply in_map_iff in H7; destruct H7 as [x [H7 H8]]; subst.
+       rewrite map_map, map_length; easy.
+Qed.
+
+
+Lemma get_coset_rep_list1 : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (n : nat),
+  inclusion_map H G f -> 
+  group_size H * n <= group_size G ->
+  exists l, length l = n /\ NoDup (coset_rep_list_to_cosets H G f l).
+Proof. induction n.
+       - intros.
+         exists []; split; try easy.
+         unfold coset_rep_list_to_cosets; simpl.
+         apply NoDup_nil.
+       - intros. 
+         assert (H8 : group_size H * n < group_size G). 
+         { assert (H' := group_size_gt_0 H). lia. }
+         assert (H9 := H6).
+         apply IHn in H9; try lia.
+         destruct H9 as [l [H9 H10]].
+         apply (extend_coset_rep_list H G) in H10; auto.
+         destruct H10 as [g H10].
+         exists (g :: l); split; simpl; try lia; auto.
+         rewrite length_cosets; subst; easy.
+Qed.
+
+Lemma get_coset_rep_list2 : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G),
+  inclusion_map H G f -> 
+  exists l, group_size H * length l >= group_size G /\ NoDup (coset_rep_list_to_cosets H G f l).
+Proof. intros. 
+       destruct (get_coset_rep_list1 H G f (group_size G / group_size H)%nat) as [l [H7 H8]]; auto.
+       apply Nat.mul_div_le. 
+       assert (H' := group_size_gt_0 H). lia. 
+       bdestruct (group_size H * length l <? group_size G).
+       - destruct (extend_coset_rep_list H G f l) as [g H10]; auto.
+         rewrite length_cosets; auto.
+         exists (g :: l); split; auto.
+         simpl; rewrite H7.
+         assert (H' := group_size_gt_0 H).
+         assert (H'' : group_size H <> 0). 
+         destruct (group_size H); try easy.
+         apply (Nat.mul_succ_div_gt (group_size G) (group_size H)) in H''.
+         lia.
+       - exists l; split; easy.
+Qed.         
+
+
+
+Lemma get_full_coset_reps1 : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G),
+  inclusion_map H G f -> 
+  exists (l : list G), (coset_rep_list_to_cosets H G f l) ⩦ G_list_rep.
+Proof. intros. 
+       destruct (get_coset_rep_list2 H G f) as [l [H7 H8]]; auto. 
+       exists l. 
+       apply length_gt_EMP; auto.
+       apply G_finite_ver.
+       unfold incl; intros; apply G_finite_ver.
+       rewrite length_cosets; easy.
+Qed.   
+
+
+Theorem Lagranges_Theorem : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G),
+  inclusion_map H G f -> 
+  exists d, (group_size H * d)%nat = group_size G.
+Proof. intros. 
+       destruct (get_full_coset_reps1 H G f) as [l H7]; auto.
+       exists (length l).
+       rewrite <- (length_cosets H G f); auto. 
+       unfold group_size.
+       apply EMP_eq_length.
+       easy.
+Qed.       
+
+
+(*
+n
 
 Lemma cosets_add : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (l : list G) (a : G),
   inclusion_map H G f -> ~ (In a (G_big_plus (map (fun b -> map (Gplus b) (map f G_list_rep))))) ->
@@ -418,9 +757,9 @@ Proof. split.
          destruct a; simpl; 
            repeat (try (left; easy); right).
 Qed.
+Next Obligation.
+Proof. destruct x; destruct y; try (left; easy); right; easy. Qed.
 
-Next Obligation. 
-Admitted.
 
 (* **) 
 
