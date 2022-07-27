@@ -964,8 +964,9 @@ Lemma Csqrt_inv : forall (r : R), 0 < r -> RtoC (√ (/ r)) = (/ √ r).
 Proof.
   intros r H.
   apply c_proj_eq; simpl.
-  field_simplify_eq [(pow2_sqrt r (or_introl H)) (sqrt_inv r H)].
-  rewrite Rinv_r. reflexivity.
+  field_simplify_eq. 
+  rewrite sqrt_inv; auto.
+  field_simplify_eq; auto.
   apply sqrt_neq_0_compat; lra.
   apply sqrt_neq_0_compat; lra.
   field. apply sqrt_neq_0_compat; lra.
