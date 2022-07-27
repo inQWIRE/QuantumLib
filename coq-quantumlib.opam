@@ -13,7 +13,7 @@ homepage: "https://github.com/inQWIRE/QuantumLib"
 bug-reports: "https://github.com/inQWIRE/QuantumLib/issues"
 depends: [
   "dune" {>= "2.8"}
-  "coq" {>= "8.12"}
+  "coq" {>= "8.12" & <= "8.15"}
   "odoc" {with-doc}
 ]
 build: [
