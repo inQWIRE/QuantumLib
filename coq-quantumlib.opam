@@ -10,6 +10,7 @@ maintainer: ["inQWIRE Developers"]
 authors: ["inQWIRE"]
 license: "MIT"
 homepage: "https://github.com/inQWIRE/QuantumLib"
+doc: "https://inqwire.github.io/QuantumLib/toc.html"
 bug-reports: "https://github.com/inQWIRE/QuantumLib/issues"
 depends: [
   "dune" {>= "2.8"}

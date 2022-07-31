@@ -5,10 +5,11 @@
 
 (generate_opam_files true)
 
-(source (github inQWIRE/QuantumLib))
 (license MIT)
 (authors "inQWIRE")
 (maintainers "inQWIRE Developers")
+(source (github inQWIRE/QuantumLib))
+(documentation "https://inqwire.github.io/QuantumLib/toc.html")
 
 (package
  (name coq-quantumlib)
