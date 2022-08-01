@@ -1,10 +1,16 @@
 Require Export Complex.
 Require Export Quantum.
 Require Export Eigenvectors.
+Require Export Init.Datatypes.
+Require Export Coq.Sorting.Permutation.
+Require Export Coq.Lists.List.
 
 (** This file provides padding functions to extend a matrix to a larger space.
    This is useful for describing the effect of 1- and 2-qubit gates on a larger
    quantum space. *)
+
+(* embed function such that commutativity follows directly from it
+pad2 : padding square 2 matrices *)
 
 Definition pad {n} (start dim : nat) (A : Square (2^n)) : Square (2^dim) :=
   if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - (start + n))) else Zero.
@@ -40,6 +46,114 @@ Definition pad_ctrl (dim m n: nat) (u: Square 2) :=
   else
     Zero.
 
+(** Embedding matrices in I^dim *)
+
+
+Definition pad2 {dim : nat} (A : Square 2) (i : nat) : Square (2^dim) :=
+  I (2^i) ⊗ A ⊗ I (2^(dim - i - 1)).
+
+Lemma pad2_commutes : forall (A B : Square 2) (i j dim : nat),
+i <> j ->
+WF_Matrix A ->
+WF_Matrix B ->
+(i < dim)%nat -> 
+(j < dim)%nat ->
+@pad2 dim A i × @pad2 dim B j = @pad2 dim B j × @pad2 dim A i.
+Proof.
+  intros. unfold pad2.
+  gridify; trivial.
+  Qed.
+
+Fixpoint embed2 {dim : nat} (lp : (list ((Square 2) * nat))) : Square (2^dim)  :=
+  match lp with
+  | (A, i) :: lp' => @Mmult (2^dim) (2^dim) (2^dim) (pad2 A i) (embed2 lp')
+  | _         => I (2^dim)
+  end.
+
+(* Lemma pad2_diff_locations : forall (A B : Square 2) (i j : nat),
+i <> j ->  *)
+
+Lemma embed2_commutes_base : forall (i j dim : nat)(A B : Square 2) 
+(lp : (list ((Square 2) * nat))),
+  i <> j ->
+  WF_Matrix A ->
+  WF_Matrix B ->
+  (i < dim)%nat ->
+  (j < dim)%nat ->
+  @embed2 dim ((A, i) :: (B, j) :: lp) = @embed2 dim ((B, j) :: (A, i) :: lp).
+  Proof.
+    intros. simpl. rewrite <- Mmult_assoc. rewrite pad2_commutes; trivial.
+    apply Mmult_assoc.
+    Qed.
+
+(* Inductive WF_Matrix_list {m n : nat} : (list (Matrix m n)) -> Prop :=
+  | WF_nil :  WF_Matrix_list []
+  | WF_cons (a : Matrix m n) (lA : (list (Matrix m n))) (H1 : WF_Matrix_list lA) (H2 : WF_Matrix a) : WF_Matrix_list (a :: lA). *)
+
+Definition WF_Matrix_list {m n : nat} (la : list (Matrix m n)) : Prop 
+:= forall  (a : Matrix m n),
+In a la -> WF_Matrix a.
+
+
+(* NoDup *)
+(* Inductive disjoint_list {A : Type} : list A -> Prop :=
+  | disjoint_nil : disjoint_list []
+  | disjoint_succ (a : A) (lA : list A) (H1 : ~ In a lA) (H2 : disjoint_list lA) : disjoint_list (a :: lA). *)
+
+Print Forall.
+Check Permutation_Forall.
+
+Lemma WF_list_permutation_WF : forall {m n : nat} (lp1 lp2 : list (Matrix m n)),
+WF_Matrix_list lp2 -> Permutation lp1 lp2 -> WF_Matrix_list lp1.
+Proof.
+  intros. unfold WF_Matrix_list in *. intros.
+  pose proof (Permutation_in a H0). apply H2 in H1. destruct H with a m n; trivial.
+  left; lia. apply H; assumption.
+  Qed. 
+(*   
+Lemma disjoint_list_permutation_disjoint : forall (A : Type) (l1 l2 : list A),
+disjoint_list l1 -> Permutation l1 l2 -> disjoint_list l2.
+Proof.
+  intros. induction H0.
+  + constructor.
+  + apply disjoint_succ.
+  (* x not in l, hence x not in l' *)
+    - inversion H; subst.   *)
+
+Lemma embed2_commutes : forall (dim : nat) (lp1 lp2 : list ((Square 2) * nat)),
+  WF_Matrix_list (map fst lp1) ->
+  NoDup (map snd lp1) ->
+  Forall (fun n => (n < dim)%nat) (map snd lp1) ->
+  Permutation lp1 lp2 ->
+  @embed2 dim lp1 = @embed2 dim lp2.
+  Proof.
+    intros. induction H2; trivial.
+    + simpl. rewrite IHPermutation; trivial. 
+      - unfold WF_Matrix_list in H. simpl in *. destruct H with (fst x) 2%nat 2%nat.
+      left. reflexivity. left. lia. unfold WF_Matrix_list.
+      intros. apply H. right; assumption.
+      - inversion H0; subst; assumption.
+      - simpl in H1. rewrite Forall_cons_iff in H1. apply H1.
+    + destruct x, y. apply embed2_commutes_base.
+      - simpl in H0. inversion H0; subst. simpl in *. intros n0eqn.
+      apply H4. left. symmetry. assumption.
+      - unfold WF_Matrix_list in H. simpl in *. destruct H with m0 2%nat 2%nat.
+      left. reflexivity. left. lia. specialize H with m0. apply H.
+      left. reflexivity.
+      - unfold WF_Matrix_list in H. simpl in *. destruct H with m 2%nat 2%nat.
+      right. left. reflexivity. left. lia. specialize H with m. apply H.
+      right. left. reflexivity.
+      - inversion H1; subst. assumption.
+      - inversion H1; subst. inversion H5; subst. assumption.
+    + rewrite IHPermutation1. rewrite IHPermutation2.
+    reflexivity.
+    apply WF_list_permutation_WF with (map fst l); try assumption.
+    apply Permutation_map, Permutation_sym. assumption.
+    pose proof (Permutation_map snd H2_). apply (Permutation_NoDup H2 H0).
+    pose proof (Permutation_map snd H2_). eapply Permutation_Forall. apply H2.
+    all : assumption.
+    Qed.
+    
 Definition if_matrix {n} (b : bool) (u1 u2 : Square n) : Square n :=
   if b then u1 else u2.
 
@@ -308,7 +422,14 @@ Lemma pad_ctrl'_ctrl'_commutes : forall dim m n o p A B,
   WF_Matrix B ->
   pad_ctrl' dim m n A × pad_ctrl' dim o p B = pad_ctrl' dim o p B × pad_ctrl' dim m n A.
 Proof.
-  intros. unfold pad_ctrl', pad, abs_diff. bdestruct_all; simpl; 
+  intros. unfold pad_ctrl', pad, abs_diff.
+  repeat match goal with
+  | |- context [if_matrix ?b ?A ?B] => let M := fresh "M" in
+  remember (if_matrix b A B) as M end.
+  bdestruct_all; Msimpl_light; trivial.
+  gridify.
+  
+  bdestruct_all; simpl; 
   try auto with wf_db.
   + replace (Init.Nat.min m n) with m in * by lia.
     replace (Init.Nat.min o p) with o in * by lia.
@@ -336,6 +457,8 @@ Proof.
   bdestruct_all.
   all : try rewrite Mmult_0_r; try rewrite Mmult_0_l; try easy.
   
+  
+
 
 Admitted.
   (* gridify; trivial. *)
