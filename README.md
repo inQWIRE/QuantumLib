@@ -14,6 +14,8 @@ Tested with Coq versions 8.12 -- 8.15.
 
 To compile run `make all`.
 
+Stable versions of QuantumLib may be installed using `opam install coq-quantumlib`
+
 ## Using With Other Projects
 
 To install QuantumLib, run `opam pin coq-quantumlib https://github.com/inQWIRE/QuantumLib.git`. This should allow you to import QuantumLib files into other Coq files. To pull subsequent updates, run `opam install coq-quantumlib`. When importing/exporting specific files, refer to QuantumLib files as `QuantumLib.FILENAME`.
