@@ -500,7 +500,7 @@ Proof. intros.
        rewrite <- Cmult_assoc. 
        rewrite Cinv_l.
        lca. 
-       unfold norm in H.
+       unfold norm, inner_product in H.
        intro. apply H.
        rewrite H0. simpl. 
        rewrite sqrt_0.
@@ -1059,7 +1059,7 @@ Proof. intros n U. split.
            destruct H as [H1 H].   
            rewrite H. 
            unfold I. bdestruct (i =? j); try lia; easy.
-         * intros. unfold norm.
+         * intros. unfold norm, inner_product.
            assert (H1 : ((get_vec i U) † × get_vec i U) 0%nat 0%nat = 
                         inner_product (get_vec i U) (get_vec i U)).
            { unfold inner_product. reflexivity. }
@@ -1074,23 +1074,17 @@ Proof. intros n U. split.
          unfold mat_equiv; intros. 
          rewrite <- inner_product_is_mult.
          unfold orthogonal in H2. unfold I.
-         bdestruct (i =? j); bdestruct (i <? n); try lia. 
-         * unfold norm in H3.
+         bdestruct (i =? j); bdestruct (i <? n); try lia; subst. 
+         * unfold norm, inner_product in H3.
            apply H3 in H0.
            apply eq_sym in H0.
            apply sqrt_1_unique in H0.
            unfold RtoC.
-           apply c_proj_eq.
+           apply c_proj_eq; try easy.
            simpl. 
-           unfold inner_product. 
-           rewrite H4, H0. easy.
-           simpl. 
-           unfold inner_product. 
-           rewrite H4.
-           rewrite norm_real. easy.
+           apply norm_real. 
          * rewrite H2; try nia; easy.
 Qed.
-
 
 Lemma unit_out_of_v : forall {n} (v : Vector n) (x : nat),
   WF_Matrix v -> v <> Zero -> 
@@ -1101,7 +1095,6 @@ Proof. intros.
        exists S. split; try easy.
        apply unit_is_orthonormal; easy.
 Qed.
-
 
 Lemma det_by_unit : forall {n} (A B X : Square n),
   WF_Matrix A -> WF_Matrix B -> 

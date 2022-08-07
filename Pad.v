@@ -175,7 +175,8 @@ Lemma pad_ctrl_ctrl_commutes : forall dim m n o p A B,
 Proof.
   intros.
   unfold pad_ctrl, pad.
-  bdestruct_all.
+  bdestruct_all.  
   all : try rewrite Mmult_0_r; try rewrite Mmult_0_l; try easy.
   all : gridify; trivial.
 Qed.
+

@@ -787,7 +787,9 @@ Proof.
   intros. unfold apply_u. split.
   - apply pos_Cmod2_list.
   - rewrite sum_over_list_Cmod2_vec_to_list.
-    rewrite <- rewrite_norm. rewrite Mmult_adjoint.
+    rewrite <- rewrite_norm.
+    unfold inner_product.
+    rewrite Mmult_adjoint.
     rewrite <- Mmult_assoc. 
     rewrite Mmult_assoc with (A := (basis_vector (2 ^ dim) 0) †).
     destruct H as [_ H].

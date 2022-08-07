@@ -93,7 +93,7 @@ Proof.
   intros ? ? ? ? ? [H H0].
   rewrite prob_partial_meas_alt.
   rewrite probability_of_outcome_is_norm.
-  unfold norm.
+  unfold norm, inner_product.
   apply f_equal2; try reflexivity.
   do 2 apply f_equal.
   distribute_adjoint.
