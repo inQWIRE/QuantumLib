@@ -1,6 +1,5 @@
 Require Export Complex.
 Require Export Quantum.
-Require Export Eigenvectors.
 Require Export Init.Datatypes.
 Require Export Coq.Sorting.Permutation.
 Require Export Coq.Lists.List.
@@ -9,151 +8,6 @@ Require Export Coq.Lists.List.
    This is useful for describing the effect of 1- and 2-qubit gates on a larger
    quantum space. *)
 
-(* embed function such that commutativity follows directly from it
-pad2 : padding square 2 matrices *)
-
-Definition pad {n} (start dim : nat) (A : Square (2^n)) : Square (2^dim) :=
-  if start + n <=? dim then I (2^start) ⊗ A ⊗ I (2^(dim - (start + n))) else Zero.
-
-Lemma WF_pad : forall n start dim (A : Square (2^n)),
-  WF_Matrix A ->
-  WF_Matrix (pad start dim A).
-Proof.
-  intros n start dim A WFA. unfold pad.
-  bdestruct (start + n <=? dim); auto with wf_db.
-Qed.  
-
-Lemma pad_mult : forall n dim start (A B : Square (2^n)),
-  pad start dim A × pad start dim B = pad start dim (A × B).
-Proof.
-  intros.
-  unfold pad.
-  gridify.
-  reflexivity.
-Qed.
-
-Lemma pad_id : forall n dim,
-  (n < dim)%nat -> @pad 1 n dim (I 2) = I (2 ^ dim).
-Proof. intros. unfold pad. gridify. reflexivity. Qed.
-
-Definition pad_u (dim n : nat) (u : Square 2) : Square (2^dim) := @pad 1 n dim u.
-
-Definition pad_ctrl (dim m n: nat) (u: Square 2) :=
-  if (m <? n) then
-    @pad (1+(n-m-1)+1) m dim (∣1⟩⟨1∣ ⊗ I (2^(n-m-1)) ⊗ u .+ ∣0⟩⟨0∣ ⊗ I (2^(n-m-1)) ⊗ I 2)
-  else if (n <? m) then
-    @pad (1+(m-n-1)+1) n dim (u ⊗ I (2^(m-n-1)) ⊗ ∣1⟩⟨1∣ .+ I 2 ⊗ I (2^(m-n-1)) ⊗ ∣0⟩⟨0∣)
-  else
-    Zero.
-
-(** Embedding matrices in I^dim *)
-
-
-Definition pad2 {dim : nat} (A : Square 2) (i : nat) : Square (2^dim) :=
-  I (2^i) ⊗ A ⊗ I (2^(dim - i - 1)).
-
-Lemma pad2_commutes : forall (A B : Square 2) (i j dim : nat),
-i <> j ->
-WF_Matrix A ->
-WF_Matrix B ->
-(i < dim)%nat -> 
-(j < dim)%nat ->
-@pad2 dim A i × @pad2 dim B j = @pad2 dim B j × @pad2 dim A i.
-Proof.
-  intros. unfold pad2.
-  gridify; trivial.
-  Qed.
-
-Fixpoint embed2 {dim : nat} (lp : (list ((Square 2) * nat))) : Square (2^dim)  :=
-  match lp with
-  | (A, i) :: lp' => @Mmult (2^dim) (2^dim) (2^dim) (pad2 A i) (embed2 lp')
-  | _         => I (2^dim)
-  end.
-
-(* Lemma pad2_diff_locations : forall (A B : Square 2) (i j : nat),
-i <> j ->  *)
-
-Lemma embed2_commutes_base : forall (i j dim : nat)(A B : Square 2) 
-(lp : (list ((Square 2) * nat))),
-  i <> j ->
-  WF_Matrix A ->
-  WF_Matrix B ->
-  (i < dim)%nat ->
-  (j < dim)%nat ->
-  @embed2 dim ((A, i) :: (B, j) :: lp) = @embed2 dim ((B, j) :: (A, i) :: lp).
-  Proof.
-    intros. simpl. rewrite <- Mmult_assoc. rewrite pad2_commutes; trivial.
-    apply Mmult_assoc.
-    Qed.
-
-(* Inductive WF_Matrix_list {m n : nat} : (list (Matrix m n)) -> Prop :=
-  | WF_nil :  WF_Matrix_list []
-  | WF_cons (a : Matrix m n) (lA : (list (Matrix m n))) (H1 : WF_Matrix_list lA) (H2 : WF_Matrix a) : WF_Matrix_list (a :: lA). *)
-
-Definition WF_Matrix_list {m n : nat} (la : list (Matrix m n)) : Prop 
-:= forall  (a : Matrix m n),
-In a la -> WF_Matrix a.
-
-
-(* NoDup *)
-(* Inductive disjoint_list {A : Type} : list A -> Prop :=
-  | disjoint_nil : disjoint_list []
-  | disjoint_succ (a : A) (lA : list A) (H1 : ~ In a lA) (H2 : disjoint_list lA) : disjoint_list (a :: lA). *)
-
-Print Forall.
-Check Permutation_Forall.
-
-Lemma WF_list_permutation_WF : forall {m n : nat} (lp1 lp2 : list (Matrix m n)),
-WF_Matrix_list lp2 -> Permutation lp1 lp2 -> WF_Matrix_list lp1.
-Proof.
-  intros. unfold WF_Matrix_list in *. intros.
-  pose proof (Permutation_in a H0). apply H2 in H1. destruct H with a m n; trivial.
-  left; lia. apply H; assumption.
-  Qed. 
-(*   
-Lemma disjoint_list_permutation_disjoint : forall (A : Type) (l1 l2 : list A),
-disjoint_list l1 -> Permutation l1 l2 -> disjoint_list l2.
-Proof.
-  intros. induction H0.
-  + constructor.
-  + apply disjoint_succ.
-  (* x not in l, hence x not in l' *)
-    - inversion H; subst.   *)
-
-Lemma embed2_commutes : forall (dim : nat) (lp1 lp2 : list ((Square 2) * nat)),
-  WF_Matrix_list (map fst lp1) ->
-  NoDup (map snd lp1) ->
-  Forall (fun n => (n < dim)%nat) (map snd lp1) ->
-  Permutation lp1 lp2 ->
-  @embed2 dim lp1 = @embed2 dim lp2.
-  Proof.
-    intros. induction H2; trivial.
-    + simpl. rewrite IHPermutation; trivial. 
-      - unfold WF_Matrix_list in H. simpl in *. destruct H with (fst x) 2%nat 2%nat.
-      left. reflexivity. left. lia. unfold WF_Matrix_list.
-      intros. apply H. right; assumption.
-      - inversion H0; subst; assumption.
-      - simpl in H1. rewrite Forall_cons_iff in H1. apply H1.
-    + destruct x, y. apply embed2_commutes_base.
-      - simpl in H0. inversion H0; subst. simpl in *. intros n0eqn.
-      apply H4. left. symmetry. assumption.
-      - unfold WF_Matrix_list in H. simpl in *. destruct H with m0 2%nat 2%nat.
-      left. reflexivity. left. lia. specialize H with m0. apply H.
-      left. reflexivity.
-      - unfold WF_Matrix_list in H. simpl in *. destruct H with m 2%nat 2%nat.
-      right. left. reflexivity. left. lia. specialize H with m. apply H.
-      right. left. reflexivity.
-      - inversion H1; subst. assumption.
-      - inversion H1; subst. inversion H5; subst. assumption.
-    + rewrite IHPermutation1. rewrite IHPermutation2.
-    reflexivity.
-    apply WF_list_permutation_WF with (map fst l); try assumption.
-    apply Permutation_map, Permutation_sym. assumption.
-    pose proof (Permutation_map snd H2_). apply (Permutation_NoDup H2 H0).
-    pose proof (Permutation_map snd H2_). eapply Permutation_Forall. apply H2.
-    all : assumption.
-    Qed.
-    
 Definition if_matrix {n} (b : bool) (u1 u2 : Square n) : Square n :=
   if b then u1 else u2.
 
@@ -171,51 +25,142 @@ Proof.
   destruct b; reflexivity.
 Qed.
 
-(* TODO: find actual function *) 
-Definition abs_diff (a b : nat) := max (a - b) (b - a).
-  
-Definition pad_ctrl' (dim m n: nat) (u: Square 2) :=
+(* converting this to if_matrix format results in WF_Matrix Zero not being solved by
+auto with wf_db ?? *)
+Definition pad2 {dim : nat} (A : Square 2) (i : nat) : Square (2^dim) :=
+  if (i <? dim) then (I (2^i) ⊗ A ⊗ I (2^(dim - i - 1))) else Zero.
+
+Lemma WF_pad2 : forall (i dim : nat) (A : Square 2),
+WF_Matrix A -> WF_Matrix (@pad2 dim A i).
+Proof.
+  intros i dim A WF_A. unfold pad2.
+  bdestruct_all; simpl; auto with wf_db.
+Qed.
+
+#[export] Hint Resolve WF_pad2 : wf_db.
+
+Fixpoint embed2 {dim : nat} (lp : (list ((Square 2) * nat))) : Square (2^dim)  :=
+  match lp with
+  | (A, i) :: lp' => @Mmult (2^dim) (2^dim) (2^dim) (@pad2 dim A i) (embed2 lp')
+  | _         => I (2^dim)
+  end.
+
+Lemma pad2_commutes : forall (A B : Square 2) (i j dim : nat),
+i <> j ->
+WF_Matrix A ->
+WF_Matrix B ->
+(i < dim)%nat -> 
+(j < dim)%nat ->
+@pad2 dim A i × @pad2 dim B j = @pad2 dim B j × @pad2 dim A i.
+Proof.
+  intros. unfold pad2.
+  gridify; trivial.
+  Qed.
+
+Lemma WF_embed2 : forall (dim : nat) (lp : (list ((Square 2) * nat))),
+Forall WF_Matrix (map fst lp) -> 
+NoDup (map snd lp) ->
+Forall (fun n => (n < dim)%nat) (map snd lp) ->
+WF_Matrix (@embed2 dim lp).
+intros. induction lp. 
++ unfold embed2; auto with wf_db.
++ destruct a. bdestruct (n <? dim); Msimpl; auto with wf_db.
+  - inversion H; subst. inversion H0; subst. inversion H1; subst.
+   simpl. apply WF_mult; auto with wf_db.
+  - inversion H1; subst. lia.
+Qed.
+
+#[export] Hint Resolve WF_embed2 : wf_db.
+
+Lemma embed2_commutes_base : forall (i j dim : nat)(A B : Square 2) 
+(lp : (list ((Square 2) * nat))),
+  i <> j ->
+  WF_Matrix A ->
+  WF_Matrix B ->
+  (i < dim)%nat ->
+  (j < dim)%nat ->
+  @embed2 dim ((A, i) :: (B, j) :: lp) = @embed2 dim ((B, j) :: (A, i) :: lp).
+  Proof.
+    intros. simpl. rewrite <- Mmult_assoc. rewrite pad2_commutes; trivial.
+    apply Mmult_assoc.
+  Qed.
+
+Lemma embed2_commutes : forall (dim : nat) (lp1 lp2 : list ((Square 2) * nat)),
+  Forall WF_Matrix (map fst lp1) ->
+  NoDup (map snd lp1) ->
+  Forall (fun n => (n < dim)%nat) (map snd lp1) ->
+  Permutation lp1 lp2 ->
+  @embed2 dim lp1 = @embed2 dim lp2.
+  Proof.
+    intros. induction H2; trivial.
+    + simpl. rewrite IHPermutation; trivial. 
+      - simpl in *. inversion H; subst.
+      auto.
+      - inversion H0; auto.
+      - simpl in H1. rewrite Forall_cons_iff in H1. apply H1.
+    + destruct x, y. apply embed2_commutes_base.
+      - simpl in H0. inversion H0; subst. simpl in *. intros n0eqn. apply H4. auto.
+      - simpl in *. inversion H; subst.
+      auto.
+      - inversion H; subst. inversion H5; subst.
+      auto.
+      - inversion H1; auto.
+      - inversion H1; subst. inversion H5; auto.
+    + pose proof (Permutation_map snd H2_). rewrite IHPermutation1; 
+    try rewrite IHPermutation2; trivial.
+      - apply (Permutation_map fst) in H2_. eapply Permutation_Forall; eauto.
+      - apply (Permutation_NoDup H2 H0).
+      - eapply Permutation_Forall; eauto.
+    Qed.
+
+(* TODO: find function in stdlib *) 
+Definition abs_diff (a b : nat) := Nat.max (a - b) (b - a).
+
+Definition pad_ctrl (dim m n : nat) (u : Square 2) : Square (2^dim)%nat :=
   if m =? n then Zero
   else
     let b := m <? n in
     let μ := min m n in
     let δ := abs_diff m n in
-    @pad (1 + (δ - 1) + 1) μ dim 
-    ((∣1⟩⟨1∣ <|b|> u) ⊗ 
-    I (2^(δ-1)) ⊗ (u <|b|> ∣1⟩⟨1∣) .+
-                            (∣0⟩⟨0∣ <|b|> I 2) ⊗ 
-                            I (2^(δ-1)) ⊗ (I 2 <|b|> ∣0⟩⟨0∣)).
-       
-(* TODO: find actual lemma *)
-Lemma a_lt_b_abs_diff_a_b : forall (a b : nat),
-(a < b)%nat -> ((a - b) < (b - a))%nat.
-Proof.
-  intros. lia.
-  Qed.
+    (@embed2 dim
+    ([((∣1⟩⟨1∣ <|b|> u), μ)] ++
+    [((u <|b|> ∣1⟩⟨1∣), (μ + δ)%nat)])) 
+    .+ 
+    (@embed2 dim
+    ([((∣0⟩⟨0∣ <|b|> I 2), μ)] ++
+    [((I 2 <|b|> ∣0⟩⟨0∣), (μ + δ)%nat)])).
 
-Lemma lt_max : forall (a b : nat), 
-(a < b)%nat -> (Init.Nat.max a b = b).
-Proof.
-  intros. lia.
-  Qed.
-                        
-Lemma pad_ctrl_eq : forall dim m n u, pad_ctrl dim m n u = pad_ctrl' dim m n u.
-Proof.
-  intros. unfold pad_ctrl, pad_ctrl'. bdestruct_all; try easy.
-  assert (Init.Nat.min m n = m). { lia. }
-  all: unfold abs_diff; simpl.
-  rewrite H1; apply a_lt_b_abs_diff_a_b in H; apply lt_max in H; 
-  rewrite H; trivial.
-  assert (Init.Nat.min m n = n). { lia. }
-  rewrite H2. apply a_lt_b_abs_diff_a_b in H0; 
-  apply lt_max in H0. 
-  assert (Init.Nat.max (n - m) (m - n) = Init.Nat.max (m - n) (n - m)). { lia. }
-  rewrite H3 in H0. rewrite H0. trivial.
-  Qed.
+Ltac rem_max_min :=
+   unfold gt, ge, abs_diff in *;
+  repeat match goal with 
+  | [ H: (?a < ?b)%nat |- context[Init.Nat.max (?a - ?b) (?b - ?a)] ] => 
+    rewrite (Max.max_r (a - b) (b - a)) by lia 
+  | [ H: (?a < ?b)%nat |- context[Init.Nat.max (?b - ?a) (?a - ?b)] ] => 
+    rewrite (Max.max_l (a - b) (b - a)) by lia 
+  | [ H: (?a <= ?b)%nat |- context[Init.Nat.max (?a - ?b) (?b - ?a)] ] => 
+    rewrite (Max.max_r (a - b) (b - a)) by lia 
+  | [ H: (?a <= ?b)%nat |- context[Init.Nat.max (?b - ?a) (?a - ?b)] ] => 
+    rewrite (Max.max_l (a - b) (b - a)) by lia   
+  | [ H: (?a < ?b)%nat |- context[Init.Nat.min ?a ?b] ] => 
+    rewrite Min.min_l by lia 
+  | [ H: (?a < ?b)%nat |- context[Init.Nat.max ?a ?b] ] => 
+    rewrite Max.max_r by lia 
+  | [ H: (?a < ?b)%nat |- context[Init.Nat.min ?b ?a] ] => 
+    rewrite Min.min_r by lia 
+  | [ H: (?a < ?b)%nat |- context[Init.Nat.max ?b ?a] ] => 
+    rewrite Max.max_l by lia 
+  | [ H: (?a <= ?b)%nat |- context[Init.Nat.min ?a ?b] ] => 
+    rewrite Min.min_l by lia 
+  | [ H: (?a <= ?b)%nat |- context[Init.Nat.max ?a ?b] ] => 
+    rewrite Max.max_r by lia 
+  | [ H: (?a <= ?b)%nat |- context[Init.Nat.min ?b ?a] ] => 
+    rewrite Min.min_r by lia 
+  | [ H: (?a <= ?b)%nat |- context[Init.Nat.max ?b ?a] ] => 
+    rewrite Max.max_l by lia 
+  end.
 
+Definition pad_u (dim n : nat) (u : Square 2) : Square (2^dim) := @pad2 dim u n.
 
-
-    
 (* also possible to define this in terms of pad directly *)
 Definition pad_swap (dim m n: nat) :=
   pad_ctrl dim m n σx × pad_ctrl dim n m σx × pad_ctrl dim m n σx.
@@ -226,29 +171,16 @@ Lemma WF_pad_u : forall dim n u, WF_Matrix u -> WF_Matrix (pad_u dim n u).
 Proof.
   intros. 
   unfold pad_u.
-  apply WF_pad; easy.
+  auto with wf_db. 
 Qed.
 
 Lemma WF_pad_ctrl : forall dim m n u, WF_Matrix u -> WF_Matrix (pad_ctrl dim m n u).
-  intros. 
-  unfold pad_ctrl.
-  assert (H' : forall n, (2 * 2 ^ n * 2 = 2 ^ (1 + n + 1))%nat).
-  { intros.
-    do 2 rewrite Nat.pow_add_r, Nat.pow_1_r; easy. }
-  bdestruct (m <? n); bdestruct (n <? m); try lia; auto with wf_db.
-  all : apply WF_pad; rewrite H'; apply WF_plus; auto with wf_db.
-Qed.
-
-Search Init.Nat.min (_ <= _)%nat.
-
-Lemma WF_pad_ctrl' : forall dim m n u, WF_Matrix u -> WF_Matrix (pad_ctrl' dim m n u).
 Proof.
-  intros. unfold pad_ctrl'. bdestruct_all; try easy.
-  - simpl; replace (Init.Nat.min m n) with m by lia. 
-  apply WF_pad; restore_dims; auto with wf_db.
-  - simpl; replace (Init.Nat.min m n) with n by lia. 
-  apply WF_pad; restore_dims; auto with wf_db.
+  intros dim m n u WF_u.
+  unfold pad_ctrl, abs_diff. bdestruct_all; simpl; rem_max_min;
+  restore_dims; auto with wf_db.
   Qed.
+
 
 Lemma WF_pad_swap : forall dim m n, WF_Matrix (pad_swap dim m n).
   intros.
@@ -256,17 +188,24 @@ Lemma WF_pad_swap : forall dim m n, WF_Matrix (pad_swap dim m n).
   repeat apply WF_mult; apply WF_pad_ctrl; apply WF_σx.
 Qed.
 
-#[export] Hint Resolve WF_pad WF_pad_u WF_pad_ctrl WF_pad_ctrl' WF_if_matrix WF_pad_swap : wf_db.
+#[export] Hint Resolve WF_pad2 WF_pad_u WF_pad_ctrl WF_if_matrix WF_pad_swap : wf_db.
+
+(* Everything after here is a WIP wrt writing it in terms of embed2 *)
 
 (** Unitarity *)
-
-Lemma pad_unitary : forall n (u : Square (2^n)) start dim,
-    (start + n <= dim)%nat -> 
+(* 
+Lemma pad_unitary : forall n (u : Square (2^n)) i dim,
+    (i < dim)%nat -> 
     WF_Unitary u ->
-    WF_Unitary (pad start dim u).
+    WF_Unitary (@pad2 dim u i).
 Proof.
-  intros n u start dim B [WF U].
-  split. apply WF_pad; auto.
+  intros n u i dim lt_con [WF U_u].
+  split.
+  apply WF_pad2.
+  apply WF.
+  auto with wf_db.
+  apply WF_pad2. apply WF.
+  apply WF_pad; auto.
   unfold pad.
   gridify.
   Msimpl.
@@ -412,7 +351,6 @@ Proof.
   intros. gridify.
   Admitted.
 
-
 Lemma pad_ctrl'_ctrl'_commutes : forall dim m n o p A B,
   m <> o ->
   m <> p ->
@@ -420,23 +358,10 @@ Lemma pad_ctrl'_ctrl'_commutes : forall dim m n o p A B,
   n <> p ->
   WF_Matrix A ->
   WF_Matrix B ->
-  pad_ctrl' dim m n A × pad_ctrl' dim o p B = pad_ctrl' dim o p B × pad_ctrl' dim m n A.
+  pad_ctrl_embed dim m n A × pad_ctrl_embed dim o p B = pad_ctrl_embed dim o p B × pad_ctrl_embed dim m n A.
 Proof.
-  intros. unfold pad_ctrl', pad, abs_diff.
-  repeat match goal with
-  | |- context [if_matrix ?b ?A ?B] => let M := fresh "M" in
-  remember (if_matrix b A B) as M end.
-  bdestruct_all; Msimpl_light; trivial.
-  gridify.
-  
-  bdestruct_all; simpl; 
-  try auto with wf_db.
-  + replace (Init.Nat.min m n) with m in * by lia.
-    replace (Init.Nat.min o p) with o in * by lia.
-    replace (Init.Nat.max (m - n) (n - m)) with (n - m)%nat in * by lia.
-    replace (Init.Nat.max (o - p) (p - o)) with (p - o)%nat in * by lia.
-    Admitted.
-
+  intros. unfold pad_ctrl_embed; bdestruct_all; rem_max_min; simpl;
+  repeat rewrite le_plus_minus_r by lia; Msimpl; trivial. 
 
 
 
@@ -462,4 +387,4 @@ Proof.
 
 Admitted.
   (* gridify; trivial. *)
-(*Qed.*)
+Qed. *)
