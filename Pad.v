@@ -25,6 +25,7 @@ Proof.
   destruct b; reflexivity.
 Qed.
 
+#[export] Hint Resolve WF_if_matrix : wf_db.
 (* converting this to if_matrix format results in WF_Matrix Zero not being solved by
 auto with wf_db ?? *)
 Definition pad2 {dim : nat} (A : Square 2) (i : nat) : Square (2^dim) :=
@@ -49,8 +50,6 @@ Lemma pad2_commutes : forall (A B : Square 2) (i j dim : nat),
 i <> j ->
 WF_Matrix A ->
 WF_Matrix B ->
-(i < dim)%nat -> 
-(j < dim)%nat ->
 @pad2 dim A i × @pad2 dim B j = @pad2 dim B j × @pad2 dim A i.
 Proof.
   intros. unfold pad2.
@@ -133,29 +132,29 @@ Definition pad_ctrl (dim m n : nat) (u : Square 2) : Square (2^dim)%nat :=
 Ltac rem_max_min :=
    unfold gt, ge, abs_diff in *;
   repeat match goal with 
-  | [ H: (?a < ?b)%nat |- context[Init.Nat.max (?a - ?b) (?b - ?a)] ] => 
+  | [ H: (?a < ?b)%nat |- context[Nat.max (?a - ?b) (?b - ?a)] ] => 
     rewrite (Max.max_r (a - b) (b - a)) by lia 
-  | [ H: (?a < ?b)%nat |- context[Init.Nat.max (?b - ?a) (?a - ?b)] ] => 
-    rewrite (Max.max_l (a - b) (b - a)) by lia 
-  | [ H: (?a <= ?b)%nat |- context[Init.Nat.max (?a - ?b) (?b - ?a)] ] => 
+  | [ H: (?a < ?b)%nat |- context[Nat.max (?b - ?a) (?a - ?b)] ] => 
+    rewrite (Max.max_l (b - a) (a - b)) by lia 
+  | [ H: (?a <= ?b)%nat |- context[Nat.max (?a - ?b) (?b - ?a)] ] => 
     rewrite (Max.max_r (a - b) (b - a)) by lia 
-  | [ H: (?a <= ?b)%nat |- context[Init.Nat.max (?b - ?a) (?a - ?b)] ] => 
-    rewrite (Max.max_l (a - b) (b - a)) by lia   
-  | [ H: (?a < ?b)%nat |- context[Init.Nat.min ?a ?b] ] => 
+  | [ H: (?a <= ?b)%nat |- context[Nat.max (?b - ?a) (?a - ?b)] ] => 
+    rewrite (Max.max_l (b - a) (a - b)) by lia   
+  | [ H: (?a < ?b)%nat |- context[Nat.min ?a ?b] ] => 
     rewrite Min.min_l by lia 
-  | [ H: (?a < ?b)%nat |- context[Init.Nat.max ?a ?b] ] => 
+  | [ H: (?a < ?b)%nat |- context[Nat.max ?a ?b] ] => 
     rewrite Max.max_r by lia 
-  | [ H: (?a < ?b)%nat |- context[Init.Nat.min ?b ?a] ] => 
+  | [ H: (?a < ?b)%nat |- context[Nat.min ?b ?a] ] => 
     rewrite Min.min_r by lia 
-  | [ H: (?a < ?b)%nat |- context[Init.Nat.max ?b ?a] ] => 
+  | [ H: (?a < ?b)%nat |- context[Nat.max ?b ?a] ] => 
     rewrite Max.max_l by lia 
-  | [ H: (?a <= ?b)%nat |- context[Init.Nat.min ?a ?b] ] => 
+  | [ H: (?a <= ?b)%nat |- context[Nat.min ?a ?b] ] => 
     rewrite Min.min_l by lia 
-  | [ H: (?a <= ?b)%nat |- context[Init.Nat.max ?a ?b] ] => 
+  | [ H: (?a <= ?b)%nat |- context[Nat.max ?a ?b] ] => 
     rewrite Max.max_r by lia 
-  | [ H: (?a <= ?b)%nat |- context[Init.Nat.min ?b ?a] ] => 
+  | [ H: (?a <= ?b)%nat |- context[Nat.min ?b ?a] ] => 
     rewrite Min.min_r by lia 
-  | [ H: (?a <= ?b)%nat |- context[Init.Nat.max ?b ?a] ] => 
+  | [ H: (?a <= ?b)%nat |- context[Nat.max ?b ?a] ] => 
     rewrite Max.max_l by lia 
   end.
 
@@ -188,11 +187,78 @@ Lemma WF_pad_swap : forall dim m n, WF_Matrix (pad_swap dim m n).
   repeat apply WF_mult; apply WF_pad_ctrl; apply WF_σx.
 Qed.
 
-#[export] Hint Resolve WF_pad2 WF_pad_u WF_pad_ctrl WF_if_matrix WF_pad_swap : wf_db.
+#[export] Hint Resolve WF_pad2 WF_pad_u WF_pad_ctrl WF_pad_swap : wf_db.
+
+(* Lemmas about commutativity *)
+
+Lemma pad_A_B_commutes : forall dim m n A B,
+  m <> n ->
+  (m < dim)%nat ->
+  (n < dim)%nat ->
+  WF_Matrix A ->
+  WF_Matrix B ->
+  pad_u dim m A × pad_u dim n B = pad_u dim n B × pad_u dim m A.
+Proof.
+  intros. unfold pad_u. unfold WF_Matrix in *.
+   apply pad2_commutes; trivial.
+Qed.
+
+Ltac comm_pad2 :=
+  repeat match goal with
+  | |- context[?A = ?B] => match A with
+      | context[@pad2 ?dim ?X ?x × @pad2 ?dim ?Y ?y × @pad2 ?dim ?Z ?z] =>
+      match B with
+        | context[pad2 Z z × pad2 X x × pad2 Y y] =>
+          try rewrite (pad2_commutes Z X z x dim); 
+          try rewrite <- (Mmult_assoc (pad2 X x) (pad2 Z z) (pad2 Y y));
+          try rewrite (pad2_commutes Y Z y z dim);
+          try auto with wf_db
+        | context[pad2 Y y × pad2 Z z × pad2 X x] =>
+          try rewrite (Mmult_assoc (pad2 Y y) (pad2 Z z) (pad2 X x));
+          try rewrite (pad2_commutes Z X z x dim);
+          try rewrite <- (Mmult_assoc (pad2 Y y) (pad2 X x) (pad2 Z z));
+          try rewrite (pad2_commutes Y X y x dim);
+          try auto with wf_db
+        end
+      | context[@pad2 ?dim ?X ?x × (@pad2 ?dim ?Y ?y × @pad2 ?dim ?Z ?z)] => 
+        rewrite <- (Mmult_assoc (pad2 X x) (pad2 Y y) (pad2 Z z))
+      end
+    end.
+
+
+(* × associates to the left *)
+
+(* convert from pad2 a * pad2 b to embed2 *)
+Lemma pad_A_ctrl_commutes : forall dim m n o A B,
+  m <> n ->
+  m <> o ->
+  (m < dim)%nat ->
+  (n < dim)%nat ->
+  (o < dim)%nat ->
+  WF_Matrix A ->
+  WF_Matrix B ->
+  pad_u dim m A × pad_ctrl dim n o B = pad_ctrl dim n o B × pad_u dim m A.
+Proof.
+  intros. unfold pad_u, pad_ctrl, abs_diff. simpl. bdestruct_all; simpl; rem_max_min;
+  Msimpl; trivial.
+  + repeat rewrite Mmult_plus_distr_l. rewrite Mmult_plus_distr_r. 
+  replace (n + (o - n))%nat with o by lia. 
+  comm_pad2.
+  + repeat rewrite Mmult_plus_distr_r. rewrite Mmult_plus_distr_l.
+  replace (o + (n - o))%nat with n by lia.
+  comm_pad2.
+Qed.
 
 (* Everything after here is a WIP wrt writing it in terms of embed2 *)
 
 (** Unitarity *)
+
+(* if i < dim and u is a wf unitary matrix, then  *)
+(* Lemma pad_unitary : forall n (u : Square (2^n)) i dim,
+(i < dim)%nat ->
+WF_Unitary u ->
+WF_Unitary  *)
+
 (* 
 Lemma pad_unitary : forall n (u : Square (2^n)) i dim,
     (i < dim)%nat -> 
