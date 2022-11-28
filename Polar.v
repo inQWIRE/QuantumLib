@@ -194,7 +194,7 @@ Proof. intros.
          replace (- (- y * / Cmod (x, y)))%R with (y * / Cmod (x, y))%R by lra.
          unfold Rdiv.
          apply injective_projections; simpl.
-         6 : left; apply Rinv_0_lt_compat.
+         all : try (left; apply Rinv_0_lt_compat).
          all : try apply Rsqr_pos_lt.
          all : try (rewrite Rmult_comm, Rmult_assoc, Rinv_l; try lra).
          all : try (unfold not; intros; apply H; apply Cmod_eq_0; easy). 
@@ -209,7 +209,7 @@ Proof. intros.
          do 2 rewrite Rmult_0_l.
          unfold Rminus; rewrite Ropp_0, Rplus_0_r, Rplus_0_r.
          apply injective_projections; simpl.
-         6 : left; apply Rinv_0_lt_compat.
+         all : try (left; apply Rinv_0_lt_compat).
          all : try apply Rsqr_pos_lt.
          all : try (rewrite Rmult_comm, Rmult_assoc, Rinv_l; try lra).
          all : try (unfold not; intros; apply H; apply Cmod_eq_0; easy). 

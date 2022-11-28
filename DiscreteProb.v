@@ -787,7 +787,9 @@ Proof.
   intros. unfold apply_u. split.
   - apply pos_Cmod2_list.
   - rewrite sum_over_list_Cmod2_vec_to_list.
-    rewrite <- rewrite_norm. rewrite Mmult_adjoint.
+    rewrite <- rewrite_norm.
+    unfold inner_product.
+    rewrite Mmult_adjoint.
     rewrite <- Mmult_assoc. 
     rewrite Mmult_assoc with (A := (basis_vector (2 ^ dim) 0) †).
     destruct H as [_ H].
@@ -823,10 +825,12 @@ Proof.
   rewrite map_nth.
   remember (u × basis_vector (2 ^ n) 0) as ψ.
   rewrite nth_vec_to_list by assumption.
-  rewrite (basis_vector_decomp ψ) at 2.
-  rewrite Mmult_vsum_distr_l.
+  rewrite (basis_vector_decomp ψ) at 2. 
+  unfold inner_product.
+  rewrite Mmult_Msum_distr_l, <- Cmod2_Cmod_sqr.
+  apply f_equal.
   symmetry.
-  erewrite vsum_unique.
+  erewrite big_sum_unique.
   2 : { exists x. split. assumption. 
         split.
         rewrite Mscale_mult_dist_r.
@@ -836,12 +840,8 @@ Proof.
         rewrite Mscale_mult_dist_r.
         rewrite basis_vector_product_neq by auto.
         lma. }
-  unfold Cmod, Cmod2.
-  rewrite pow2_sqrt.
-  unfold I, scale.
-  simpl.
-  lra.
-  apply Rplus_le_le_0_compat; apply pow2_ge_0.
+  unfold scale, I.
+  bdestruct_all; try lia; lca.
   subst. 
   apply WF_mult.
   assumption.
@@ -1481,41 +1481,44 @@ Lemma rewrite_pr_outcome_sum : forall n k (u : Square (2 ^ (n + k))) f,
 Proof.
   intros n k u f WFu.
   unfold pr_outcome_sum.
-  unfold apply_u.
-  rewrite map_length.
-  rewrite vec_to_list_length.
+  replace (length (apply_u u)) with (2 ^ (n + k))%nat.
   rewrite nested_big_sum.
   apply big_sum_eq_bounded.
-  intros x Hx.
+  intros x Hx. 
   destruct (f x) eqn:fx.
-  rewrite Rmult_1_l.
-  unfold prob_partial_meas.
-  apply big_sum_eq_bounded; intros. 
-  Admitted. (*
-  2: { intros y Hy. 
-       rewrite simplify_fst by assumption.
-       rewrite fx.
-       rewrite nth_apply_u_probability_of_outcome.
-       unfold probability_of_outcome. 
-       reflexivity.
-       replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
-       nia. assumption.
-  }
-  unfold prob_partial_meas.
-  erewrite Rsum_eq_bounded.
-  reflexivity.
-  intros y Hy. 
-  rewrite split_basis_vector by assumption.
-  replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
-  reflexivity.
-  rewrite Rmult_0_l.
-  erewrite Rsum_eq_bounded.
-  2: { intros y Hy. rewrite simplify_fst by assumption.
-       rewrite fx. reflexivity. }
-  apply Rsum_0.
-  reflexivity.
-Qed.
-             *)
+  - rewrite Rmult_1_l.
+    unfold prob_partial_meas.
+    apply big_sum_eq_bounded; intros. 
+    rewrite simplify_fst by assumption.  
+    rewrite fx, nth_apply_u_probability_of_outcome; auto.
+    rewrite <- split_basis_vector by assumption. 
+    replace (2^(n + k))%nat with (2^n * 2^k)%nat by unify_pows_two.
+    easy. 
+    assert (x <= 2^n - 1)%nat by lia.
+    replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
+    apply (Nat.mul_le_mono_r _ _ (2^k)%nat) in H0.
+    rewrite Nat.mul_sub_distr_r in H0.
+    rewrite mult_1_l in H0.
+    apply (Nat.add_lt_le_mono x0 (2^k)%nat) in H0; auto.
+    rewrite <- le_plus_minus in H0.
+    rewrite plus_comm in H0.
+    assumption.
+    destruct (mult_O_le (2^k) (2^n))%nat; auto.
+    assert (2 <> 0)%nat by lia.
+    apply (pow_positive 2 n) in H2.
+    lia.
+  - rewrite big_sum_0_bounded.
+    rewrite Rmult_0_l; easy. 
+    intros. 
+    rewrite simplify_fst by assumption.
+    rewrite fx.
+    reflexivity. 
+  - unfold apply_u.
+    rewrite map_length.
+    rewrite vec_to_list_length.
+    easy.
+Qed. 
+
 
 
 (* ============================= *)

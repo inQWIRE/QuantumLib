@@ -1,11 +1,10 @@
 
 (** This file contains more concepts relevent to quantum computing, as well as some more general linear algebra concepts such as Gram-Schmidt and eigenvectors/eigenvalues. *)
 
-Require Import List.      
-Require Export Complex.  
+Require Import List.       
+Require Export Complex.
 Require Export Quantum. 
 Require Import FTA.
-
 
 
 (****************************)
@@ -26,7 +25,7 @@ Lemma Y_eq_iXZ : σy = Ci .* σx × σz. Proof. lma'. Qed.
 Lemma H_eq_Hadjoint : hadamard† = hadamard. Proof. lma'. Qed.
 
 
-Hint Rewrite Y_eq_iXZ H_eq_Hadjoint : id_db.
+Hint Rewrite Y_eq_iXZ H_eq_Hadjoint : Q_db.
 
 Lemma ItimesIid : I 2 × I 2 = I 2. Proof. lma'. Qed.      
 Lemma XtimesXid : σx × σx = I 2. Proof. lma'. Qed.      
@@ -34,7 +33,7 @@ Lemma YtimesYid : σy × σy = I 2. Proof. lma'. Qed.
 Lemma ZtimesZid : σz × σz = I 2. Proof. lma'. Qed.
 Lemma HtimesHid : hadamard × hadamard = I 2. Proof. lma'; Hhelper. Qed.
 
-#[export] Hint Resolve ItimesIid XtimesXid YtimesYid ZtimesZid HtimesHid : id_db.
+Hint Rewrite ItimesIid XtimesXid YtimesYid ZtimesZid HtimesHid : Q_db.
 
 Lemma ZH_eq_HX : σz × hadamard = hadamard × σx. Proof. lma'. Qed.
 Lemma XH_eq_HZ : σx × hadamard = hadamard × σz. Proof. lma'. Qed.
@@ -47,7 +46,7 @@ Lemma cnotX2 : cnot × (I 2 ⊗ σx) = (I 2 ⊗ σx) × cnot. Proof. lma'. Qed.
 Lemma cnotZ1 : cnot × (σz ⊗ I 2) = (σz ⊗ I 2) × cnot. Proof. lma'. Qed.
 Lemma cnotZ2 : cnot × (I 2 ⊗ σz) = (σz ⊗ σz) × cnot. Proof. lma'. Qed.
 
-#[export] Hint Resolve ZH_eq_HX XH_eq_HZ SX_eq_YS SZ_eq_ZS cnotX1 cnotX2 cnotZ1 cnotZ2 : id_db.
+Hint Rewrite ZH_eq_HX XH_eq_HZ SX_eq_YS SZ_eq_ZS cnotX1 cnotX2 cnotZ1 cnotZ2 : Q_db.
 
 
 (*******************************)
@@ -478,85 +477,6 @@ Proof. intros.
            easy. 
 Qed.         
 
-(************************************)
-(** Quick proof of |x| = 0 iff x = 0 *)
-(************************************)
-
-Lemma inner_product_zero_iff_zero : forall {n} (v : Vector n),
-  WF_Matrix v -> (inner_product v v = C0 <-> v = Zero). 
-Proof. intros. split. 
-       - intros. 
-         destruct (mat_equiv_dec v Zero).
-         apply mat_equiv_eq; try easy.
-         assert (H' : v <> Zero). 
-         { unfold not; intros. 
-           apply n0. rewrite H1.
-           easy. }
-         apply nonzero_vec_nonzero_elem in H'; try easy.
-         destruct H'. 
-         unfold WF_Matrix in H.
-         bdestruct (x <? n).
-         assert (H0' := Rle_0_sqr).  
-         unfold Rsqr in H0'. 
-         assert (H' : (0 < fst (inner_product v v))%R).
-         { unfold inner_product.
-           unfold Mmult. 
-           apply big_sum_gt_0.
-           unfold adjoint. 
-           intros.
-           rewrite <- Cmod_sqr.
-           simpl. autorewrite with R_db.
-           apply H0'. 
-           exists x. split; try easy.
-           unfold adjoint. 
-           rewrite <- Cmod_sqr.
-           simpl. autorewrite with R_db.
-           assert (H' : (0 <= Cmod (v x 0%nat) * Cmod (v x 0%nat))%R). 
-           { apply H0'. } 
-           destruct H'; try easy. 
-           assert (H' := Rsqr_0_uniq).
-           unfold Rsqr in H'. 
-           assert (H'' : forall a b : R, a = b -> b = a). { easy. }
-           apply H'' in H3. 
-           apply H' in H3.
-           apply Cmod_gt_0 in H1.
-           rewrite H3 in H1.
-           lra. }
-         rewrite H0 in H'. 
-         simpl in H'. lra. 
-         assert (H' : v x 0 = C0).
-         { apply H. left; easy. }
-         rewrite H' in H1; easy. 
-       - intros. 
-         unfold inner_product.  
-         rewrite H0. 
-         rewrite Mmult_0_r. 
-         easy.
-Qed.
-
-
-Lemma norm_zero_iff_zero : forall {n} (v : Vector n),
-  WF_Matrix v -> (norm v = 0%R <-> v = Zero). 
-Proof. intros. split. 
-       - intros. 
-         unfold norm in H0.
-         apply inner_product_zero_iff_zero in H.
-         unfold inner_product in H. 
-         apply sqrt_eq_0 in H0.
-         apply H. 
-         apply c_proj_eq.
-         apply H0.
-         apply norm_real.
-         apply inner_product_ge_0.
-       - intros. 
-         rewrite H0. 
-         unfold norm.
-         rewrite Mmult_0_r. 
-         simpl. apply sqrt_0. 
-Qed.     
-
-
-
 
 (*****************************************************************************************)
 (** * Defining and verifying the gram_schmidt algorythm and proving v can be part of an onb *)
@@ -572,7 +492,7 @@ Definition proj_coef {n} (u v : Vector n) : C :=
 
 Lemma proj_inner_product : forall {n} (u v : Vector n),
   (norm u) <> 0%R -> inner_product u (proj u v) = inner_product u v.
-Proof. intros. 
+Proof. intros.
        unfold proj, inner_product. 
        distribute_scale.
        unfold scale. 
@@ -580,11 +500,11 @@ Proof. intros.
        rewrite <- Cmult_assoc. 
        rewrite Cinv_l.
        lca. 
-       unfold norm in H.
+       unfold norm, inner_product in H.
        intro. apply H.
        rewrite H0. simpl. 
        rewrite sqrt_0.
-       easy. 
+       easy.
 Qed.
 
 Definition gram_schmidt_on_v (n m : nat) (v : Vector n) (S : Matrix n m) :=
@@ -643,34 +563,25 @@ Qed.
 (* here, we show that gs_on_v preserves normalness *)
 Lemma gram_schmidt_orthogonal : forall {n m} (v : Vector n) (S : Matrix n m) (i : nat),
   orthonormal S -> i < m -> inner_product (get_vec i S) (gram_schmidt_on_v n m v S) = C0.
-Proof. intros. 
+Proof. intros.  
        destruct H as [H H1]. 
        unfold orthogonal in H.
-       unfold inner_product in *.
-       unfold gram_schmidt_on_v.
-       rewrite Mmult_plus_distr_l.
-       rewrite Mmult_Msum_distr_l.
-       unfold Mplus. 
-       rewrite Msum_Csum. 
-       rewrite (big_sum_unique (-C1 * ((get_vec i S) † × v) 0 0)%C _ m); try lca. 
+       unfold gram_schmidt_on_v. 
+       rewrite inner_product_plus_r, inner_product_big_sum_r.
+       rewrite (big_sum_unique (-C1 * ⟨ get_vec i S, v ⟩)%C _ m); try lca. 
        exists i. split; try easy.
        split.
-       - distribute_scale.
-         unfold scale.
-         apply H1 in H0. 
-         assert (H' : norm (get_vec i S) <> 0%R).
-         { rewrite H0. lra. }
-         apply (proj_inner_product _ v) in H'. 
-         unfold inner_product in H'.
-         rewrite H'. 
-         reflexivity. 
-       - intros. apply H in H3. 
-         unfold proj. 
-         distribute_scale.
-         unfold scale. 
+       - rewrite inner_product_scale_r.
+         rewrite proj_inner_product. 
+         lca.
+         rewrite H1; auto; lra.
+       - intros.
+         unfold proj.
+         do 2 rewrite inner_product_scale_r.
+         apply H in H3. 
          rewrite H3. 
          lca. 
-Qed.
+Qed. 
 
 Definition f_to_vec (n : nat) (f : nat -> C) : Vector n :=
   fun i j => if (j =? 0) && (i <? n) then f i else C0. 
@@ -715,9 +626,8 @@ Qed.
 Lemma inner_product_zero_normalize : forall {n} (u v : Vector n),
   inner_product u v = C0 -> inner_product u (normalize v) = C0.
 Proof. intros. 
-       unfold inner_product, normalize in *.
-       distribute_scale.
-       unfold scale. 
+       unfold normalize in *.
+       rewrite inner_product_scale_r.
        rewrite H.
        lca. 
 Qed.
@@ -761,13 +671,11 @@ Proof. intros.
          bdestruct (m <? i); bdestruct (m <? j); try lia. 
          + rewrite get_vec_reduce_append_over; try easy.
            unfold inner_product.
-           rewrite zero_adjoint_eq.
-           rewrite Mmult_0_l.
+           rewrite zero_adjoint_eq, Mmult_0_l.
            easy. 
          + rewrite get_vec_reduce_append_over; try easy.
            unfold inner_product.
-           rewrite zero_adjoint_eq.
-           rewrite Mmult_0_l.
+           rewrite zero_adjoint_eq, Mmult_0_l.
            easy. 
          + rewrite (get_vec_reduce_append_over _ _ j); try easy.
            unfold inner_product.
@@ -1064,16 +972,13 @@ Proof. intros.
            unfold get_vec, normalize.
            bdestruct (y =? 0); try easy.
            unfold scale. rewrite H0; try lia; lca. }
-         rewrite H'.
-         rewrite Mmult_0_r; easy.
+         rewrite H', Mmult_0_r; easy.
        + assert (H' : get_vec (S i) (normalize v) = Zero).
          { prep_matrix_equality. 
            unfold get_vec, normalize.
            bdestruct (y =? 0); try easy.
            unfold scale. rewrite H0; try lia; lca. }
-         rewrite H'.
-         rewrite zero_adjoint_eq.
-         rewrite Mmult_0_l; easy.
+         rewrite H', zero_adjoint_eq, Mmult_0_l; easy.
        + intros. 
          destruct i; try lia. 
          rewrite get_vec_vec.
@@ -1154,7 +1059,7 @@ Proof. intros n U. split.
            destruct H as [H1 H].   
            rewrite H. 
            unfold I. bdestruct (i =? j); try lia; easy.
-         * intros. unfold norm.
+         * intros. unfold norm, inner_product.
            assert (H1 : ((get_vec i U) † × get_vec i U) 0%nat 0%nat = 
                         inner_product (get_vec i U) (get_vec i U)).
            { unfold inner_product. reflexivity. }
@@ -1169,23 +1074,17 @@ Proof. intros n U. split.
          unfold mat_equiv; intros. 
          rewrite <- inner_product_is_mult.
          unfold orthogonal in H2. unfold I.
-         bdestruct (i =? j); bdestruct (i <? n); try lia. 
-         * unfold norm in H3.
+         bdestruct (i =? j); bdestruct (i <? n); try lia; subst. 
+         * unfold norm, inner_product in H3.
            apply H3 in H0.
            apply eq_sym in H0.
            apply sqrt_1_unique in H0.
            unfold RtoC.
-           apply c_proj_eq.
+           apply c_proj_eq; try easy.
            simpl. 
-           unfold inner_product. 
-           rewrite H4, H0. easy.
-           simpl. 
-           unfold inner_product. 
-           rewrite H4.
-           rewrite norm_real. easy.
-         * rewrite H2; try easy.
+           apply norm_real. 
+         * rewrite H2; try nia; easy.
 Qed.
-
 
 Lemma unit_out_of_v : forall {n} (v : Vector n) (x : nat),
   WF_Matrix v -> v <> Zero -> 
@@ -1196,7 +1095,6 @@ Proof. intros.
        exists S. split; try easy.
        apply unit_is_orthonormal; easy.
 Qed.
-
 
 Lemma det_by_unit : forall {n} (A B X : Square n),
   WF_Matrix A -> WF_Matrix B -> 
@@ -2098,46 +1996,25 @@ Local Close Scope nat_scope.
 (*******************************)
 
 
-
-Definition qubitP : Vector 2 := / (√ 2) .* (∣0⟩ .+ ∣1⟩).
-Definition qubitM : Vector 2 := / (√ 2) .* (∣0⟩ .+ ((-1) .* ∣1⟩)).
-Definition EPRpair : Vector 4 := / (√ 2) .* (∣0,0⟩ .+ ∣1,1⟩).
-
-Lemma EPRpair_creation : cnot × (hadamard ⊗ I 2) × ∣0,0⟩ = EPRpair.
-Proof. unfold EPRpair. lma'.
-Qed.
-
-                                                                 
-Notation "∣+⟩" := qubitP.
-Notation "∣-⟩" := qubitM.
-Notation "∣Φ+⟩" := EPRpair.
-
-Lemma WF_qubitP : WF_Matrix ∣+⟩. Proof. show_wf. Qed.
-Lemma WF_qubitM : WF_Matrix ∣-⟩. Proof. show_wf. Qed.
-Lemma WF_EPRpair : WF_Matrix ∣Φ+⟩. Proof. unfold EPRpair. auto with wf_db.  Qed.
-
-#[export] Hint Resolve WF_qubitP WF_qubitM WF_EPRpair : wf_db. 
-
 Lemma EigenXp : Eigenpair σx (∣+⟩, C1).
-Proof. unfold Eigenpair. lma'.
-Qed.
+Proof. unfold Eigenpair. solve_matrix. Qed.
 
 Lemma EigenXm : Eigenpair σx (∣-⟩, -C1).
-Proof. unfold Eigenpair. lma'.
-Qed.
+Proof. unfold Eigenpair. solve_matrix. Qed.
 
-Lemma EigenZ0 : Eigenpair σz (∣0⟩, C1).
-Proof. unfold Eigenpair. lma'.
-Qed.
+Lemma EigenYp : Eigenpair σy (∣R⟩, C1).
+Proof. unfold Eigenpair. solve_matrix. Qed.
 
-Lemma EigenZ1 : Eigenpair σz (∣1⟩, -C1).
-Proof. unfold Eigenpair. lma'.
-Qed.
+Lemma EigenYm : Eigenpair σy (∣L⟩, -C1).
+Proof. unfold Eigenpair. solve_matrix. Qed.
+
+Lemma EigenZp : Eigenpair σz (∣0⟩, C1).
+Proof. unfold Eigenpair. solve_matrix. Qed.
+
+Lemma EigenZm : Eigenpair σz (∣1⟩, -C1).
+Proof. unfold Eigenpair. solve_matrix. Qed.
 
 Lemma EigenXXB : Eigenpair (σx ⊗ σx) (∣Φ+⟩, C1).
-Proof. unfold Eigenpair. lma'.
-Qed.
+Proof. unfold Eigenpair. lma'. Qed.
 
-
-#[export] Hint Resolve EigenXp EigenXm EigenZ0 EigenZ1 EigenXXB all_v_eigen_I : eig_db.
-
+#[export] Hint Resolve EigenXp EigenXm EigenYp EigenYm EigenZp EigenZm EigenXXB all_v_eigen_I : eig_db.

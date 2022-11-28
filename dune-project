@@ -1,14 +1,15 @@
 (lang dune 2.8)
 (name coq-quantumlib)
-(version 1.0.0)
+(version 1.1.0)
 (using coq 0.2)
 
 (generate_opam_files true)
 
-(source (github inQWIRE/QuantumLib))
 (license MIT)
 (authors "inQWIRE")
 (maintainers "inQWIRE Developers")
+(source (github inQWIRE/QuantumLib))
+(documentation "https://inqwire.github.io/QuantumLib/toc.html")
 
 (package
  (name coq-quantumlib)

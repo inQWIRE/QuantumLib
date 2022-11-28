@@ -4,8 +4,7 @@ Require Import VectorStates.
 
 (** * Probability of outcome ϕ given input ψ *)
 Definition probability_of_outcome {n} (ϕ ψ : Vector n) : R :=
-  let c := (ϕ† × ψ) O O in
-  (Cmod c) ^ 2.
+  Cmod (inner_product ϕ ψ) ^2.
 
 (** * Probability of measuring ϕ on the first m qubits given (m + n) qubit input ψ *)
 Definition prob_partial_meas {m n} (ϕ : Vector (2^m)) (ψ : Vector (2^(m + n))) :=
@@ -15,11 +14,8 @@ Lemma probability_of_outcome_comm : forall {d} (ϕ ψ : Vector d),
   probability_of_outcome ϕ ψ = probability_of_outcome ψ ϕ.
 Proof.
   intros d ψ ϕ. unfold probability_of_outcome.
-  replace (ϕ † × ψ) with (ϕ † × ψ ††) by (rewrite adjoint_involutive; easy).
-  rewrite <- Mmult_adjoint.
-  unfold adjoint.
-  rewrite Cmod_Cconj.
-  reflexivity.
+  rewrite inner_product_conj_sym.
+  rewrite Cmod_Cconj; easy.
 Qed.
 
 Lemma probability_of_outcome_is_norm : forall {d} (ϕ ψ : Vector d),
@@ -54,88 +50,40 @@ Proof.
   all: bdestruct_all; lca.
 Qed.
 
-(* 
-Lemma Rsum_Msum : forall n (f : nat -> Square 1),
-  big_sum (fun i : nat => fst (f i O O)) n = fst (big_sum f O O n).
-Proof.
-  intros.
-  rewrite Msum_Csum.
-  rewrite <- Rsum_Csum.
-  induction n; simpl.
-  reflexivity.
-  rewrite IHn.
-  reflexivity.
-Qed.
-*)
-
 Lemma prob_partial_meas_alt : 
   forall {m n} (ϕ : Vector (2^m)) (ψ : Vector (2^(m + n))),
   @prob_partial_meas m n ϕ ψ = ((norm ((ϕ ⊗ I (2 ^ n))† × ψ)) ^ 2)%R.
 Proof.
   intros.
+  rewrite kron_adjoint, id_adjoint_eq.
   unfold prob_partial_meas.
-  erewrite big_sum_eq.
-  2: { intros.
-       apply functional_extensionality; intros. 
-       rewrite probability_of_outcome_is_norm.
-       unfold norm.
-       rewrite pow2_sqrt.
-       restore_dims.
-       distribute_adjoint.
-       Msimpl.
-       repeat rewrite Mmult_assoc.
-       restore_dims.
-       rewrite <- (Mmult_assoc (ϕ ⊗ _)).
-       rewrite kron_mixed_product.
-       unify_pows_two.
-       rewrite <- Mmult_assoc.
-       reflexivity. 
-       apply inner_product_ge_0. }  
-  rewrite rewrite_I_as_sum by lia.
-  rewrite kron_Msum_distr_l.
-  rewrite Msum_adjoint.
-  erewrite big_sum_eq_bounded.
-  2: { intros. distribute_adjoint. reflexivity. }
-  rewrite Mmult_Msum_distr_r.
-  unfold norm.
-  rewrite pow2_sqrt.
-  2: apply inner_product_ge_0.
-  rewrite Msum_adjoint, Mmult_Msum_distr_l.
-  erewrite big_sum_eq_bounded.
-  2: { intros.
-       Admitted. 
-
-(*
-       rewrite Mmult_Msum_distr_r. 
-       erewrite big_sum_eq_bounded.
-       2: { intros.
-            distribute_adjoint.
-            Msimpl.
-            repeat rewrite Mmult_assoc.
-            restore_dims.
-            rewrite <- (Mmult_assoc (ϕ ⊗ _)).
-            rewrite kron_mixed_product.
-            repeat rewrite Mmult_assoc.
-            rewrite <- (Mmult_assoc (_†)).
-            reflexivity. } 
-       reflexivity. }
-  rewrite Msum_diagonal.
-  2: { intros. rewrite basis_vector_product_neq by auto.
-       do 2 Msimpl. reflexivity. }
-  erewrite big_sum_eq_bounded.
-  2: { intros. rewrite basis_vector_product_eq by assumption.
-       Msimpl. unify_pows_two.
-       repeat rewrite <- Mmult_assoc.
-       reflexivity. }
-  remember (fun i : nat => ψ† × (ϕ × ϕ† ⊗ (basis_vector (2 ^ n) i × (basis_vector (2 ^ n) i) †)) × ψ) as f.
-  erewrite Rsum_eq.
-  2: { intros.
-       replace (ψ† × (ϕ × ϕ† ⊗ (basis_vector (2 ^ n) i × (basis_vector (2 ^ n) i) †)) × ψ) with (f i) by (subst; reflexivity).
-       reflexivity. }
-  apply Rsum_Msum.
+  rewrite norm_squared.
+  unfold inner_product, Mmult, adjoint.
+  rewrite (@big_sum_func_distr C R _ C_is_group _ R_is_group), mult_1_l.
+  apply big_sum_eq_bounded; intros. 
+  unfold probability_of_outcome.
+  assert (H' : forall c, ((Cmod c)^2)%R = fst (c^* * c)).
+  { intros.
+    rewrite <- Cmod_sqr.
+    unfold RtoC.
+    simpl; lra. }
+  rewrite H'. 
+  apply f_equal.
+  assert (H'' : forall a b, a = b -> a^* * a = b^* * b). { intros; subst; easy. }
+  apply H''.
+  unfold inner_product, Mmult.
+  apply big_sum_eq_bounded; intros. 
+  apply f_equal_gen; auto.
+  apply f_equal.
+  unfold kron, adjoint.
+  rewrite Cconj_mult_distr.
+  rewrite Nat.div_0_l, Nat.mod_0_l, (Nat.div_small x (2^n)), (Nat.mod_small x); try nia.
+  apply f_equal_gen; auto.
+  unfold basis_vector, I.
+  bdestruct_all; try lia; simpl; try lca.
+  intros.
+  destruct a; destruct b; easy. 
 Qed.
-
-*)
 
 Lemma partial_meas_tensor : 
   forall {m n} (ϕ : Vector (2^m)) (ψ1 : Vector (2^m)) (ψ2 : Vector (2^n)),
@@ -145,7 +93,7 @@ Proof.
   intros ? ? ? ? ? [H H0].
   rewrite prob_partial_meas_alt.
   rewrite probability_of_outcome_is_norm.
-  unfold norm.
+  unfold norm, inner_product.
   apply f_equal2; try reflexivity.
   do 2 apply f_equal.
   distribute_adjoint.

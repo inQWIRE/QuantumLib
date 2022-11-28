@@ -1,5 +1,5 @@
 Require Import List.
-Require Import Prelim.
+Require Export Prelim.
 
 
 
@@ -21,6 +21,8 @@ Class Monoid G :=
 Infix "+" := Gplus : group_scope.
 Notation "0" := Gzero : group_scope.
 
+
+      
 Class Group G `{Monoid G} :=
   { Gopp : G -> G
   ; Gopp_l : forall g, (Gopp g) + g = 0
@@ -34,6 +36,7 @@ Definition Gminus {G} `{Group G} (g1 g2 : G) := g1 + (Gopp g2).
 
 Notation "- x" := (Gopp x) : group_scope.
 Infix "-" := Gminus : group_scope.
+
 
 Class Ring R `{Comm_Group R} :=
   { Gone : R
@@ -115,6 +118,38 @@ Proof. intros.
          <- (Gopp_r a), Gplus_assoc, H1, Gplus_assoc; easy. 
 Qed.
   
+Lemma Gopp_unique_l : forall {G} `{Group G} (g h : G),
+  h + g = 0 -> h = Gopp g.
+Proof. intros.
+       rewrite <- (Gopp_l g) in H1.
+       apply Gplus_cancel_r in H1.
+       easy.
+Qed.
+
+Lemma Gopp_unique_r : forall {G} `{Group G} (g h : G),
+  g + h = 0 -> h = - g.
+Proof. intros.
+       rewrite <- (Gopp_r g) in H1.
+       apply Gplus_cancel_l in H1.
+       easy.
+Qed.
+
+Lemma Gopp_involutive : forall {G} `{Group G} (g : G),
+  - (- g) = g.
+Proof. intros. 
+       rewrite <- (Gopp_unique_r (- g) g); auto.
+       apply Gopp_l.
+Qed. 
+
+
+Lemma Gopp_plus_distr : forall {G} `{Group G} (g h : G),
+  - (g + h) = - h + - g.
+Proof. intros. 
+       rewrite (Gopp_unique_r (g + h) (- h + - g)); auto.
+       rewrite Gplus_assoc, <- (Gplus_assoc g), Gopp_r, Gplus_0_r, Gopp_r.
+       easy. 
+Qed.
+
 Lemma Vscale_zero : forall {V F} `{Vector_Space V F} (c : F),
   c ⋅ 0 = 0.
 Proof. intros.
@@ -161,17 +196,18 @@ Proof. intros.
          <- Gmult_assoc, H7, Gmult_0_r; auto.
 Qed.       
 
-Lemma Ginv_mult_distr : forall {F} `{Field F} (a b : F), a <> 0 -> b <> 0 -> / (a * b) = / a * / b.
+Lemma Ginv_mult_distr : forall {F} `{Field F} (a b : F),
+    a <> 0 -> b <> 0 ->
+    / (a * b) = / a * / b.
 Proof. intros. 
        apply (Gmult_cancel_r _ _ (a * b)).
        apply Gmult_neq_0; easy. 
        rewrite Ginv_l; try apply Gmult_neq_0; auto.
-       replace (/ a * / b * (a * b)) with ((/a * a) * (/b * b)). 
-       repeat rewrite Ginv_l; auto. 
-       assert (H' := @G_field_theory F H _ _ _ H3 H4).
-       rewrite Gmult_1_l; easy. 
-       (* field. *)
-       Admitted. 
+       rewrite <- Gmult_assoc, (Gmult_assoc _ a), (Gmult_comm _ a), <- (Gmult_assoc a).
+       rewrite Ginv_l, Gmult_1_r, Ginv_l; easy.
+Qed.
+
+
 
 (* showing that nat is a monoid *)
 
@@ -184,7 +220,34 @@ Solve All Obligations with program_simpl; try lia.
 
 
 
-(* sum to n exclusive *)
+
+(*************************)
+(** Summation functions *)
+(*************************)
+
+
+
+
+Fixpoint times_n {G} `{Monoid G} (g : G) (n : nat) :=
+  match n with
+  | 0 => 0
+  | S n' => g + times_n g n'
+  end.
+      
+Fixpoint G_big_plus {G} `{Monoid G} (gs : list G) : G := 
+  match gs with
+  | nil => 0 
+  | g :: gs' => g + (G_big_plus gs')
+  end. 
+
+Fixpoint G_big_mult {R} `{Ring R} (rs : list R) : R := 
+  match rs with
+  | nil => 1 
+  | r :: rs' => r * (G_big_mult rs')
+  end. 
+
+
+(** sum to n exclusive *)
 Fixpoint big_sum {G : Type} `{Monoid G} (f : nat -> G) (n : nat) : G := 
   match n with
   | 0 => 0
@@ -239,6 +302,51 @@ Proof.
   rewrite IHn.
   rewrite Gplus_assoc; easy.
 Qed.
+
+Lemma big_sum_constant : forall {G} `{Monoid G} g n,
+  big_sum (fun _ => g) n = times_n g n.
+Proof. induction n; try easy. 
+       rewrite big_sum_shift. 
+       rewrite IHn; simpl.
+       easy. 
+Qed.
+
+Lemma big_plus_constant : forall {G} `{Monoid G} (l : list G) (g : G),
+  (forall h, In h l -> h = g) -> G_big_plus l = (times_n g (length l))%nat.
+Proof. induction l; try easy.
+       intros; simpl. 
+       rewrite (IHl g), (H0 a); auto.
+       left; easy.
+       intros. 
+       apply H0; right; easy.
+Qed.
+
+Lemma big_plus_app : forall {G} `{Monoid G} (l1 l2 : list G),
+  G_big_plus l1 + G_big_plus l2 = G_big_plus (l1 ++ l2).
+Proof. intros. 
+       induction l1; simpl.
+       - apply Gplus_0_l.
+       - rewrite <- IHl1, Gplus_assoc; easy.
+Qed.
+
+Lemma big_plus_inv : forall {G} `{Group G} (l : list G),
+  - (G_big_plus l) = G_big_plus (map Gopp (rev l)).
+Proof. induction l; simpl.
+       rewrite <- (Gopp_unique_l 0 0); auto.
+       rewrite Gplus_0_r; easy. 
+       rewrite Gopp_plus_distr, map_app, <- big_plus_app, <- IHl; simpl. 
+       rewrite Gplus_0_r; easy. 
+Qed.
+
+(* could be generalized to semi-rings... *)
+Lemma times_n_nat : forall n k,
+  times_n k n = (k * n)%nat.
+Proof. induction n; try easy.
+       intros; simpl.
+       rewrite IHn. 
+       lia.
+Qed.
+
 
 Lemma big_sum_plus : forall {G} `{Comm_Group G} f g n, 
     big_sum (fun x => f x + g x) n = big_sum f n + big_sum g n.
@@ -475,705 +583,216 @@ Proof.
   lia.
 Qed.
 
-
-
-(*
-Lemma Csum_ge_0 : forall f n, (forall x, 0 <= fst (f x)) -> 0 <= fst (Csum f n).
-Proof.
-  intros f n H.
-  induction n.
-  - simpl. lra. 
-  - simpl in *.
-    rewrite <- Rplus_0_r at 1.
-    apply Rplus_le_compat; easy.
-Qed.
-
-Lemma Csum_gt_0 : forall f n, (forall x, 0 <= fst (f x)) -> 
-                              (exists y : nat, (y < n)%nat /\ 0 < fst (f y)) ->
-                              0 < fst (Csum f n).
-Proof.
-  intros f n H [y [H0 H1]].
-  induction n.
-  - simpl. lia. 
-  - simpl in *.
-    bdestruct (y <? n)%nat; bdestruct (y =? n)%nat; try lia. 
-    + assert (H' : 0 <= fst (f n)). { apply H. } 
-      apply IHn in H2. lra. 
-    + apply (Csum_ge_0 f n) in H.
-      rewrite H3 in H1.
-      lra. 
-Qed.
-*)
-
-(*
-
-Instance nat_is_group : Group C :=
-  { 0 := C0
-  ; op := Cplus
-  }.
-
-
-Instance C_is_group_law : Group_Laws C.
-Proof. split; intros; simpl; try lca. 
-       all : exists (-g); lca.
-
-
-
-
-
-
-
-
-(* sum to n exclusive *)
-Fixpoint big_sum {G : Type} (id : G) (plus : G -> G -> G) (f : nat -> G) (n : nat) : G := 
-  match n with
-  | 0 => 0
-  | S n' => plus (big_sum 0 plus f n') (f n')
-  end.
-
-Inductive cmtv_grp (G : Type) (id : G) (plus : G -> G -> G) : Prop :=
-| is_cmtv_grp : (forall g : G, plus 0 g = g) ->
-                (forall g1 g2 : G, plus g1 g2 = plus g2 g1) ->
-                (forall g1 g2 g3 : G, plus (plus g1 g2) g3 = plus g1 (plus g2 g3)) ->
-                cmtv_grp G 0 plus.
-
-Inductive cmtv_scl_grp (G S : Type) (id : G)
-          (plus : G -> G -> G) (scale : S -> G -> G) : Prop :=
-| is_cmtv_scl_grp : 
-
-
-*)
-
-
-
-
-
-
-
-
-
-
-
-
-
-(*
-
-Program Instance C_is_group : Group C := 
-  { 0 := C0
-  ; op := Cplus
-  }.
-Next Obligation.
-Proof. lca. Qed.
-Next Obligation.
-Proof. lca. Qed.
-Next Obligation.
-Proof. exists (-g); lca. Qed.
-Next Obligation.
-Proof. exists (-g); lca. Qed.
-Next Obligation.
-Proof. lca. Qed.
-
-Program Instance C_is_ring : Ring C :=
-  { one := C1
-  ; mul := Cmult
-  }.
-Next Obligation.
-Proof. lca. Qed.
-Next Obligation.
-Proof. lca. Qed.
-Next Obligation.
-Proof. lca. Qed.
-
-Lemma C_is_field : Field C.
-Proof. split; intros; simpl in *. 
-       exists (/f).
-       rewrite Cinv_r; easy.
-Qed.
-
-
-
-
-
-Instance C_is_group_law : Group_Laws C.
-Proof. split; intros; simpl; try lca. 
-       all : exists (-g); lca.
-Qed.
-
-*)
-
-(*
-Declare Scope group_scope.
-Infix "+" := op : group_scope.
-
-Open Scope group_scope.
-
-Class Group_Laws G `{Group G} :=
-  { G_id_l : forall g, 0 + g = g
-  ; G_id_r : forall g, g + 0 = g
-  ; G_inv_l : forall g, exists h, h + g = 0
-  ; G_inv_r : forall g, exists h, g + h = 0                                
-  ; G_assoc : forall g h i, (g + h) + i = g + (h + i) 
-  }.
-
-
-Class Ring R `{Group_Laws R} :=
-  {
-    one : R;
-    mul : R -> R -> R
-  }.
-
-Infix "*" := mul : group_scope.
-
-Class Ring_Laws R `{Ring R} :=
-  { R_mul_1_l : forall a, one * a = a
-  ; R_mul_comm : forall a b, a * b = b * a
-  ; R_mul_plus_distr_l : forall a b c, a * (b + c) = a * b + a * c
-  }.
-
-
-
-Class Field_Laws F `{Ring F} :=
-  { F_inv : forall f, f <> 0 -> exists g, f * g = one }.
-
-
-
-Class Vector_Space V `{Group_Laws V} :=
-  { F : Type;
-    F_group : `{ Group F}; 
-    F_group_law : `{ Group_Laws F};  
-    F_ring : `{ Ring F}; 
-    F_ring_law : `{ Ring_Laws F}; 
-    F_field_law : `{ Field_Laws F};
-    scale : F -> V -> V
-  }.  
-
-
-Class Vector_Space_Laws V `{Vector_Space V} :=
-  { V_plus_comm : forall u v, u + v = v + u
-  ; V_scale_comm : forall a u v, scale a (u + v) = scale a u + scale a v
-  ; V_scale_assoc : forall a b v, scale a (scale b v) = scale (a * b) v
-  }.
-
-*)
-
-
-
-(*
-Class Ring R `{Group R} :=
-  { one : R
-  ; mul : R -> R -> R
-  ; R_mul_1_l : forall a, mul one a = a
-  ; R_mul_comm : forall a b, mul a b = mul b a
-  ; R_mul_plus_distr_l : forall a b c, mul a (b + c) = mul a b + mul a c
-  }.
-
-Infix "*" := mul : group_scope.
-
-
-Class Field F `{Ring F} :=
-  { F_inv : forall f, f <> 0 -> exists g, f * g = one }.
-
-
-
-Class Vector_Space V F `{Group V} `{Field F} :=
-  { scale : F -> V -> V
-  ; V_plus_comm : forall u v, u + v = v + u
-  ; V_scale_comm : forall a u v, scale a (u + v) = scale a u + scale a v
-  ; V_scale_assoc : forall a b v, scale a (scale b v) = scale (a * b) v
-  }.  
-*)
-
-
-
-(*
-
-
-
-(******************************)
-(** Proofs about finite sums **)
-(******************************)
-
-Local Close Scope nat_scope.
-
-Lemma big_sum_0 : forall f n, (forall x, f x = C0) -> big_sum f n = 0. 
+Lemma big_sum_swap_order : forall {G} `{Comm_Group G} (f : nat -> nat -> G) m n,
+  big_sum (fun j => big_sum (fun i => f j i) m) n = 
+    big_sum (fun i => big_sum (fun j => f j i) n) m.
 Proof.
   intros.
-  induction n.
-  - reflexivity.
-  - simpl.
-    rewrite IHn, H. 
-    lca.
-Qed.
-
-Lemma big_sum_1 : forall f n, (forall x, f x = C1) -> big_sum f n = INR n. 
-Proof.
-  intros.
-  induction n.
-  - reflexivity.
-  - simpl.
-    rewrite IHn, H. 
-    destruct n; lca.    
-Qed.
-
-Lemma big_sum_constant : forall c n, big_sum (fun x => c) n = INR n * c.
-Proof.
-  intros c n.
-  induction n.
-  + simpl; lca.
-  + simpl.
-    rewrite IHn.
-    destruct n; lca.
-Qed.
-
-Lemma big_sum_eq : forall f g n, f = g -> big_sum f n = big_sum g n.
-Proof. intros f g n H. subst. reflexivity. Qed.
-
-Lemma big_sum_0_bounded : forall f n, (forall x, (x < n)%nat -> f x = C0) -> big_sum f n = 0. 
-Proof.
-  intros.
-  induction n.
-  - reflexivity.
-  - simpl.
-    rewrite IHn, H. 
-    lca.
-    lia.
-    intros.
-    apply H.
-    lia.
-Qed.
-
-Lemma big_sum_eq_bounded : forall f g n, (forall x, (x < n)%nat -> f x = g x) -> big_sum f n = big_sum g n.
-Proof. 
-  intros f g n H. 
-  induction n.
-  + simpl. reflexivity.
-  + simpl. 
-    rewrite H by lia.
-    rewrite IHn by (intros; apply H; lia).
-    reflexivity.
-Qed.
-
-Lemma big_sum_plus : forall f g n, big_sum (fun x => f x + g x) n = big_sum f n + big_sum g n.
-Proof.
-  intros f g n.
-  induction n.
-  + simpl. lca.
-  + simpl. rewrite IHn. lca.
-Qed.
-
-Lemma big_sum_mult_l : forall c f n, c * big_sum f n = big_sum (fun x => c * f x) n.
-Proof.
-  intros c f n.
-  induction n.
-  + simpl; lca.
-  + simpl.
-    rewrite Cmult_plus_distr_l.
-    rewrite IHn.
-    reflexivity.
-Qed.
-
-Lemma big_sum_mult_r : forall c f n, big_sum f n * c = big_sum (fun x => f x * c) n.
-Proof.
-  intros c f n.
-  induction n.
-  + simpl; lca.
-  + simpl.
-    rewrite Cmult_plus_distr_r.
-    rewrite IHn.
-    reflexivity.
-Qed.
-
-Lemma big_sum_conj_distr : forall f n, (big_sum f n) ^* = big_sum (fun x => (f x)^* (* *)  ) n.
-Proof. 
-  intros f n.
-  induction n.
-  + simpl; lca.
-  + simpl. 
-    rewrite Cconj_plus_distr.
-    rewrite IHn.
-    reflexivity.
-Qed.
-    
-Lemma big_sum_extend_r : forall n f, big_sum f n + f n = big_sum f (S n).
-Proof. reflexivity. Qed.
-
-Lemma big_sum_extend_l : forall n f, f O + big_sum (fun x => f (S x)) n = big_sum f (S n).
-Proof.
-  intros n f.
-  induction n.
-  + simpl; lca.
-  + simpl.
-    rewrite Cplus_assoc.
-    rewrite IHn.
-    simpl.
-    reflexivity.
-Qed.
-
-Lemma big_sum_unique : forall k (f : nat -> C) n, 
-  (exists x, (x < n)%nat /\ f x = k /\ (forall x', x <> x' -> f x' = 0)) ->
-  big_sum f n = k.
-Proof.                    
-  intros k f n [x [L [Eq Unique]]].
-  induction n; try lia.
-  rewrite <- big_sum_extend_r.
-  destruct (Nat.eq_dec x n).
-  - subst. 
-    rewrite big_sum_0_bounded.
-    lca.
-    intros.
-    apply Unique.
-    lia.
-  - rewrite Unique by easy.
-    Csimpl.
-    apply IHn.
-    lia.
-Qed.    
-
-Lemma big_sum_sum : forall m n f, big_sum f (m + n) = 
-                          big_sum f m + big_sum (fun x => f (m + x)%nat) n. 
-Proof.    
-  intros m n f.
-  induction m.
-  + simpl. rewrite Cplus_0_l. reflexivity. 
-  + simpl.
-    rewrite IHm.
-    repeat rewrite <- Cplus_assoc.
-    remember (fun y => f (m + y)%nat) as g.
-    replace (f m) with (g O) by (subst; rewrite plus_0_r; reflexivity).
-    replace (f (m + n)%nat) with (g n) by (subst; reflexivity).
-    replace (big_sum (fun x : nat => f (S (m + x))) n) with
-            (big_sum (fun x : nat => g (S x)) n).
-    2:{ apply big_sum_eq. subst. apply functional_extensionality.
-    intros; rewrite <- plus_n_Sm. reflexivity. }
-    rewrite big_sum_extend_l.
-    rewrite big_sum_extend_r.
-    reflexivity.
-Qed.
-
-Lemma big_sum_product : forall m n f g, n <> O ->
-                              big_sum f m * big_sum g n = 
-                              big_sum (fun x => f (x / n)%nat * g (x mod n)%nat) (m * n). 
-Proof.
-  intros.
-  induction m.
-  + simpl; lca.
-  + simpl.      
-    rewrite Cmult_plus_distr_r.
-    rewrite IHm. clear IHm.
-    rewrite big_sum_mult_l.    
-    remember ((fun x : nat => f (x / n)%nat * g (x mod n)%nat)) as h.
-    replace (big_sum (fun x : nat => f m * g x) n) with
-            (big_sum (fun x : nat => h ((m * n) + x)%nat) n). 
-    2:{
-      subst.
-      apply big_sum_eq_bounded.
-      intros x Hx.
-      rewrite Nat.div_add_l by assumption.
-      rewrite Nat.div_small; trivial.
-      rewrite plus_0_r.
-      rewrite Nat.add_mod by assumption.
-      rewrite Nat.mod_mul by assumption.
-      rewrite plus_0_l.
-      repeat rewrite Nat.mod_small; trivial. }
-    rewrite <- big_sum_sum.
-    rewrite plus_comm.
-    reflexivity.
-Qed.
-
-Lemma big_sum_ge_0 : forall f n, (forall x, 0 <= fst (f x)) -> 0 <= fst (big_sum f n).
-Proof.
-  intros f n H.
-  induction n.
-  - simpl. lra. 
-  - simpl in *.
-    rewrite <- Rplus_0_r at 1.
-    apply Rplus_le_compat; easy.
-Qed.
-
-Lemma big_sum_gt_0 : forall f n, (forall x, 0 <= fst (f x)) -> 
-                              (exists y : nat, (y < n)%nat /\ 0 < fst (f y)) ->
-                              0 < fst (big_sum f n).
-Proof.
-  intros f n H [y [H0 H1]].
-  induction n.
-  - simpl. lia. 
-  - simpl in *.
-    bdestruct (y <? n)%nat; bdestruct (y =? n)%nat; try lia. 
-    + assert (H' : 0 <= fst (f n)). { apply H. } 
-      apply IHn in H2. lra. 
-    + apply (big_sum_ge_0 f n) in H.
-      rewrite H3 in H1.
-      lra. 
-Qed.
-
-Lemma big_sum_member_le : forall (f : nat -> C) (n : nat), (forall x, 0 <= fst (f x)) ->
-                      (forall x, (x < n)%nat -> fst (f x) <= fst (big_sum f n)).
-Proof.
-  intros f.
-  induction n.
-  - intros H x Lt. inversion Lt.
-  - intros H x Lt.
-    bdestruct (Nat.ltb x n).
-    + simpl.
-      rewrite <- Rplus_0_r at 1.
-      apply Rplus_le_compat.
-      apply IHn; easy.
-      apply H.
-    + assert (E: x = n) by lia.
-      rewrite E.
-      simpl.
-      rewrite <- Rplus_0_l at 1.
-      apply Rplus_le_compat.
-      apply big_sum_ge_0; easy.
-      lra.
-Qed.  
-
-Lemma big_sum_squeeze : forall (f : nat -> C) (n : nat), 
-  (forall x, (0 <= fst (f x)))%R -> big_sum f n = C0 ->
-  (forall x, (x < n)%nat -> fst (f x) = fst C0).
-Proof. intros. 
-       assert (H2 : (forall x, (x < n)%nat -> (fst (f x) <= 0)%R)).
-       { intros. 
-         replace 0%R with (fst (C0)) by easy.
-         rewrite <- H0.
-         apply big_sum_member_le; try easy. }
-       assert (H3 : forall r : R, (r <= 0 -> 0 <= r -> r = 0)%R). 
-       intros. lra. 
-       simpl. 
-       apply H3.
-       apply H2; easy.
-       apply H.
-Qed.
-
-Lemma big_sum_snd_0 : forall n f, (forall x, snd (f x) = 0) -> snd (big_sum f n) = 0.       
-Proof. intros. induction n.
-       - reflexivity.
-       - rewrite <- big_sum_extend_r.
-         unfold Cplus. simpl. rewrite H, IHn.
-         lra.
-Qed.
-
-Lemma big_sum_comm : forall f g n, 
-    (forall c1 c2 : C, g (c1 + c2) = g c1 + g c2) ->
-    big_sum (fun x => g (f x)) n = g (big_sum f n).
-Proof. intros. induction n as [| n'].
-       - simpl.
-         assert (H0 : g 0 - g 0 = g 0 + g 0 - g 0). 
-         { rewrite <- H. rewrite Cplus_0_r. easy. }
-         unfold Cminus in H0. 
-         rewrite <- Cplus_assoc in H0.
-         rewrite Cplus_opp_r in H0.
-         rewrite Cplus_0_r in H0. 
-         apply H0. 
-       - do 2 (rewrite <- big_sum_extend_r).
-         rewrite IHn'.
-         rewrite H.
-         reflexivity.
-Qed.
-
-Local Open Scope nat_scope.
-
-Lemma big_sum_double_sum : forall (f : nat -> nat -> C) (n m : nat),
-    big_sum (fun x => (big_sum (fun y => f x y) n)) m = big_sum (fun z => f (z / n) (z mod n)) (n * m).
-Proof. induction m as [| m'].
-       - rewrite Nat.mul_0_r.
-         easy.
-       - rewrite Nat.mul_succ_r.
-         rewrite <- big_sum_extend_r.
-         rewrite big_sum_sum.
-         apply Cplus_simplify; try easy.
-         apply big_sum_eq_bounded; intros.
-         rewrite mult_comm.
-         rewrite Nat.div_add_l; try lia. 
-         rewrite (plus_comm (m' * n)).
-         rewrite Nat.mod_add; try lia.
-         destruct (Nat.mod_small_iff x n) as [_ HD]; try lia.
-         destruct (Nat.div_small_iff x n) as [_ HA]; try lia.
-         rewrite HD, HA; try lia.
-         rewrite Nat.add_0_r.
-         easy.
-Qed.
-
-Lemma big_sum_extend_double : forall (n m : nat) (f : nat -> nat -> C),
-  (big_sum (fun i => big_sum (fun j => f i j) (S m)) (S n)) = 
-  ((big_sum (fun i => big_sum (fun j => f i j) m) n) + (big_sum (fun j => f n j) m) + 
-                      (big_sum (fun i => f i m) n) + f n m)%C.
-Proof. intros. 
-       rewrite <- big_sum_extend_r.
-       assert (H' : forall a b c d, (a + b + c + d = (a + c) + (b + d))%C). 
-       { intros. lca. }
-       rewrite H'.
-       apply Cplus_simplify; try easy.
-       rewrite <- big_sum_plus.
-       apply big_sum_eq_bounded; intros. 
-       easy.
-Qed.
-
-Lemma big_sum_rearrange : forall (n : nat) (f g : nat -> nat -> C),
-  (forall x y, x <= y -> f x y = -C1 * g (S y) x)%C ->
-  (forall x y, y <= x -> f (S x) y = -C1 * g y x)%C ->
-  big_sum (fun i => big_sum (fun j => f i j) n) (S n) = 
-  (-C1 * (big_sum (fun i => big_sum (fun j => g i j) n) (S n)))%C.
-Proof. induction n as [| n'].
-       - intros. lca. 
-       - intros. 
-         do 2 rewrite big_sum_extend_double.
-         rewrite (IHn' f g); try easy.
-         repeat rewrite Cmult_plus_distr_l.
-         repeat rewrite <- Cplus_assoc.
-         apply Cplus_simplify; try easy.
-         assert (H' : forall a b c, (a + (b + c) = (a + c) + b)%C). 
-         intros. lca. 
-         do 2 rewrite H'.
-         rewrite <- Cmult_plus_distr_l.
-         do 2 rewrite big_sum_extend_r. 
-         do 2 rewrite big_sum_mult_l.
-         rewrite Cplus_comm.
-         apply Cplus_simplify.
-         all : apply big_sum_eq_bounded; intros. 
-         apply H; lia. 
-         apply H0; lia. 
-Qed.
-
-Lemma Rsum_big_sum : forall n (f : nat -> R),
-  fst (big_sum f n) = Rsum n f.
-Proof.
-  intros. induction n.
-  - easy.
-  - simpl. rewrite IHn.
-    destruct n.
-    + simpl. lra.
-    + rewrite tech5. simpl. easy.
-Qed.
-
-
-*)
-
-
-
-
-(******************)
-(* Sum Over Reals *)
-(******************)
-
-(*
-
-Definition Rsum (n : nat) (f : nat -> R) : R :=
-  match n with
-  | O => 0
-  | S n => sum_f_R0 f n
-  end.
-
-Lemma Rsum_eq :
-  forall n f1 f2,
-    (forall i, f1 i = f2 i) -> Rsum n f1 = Rsum n f2.
-Proof.
-  intros. induction n.
-  - easy.
-  - simpl. destruct n.
-    + simpl. apply H.
-    + simpl. simpl in IHn. rewrite IHn. rewrite H. easy.
-Qed.
-
-Lemma Rsum_eq_bounded :
-  forall n f1 f2,
-    (forall i, (i < n)%nat -> f1 i = f2 i) -> Rsum n f1 = Rsum n f2.
-Proof.
-  intros. 
   induction n; simpl.
-  reflexivity.
-  destruct n; simpl.
-  apply H. lia.
-  simpl in IHn. rewrite IHn. 
-  rewrite H by lia. easy.
-  intros. apply H; lia.
+  rewrite big_sum_0 by auto. reflexivity.
+  rewrite IHn. rewrite <- big_sum_plus. reflexivity.
 Qed.
 
-Lemma Rsum_extend : forall n (f : nat -> R),
-  Rsum (S n) f = (f n + Rsum n f)%R.
-Proof. intros. destruct n; simpl; lra. Qed.
-
-Lemma Rsum_shift : forall n (f : nat -> R),
-  Rsum (S n) f = (f O + Rsum n (fun x => f (S x)))%R.
+Lemma big_sum_diagonal : forall {G} `{Monoid G} (f : nat -> nat -> G) n,
+    (forall i j, (i < n)%nat -> (j < n)%nat -> (i <> j)%nat -> f i j = 0) ->
+    big_sum (fun i => big_sum (fun j => f i j) n) n = big_sum (fun i => f i i) n.
 Proof.
-  intros n f. 
+  intros. apply big_sum_eq_bounded. intros.
+  apply big_sum_unique. 
+  exists x; split; simpl; auto.
+Qed.
+
+(* Lemma specifically for sums over nats
+   TODO: can we generalize to other data types with comparison ops?
+         (see Rsum_le in RealAux.v) *)
+Lemma Nsum_le : forall n f g,
+  (forall x, x < n -> f x <= g x)%nat ->
+  (big_sum f n <= big_sum g n)%nat.
+Proof.
+  intros. induction n. simpl. easy.
   simpl.
-  induction n; simpl.
-  lra.
-  rewrite IHn.
-  destruct n; simpl; lra.
-Qed.
-
-Lemma Rsum_plus_range : forall m n f,
-  Rsum (m + n) f = (Rsum m f + Rsum n (fun x => f (x + m)%nat))%R.
-Proof.
-  intros m n f.
-  induction n.
-  simpl. 
-  rewrite Nat.add_0_r. 
-  lra.
-  replace (m + S n)%nat with (S (m + n)) by lia. 
-  rewrite 2 Rsum_extend.
-  rewrite IHn.
-  rewrite Nat.add_comm.
-  lra.
-Qed.
-
-Lemma Rsum_twice : forall n f,
-  Rsum (2 * n) f = (Rsum n f + Rsum n (fun x => f (x + n)%nat))%R.
-Proof.
-  intros n f. replace (2 * n)%nat with (n + n)%nat by lia. apply Rsum_plus_range.
-Qed.
-
-Lemma Rsum_plus: forall n f g,
-  Rsum n (fun x => (f x + g x)%R) = ((Rsum n f) + (Rsum n g))%R.
-Proof.
-  intros n f g.
-  induction n.
-  simpl. lra.
-  repeat rewrite Rsum_extend.
-  rewrite IHn. lra.
-Qed.
-
-Lemma nested_Rsum : forall m n f,
-  Rsum (2 ^ (m + n)) f 
-    = Rsum (2 ^ m) (fun x => Rsum (2 ^ n) (fun y => f (x * 2 ^ n + y)%nat)).
-Proof.
-  intros m n.
-  replace (2 ^ (m + n))%nat with (2 ^ n * 2 ^ m)%nat by (rewrite Nat.pow_add_r; lia).
-  induction m; intro f.
-  simpl.
-  rewrite Nat.mul_1_r.
-  reflexivity.
-  replace (2 ^ n * 2 ^ S m)%nat with (2 * (2 ^ n * 2 ^ m))%nat by (simpl; lia).
-  replace (2 ^ S m)%nat with (2 * 2 ^ m)%nat by (simpl; lia).
-  rewrite 2 Rsum_twice.
-  rewrite 2 IHm.
-  apply f_equal2; try reflexivity.
-  apply Rsum_eq.
-  intro x.
-  apply Rsum_eq.
-  intro y.
-  apply f_equal.
+  assert (f n <= g n)%nat.
+  { apply H. lia. }
+  assert (big_sum f n <= big_sum g n)%nat.
+  { apply IHn. intros. apply H. lia. }
   lia.
 Qed.
 
-Lemma Rsum_scale : forall n f r,
-  (r * Rsum n f = Rsum n (fun x => r * f x))%R.
-Proof.
-  intros n f r.
-  induction n.
-  simpl. lra.
-  rewrite 2 Rsum_extend.
-  rewrite <- IHn. lra.
+(*
+ *
+ *
+ *)
+
+(* developing l_a tactics for all these new typeclasses *)
+
+
+  
+Inductive mexp {G} : Type :=
+| Ident : mexp
+| Var : G -> mexp
+| Op : mexp -> mexp -> mexp.
+
+
+(* turns mexp into g *)
+Fixpoint mdenote {G} `{Monoid G} (me : mexp) : G :=
+  match me with
+  | Ident => 0
+  | Var v => v
+  | Op me1 me2 => mdenote me1 + mdenote me2
+  end.
+
+(* we also want something that takes list G to G, this is done by G_big_plus *)
+
+(* turns mexp into list G *)
+Fixpoint flatten {G} `{Monoid G} (me : mexp) : list G :=
+  match me with
+  | Ident => nil
+  | Var x => x :: nil
+  | Op me1 me2 => flatten me1 ++ flatten me2
+  end.
+
+Theorem flatten_correct : forall {G} `{Monoid G} me, 
+  mdenote me = G_big_plus (flatten me).
+Proof. 
+  induction me; simpl; auto.
+  rewrite Gplus_0_r; easy.
+  rewrite <- big_plus_app, IHme1, IHme2.  
+  easy. 
 Qed.
 
-Lemma Rsum_0 : forall f n, (forall x : nat, f x = 0) -> Rsum n f = 0.
+
+Theorem monoid_reflect : forall {G} `{Monoid G} me1 me2,
+  G_big_plus (flatten me1) = G_big_plus (flatten me2) -> 
+  mdenote me1 = mdenote me2.
 Proof.
-  intros f n Hf. 
-  induction n. reflexivity. 
-  rewrite Rsum_extend, IHn, Hf. lra.
+  intros; repeat rewrite flatten_correct; assumption.
 Qed.
 
 
-*)
+Ltac reify_mon me :=
+  match me with
+  | 0 => Ident
+  | ?me1 + ?me2 =>
+      let r1 := reify_mon me1 in
+      let r2 := reify_mon me2 in
+      constr:(Op r1 r2)
+  | _ => constr:(Var me)
+  end.
+
+Ltac solve_monoid :=
+  match goal with
+  | [ |- ?me1 = ?me2 ] =>
+      let r1 := reify_mon me1 in
+      let r2 := reify_mon me2 in
+      change (mdenote r1 = mdenote r2);
+      apply monoid_reflect; simpl;
+      repeat (rewrite Gplus_0_l); 
+      repeat (rewrite Gplus_0_r);
+      repeat (rewrite Gplus_assoc); try easy  
+  end.
+
+ 
+Lemma test : forall {G} `{Monoid G} a b c d, a + b + c + d = a + (b + c) + d.
+Proof. intros.
+       solve_monoid.
+Qed.
+
+
+(* there is a lot of repeated code here, perhaps could simplify things *)
+Inductive gexp {G} : Type :=
+| Gident : gexp
+| Gvar : G -> gexp
+| Gop : gexp -> gexp -> gexp
+| Gmin : gexp -> gexp.
+
+Fixpoint gdenote {G} `{Group G} (ge : gexp) : G :=
+  match ge with
+  | Gident => 0
+  | Gvar v => v
+  | Gop me1 me2 => gdenote me1 + gdenote me2
+  | Gmin v => - gdenote v
+  end.
+
+Fixpoint gflatten {G} `{Group G} (ge : gexp) : list G :=
+  match ge with
+  | Gident => nil
+  | Gvar x => x :: nil
+  | Gop ge1 ge2 => gflatten ge1 ++ gflatten ge2
+  | Gmin ge' => map Gopp (rev (gflatten ge'))
+  end.
+
+Theorem gflatten_correct : forall {G} `{Group G} ge, 
+    gdenote ge = G_big_plus (gflatten ge).
+Proof. 
+  induction ge; simpl; auto.
+  rewrite Gplus_0_r; easy.
+  rewrite <- big_plus_app, IHge1, IHge2.  
+  easy. 
+  rewrite IHge, big_plus_inv. 
+  easy.
+Qed.
+  
+
+Theorem group_reflect : forall {G} `{Group G} ge1 ge2,
+  G_big_plus (gflatten ge1) = G_big_plus (gflatten ge2) -> 
+  gdenote ge1 = gdenote ge2.
+Proof.
+  intros; repeat rewrite gflatten_correct; assumption.
+Qed.
+
+Lemma big_plus_reduce : forall {G} `{Group G} a l,
+  G_big_plus (a :: l) = a + G_big_plus l.
+Proof. intros. easy. Qed.
+  
+Lemma big_plus_inv_r : forall {G} `{Group G} a l,
+  G_big_plus (a :: -a :: l) = G_big_plus l.
+Proof. 
+  intros; simpl. 
+  rewrite Gplus_assoc, Gopp_r, Gplus_0_l; easy.
+Qed.
+
+Lemma big_plus_inv_l : forall {G} `{Group G} a l,
+  G_big_plus (-a :: a :: l) = G_big_plus l.
+Proof. 
+  intros; simpl. 
+  rewrite Gplus_assoc, Gopp_l, Gplus_0_l; easy.
+Qed.
+
+Ltac reify_grp ge :=
+  match ge with
+  | 0 => Gident
+  | ?ge1 + ?ge2 =>
+      let r1 := reify_grp ge1 in
+      let r2 := reify_grp ge2 in
+      constr:(Gop r1 r2)
+  | ?ge1 - ?ge2 =>
+      let r1 := reify_grp ge1 in
+      let r2 := reify_grp ge2 in
+      constr:(Gop r1 (Gmin r2))             
+  | -?ge => 
+      let r := reify_grp ge in
+      constr:(Gmin r)
+  | _ => constr:(Gvar ge)
+  end.
+
+Ltac solve_group :=
+  unfold Gminus;
+  match goal with
+  | [ |- ?me1 = ?me2 ] =>
+      let r1 := reify_grp me1 in
+      let r2 := reify_grp me2 in
+      change (gdenote r1 = gdenote r2);
+      apply group_reflect; simpl gflatten;
+      repeat (rewrite Gopp_involutive);
+      repeat (try (rewrite big_plus_inv_r); 
+              try (rewrite big_plus_inv_l); 
+              try rewrite big_plus_reduce); simpl;
+      repeat (rewrite Gplus_0_l); repeat (rewrite Gplus_0_r);
+      repeat (rewrite Gplus_assoc); try easy      
+  end.
+
+Lemma test2 : forall {G} `{Group G} a b c d, a + b + c + d - d = a + (b + c) + d - d.
+Proof. intros. solve_group. Qed.
+ 
+Lemma test3 : forall {G} `{Group G} a b c, - (a + b + c) + a  = 0 - c - b.
+Proof. intros. solve_group. Qed.

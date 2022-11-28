@@ -87,6 +87,26 @@ Proof.
   lca.
 Qed. 
 
+
+                                                          
+(* Defining other basis states *)
+                                                          
+Definition xbasis_plus : Vector 2 := / (√ 2) .* (∣0⟩ .+ ∣1⟩).
+Definition xbasis_minus : Vector 2 := / (√ 2) .* (∣0⟩ .+ ((-1) .* ∣1⟩)).
+Definition ybasis_plus : Vector 2 := / (√ 2) .* (∣0⟩ .+ Ci .* ∣1⟩).
+Definition ybasis_minus : Vector 2 := / (√ 2) .* (∣0⟩ .+ ((-Ci) .* ∣1⟩)).
+
+Notation "∣+⟩" := xbasis_plus.
+Notation "∣-⟩" := xbasis_minus.
+Notation "∣R⟩" := ybasis_plus.
+Notation "∣L⟩" := ybasis_minus.
+
+(* defining the EPR pair *)
+Definition EPRpair : Vector 4 := / (√ 2) .* (∣0,0⟩ .+ ∣1,1⟩).
+
+Notation "∣Φ+⟩" := EPRpair.
+                                                         
+                                                          
 (****************)
 (** * Unitaries *)
 (****************)
@@ -402,6 +422,10 @@ Lemma MmultZZ : σz × σz = I 2. Proof. solve_matrix. Qed.
 Lemma MmultHH : hadamard × hadamard = I 2. Proof. solve_matrix. Qed.
 Lemma Mplus01 : ∣0⟩⟨0∣ .+ ∣1⟩⟨1∣ = I 2. Proof. solve_matrix. Qed.
 Lemma Mplus10 : ∣1⟩⟨1∣ .+ ∣0⟩⟨0∣ = I 2. Proof. solve_matrix. Qed.
+
+Lemma EPRpair_creation : cnot × (hadamard ⊗ I 2) × ∣0,0⟩ = EPRpair.
+Proof. unfold EPRpair. solve_matrix.
+Qed.
                             
 Lemma σx_on_right0 : forall (q : Vector 2), (q × ⟨0∣) × σx = q × ⟨1∣.
 Proof. intros. rewrite Mmult_assoc, Mmult0X. reflexivity. Qed.
@@ -458,7 +482,7 @@ Proof.
 Qed.
 
 Hint Rewrite Mmult00 Mmult01 Mmult10 Mmult11 Mmult0X MmultX0 Mmult1X MmultX1 : Q_db.
-Hint Rewrite MmultXX MmultYY MmultZZ MmultHH Mplus01 Mplus10 : Q_db.
+Hint Rewrite MmultXX MmultYY MmultZZ MmultHH Mplus01 Mplus10 EPRpair_creation : Q_db.
 Hint Rewrite σx_on_right0 σx_on_right1 σx_on_left0 σx_on_left1 : Q_db.
 Hint Rewrite cancel00 cancel01 cancel10 cancel11 using (auto with wf_db) : Q_db.
 
@@ -571,9 +595,22 @@ Proof.
   apply IHl.
 Qed.
 
+
+Lemma WF_xbasis_plus : WF_Matrix ∣+⟩. Proof. show_wf. Qed.
+Lemma WF_xbasis_minus : WF_Matrix ∣-⟩. Proof. show_wf. Qed.
+Lemma WF_ybasis_plus : WF_Matrix ∣R⟩. Proof. show_wf. Qed.
+Lemma WF_ybasis_minus : WF_Matrix ∣L⟩. Proof. show_wf. Qed.
+
+
 #[export] Hint Resolve WF_bra0 WF_bra1 WF_qubit0 WF_qubit1 WF_braqubit0 WF_braqubit1 : wf_db.
 #[export] Hint Resolve WF_bool_to_ket WF_bool_to_matrix WF_bool_to_matrix' : wf_db.
 #[export] Hint Resolve WF_ket WF_bra WF_bools_to_matrix : wf_db.
+#[export] Hint Resolve WF_xbasis_plus WF_xbasis_minus WF_ybasis_plus WF_ybasis_minus : wf_db. 
+
+Lemma WF_EPRpair : WF_Matrix ∣Φ+⟩. Proof. unfold EPRpair. auto with wf_db. Qed.
+
+#[export] Hint Resolve WF_EPRpair : wf_db. 
+
 
 Lemma WF_hadamard : WF_Matrix hadamard. Proof. show_wf. Qed.
 Lemma WF_σx : WF_Matrix σx. Proof. show_wf. Qed.
@@ -611,7 +648,7 @@ Qed.
 (* how to make this proof shorter? *)
 Lemma direct_sum_decomp : forall (m n o p : nat) (A B : Matrix m n), 
   WF_Matrix A -> WF_Matrix B -> 
-  A ⊕ B = ∣0⟩⟨0∣ ⊗ A .+ ∣1⟩⟨1∣ ⊗ B.
+  A .⊕ B = ∣0⟩⟨0∣ ⊗ A .+ ∣1⟩⟨1∣ ⊗ B.
 Proof. 
   intros. 
   unfold direct_sum, kron, Mplus.
@@ -1499,7 +1536,6 @@ Proof.
       end.
       simpl in *.
       unfold Rminus in *.
-      Search (_ * - _)%R.
       rewrite <- Ropp_mult_distr_r.
       rewrite Ropp_mult_distr_l.
       apply res with (x := i); trivial. 
@@ -1551,117 +1587,7 @@ Proof.
     lca.
 Qed.
 
-(* Useful to be able to normalize vectors *)
 
-Definition norm {n} (ψ : Vector n) : R :=
-  sqrt (fst ((ψ† × ψ) O O)).
-
-Lemma norm_real : forall {n} (v : Vector n), snd ((v† × v) 0%nat 0%nat) = 0%R. 
-Proof. intros. unfold Mmult, adjoint.
-        rewrite big_sum_snd_0. easy.
-        intros. rewrite Cmult_comm.
-        rewrite Cmult_conj_real.
-        reflexivity.
-Qed.
-
-Definition normalize {n} (ψ : Vector n) :=
-  / (norm ψ) .* ψ.
-
-Lemma inner_product_ge_0 : forall {d} (ψ : Vector d),
-  0 <= fst ((ψ† × ψ) O O).
-Proof.
-  intros.
-  unfold Mmult, adjoint.
-  apply big_sum_ge_0.
-  intro.
-  rewrite <- Cmod_sqr.
-  simpl.
-  autorewrite with R_db.
-  apply Rmult_le_pos; apply Cmod_ge_0.
-Qed.
-
-Lemma norm_scale : forall {n} c (v : Vector n), norm (c .* v) = ((Cmod c) * norm v)%R.
-Proof.
-  intros n c v.
-  unfold norm.
-  rewrite Mscale_adj.
-  distribute_scale.
-  unfold scale.
-  simpl.
-  replace (fst c * snd c + - snd c * fst c)%R with 0%R.
-  autorewrite with R_db C_db.
-  replace (fst c * fst c)%R with (fst c ^ 2)%R by lra.
-  replace (snd c * snd c)%R with (snd c ^ 2)%R by lra.
-  rewrite sqrt_mult_alt.
-  reflexivity.
-  apply Rplus_le_le_0_compat; apply pow2_ge_0.
-  lra.
-Qed.
-
-Lemma div_real : forall (c : C),
-  snd c = 0 -> snd (/ c) = 0.
-Proof. intros. 
-       unfold Cinv. 
-       simpl. 
-       rewrite H. lra. 
-Qed.
-
-Lemma Cmod_real : forall (c : C), 
-  fst c >= 0 -> snd c = 0 -> Cmod c = fst c. 
-Proof. intros. 
-       unfold Cmod. 
-       rewrite H0.
-       simpl. 
-       autorewrite with R_db.
-       apply sqrt_square.
-       lra. 
-Qed.
-
-Lemma normalized_norm_1 : forall {n} (v : Vector n),
-  norm v <> 0 -> norm (normalize v) = 1.
-Proof. intros. 
-       unfold normalize.
-       distribute_scale. 
-       rewrite norm_scale.  
-       rewrite Cmod_real. 
-       simpl.  
-       autorewrite with R_db.
-       rewrite Rmult_comm.
-       rewrite Rinv_mult_distr; try easy. 
-       rewrite <- Rmult_comm.
-       rewrite <- Rmult_assoc.
-       rewrite Rinv_r; try easy.
-       autorewrite with R_db.
-       reflexivity. 
-       unfold Cinv.
-       simpl. 
-       autorewrite with R_db.
-       rewrite Rinv_mult_distr; try easy. 
-       rewrite <- Rmult_assoc.
-       rewrite Rinv_r; try easy.
-       autorewrite with R_db.
-       assert (H' : norm v >= 0).
-       { assert (H'' : 0 <= norm v).
-         { apply sqrt_pos. }
-         lra. }
-       destruct H' as [H0 | H0].
-       left.
-       assert (H1 : 0 < norm v). { lra. }
-       apply Rinv_0_lt_compat in H1.
-       lra. easy. 
-       apply div_real.
-       easy. 
-Qed.
-
-Lemma rewrite_norm : forall {d} (ψ : Vector d),
-    fst (((ψ) † × ψ) O O) = big_sum (fun i => Cmod (ψ i O) ^ 2)%R d.
-Proof.
-  intros d ψ. unfold Mmult.
-  replace (fun y : nat => (ψ† O y * ψ y O)%C) with (fun y : nat => RtoC (Cmod (ψ y O) ^ 2)).
-  apply Rsum_big_sum.
-  apply functional_extensionality. intros.
-  unfold adjoint. rewrite <- Cmod_sqr. symmetry. apply RtoC_pow.
-Qed.
 
 (** Density matrices and superoperators **)
 
@@ -1811,22 +1737,6 @@ Proof.
   repeat rewrite Mmult_assoc.
   reflexivity.
 Qed.
-
-
-(* This is compose_super_correct 
-Lemma WF_Superoperator_compose : forall m n p (s : Superoperator n p) (s' : Superoperator m n),
-    WF_Superoperator s ->
-    WF_Superoperator s' ->
-    WF_Superoperator (compose_super s s').
-Proof.
-  unfold WF_Superoperator.
-  intros m n p s s' H H0 ρ H1.
-  unfold compose_super.
-  apply H.
-  apply H0.
-  easy.
-Qed.
-*)
 
 (**************)
 (* Automation *)

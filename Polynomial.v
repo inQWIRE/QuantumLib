@@ -1,7 +1,6 @@
 Require Import Psatz.
 Require Import String.
 Require Export Complex.
-Require Export VecSet.
 Require Import List.
 Require Import Setoid.
 
@@ -1687,6 +1686,63 @@ Proof. intros.
            apply (f_equal_gen _ _ (m + C1)%C (m + C1)%C) in H3; auto.
            unfold Peval in H3; simpl in H3; rewrite <- H3; lca.
 Qed.
+
+
+
+
+(* proving results specific to quadratics *)
+
+Local Close Scope nat_scope.
+
+
+Lemma discriminant_pos_Peval_pos : forall (a b c : R),
+  a > 0 ->
+  (forall t, 0 <= fst (Peval [(c,0); (b,0); (a,0)] (t, 0))) <-> 0 <= 4*a*c - b^2.
+Proof. split; intros. 
+       - assert (H1 := H0 (-b/(2*a))%R).
+         replace (fst ([(c, 0); (b, 0); (a, 0)]) [[((-b/(2*a))%R, 0)]])
+           with (c + b*(-b/(2*a)) + a*(-b/(2*a))^2)%R in H1 by (unfold Peval; simpl; lra).
+         unfold Rdiv in *.
+         unfold pow in *.
+         apply (Rmult_le_pos a) in H1; try lra.
+         rewrite Rmult_plus_distr_l, Rinv_mult_distr, Rmult_plus_distr_l in H1; try lra.
+         replace (a * (b * (- b * (/ 2 * / a))))%R 
+           with (- b * b * (a * / a) * / 2)%R in H1 by lra. 
+         replace (a * (a * (- b * (/ 2 * / a) * (- b * (/ 2 * / a) * 1))))%R
+           with (b * b * (a * /a) * (a * /a) * /2 * /2)%R in H1 by lra. 
+         rewrite Rinv_r, Rmult_1_r, Rmult_1_r, Rmult_1_r, Rplus_assoc in H1; try lra.         
+       - replace (fst ([(c, 0); (b, 0); (a, 0)]) [[(t, 0)]])
+           with (c + b*t + a*t^2)%R by (unfold Peval; simpl; lra).
+         rewrite <- (Rmult_1_l c), <- (Rmult_1_l b), <- (Rinv_r a); try lra.
+         replace (a * / a * c + a * / a * b * t + a * t ^ 2)%R
+           with (a * (c/a + b/a * t + t^2))%R by lra.
+         assert (H1 : ((t + b/(2*a))^2 + ((a * c)* /a^2 - b^2/4 * /a^2) = 
+                        (c / a + b / a * t + t ^ 2))%R).
+         { unfold pow; repeat rewrite Rmult_1_r.
+           unfold Rdiv; repeat rewrite Rinv_mult_distr; try lra.
+           replace ((t + b * (/ 2 * / a)) * (t + b * (/ 2 * / a)))%R 
+             with (t * t + t * b * / a + (b * b * /a * /a * /4))%R by lra.
+           replace (a * c * (/ a * / a))%R with (c * / a * (a * / a))%R by lra.
+           rewrite Rinv_r, Rmult_1_r; try lra. }
+         rewrite <- H1.
+         apply Rmult_le_pos; try lra.
+         apply Rplus_le_le_0_compat.
+         apply pow2_ge_0.
+         replace (a * c * / a ^ 2 - b ^ 2 / 4 * / a ^ 2)%R
+           with ((a * c - b ^ 2 / 4) * / a ^ 2)%R by lra.
+         apply Rmult_le_pos.
+         lra.
+         assert (H' : 0 < / a ^ 2).
+         apply Rinv_0_lt_compat; unfold pow; rewrite Rmult_1_r.
+         apply Rmult_lt_0_compat; auto.
+         lra. 
+Qed.
+
+
+
+
+       
+
 
 
 (*****)

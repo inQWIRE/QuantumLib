@@ -447,6 +447,17 @@ Proof.
   rewrite Cmod_inv; auto.
 Qed.
 
+Lemma Cmod_real : forall (c : C), 
+  fst c >= 0 -> snd c = 0 -> Cmod c = fst c. 
+Proof. intros. 
+       unfold Cmod. 
+       rewrite H0.
+       simpl. 
+       autorewrite with R_db.
+       apply sqrt_square.
+       lra. 
+Qed.
+
 Lemma Cmult_neq_0 (z1 z2 : C) : z1 <> 0 -> z2 <> 0 -> z1 * z2 <> 0.
 Proof.
   intros Hz1 Hz2 Hz.
@@ -537,6 +548,14 @@ Proof. intros.
         rewrite Cinv_r in H'; try easy.
         rewrite Cmult_0_r in H'.
         apply C1_neq_C0; easy.
+Qed.
+
+Lemma div_real : forall (c : C),
+  snd c = 0 -> snd (/ c) = 0.
+Proof. intros. 
+       unfold Cinv. 
+       simpl. 
+       rewrite H. lra. 
 Qed.
 
 Lemma eq_neg_implies_0 : forall (c : C), 
@@ -742,105 +761,6 @@ Proof. induction n as [| n'].
 Qed. 
 
 
-(* TODO: prove cauchy schwartz, and do it in a better way than this... *)
-
-
-(*
-
-Lemma Cplx_norm_decomp :
-  forall n (u v : nat -> C),
-    Rsum n (fun i : nat => Cmod (u i - v i) ^ 2)%R
-    = fst (Csum (fun i : nat => (u i) * (u i)^* + (v i) * (v i)^* - (u i) * (v i)^* - (v i) * (u i)^* )%C n).
-Proof.
-  intros. symmetry. erewrite Rsum_eq. apply Csum_fst_distr.
-  intros. rewrite Cmod_sqr_fst.
-  assert (forall {A B} (f : A -> B) (x y : A), x = y -> f x = f y) by (intros; rewrite H; easy).
-  apply H. lca.
-Qed.
-
-Lemma Cplx_Cauchy :
-  forall n (u v : nat -> C),
-    ((Rsum n (fun i => Cmod (u i) ^ 2)) * (Rsum n (fun i => Cmod (v i) ^ 2)) >= Cmod (Csum (fun i => ((u i)^* * (v i))%C) n) ^ 2)%R.
-Proof.
-  intros.
-  destruct (total_order_T (Rsum n (fun i => Cmod (v i) ^ 2)%R) 0) as [H | H].
-  - destruct H as [H | H].
-    + specialize (Rsum_Cmod_sqr_geq_0 n v) as G. lra.
-    + assert (forall i : nat, (i < n)%nat -> v i = 0).
-      { intros. apply Cplx_norm_zero with (n:=n); easy.
-      }
-      assert (forall a b : R, a >= 0 -> b >= 0 -> a * b >= 0) by (intros; nra).
-      eapply Rge_trans. apply H1; apply Rsum_Cmod_sqr_geq_0.
-      rewrite Csum_0_bounded. rewrite Cmod_0. simpl. nra.
-      intros. rewrite H0. lca. easy.
-  - remember (Rsum n (fun i : nat => Cmod (v i) ^ 2)%R) as Rv2.
-    remember (Rsum n (fun i : nat => Cmod (u i) ^ 2)%R) as Ru2.
-    erewrite Rsum_eq in HeqRv2 by (intros; apply Cmod_sqr_fst).
-    erewrite Rsum_eq in HeqRu2 by (intros; apply Cmod_sqr_fst).
-    rewrite <- Csum_fst_distr in HeqRv2.
-    rewrite <- Csum_fst_distr in HeqRu2.
-    rewrite <- Cmod_Cconj.
-    rewrite Csum_conj_distr.
-    erewrite Csum_eq.
-    2:{ apply functional_extensionality. intros. rewrite Cconj_mult_distr. rewrite Cconj_involutive. rewrite Cmult_comm. reflexivity.
-    }
-    remember (Csum (fun i => ((v i)^* * (u i))%C) n) as uvin.    
-    remember ((RtoC (/ Rv2)%R) * uvin)%C as lamb.
-    assert (0 < / Rv2)%R by (apply Rinv_0_lt_compat; easy).
-    apply Rle_ge. apply Rmult_le_reg_r with (r := (/ Rv2)%R); try easy. rewrite Rmult_assoc. rewrite Rinv_r by lra. rewrite Rmult_1_r. apply Rge_le. apply Rminus_ge.
-
-    assert (G: Rsum n (fun i => Cmod ((u i) - lamb * (v i))%C ^ 2)%R >= 0) by apply Rsum_Cmod_sqr_geq_0.
-    rewrite Cplx_norm_decomp in G.
-    assert (T: (forall m (f1 f2 f3 f4 : nat -> C), Csum (fun i => f1 i + f2 i - f3 i - f4 i)%C m = Csum f1 m + Csum f2 m - Csum f3 m - Csum f4 m)%C).
-    { intros. induction m. lca. repeat rewrite <- Csum_extend_r. rewrite IHm. lca.
-    }
-    assert (forall i, (u i * (u i) ^* + lamb * v i * (lamb * v i) ^* - u i * (lamb * v i) ^* - lamb * v i * (u i) ^* = (u i) ^* * (u i) + (lamb ^* * lamb) * ((v i) ^* * (v i)) - lamb ^* * ((v i) ^* * (u i)) - lamb * ((v i) ^* * (u i)) ^* )%C).
-    { intros. rewrite Cconj_mult_distr.
-      rewrite Cmult_comm with (x := u i).
-      rewrite <- Cmult_assoc with (x := lamb). rewrite Cmult_assoc with (x := v i). rewrite Cmult_comm with (x := v i). rewrite <- Cmult_assoc with (x := lamb ^* ). rewrite Cmult_assoc with (x := lamb). rewrite Cmult_comm with (x := lamb). rewrite Cmult_comm with (x := v i).
-      rewrite Cmult_assoc with (x := u i). rewrite Cmult_comm with (x := u i). rewrite Cmult_comm with (x := (v i) ^* ) (y := u i). rewrite Cmult_assoc with (x := lamb ^* ).
-      rewrite Cmult_comm with (x := u i) (y := (v i) ^* ). rewrite Cconj_mult_distr. rewrite Cconj_involutive. rewrite Cmult_assoc with (x := lamb).
-      easy.
-    }
-    erewrite Csum_eq in G by (apply functional_extensionality; apply H1).
-    rewrite T in G.
-    erewrite <- Csum_mult_l with (c := (lamb ^* * lamb)%C) in G.
-    erewrite <- Csum_mult_l with (c := lamb ^* ) in G.
-    erewrite <- Csum_mult_l with (c := lamb) in G.
-    rewrite <- Csum_conj_distr in G.
-    rewrite <- Hequvin in G.
-    assert (Tfst: forall c1 c2 c3 c4 : C, fst (c1 + c2 - c3 - c4)%C = (fst c1 + fst c2 - fst c3 - fst c4)%R).
-    { intros. unfold Cminus, Cplus. simpl. lra.
-    }
-    rewrite Tfst in G.
-    rewrite <- HeqRu2 in G.
-    assert (Trcoef: forall c1 c2 : C, fst (c1 ^* * c1 * c2)%C = (Cmod c1 ^2 * fst c2)%R).
-    { intros. rewrite <- Cmod_sqr. unfold Cmult. simpl. nra.
-    }
-    rewrite Trcoef in G.
-    rewrite <- HeqRv2 in G.
-
-    assert (Hsub1: (Cmod lamb ^ 2 * Rv2 = Cmod uvin ^ 2 * / Rv2)%R).
-    { rewrite Heqlamb. rewrite Cmod_mult. rewrite Rmult_comm with (r2 := Rv2). rewrite Cmod_R_geq_0 by lra. replace ((/ Rv2 * Cmod uvin) ^ 2)%R with (/ Rv2 * Cmod uvin ^ 2 * / Rv2)%R. repeat rewrite <- Rmult_assoc. rewrite Rinv_r by lra. lra.
-      simpl. nra.
-    }
-    rewrite Hsub1 in G.
-    assert (Hsub2: fst (lamb ^* * uvin)%C = (Cmod uvin ^ 2 * / Rv2)%R).
-    { rewrite Heqlamb. rewrite Cconj_mult_distr.
-      replace (fst ((/ Rv2)%R ^* * uvin ^* * uvin)%C) with (fst (uvin ^* * uvin)%C * (/Rv2))%R by (simpl; nra).
-      rewrite Cmod_sqr_fst. easy.
-    }
-    rewrite Hsub2 in G.
-    assert (Hsub3: fst (lamb * uvin^* )%C = (Cmod uvin ^ 2 * / Rv2)%R).
-    { rewrite <- Cconj_involutive with (c := (lamb * uvin ^* )%C). rewrite Cconj_mult_distr. rewrite Cconj_involutive.
-      assert (Tfstconj : forall c : C, fst (c ^* ) = fst c) by (intros; unfold Cconj; easy).
-      rewrite Tfstconj. apply Hsub2.
-    }
-    rewrite Hsub3 in G.
-    lra.
-Qed.
-
-*)
 
 
 
@@ -1044,8 +964,9 @@ Lemma Csqrt_inv : forall (r : R), 0 < r -> RtoC (√ (/ r)) = (/ √ r).
 Proof.
   intros r H.
   apply c_proj_eq; simpl.
-  field_simplify_eq [(pow2_sqrt r (or_introl H)) (sqrt_inv r H)].
-  rewrite Rinv_r. reflexivity.
+  field_simplify_eq. 
+  rewrite sqrt_inv; auto.
+  field_simplify_eq; auto.
   apply sqrt_neq_0_compat; lra.
   apply sqrt_neq_0_compat; lra.
   field. apply sqrt_neq_0_compat; lra.
