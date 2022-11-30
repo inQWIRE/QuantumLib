@@ -177,6 +177,6 @@ Proof.
   unfold pad_ctrl, pad.
   bdestruct_all.  
   all : try rewrite Mmult_0_r; try rewrite Mmult_0_l; try easy.
-  all : gridify; trivial.
+  all: gridify; trivial.
 Qed.
 
