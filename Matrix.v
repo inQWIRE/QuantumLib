@@ -552,6 +552,54 @@ Ltac show_wf :=
      WF_Mmult_n WF_Msum : wf_db.
 #[export] Hint Extern 2 (_ = _) => unify_pows_two : wf_db.
 
+(* Utility tactics *)
+Ltac has_hyp P :=
+  match goal with
+    | [ _ : P |- _ ] => idtac
+  end.
+
+Ltac no_hyp P :=
+  match goal with
+    | [ _ : P |- _ ] => fail 1
+    | _             => idtac
+  end.
+
+(* staggered, because it seems to speed things up (it shouldn't) *)
+Ltac auto_wf :=
+  try match goal with
+      |- WF_Matrix _ => auto with wf_db;
+                      auto 10 with wf_db;
+                      auto 20 with wf_db;
+                      auto 40 with wf_db;
+                      auto 80 with wf_db;
+                      auto 160 with wf_db
+      end.
+
+(* Puts all well-formedness conditions for M into the context *)
+Ltac collate_wf' M :=
+  match M with
+  (* already in context *)
+  | ?A        => has_hyp (WF_Matrix A)
+  (* recursive case *)
+  | ?op ?A ?B => collate_wf' A;
+                collate_wf' B;
+                assert (WF_Matrix (op A B)) by auto with wf_db
+  (* base case *)
+  | ?A =>        assert (WF_Matrix A) by auto with wf_db
+  (* not a matrix *)
+  | _         => idtac
+  end.
+  
+(* Aggregates well-formedness conditions for context *)
+Ltac collate_wf :=
+  match goal with
+  | |- ?A = ?B      => collate_wf' A; collate_wf' B
+  | |- ?A == ?B     => collate_wf' A; collate_wf' B
+  | |- WF_Matrix ?A => collate_wf' A
+  | |- context[?A]  => collate_wf' A 
+  end.
+
+Ltac solve_wf := collate_wf; easy. 
 
 (** * Basic matrix lemmas *)
 
@@ -4326,7 +4374,7 @@ Ltac gridify :=
   repeat rewrite Nat.pow_add_r;
   repeat rewrite <- id_kron; simpl;
   repeat rewrite mult_assoc;
-  restore_dims; repeat rewrite <- kron_assoc by auto 100 with wf_db;
+  restore_dims; repeat rewrite <- kron_assoc by auto_wf;
   restore_dims; repeat rewrite kron_mixed_product;
   (* simplify *)
   Msimpl_light.
