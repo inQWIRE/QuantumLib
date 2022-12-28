@@ -369,6 +369,9 @@ rewrite Cmult_comm.
 now apply Cinv_r.
 Qed.
 
+Lemma Cdiv_1_r : forall c, c / C1 = c.
+Proof. intros. lca. Qed.
+
 Lemma Cmult_plus_distr_l (x y z : C) : x * (y + z) = x * y + x * z.
 Proof.
   apply injective_projections ; simpl ; ring.
