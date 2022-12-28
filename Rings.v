@@ -266,7 +266,7 @@ Lemma DtoZtoD : forall (d : Dyadic),
 Proof. intros. 
        unfold Deq, DtoZ, ZtoD, DtoC.
        destruct d; simpl in *. 
-       Search (Z.divide).
+       (* Search (Z.divide). *)
        Admitted.
 
 
@@ -672,7 +672,7 @@ Proof. unfold root2, Z8toD8, D8toC; simpl fst; simpl snd.
        unfold INR, IZR, IPR, IPR_2; lra. 
 Qed.
 
-(* 
+
 Lemma root2_recip_ver : D8toC root2_recip = / RtoC (√ 2).
 Proof. unfold root2_recip, Z8toD8, D8toC; simpl fst; simpl snd.
        repeat rewrite ZtoDtoC_is_ZtoRtoC.
@@ -685,7 +685,7 @@ Proof. unfold root2_recip, Z8toD8, D8toC; simpl fst; simpl snd.
 
        replace (C1 / C2 * (/ √ 2 + / √ 2 * Ci) + - (C1 / C2) * (- / √ 2 + / √ 2 * Ci)) 
          with (C1 / C2 * (2 / √ 2)) by lca.
-       rewrite <- Csqrt2_sqrt.
+       (* rewrite <- Csqrt2_sqrt.
        unfold Cdiv. 
        2 : { unfold DtoC. ; simpl.  Set Printing All.
 
@@ -693,6 +693,7 @@ Proof. unfold root2_recip, Z8toD8, D8toC; simpl fst; simpl snd.
        apply Csqrt2_neq_0.
        replace (INR 3) with (IZR 3). lra.
        unfold INR, IZR, IPR, IPR_2; lra. 
+       *) Admitted. 
 
 Lemma root2_sqr : Z8mult root2 root2 = (2, 0, 0, 0)%Z.
 Proof. easy. Qed. 
@@ -1201,6 +1202,7 @@ Qed.
   - define predicate to determine if a C matrix is actually a D8 matrix 
   - continue how I do here*)
 
+(*
 
 Definition H_gate (p : D8 * D8) : (D8 * D8) :=
   (
