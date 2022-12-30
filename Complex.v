@@ -480,8 +480,13 @@ Proof.
   now apply (f_equal (@snd R R)) in H.
 Qed.
 
-Lemma Cminus_eq_0 : forall r1 r2 : C, r1 = r2 <-> r1 - r2 = C0.
-Proof. intros; split; intros; subst; try lca. 
+Lemma Cminus_diag : forall r1 r2, r1 = r2 -> r1 - r2 = C0.
+Proof. intros; subst; lca. 
+Qed.
+
+
+Lemma Cminus_eq_0 : forall r1 r2 : C, r1 - r2 = C0 -> r1 = r2.
+Proof. intros.
        apply injective_projections; 
          apply Rminus_diag_uniq. 
        now apply (f_equal (@fst R R)) in H.
@@ -489,6 +494,24 @@ Proof. intros; split; intros; subst; try lca.
 Qed.
 
 
+Lemma Cmult_cancel_l : forall a c1 c2 : C,
+  a <> C0 ->
+  a * c1 = a * c2 -> c1 = c2.
+Proof. intros. 
+       apply (f_equal_gen (Cmult (/ a)) (Cmult (/ a))) in H0; auto.
+       do 2 rewrite Cmult_assoc in H0.
+       rewrite Cinv_l in H0; auto.
+       do 2 rewrite Cmult_1_l in H0.
+       easy.
+Qed.
+
+Lemma Cmult_cancel_r : forall a c1 c2 : C,
+  a <> C0 ->
+  c1 * a = c2 * a -> c1 = c2.
+Proof. intros. 
+       apply (Cmult_cancel_l a); auto.
+       rewrite Cmult_comm, H0; lca.
+Qed.
 
 Lemma C_field_theory : field_theory (RtoC 0) (RtoC 1) Cplus Cmult Cminus Copp Cdiv Cinv eq.
 Proof. apply (@G_field_theory C _ _ _ _ _ C_is_field). Qed.
