@@ -480,6 +480,16 @@ Proof.
   now apply (f_equal (@snd R R)) in H.
 Qed.
 
+Lemma Cminus_eq_0 : forall r1 r2 : C, r1 = r2 <-> r1 - r2 = C0.
+Proof. intros; split; intros; subst; try lca. 
+       apply injective_projections; 
+         apply Rminus_diag_uniq. 
+       now apply (f_equal (@fst R R)) in H.
+       now apply (f_equal (@snd R R)) in H.
+Qed.
+
+
+
 Lemma C_field_theory : field_theory (RtoC 0) (RtoC 1) Cplus Cmult Cminus Copp Cdiv Cinv eq.
 Proof. apply (@G_field_theory C _ _ _ _ _ C_is_field). Qed.
 
