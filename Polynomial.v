@@ -125,7 +125,7 @@ Fixpoint Psum (f : nat -> Polynomial) (n : nat) : Polynomial :=
 Infix "≅" := Peq (at level 70) : poly_scope. 
 Infix "+," := Pplus (at level 50, left associativity) : poly_scope. 
 Infix "*," := Pmult (at level 40, left associativity) : poly_scope.
-Notation "-, P" := (Popp P) (at level 30) : poly_scope. 
+Notation "-, P" := (Popp P) (at level 35) : poly_scope. 
 Notation "P [[ x ]]" := (Peval P x) (at level 0) : poly_scope.  
 
 (* some useful lemmas about Peval *)
