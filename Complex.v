@@ -814,13 +814,22 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma Cpow_nonzero : forall (r : R) (n : nat), (r <> 0 -> r ^ n <> C0)%C. 
+Lemma Cpow_nonzero_real : forall (r : R) (n : nat), (r <> 0 -> r ^ n <> C0)%C. 
 Proof.
   intros.
   rewrite RtoC_pow. 
   apply C0_fst_neq. 
   apply pow_nonzero. 
   lra.
+Qed.
+
+Lemma Cpow_nonzero : forall (c : C) (n : nat), (c <> C0 -> c ^ n <> C0)%C. 
+Proof.
+  intros.
+  induction n.
+  - simpl; apply C1_neq_C0.
+  - simpl. 
+    apply Cmult_neq_0; easy.
 Qed.
 
 Lemma Cpow_add : forall (c : C) (n m : nat), (c ^ (n + m) = c^n * c^m)%C.

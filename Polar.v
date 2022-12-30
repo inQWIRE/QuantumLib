@@ -90,7 +90,7 @@ Proof. intros.
          apply (f_equal_gen (Rminus (x ^ 2)) (Rminus (x ^ 2))) in H1; auto.
          replace (x ^ 2 - x * x)%R with 0%R in H1 by lra.
          replace (x ^ 2 - (x ^ 2 + y ^ 2))%R with (y ^ 2)%R in H1 by lra. 
-         apply (Cpow_nonzero _ 2) in H. 
+         apply (Cpow_nonzero_real _ 2) in H. 
          assert (H'' : False). apply H; rewrite H1; lca.
          easy. 
          replace (x * x)%R with (x ^ 2)%R by lra. 
