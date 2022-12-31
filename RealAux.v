@@ -349,9 +349,12 @@ Next Obligation.
   rewrite Rinv_r; easy.
 Qed.
 
-Program Instance R_is_vector_space : Vector_Space R R :=
+Program Instance R_is_module_space : Module_Space R R :=
   { Vscale := Rmult }.
 Solve All Obligations with program_simpl; lra. 
+
+
+Program Instance R_is_vector_space : Vector_Space R R.  
 
 
 

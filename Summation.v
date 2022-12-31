@@ -64,7 +64,8 @@ Definition Gdiv {G} `{Field G} (g1 g2 : G) := Gmult g1 (Ginv g2).
 Notation "/ x" := (Ginv x) : group_scope.
 Infix "/" := Gdiv : group_scope.
 
-Class Vector_Space V F `{Comm_Group V} `{Field F} :=
+
+Class Module_Space V F `{Comm_Group V} `{Comm_Ring F} :=
   { Vscale : F -> V -> V 
   ; Vscale_1 : forall v, Vscale 1 v = v
   ; Vscale_dist : forall a u v, Vscale a (u + v) = Vscale a u + Vscale a v
@@ -72,6 +73,10 @@ Class Vector_Space V F `{Comm_Group V} `{Field F} :=
   }.  
 
 Infix "⋅" := Vscale (at level 40) : group_scope.
+
+Class Vector_Space V F `{Comm_Group V} `{Field F}. 
+
+
 
 
 (* showing that our notation of comm_ring and field is the same as coqs ring and field tactics *)
@@ -151,7 +156,7 @@ Proof. intros.
        easy. 
 Qed.
 
-Lemma Vscale_zero : forall {V F} `{Vector_Space V F} (c : F),
+Lemma Vscale_zero : forall {V F} `{Module_Space V F} (c : F),
   c ⋅ 0 = 0.
 Proof. intros.
        apply (Gplus_cancel_l _ _ (c ⋅ 0)).
@@ -374,7 +379,7 @@ Proof.
     rewrite Gplus_comm; easy.
 Qed.
 
-Lemma big_sum_scale_l : forall {G} {V} `{Vector_Space G V} c f n, 
+Lemma big_sum_scale_l : forall {G} {V} `{Module_Space G V} c f n, 
     c ⋅ big_sum f n = big_sum (fun x => c ⋅ f x) n.
 Proof.
   intros.

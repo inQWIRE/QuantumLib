@@ -148,9 +148,11 @@ Next Obligation.
   apply injective_projections ; simpl ; apply H.
 Qed.
 
-Program Instance C_is_vector_space : Vector_Space C C :=
+Program Instance C_is_module_space : Module_Space C C :=
   { Vscale := Cmult }.
 Solve All Obligations with program_simpl; lca. 
+
+Program Instance C_is_vector_space : Vector_Space C C.
 
 
 
@@ -1422,8 +1424,8 @@ Hint Rewrite Cplus_0_l Cplus_0_r Cmult_0_l Cmult_0_r Copp_0
 Hint Rewrite Cmult_plus_distr_l Cmult_plus_distr_r Copp_plus_distr Copp_mult_distr_l 
               Copp_involutive : Cdist_db.
 
-Hint Rewrite <- RtoC_opp RtoC_mult RtoC_plus : RtoC_db.
-Hint Rewrite <- RtoC_inv using nonzero : RtoC_db.
+Hint Rewrite RtoC_opp RtoC_mult RtoC_minus RtoC_plus : RtoC_db.
+Hint Rewrite RtoC_inv using nonzero : RtoC_db.
 Hint Rewrite RtoC_pow : RtoC_db.
 
 Ltac Csimpl := 
