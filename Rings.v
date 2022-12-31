@@ -18,6 +18,65 @@ Fixpoint Cpow_pos (c : C) (p : positive) : C :=
   end.             
 
 
+
+
+Lemma Cpow_pos_to_nat : forall (c : C) (p : positive),
+  Cpow_pos c p = c ^ (Pos.to_nat p).
+Proof. intros. 
+       induction p.
+       - rewrite Pos2Nat.inj_xI, mult_comm; simpl. 
+         rewrite Cpow_mult, IHp. 
+         lca.
+       - rewrite Pos2Nat.inj_xO, mult_comm; simpl. 
+         rewrite Cpow_mult, IHp. 
+         lca.
+       - lca.
+Qed.
+
+
+Lemma Cpow_pos_nonzero : forall (c : C) (p : positive), c <> C0 -> Cpow_pos c p <> C0. 
+Proof. intros.
+       rewrite Cpow_pos_to_nat.
+       apply Cpow_nonzero.  
+       easy.
+Qed.
+
+
+Lemma Cpow_pos_add_r : forall (c : C) (p1 p2 : positive), 
+  Cpow_pos c (p1 + p2) = (Cpow_pos c p1) * (Cpow_pos c p2).
+Proof. intros.
+       do 3 rewrite Cpow_pos_to_nat.
+       rewrite Pos2Nat.inj_add, Cpow_add.
+       easy.
+Qed.
+
+
+Lemma Cpow_pos_mult_r : forall (c : C) (p1 p2 : positive), 
+  Cpow_pos c (p1 * p2) = Cpow_pos (Cpow_pos c p1) p2.
+Proof. intros. 
+       do 3 rewrite Cpow_pos_to_nat.
+       rewrite Pos2Nat.inj_mul, Cpow_mult.
+       easy.
+Qed.
+
+Lemma Cpow_pos_mult_l : forall (c1 c2 : C) (p : positive), 
+  Cpow_pos (c1 * c2) p = (Cpow_pos c1 p) * (Cpow_pos c2 p). 
+Proof. intros. 
+       do 3 rewrite Cpow_pos_to_nat.
+       rewrite Cpow_mul_l.
+       easy.
+Qed.
+
+Lemma Cpow_pos_1 : forall (p : positive),
+  Cpow_pos C1 p = C1.
+Proof. intros.
+       induction p; simpl.
+       - rewrite IHp; lca.
+       - rewrite IHp; lca.
+       - lca.
+Qed.
+
+
 (* exponentiation by integers *)
 Definition Cpow_int (c : C) (z : Z) : C :=  
   match z with
@@ -36,17 +95,50 @@ Coercion Z.of_nat : nat >-> Z.
 
 Lemma Cpow_int_nonzero : forall (c : C) (z : Z), c <> C0 -> c ^^ z <> C0. 
 Proof. intros.
-       Admitted.
+       destruct z.
+       - apply C1_neq_C0.
+       - apply Cpow_pos_nonzero; easy.
+       - apply nonzero_div_nonzero.
+         apply Cpow_pos_nonzero; easy.
+Qed.
 
 
-Lemma Cpow_int_add : forall (c : C) (z1 z2 : Z), c ^^ (z1 + z2) = c^^z1 * c^^z2.
+Lemma Cpow_pos_Zsub : forall (c : C) (p1 p2 : positive),
+  c <> C0 -> c ^^ (Z.pos_sub p1 p2) = Cpow_pos c p1 * / Cpow_pos c p2.
+Proof. induction p1; intros.
+       - simpl.
+         Admitted. (*perhaps take a different approach, building up from 1+z, then to nats+z *)
+
+
+
+Lemma Cpow_int_add_r : forall (c : C) (z1 z2 : Z), 
+  c <> C0 -> c ^^ (z1 + z2) = c^^z1 * c^^z2.
 Proof. intros.
-       Admitted.
+       destruct z1; destruct z2; try lca; simpl.
+       - rewrite Cpow_pos_add_r; easy.
+       - rewrite Cpow_pos_Zsub; easy. 
+       - rewrite Cpow_pos_Zsub; auto; lca.
+       - rewrite Cpow_pos_add_r, Cinv_mult_distr; auto;
+         apply Cpow_pos_nonzero; easy.
+Qed.
 
 
-Lemma Cpow_int_mult : forall (c : C) (z1 z2 : Z), c ^^ (z1 * z2) = (c ^^ z1) ^^ z2.
+Lemma Cpow_int_mult_r : forall (c : C) (z1 z2 : Z), c ^^ (z1 * z2) = (c ^^ z1) ^^ z2.
 Proof. intros. 
+       destruct z1; destruct z2; try lca; simpl.
+       all : try (rewrite Cpow_pos_1; lca).
+       all : rewrite Cpow_pos_mult_r; try lca. 
        Admitted.
+
+
+Lemma Cpow_int_mult_l : forall (c1 c2 : C) (z : Z), 
+  c1 <> C0 -> c2 <> C0 -> (c1 * c2) ^^ z = (c1 ^^ z) * (c2 ^^ z).
+Proof. intros. 
+       destruct z; try lca; simpl. 
+       rewrite Cpow_pos_mult_l; easy.
+       rewrite Cpow_pos_mult_l, Cinv_mult_distr; auto; 
+       apply Cpow_pos_nonzero; easy.
+Qed.
 
 
 
@@ -63,11 +155,15 @@ Proof. intros.
 Lemma Cpow_int_cons : forall (c : C) (n : nat),
   c^n = c ^^ n.
 Proof. intros. 
-       induction n as [| n'].
-       - easy.
-       - simpl. 
-         Admitted. 
-
+       destruct n; try lca.
+       unfold Cpow_int.
+       destruct (Z.of_nat (S n)) eqn:E; try easy.
+       rewrite Cpow_pos_to_nat.
+       apply f_equal_gen; try apply f_equal; auto.
+       apply Pos2Z.inj_pos in E.
+       rewrite <- E, SuccNat2Pos.id_succ.
+       easy.
+Qed.
 
 
 Lemma Cpow_int_real : forall (c : C) (z : Z), 
@@ -105,6 +201,11 @@ Ltac fastZtoC :=
           repeat (rewrite ZtoC_pow; try lia)).
 
 
+(* TODO: to smth like this instead 
+Hint Rewrite <- RtoC_opp RtoC_mult RtoC_plus : RtoC_db.
+Hint Rewrite <- RtoC_inv using nonzero : RtoC_db.
+Hint Rewrite RtoC_pow : RtoC_db.
+*)
 
 
 
@@ -273,6 +374,7 @@ Inductive Dyadic : Set :=
 
 
 Definition D1 : Dyadic := Dn 0 0.
+Definition D2 : Dyadic := Dn 1 0.
 Definition Dhalf : Dyadic := Dn (Z.opp 1) 0.
 
 
@@ -306,6 +408,9 @@ Lemma DtoC_D0 : DtoC D0 = C0.
 Proof. easy. Qed.
 
 Lemma DtoC_D1 : DtoC D1 = C1.
+Proof. lca. Qed.
+
+Lemma DtoC_D2 : DtoC D2 = C2.
 Proof. lca. Qed.
 
 Lemma DtoC_Dhalf : DtoC Dhalf = / C2.
@@ -371,7 +476,7 @@ Definition Dplus (x y : Dyadic) : Dyadic :=
           | _ => Dn (n + two_val ((2*x'+1) + (2*y'+1))) 
                    (((odd_part ((2*x'+1) + (2*y'+1))) - 1) / 2)
           end                                  (* y has lower power of 2 *)
-      | inright _ => Dn m (2^(n-m-1) * (2*x'+1) + y')             (* y has lower power of 2 *)
+      | inright _ => Dn m (2^(n-m-1) * (2*x'+1) + y')            
       end
   end.
 
@@ -393,17 +498,24 @@ Definition Dmult (x y : Dyadic) : Dyadic :=
   end.
 
 
+Fixpoint Dpow (d : Dyadic) (n : nat) : Dyadic :=  
+  match n with
+  | 0%nat => D1
+  | S n' => Dmult d (Dpow d n')
+  end.
+
+ 
 
 
 Infix "+," := Dplus (at level 50, left associativity) : D_scope. 
-Infix "*," := Dmult (at level 40, left associativity) : D_scope.
-Notation "-, d" := (Dopp d) (at level 30) : D_scope. 
+Infix "*," := Dmult (at level 40, left associativity) : D_scope. 
+Notation "-, d" := (Dopp d) (at level 35) : D_scope.  
 Infix "-," := Dminus (at level 50, left associativity) : D_scope.
-
+Infix "^," := Dpow (at level 30) : D_scope.
 
 (* showing compatability *)
 
-Lemma DtoC_plus : forall d1 d2, (DtoC d1 + DtoC d2)%C = DtoC (d1 +, d2).
+Lemma DtoC_plus : forall d1 d2, DtoC (d1 +, d2) = (DtoC d1 + DtoC d2)%C.
 Proof. intros.
        destruct d1; destruct d2; simpl; try lca.
        unfold Dplus; destruct (Ztrichotomy_inf z z1); try destruct s.
@@ -414,18 +526,18 @@ Proof. intros.
          rewrite <- Cplus_assoc, (Cmult_plus_distr_l _ _ (C2 * z0 + C1)), Cmult_assoc.
          replace (C2 ^^ z * C2 ^^ (z1 - z))%C with (C2 ^^ z1).
          lca.
-         rewrite <- Cpow_int_add.
+         rewrite <- Cpow_int_add_r.
          apply f_equal; lia.
+         apply RtoC_neq; lra.
          replace (Cmult C2) with (Cmult (C2 ^^ 1)) by (apply f_equal; easy).
-         rewrite <- Cpow_int_add.
+         rewrite <- Cpow_int_add_r.
          apply f_equal; lia.
+         apply RtoC_neq; lra.
        - Admitted. 
 
 
 
-
-
-Lemma DtoC_opp : forall d, (- (DtoC d))%C = DtoC (-, d). 
+Lemma DtoC_opp : forall d, DtoC (-, d) = (- (DtoC d))%C. 
 Proof. intros.
        destruct d; try lca. 
        unfold Dopp, DtoC, Zminus.
@@ -435,22 +547,33 @@ Proof. intros.
 Qed.       
 
 
-Lemma DtoC_minus : forall d1 d2, ((DtoC d1) - (DtoC d2))%C = DtoC (d1 -, d2). 
+Lemma DtoC_minus : forall d1 d2, DtoC (d1 -, d2) = ((DtoC d1) - (DtoC d2))%C. 
 Proof. intros.
        unfold Cminus, Dminus.
-       rewrite DtoC_opp, DtoC_plus.
+       rewrite DtoC_plus, DtoC_opp.
        easy.
 Qed.     
 
 
 (* this is surprisingly easy! *)
-Lemma DtoC_mult : forall d1 d2, (DtoC d1 * DtoC d2)%C = DtoC (d1 *, d2).
+Lemma DtoC_mult : forall d1 d2,  DtoC (d1 *, d2) = (DtoC d1 * DtoC d2)%C.
 Proof. intros.
        destruct d1; destruct d2; try lca.
        unfold Dmult, DtoC.
        fastZtoC.
-       rewrite Cpow_int_add.
+       rewrite Cpow_int_add_r.
        lca.
+       apply RtoC_neq; lra.
+Qed.
+
+
+Lemma DtoC_pow : forall d n,  DtoC (d ^, n) = ((DtoC d) ^ n)%C. 
+Proof. intros.
+       induction n.
+       - lca.
+       - simpl. 
+         rewrite DtoC_mult, IHn.
+         easy.
 Qed.
 
 
@@ -463,85 +586,151 @@ Qed.
 Lemma Dplus_comm : forall d1 d2, d1 +, d2 = d2 +, d1.
 Proof. intros.
        apply DtoC_inj.
-       do 2 rewrite <- DtoC_plus.
+       do 2 rewrite DtoC_plus.
        lca.
 Qed.
 
 Lemma Dplus_assoc : forall d1 d2 d3, d1 +, d2 +, d3 = d1 +, (d2 +, d3).
 Proof. intros.
        apply DtoC_inj.
-       do 4 rewrite <- DtoC_plus.
+       do 4 rewrite DtoC_plus.
        lca.
 Qed.
 
 Lemma Dplus_0_r : forall d, d +, D0 = d.
 Proof. intros.
        apply DtoC_inj.
-       rewrite <- DtoC_plus.
+       rewrite DtoC_plus.
        lca.
 Qed.
 
 Lemma Dplus_0_l : forall d, D0 +, d = d.
 Proof. intros.
        apply DtoC_inj.
-       rewrite <- DtoC_plus.
+       rewrite DtoC_plus.
        lca.
 Qed.
 
 Lemma Dminus_0_r : forall d, d -, D0 = d.
 Proof. intros.
        apply DtoC_inj.
-       rewrite <- DtoC_minus.
+       rewrite DtoC_minus.
        lca.
 Qed.
 
 Lemma Dminus_0_l : forall d, D0 -, d = -, d.
 Proof. intros.
        apply DtoC_inj.
-       rewrite <- DtoC_minus, <- DtoC_opp.
+       rewrite DtoC_minus, DtoC_opp.
        lca.
 Qed.
 
 Lemma Dmult_0_r : forall d, d *, D0 = D0.
 Proof. intros.
        apply DtoC_inj.
-       rewrite <- DtoC_mult.
+       rewrite DtoC_mult.
        lca.
 Qed.
 
 Lemma Dmult_0_l : forall d, D0 *, d = D0.
 Proof. intros.
        apply DtoC_inj.
-       rewrite <- DtoC_mult.
+       rewrite DtoC_mult.
        lca.
 Qed.
 
 Lemma Dmult_comm : forall d1 d2, d1 *, d2 = d2 *, d1.
 Proof. intros.
        apply DtoC_inj.
-       do 2 rewrite <- DtoC_mult.
+       do 2 rewrite DtoC_mult.
        lca.
 Qed.
 
 Lemma Dmult_assoc : forall d1 d2 d3, d1 *, d2 *, d3 = d1 *, (d2 *, d3).
 Proof. intros.
        apply DtoC_inj.
-       do 4 rewrite <- DtoC_mult.
+       do 4 rewrite DtoC_mult.
        lca.
 Qed.
 
 Lemma Dmult_1_r : forall d, d *, D1 = d.
 Proof. intros.
        apply DtoC_inj.
-       rewrite <- DtoC_mult.
+       rewrite DtoC_mult.
        lca.
 Qed.
 
 Lemma Dmult_1_l : forall d, D1 *, d = d.
 Proof. intros.
        apply DtoC_inj.
-       rewrite <- DtoC_mult.
+       rewrite DtoC_mult.
        lca.
+Qed.
+
+Lemma Dopp_mult_distr_l : forall d1 d2, -, (d1 *, d2) = (-, d1) *, d2.
+Proof. intros. 
+       apply DtoC_inj.
+       do 2 rewrite DtoC_mult, DtoC_opp.       
+       lca.
+Qed.
+
+Lemma Dopp_mult_distr_r : forall d1 d2, -, (d1 *, d2) = d1 *, (-, d2).
+Proof. intros. 
+       apply DtoC_inj.
+       do 2 rewrite DtoC_mult, DtoC_opp.       
+       lca.
+Qed.
+
+Lemma Dopp_mult_neg_l : forall d, -, d = (-, D1) *, d.
+Proof. intros. 
+       rewrite <- Dopp_mult_distr_l.
+       rewrite Dmult_1_l.
+       easy. 
+Qed.
+
+Lemma Dopp_mult_neg_r : forall d, -, d = d *, (-, D1).
+Proof. intros. 
+       rewrite <- Dopp_mult_distr_r.
+       rewrite Dmult_1_r.
+       easy. 
+Qed.
+
+
+Lemma Dminus_diag : forall d1 d2 : Dyadic, d1 = d2 -> d1 -, d2 = D0.
+Proof. intros; subst.
+       apply DtoC_inj.
+       rewrite DtoC_minus.
+       replace (DtoC D0) with C0 by lca.
+       apply Cminus_diag.
+       easy. 
+Qed.
+
+
+Lemma Dminus_eq_0 : forall r1 r2 : Dyadic, r1 -, r2 = D0 -> r1 = r2.
+Proof. intros.
+       unfold Dminus, Dopp, Dplus.
+       apply DtoC_inj.
+       apply Cminus_eq_0.
+       rewrite <- DtoC_minus, H.
+       easy. 
+Qed.
+
+
+
+Lemma Dpow_add : forall (d : Dyadic) (n m : nat), d ^, (n + m) = d^,n *, d^,m.
+Proof. intros.
+       apply DtoC_inj.
+       rewrite DtoC_mult.
+       do 3 rewrite DtoC_pow.
+       rewrite Cpow_add; easy.
+Qed.
+
+
+Lemma Dpow_mult : forall (d : Dyadic) (n m : nat), d ^, (n * m) = (d ^, n) ^, m.
+Proof. intros.
+       apply DtoC_inj.       
+       do 3 rewrite DtoC_pow.
+       rewrite Cpow_mult; easy.
 Qed.
 
 
@@ -557,11 +746,45 @@ Qed.
 
 Lemma Dhalf_double_2 : Dhalf +, Dhalf = D1.
 Proof. apply DtoC_inj. 
-       rewrite <- DtoC_plus.
+       rewrite DtoC_plus.
        rewrite DtoC_Dhalf, DtoC_D1.
        lca.
 Qed.
 
+
+(* I prefer the second way *)
+Lemma Dmult_2_half : D2 *, Dhalf = D1.
+Proof. apply DtoC_inj. 
+       rewrite DtoC_mult.
+       rewrite DtoC_Dhalf, DtoC_D2, DtoC_D1.
+       lca.
+Qed.
+
+
+Lemma Dmult_half_2 : Dhalf *, D2 = D1.
+Proof. apply DtoC_inj. 
+       rewrite DtoC_mult.
+       rewrite DtoC_Dhalf, DtoC_D2, DtoC_D1.
+       lca.
+Qed.
+
+
+
+Lemma Dpow_2_pos : forall (n : positive), D2 ^, (Pos.to_nat n) = Dn (Z.pos n) 0.
+Proof. intros.
+       apply DtoC_inj.
+       rewrite DtoC_pow; simpl.
+       rewrite Cpow_pos_to_nat, Cmult_0_r, Cplus_0_l, Cmult_1_r, Cmult_1_r.
+       easy. 
+Qed.       
+
+Lemma Dpow_2_nat : forall (n : nat), D2 ^, (S n) = Dn (Z.of_nat (S n)) 0.
+Proof. intros; simpl. 
+       rewrite <- Dpow_2_pos.
+       replace (D2 *, D2 ^, n) with (D2 ^, (S n)) by easy. 
+       apply f_equal_gen; auto.
+       rewrite SuccNat2Pos.id_succ; easy.
+Qed.
 
 
 (*
@@ -592,6 +815,9 @@ Proof. easy. Qed.
 Lemma ZtoD_1 : ZtoD 1 = D1.
 Proof. easy. Qed.
 
+
+Lemma ZtoD_2 : ZtoD 2 = D2.
+Proof. easy. Qed.
 
 
 Lemma ZtoDtoC_is_ZtoRtoC : forall (z : Z), DtoC (ZtoD z) = RtoC (IZR z).
@@ -626,29 +852,38 @@ Proof. intros.
 Qed.
 
 
-Lemma ZtoD_plus : forall (z1 z2 : Z), ZtoD z1 +, ZtoD z2 = ZtoD (z1 + z2)%Z.
+Lemma ZtoD_plus : forall (z1 z2 : Z), ZtoD (z1 + z2)%Z = ZtoD z1 +, ZtoD z2.
 Proof. intros.
        apply DtoC_inj.
-       rewrite <- DtoC_plus.
+       rewrite DtoC_plus.
        do 3 rewrite ZtoDtoC_is_ZtoRtoC.
        fastZtoC.
        easy. 
 Qed.
 
 
-Lemma ZtoD_opp : forall d, -, (ZtoD d) = ZtoD (- d). 
+Lemma ZtoD_opp : forall d, ZtoD (- d) = -, (ZtoD d). 
 Proof. intros.
        apply DtoC_inj.
-       rewrite <- DtoC_opp.
+       rewrite DtoC_opp.
        do 2 rewrite ZtoDtoC_is_ZtoRtoC.
        fastZtoC.
        easy. 
 Qed.
 
-Lemma ZtoD_mult : forall z1 z2, ZtoD z1 *, ZtoD z2 = ZtoD (z1 * z2)%Z.
+Lemma ZtoD_minus : forall (z1 z2 : Z), ZtoD (z1 - z2)%Z = ZtoD z1 -, ZtoD z2.
 Proof. intros.
        apply DtoC_inj.
-       rewrite <- DtoC_mult.
+       rewrite DtoC_minus.
+       do 3 rewrite ZtoDtoC_is_ZtoRtoC.
+       fastZtoC.
+       easy. 
+Qed.
+
+Lemma ZtoD_mult : forall z1 z2, ZtoD (z1 * z2)%Z = ZtoD z1 *, ZtoD z2.
+Proof. intros.
+       apply DtoC_inj.
+       rewrite DtoC_mult.
        do 3 rewrite ZtoDtoC_is_ZtoRtoC.
        fastZtoC.
        easy. 
@@ -688,7 +923,6 @@ Definition DisZ (d : Dyadic) : Prop :=
 
 
 
-(* TODO: fix this proof after changing def of Dplus *)
 Lemma DisZ_plus : forall (d1 d2 : Dyadic),
   DisZ d1 -> DisZ d2 ->
   DisZ (d1 +, d2).
@@ -702,6 +936,21 @@ Proof. intros.
        all : apply Z.ge_le; apply two_val_ge_0.
 Qed.
 
+Lemma DisZ_opp : forall (d : Dyadic),
+  DisZ d -> DisZ (-, d).
+Proof. intros.
+       destruct d; try easy.
+Qed.
+
+Lemma DisZ_minus : forall (d1 d2 : Dyadic),
+  DisZ d1 -> DisZ d2 ->
+  DisZ (d1 -, d2).
+Proof. intros.
+       unfold Dminus.
+       apply DisZ_plus; auto.
+       apply DisZ_opp; easy.
+Qed.
+
 
 Lemma DisZ_mult : forall (d1 d2 : Dyadic),
   DisZ d1 -> DisZ d2 ->
@@ -712,6 +961,22 @@ Proof. intros.
        lia. 
 Qed.
 
+Lemma DisZ_pow : forall (d : Dyadic) (n : nat),
+  DisZ d -> DisZ (d ^, n).
+Proof. intros.
+       induction n; try easy.
+       simpl.
+       apply DisZ_mult; easy. 
+Qed.
+
+
+Lemma DisZ_dec : forall (d : Dyadic),
+  { DisZ d } + { ~ DisZ d }.
+Proof. intros. 
+       destruct d; try (left; easy).
+       simpl.
+       apply Z_ge_dec.
+Qed.
 
 
 Lemma DtoZtoD : forall (d : Dyadic), 
@@ -746,30 +1011,49 @@ Proof. intros.
 Qed.       
 
 
+(* a stronger converse to this is just DtoZtoD *)
+Lemma DisZ_ver : forall (d : Dyadic), (exists (z : Z), d = ZtoD z) -> DisZ d.
+Proof. intros. 
+       destruct H; subst. 
+       unfold DisZ, ZtoD.
+       destruct x; try easy.
+       all : apply two_val_ge_0.
+Qed.   
+       
+  
 
 
 Lemma DtoZ_plus : forall (d1 d2 : Dyadic),
   DisZ d1 -> DisZ d2 -> 
-  (DtoZ d1 + DtoZ d2)%Z = DtoZ (d1 +, d2).
+  DtoZ (d1 +, d2) = (DtoZ d1 + DtoZ d2)%Z.
 Proof. intros.
        apply ZtoD_inj.
-       rewrite <- ZtoD_plus.
-       do 3 (rewrite <- DtoZtoD; auto).
+       rewrite ZtoD_plus.
+       do 3 (try rewrite <- DtoZtoD; auto).
        apply DisZ_plus; easy.
 Qed.
 
+
 Lemma DtoZ_mult : forall (d1 d2 : Dyadic),
   DisZ d1 -> DisZ d2 -> 
-  (DtoZ d1 * DtoZ d2)%Z = DtoZ (d1 *, d2).
+  DtoZ (d1 *, d2) = (DtoZ d1 * DtoZ d2)%Z.
 Proof. intros.
        apply ZtoD_inj.
-       rewrite <- ZtoD_mult.
-       do 3 (rewrite <- DtoZtoD; auto).
+       rewrite ZtoD_mult.
+       do 3 (try rewrite <- DtoZtoD; auto).
        apply DisZ_mult; easy.
 Qed.
 
 
 
+Lemma DtoZ_0 : DtoZ D0 = 0%Z.
+Proof. easy. Qed.
+
+Lemma DtoZ_1 : DtoZ D1 = 1%Z.
+Proof. easy. Qed.
+
+Lemma DtoZ_2 : DtoZ D2 = 2%Z.
+Proof. easy. Qed.
 
 
 
@@ -874,7 +1158,7 @@ Proof. intros; easy. Qed.
 (* TODO: learn how to match on match's, so this can all be done with a short Ltac that
          destruct everything. Maybe use this: 
          https://stackoverflow.com/questions/28454977/how-to-match-a-match-expression *)
-Lemma ZtoF2_plus : forall z1 z2, (ZtoF2 z1 + ZtoF2 z2)%G = ZtoF2 (z1 + z2).
+Lemma ZtoF2_plus : forall z1 z2, ZtoF2 (z1 + z2) = (ZtoF2 z1 + ZtoF2 z2)%G.
 Proof. intros.
        replace Gplus with F2plus by easy.
        destruct z1; destruct z2; try easy;  
@@ -887,13 +1171,13 @@ Proof. intros.
        all : try (destruct p0; easy).
 Qed.
 
-Lemma ZtoF2_neg : forall z, (- (ZtoF2 z))%G = ZtoF2 (- z)%Z.
+Lemma ZtoF2_neg : forall z, ZtoF2 (- z)%Z = (- (ZtoF2 z))%G.
 Proof. intros.
        destruct z; try easy;
        destruct p; try easy; destruct p0; try easy; simpl.
 Qed.
 
-Lemma ZtoF2_mult : forall z1 z2, (ZtoF2 z1 * ZtoF2 z2)%G = ZtoF2 (z1 * z2).
+Lemma ZtoF2_mult : forall z1 z2, ZtoF2 (z1 * z2) = (ZtoF2 z1 * ZtoF2 z2)%G.
 Proof. intros.
        replace Gmult with F2mult by easy.
        destruct z1; destruct z2; try easy;  
@@ -913,7 +1197,7 @@ Proof. intros; split; intros.
          + destruct p; try easy.
            exists (Z.neg p); easy.
        - destruct H.
-         rewrite <- H, <- ZtoF2_mult; simpl.
+         rewrite <- H, ZtoF2_mult; simpl.
          destruct (ZtoF2 x); easy.
 Qed.
 
@@ -933,7 +1217,7 @@ Proof. intros; split; intros.
            apply f_equal; easy.
            exists (-1); easy.
        - destruct H.
-         rewrite <- H, <- ZtoF2_plus, <- ZtoF2_mult; simpl.
+         rewrite <- H, ZtoF2_plus, ZtoF2_mult; simpl.
          destruct (ZtoF2 x); easy. 
 Qed.
 
@@ -1076,6 +1360,7 @@ Definition D8mult (x y : D8) : D8 :=
 
 Definition D80 := (D0, D0, D0, D0).
 Definition D81 := (D1, D0, D0, D0).
+Definition D82 := (D2, D0, D0, D0).
 Definition D8half := (Dhalf, D0, D0, D0).
 
 
@@ -1105,18 +1390,30 @@ Lemma D8toC_inj : forall (x y : D8),
   D8toC x = D8toC y -> x = y.
 Proof.
   intros. 
-  unfold D8toC in *.
+  unfold D8toC in *. 
   destruct x; repeat destruct p; destruct y; repeat destruct p; simpl in *.
-  Search (_ - _ = C0)%C.
-  Admitted.
+  apply Cminus_diag in H.
+  replace (Cz8 * (Cz8 * (Cz8 * C1))) with (Cz8 ^ 3) in H by easy.  
+  replace (Cz8 * (Cz8 * C1)) with (Cz8 ^ 2) in H by easy.    
+  replace (d1 + d2 * Cz8 + d0 * Cz8 ^ 2 + d * Cz8 ^ 3 -
+      (d5 + d6 * Cz8 + d4 * Cz8 ^ 2 + d3 * Cz8 ^ 3)) with
+    ((d1 - d5) + (d2 - d6) * Cz8 + (d0 - d4) * Cz8 ^ 2 + (d - d3) * Cz8 ^ 3) in H by lca.
+  assert (H' := Cz8_is_basis (d1 -, d5) (d2 -, d6) (d0 -, d4) (d -, d3)).
+  unfold D8toC in H'; simpl in *.
+  do 4 rewrite DtoC_minus in H'.
+  apply H' in H.
+  destruct H; destruct H0; destruct H1.
+  repeat apply injective_projections; simpl; apply Dminus_eq_0; easy.
+Qed.  
+
 
 
 
 (* this is actually overkill because Z is decible, but shows usefulness of DtoC_inj *)
-Lemma Deq_dec (d1 d2 : Dyadic) : { d1 = d2 } + { ~ (d1 = d2) }.
+Lemma D8eq_dec (d1 d2 : D8) : { d1 = d2 } + { ~ (d1 = d2) }.
 Proof.
-  destruct (Ceq_dec (DtoC d1) (DtoC d2)).
-  - apply DtoC_inj in e.
+  destruct (Ceq_dec (D8toC d1) (D8toC d2)).
+  - apply D8toC_inj in e.
     left; easy.
   - right. 
     unfold not; intros; apply n. 
@@ -1125,13 +1422,61 @@ Qed.
     
 
 
+(*TODO: make the order of these lemmas to be uniform. Perhaps compatability lemmas first, then 
+everything else *)
 
 
 
 
+Lemma D8toC_plus : forall d1 d2 : D8, D8toC (D8plus d1 d2) = D8toC d1 + D8toC d2.
+Proof. intros.
+       destruct d1; repeat destruct p; destruct d2; repeat destruct p.
+       unfold D8toC, D8plus; simpl.  
+       repeat rewrite DtoC_plus.
+       lca.
+Qed.
+
+
+Lemma D8toC_opp : forall d : D8, D8toC (D8opp d) = - (D8toC d). 
+Proof. intros.
+       destruct d; repeat destruct p. 
+       unfold D8toC, D8opp; simpl.
+       repeat rewrite DtoC_opp.
+       lca.
+Qed.       
+
+
+(* this is surprisingly easy! *)
+Lemma D8toC_mult : forall d1 d2 : D8, D8toC (D8mult d1 d2) = D8toC d1 * D8toC d2.
+Proof. intros.
+       destruct d1; repeat destruct p; destruct d2; repeat destruct p.
+       unfold D8toC, D8mult, Dminus; simpl.
+       replace (Cz8 * (Cz8 * (Cz8 * C1))) with (Cz8 ^ 3) by easy.  
+       replace (Cz8 * (Cz8 * C1)) with (Cz8 ^ 2) by easy.    
+       replace (DtoC d1) with (DtoC d1 * (Cz8 ^ 0)) by lca. 
+       replace (DtoC d5) with (DtoC d5 * (Cz8 ^ 0)) by lca. 
+       replace (DtoC d3 * Cz8) with (DtoC d3 * (Cz8 ^ 1)) by lca. 
+       replace (DtoC d6 * Cz8) with (DtoC d6 * (Cz8 ^ 1)) by lca.
+       repeat rewrite Cmult_plus_distr_l.
+       repeat rewrite Cmult_plus_distr_r.
+       assert (H' : forall (d1 d2 : Dyadic) n1 n2, d1 * Cz8 ^ n1 * (d2 * Cz8 ^ n2) = 
+                                   (Dmult d1 d2) * Cz8 ^ (n1 + n2)).
+       { intros.
+         replace (d7 * Cz8 ^ n1 * (d8 * Cz8 ^ n2)) with
+           ((d7 * d8) * (Cz8 ^ n1 * Cz8 ^ n2)) by lca.
+         rewrite DtoC_mult, Cpow_add. 
+         easy. }
+       do 16 rewrite H'.
+       simpl plus.
+       repeat rewrite DtoC_plus.
+       repeat rewrite DtoC_opp. 
+       rewrite Cz8_pow4, Cz8_pow5, Cz8_pow6.
+       lca.
+Qed.
 
 
 
+(*TODO: show that the above proves defacto that D8 is a ring *)
 
 Lemma D8toC_0 : D8toC D80 = C0.
 Proof. lca. Qed.
@@ -1139,6 +1484,122 @@ Proof. lca. Qed.
 Lemma D8toC_1 : D8toC D81 = C1.
 Proof. lca. Qed.
 
+Lemma D8toC_2 : D8toC D82 = C2.
+Proof. lca. Qed.
+
+Lemma D8toC_half : D8toC D8half = / C2.
+Proof. lca. Qed.
+
+
+
+Lemma D8plus_comm : forall d1 d2, D8plus d1 d2 = D8plus d2 d1.
+Proof. intros.
+       apply D8toC_inj.
+       do 2 rewrite D8toC_plus.
+       lca.
+Qed.
+
+Lemma D8plus_assoc : forall d1 d2 d3, D8plus (D8plus d1 d2) d3 = D8plus d1 (D8plus d2 d3).
+Proof. intros.
+       apply D8toC_inj.
+       do 4 rewrite D8toC_plus.
+       lca.
+Qed.
+
+Lemma D8mult_comm : forall d1 d2, D8mult d1 d2 = D8mult d2 d1.
+Proof. intros.
+       apply D8toC_inj.
+       do 2 rewrite D8toC_mult.
+       lca.
+Qed.
+
+Lemma D8mult_assoc : forall d1 d2 d3, D8mult (D8mult d1 d2) d3 = D8mult d1 (D8mult d2 d3).
+Proof. intros.
+       apply D8toC_inj.
+       do 4 rewrite D8toC_mult.
+       lca.
+Qed.
+
+
+Lemma D8mult_1_l : forall d, D8mult D81 d = d.
+Proof. intros.  
+       destruct d; repeat destruct p.
+       unfold D8mult; simpl.
+       repeat apply injective_projections; simpl. 
+       all : repeat (try rewrite Dmult_0_r; try rewrite Dminus_0_r;
+                     try rewrite Dplus_0_r; try rewrite Dplus_0_l).
+       all : rewrite Dmult_1_l; easy.
+Qed.  
+
+Lemma D8mult_1_r : forall d, D8mult d D81 = d.
+Proof. intros.  
+       destruct d; repeat destruct p.
+       unfold D8mult; simpl.
+       repeat apply injective_projections; simpl. 
+       all : repeat (try rewrite Dmult_0_r; try rewrite Dminus_0_r;
+                     try rewrite Dplus_0_r; try rewrite Dplus_0_l).
+       all : rewrite Dmult_1_r; easy.
+Qed.       
+
+(* TODO: perhaps also coerce D into D8? *)
+Lemma D8mult_d_l : forall (d d1 d2 d3 d4 : Dyadic), 
+  D8mult (d, D0, D0, D0) (d1, d2, d3, d4) = (d *, d1, d *, d2, d *, d3, d *, d4).
+Proof. intros. 
+       repeat apply injective_projections; simpl. 
+       all : repeat (try rewrite Dmult_0_r; try rewrite Dminus_0_r;
+                     try rewrite Dplus_0_r; try rewrite Dplus_0_l); easy.
+Qed. 
+
+
+
+Lemma D8pow_add : forall (d : D8) (n m : nat), D8pow d (n + m) = D8mult (D8pow d n) (D8pow d m).
+Proof. intros.
+       induction n; simpl.
+       - rewrite D8mult_1_l; easy.
+       - rewrite IHn, D8mult_assoc; easy.
+Qed.
+
+
+Lemma D8pow_mult : forall (d : D8) (n m : nat), D8pow d (n * m) = D8pow (D8pow d n) m.
+Proof. intros.
+       induction m; simpl. 
+       - replace (n * 0)%nat with 0%nat by lia. 
+         easy.
+       - simpl. 
+         rewrite <- IHm, <- D8pow_add.
+         apply f_equal_gen; auto.
+         lia.
+Qed.
+
+
+
+(*TODO(again!): should probably define DtoD8 somewhere *)
+Lemma DtoD8_pow : forall (d : Dyadic) (n : nat),
+  D8pow (d, D0, D0, D0) n = (Dpow d n, D0, D0, D0).
+Proof. intros.
+       induction n; try easy; simpl. 
+       rewrite IHn.
+       rewrite D8mult_d_l, Dmult_0_r.
+       easy.
+Qed.
+
+
+Lemma D8mult_2_half : D8mult D82 D8half = D81.
+Proof. unfold D82, D8half.
+       rewrite D8mult_d_l, Dmult_2_half, Dmult_0_r.
+       easy.
+Qed.       
+
+
+Lemma D8mult_half_2 : D8mult D8half D82 = D81.
+Proof. rewrite D8mult_comm.
+       apply D8mult_2_half.
+Qed.
+
+
+
+
+(* some more specific lemmas: *)
 
 
 Lemma Dyadic_real : forall (d : Dyadic), snd (DtoC d) = 0.
@@ -1174,13 +1635,13 @@ Proof. intros.
        apply f_equal_gen; auto.
        apply f_equal_gen; auto. 
        - rewrite Cz8_pow3_conj.
-         rewrite <- DtoC_opp.
+         rewrite DtoC_opp.
          lca. 
        - rewrite Cz8_pow2_conj.
-         rewrite <- DtoC_opp.
+         rewrite DtoC_opp.
          lca. 
        - rewrite Cz8_conj.
-         rewrite <- DtoC_opp.
+         rewrite DtoC_opp.
          lca. 
 Qed.
 
@@ -1190,27 +1651,6 @@ Qed.
 
 
 
-
-Lemma D8mult_1_r : forall d, D8mult d D81 = d.
-Proof. intros.  
-       destruct d; repeat destruct p.
-       unfold D8mult; simpl.
-       repeat apply injective_projections; simpl. 
-       all : repeat (try rewrite Dmult_0_r; try rewrite Dminus_0_r;
-                     try rewrite Dplus_0_r; try rewrite Dplus_0_l).
-       all : rewrite Dmult_1_r; easy.
-Qed.       
-
-
- 
-(* TODO: perhaps also coerce D into D8? *)
-Lemma D8mult_d_l : forall (d d1 d2 d3 d4 : Dyadic), 
-  D8mult (d, D0, D0, D0) (d1, d2, d3, d4) = (d *, d1, d *, d2, d *, d3, d *, d4).
-Proof. intros. 
-       repeat apply injective_projections; simpl. 
-       all : repeat (try rewrite Dmult_0_r; try rewrite Dminus_0_r;
-                     try rewrite Dplus_0_r; try rewrite Dplus_0_l); easy.
-Qed. 
 
 
 
@@ -1230,7 +1670,12 @@ Definition Z80 : Z8 := (0,0,0,0).
 
 Definition Z81 : Z8 := (1,0,0,0).
 
+Definition Z82 : Z8 := (2,0,0,0).
+
 Definition Z8w : Z8 := (0,1,0,0).
+
+
+
 
 (* TODO: figure out how to minimize repeated code, since this should also be for D8 *)
 Definition Z8plus (x y : Z8) : Z8 :=
@@ -1253,6 +1698,58 @@ Fixpoint Z8pow (z : Z8) (n : nat) : Z8 :=
   end.
 
 
+(*TODO: this proof is horrible... *)
+Lemma Z8toD8_inj : forall (x y : Z8),
+  Z8toD8 x = Z8toD8 y -> x = y.
+Proof. intros. 
+       repeat apply injective_projections; simpl in *.
+       assert (H1 : (Z8toD8 x).1 = (Z8toD8 y).1). rewrite H; easy.
+       unfold Z8toD8 in *; simpl in *.
+       apply ZtoD_inj; rewrite H1; easy. 
+       assert (H2 : (Z8toD8 x).2 = (Z8toD8 y).2). rewrite H; easy.
+       unfold Z8toD8 in *; simpl in *.
+       apply ZtoD_inj; rewrite H2; easy.  
+       assert (H3 : (Z8toD8 x).3 = (Z8toD8 y).3). rewrite H; easy.
+       unfold Z8toD8 in *; simpl in *.
+       apply ZtoD_inj; rewrite H3; easy. 
+       assert (H4 : (Z8toD8 x).4 = (Z8toD8 y).4). rewrite H; easy.
+       unfold Z8toD8 in *; simpl in *.
+       apply ZtoD_inj; rewrite H4; easy. 
+Qed.
+
+
+Lemma Z8toD8_plus : forall (z1 z2 : Z8),
+  Z8toD8 (Z8plus z1 z2) = D8plus z1 z2.
+Proof. intros. 
+       destruct z1; repeat destruct p; destruct z2; repeat destruct p.
+       unfold D8plus, Z8plus, Z8toD8; simpl.
+       repeat rewrite ZtoD_plus.
+       easy. 
+Qed.
+
+
+Lemma Z8toD8_opp : forall (z : Z8),
+  Z8toD8 (Z8opp z) = D8opp z.
+Proof. intros. 
+       destruct z; repeat destruct p.
+       unfold D8opp, Z8opp, Z8toD8; simpl.
+       repeat rewrite ZtoD_opp.
+       easy. 
+Qed.
+
+Lemma Z8toD8_mult : forall (z1 z2 : Z8),
+  Z8toD8 (Z8mult z1 z2) = D8mult z1 z2.
+Proof. intros. 
+       destruct z1; repeat destruct p; destruct z2; repeat destruct p.
+       unfold D8mult, Z8mult, Z8toD8; simpl.
+       repeat rewrite ZtoD_plus.
+       repeat rewrite ZtoD_minus.
+       repeat rewrite ZtoD_mult.
+       repeat rewrite ZtoD_plus.
+       repeat rewrite ZtoD_mult.
+       easy. 
+Qed.
+
 
 
 (* some basic lemmas *)
@@ -1263,12 +1760,17 @@ Proof. easy. Qed.
 Lemma Z8toD8_1 : Z8toD8 Z81 = D81.
 Proof. easy. Qed.
 
+Lemma Z8toD8_2 : Z8toD8 Z82 = D82.
+Proof. easy. Qed.
+
 Lemma Z8toC_w : D8toC (Z8toD8 Z8w) = Cz8.
 Proof. unfold D8toC, Z8toD8; simpl.
        rewrite Zdiv.Zdiv_0_l.
        lca.
 Qed.  
-       
+
+
+
 
 Lemma Z8plus_comm : forall (z1 z2 : Z8), Z8plus z1 z2 = Z8plus z2 z1.
 Proof. intros.
@@ -1301,56 +1803,6 @@ Proof. intros.
 Qed.   
 
 
-(* I go straight from Z8 to C, since I really dont want to define D8mult... maybe I should? *)
-Lemma Z8toC_plus : forall (z1 z2 : Z8),
-  (z1 + z2)%C = (Z8plus z1 z2)%C.
-Proof. intros. 
-       destruct z1; repeat destruct p; destruct z2; repeat destruct p.
-       unfold Z8toD8, D8toC, Z8plus; simpl.  
-       repeat rewrite <- ZtoD_plus.
-       repeat rewrite <- DtoC_plus.
-       lca.
-Qed.
-
-Lemma Z8toC_opp : forall (z1 z2 : Z8),
-  z1 + z2 = Z8plus z1 z2.
-Proof. intros. 
-       destruct z1; repeat destruct p; destruct z2; repeat destruct p.
-       unfold Z8toD8, D8toC, Z8plus; simpl.  
-       repeat rewrite <- ZtoD_plus.
-       repeat rewrite <- DtoC_plus.
-       lca.
-Qed.
-
-(* this gets a bit ugly with all the replace's, but without a tactic, this is super efficient *)
-Lemma Z8toC_mult : forall (z1 z2 : Z8),
-  z1 * z2 = Z8mult z1 z2.
-Proof. intros.  
-       destruct z1; repeat destruct p; destruct z2; repeat destruct p.  
-       unfold Z8toD8, D8toC, Z8mult, Zminus; simpl.
-       replace (Cz8 * (Cz8 * (Cz8 * C1))) with (Cz8 ^ 3) by easy.  
-       replace (Cz8 * (Cz8 * C1)) with (Cz8 ^ 2) by easy.    
-       replace (DtoC (ZtoD z1)) with ((DtoC (ZtoD z1)) * (Cz8 ^ 0)) by lca. 
-       replace (DtoC (ZtoD z5)) with ((DtoC (ZtoD z5)) * (Cz8 ^ 0)) by lca. 
-       replace ((DtoC (ZtoD z3)) * Cz8) with ((DtoC (ZtoD z3)) * (Cz8 ^ 1)) by lca. 
-       replace ((DtoC (ZtoD z6)) * Cz8) with ((DtoC (ZtoD z6)) * (Cz8 ^ 1)) by lca. 
-       repeat rewrite Cmult_plus_distr_l.
-       repeat rewrite Cmult_plus_distr_r.
-       assert (H' : forall z1 z2 n1 n2, ZtoD z1 * Cz8 ^ n1 * (ZtoD z2 * Cz8 ^ n2) = 
-                                   ZtoD (z1 * z2) * Cz8 ^ (n1 + n2)).
-       { intros.
-         replace (ZtoD z7 * Cz8 ^ n1 * (ZtoD z8 * Cz8 ^ n2)) with
-           ((ZtoD z7 * ZtoD z8) * (Cz8 ^ n1 * Cz8 ^ n2)) by lca.
-         rewrite DtoC_mult, ZtoD_mult, Cpow_add. 
-         easy. }
-       do 16 rewrite H'.
-       simpl plus.
-       repeat rewrite <- ZtoD_plus, <- DtoC_plus.
-       repeat rewrite <- ZtoD_opp, <- DtoC_opp. 
-       rewrite Cz8_pow4, Cz8_pow5, Cz8_pow6.
-       lca.
-Qed.
-
 
 Lemma Z8mult_1_l : forall z, Z8mult Z81 z = z.
 Proof. intros. 
@@ -1366,7 +1818,22 @@ Proof. intros.
        unfold Z8mult; simpl.
        repeat apply injective_projections; simpl; lia.
 Qed.
- 
+
+
+Lemma Z8mult_cancel_l : forall z1 z2 z3, 
+    z1 <> Z80 -> 
+    Z8mult z1 z2 = Z8mult z1 z3 -> z2 = z3.
+Proof. intros. 
+       apply Z8toD8_inj; apply D8toC_inj.
+       apply (Cmult_cancel_l (D8toC (Z8toD8 z1))).
+       unfold not; intros; apply H.
+       apply Z8toD8_inj; apply D8toC_inj.
+       rewrite H1, Z8toD8_0, D8toC_0; easy.
+       do 2 rewrite <- D8toC_mult, <- Z8toD8_mult.
+       rewrite H0; easy. 
+Qed. 
+
+
 (* TODO: perhaps also coerce Z into Z8? *)
 Lemma Z8mult_z_l : forall (z : Z) (z1 : Z8), 
   Z8mult (z, 0, 0, 0)%Z z1 = (z * z1.1, z * z1.2, z * z1.3, z * z1.4)%Z.
@@ -1395,7 +1862,7 @@ Proof. intros.
        - simpl; rewrite Z8toD8_1, D8toC_1. 
          easy. 
        - simpl.
-         rewrite IHn, Z8toC_mult.
+         rewrite IHn, Z8toD8_mult, D8toC_mult.
          easy. 
 Qed.
 
@@ -1418,6 +1885,8 @@ Proof.
   simpl. rewrite Z8pow_add. rewrite IHm. 
   rewrite Z8mult_comm. easy. 
 Qed.
+
+
 
 
 
@@ -1451,15 +1920,29 @@ Qed.
 
 
 
-
 Definition root2 : Z8 := (0, 1, 0, -1)%Z.
-
 
 Definition root2_recip : D8 := (D0, Dhalf, D0, -,Dhalf).
 
 
+
+Lemma root2_sqr : Z8mult root2 root2 = Z82.
+Proof. easy. Qed. 
+
+
+Lemma root2_root2_recip : D8mult root2_recip root2 = D81.
+Proof. repeat apply injective_projections; simpl; easy. Qed.
+
+
+Lemma root2_recip_proper : root2_recip = D8mult D8half root2.
+Proof. repeat apply injective_projections; simpl; try easy. Qed.
+
+
+
+
+
 (* TODO: make this proof nice *)
-Lemma root2_ver : D8toC (Z8toD8 root2) = RtoC (√ 2). 
+Lemma Z8toC_root2 : D8toC (Z8toD8 root2) = RtoC (√ 2). 
 Proof. unfold root2, Z8toD8, D8toC; simpl fst; simpl snd.
        replace (DtoC (Dn 0 (0 / 2))) with C1.
        replace (DtoC (Dn 0 (-2 / 2))) with (-C1).
@@ -1480,6 +1963,15 @@ Proof. unfold root2, Z8toD8, D8toC; simpl fst; simpl snd.
 Qed.
 
 
+Lemma Z8root2_neq_0 : root2 <> Z80.
+Proof. assert (H : RtoC (√ 2) <> C0).
+       { apply RtoC_neq; apply sqrt2_neq_0. }
+       unfold not; intros; apply H.
+       rewrite <- Z8toC_root2, H0, Z8toD8_0, D8toC_0; easy.
+Qed.
+
+
+(* TODO: move to Complex.v *)
 Lemma Cdiv_root2 : / RtoC (√ 2) = RtoC (√ 2) / 2.
 Proof. rewrite <- Csqrt2_sqrt.
        unfold Cdiv.
@@ -1489,41 +1981,15 @@ Proof. rewrite <- Csqrt2_sqrt.
 Qed.
 
 
+(* note how we use all the tools we have developted to show this indirectly *)
 Lemma root2_recip_ver : D8toC root2_recip = / RtoC (√ 2).
-Proof. unfold root2_recip.
-
-       replace (D0, Dhalf, D0, -, Dhalf) with 
-         (Dhalf *, D0, Dhalf *, D1, Dhalf *, D0, Dhalf *, (-, D1)).
-       rewrite Cdiv_root2, <- D8mult_d_l.
-       rewrite D8toC_mult.
-
- unfold root2_recip, Z8toD8, D8toC; simpl fst; simpl snd.
-       repeat rewrite ZtoDtoC_is_ZtoRtoC.
-       rewrite Cmult_0_l, Cplus_0_l, Cplus_0_r.
-       unfold Cz8; rewrite Cexp_pow.
-       replace (PI / 4 * INR 3)%R with (3 * PI / 4)%R.
-       rewrite Cexp_PI4, Cexp_3PI4.
-       replace (DtoC (1%nat, 1%Z)) with (1/2)%C.
-       replace (DtoC (1%nat, (-1)%Z)) with (- (1/2))%C.
-
-       replace (C1 / C2 * (/ √ 2 + / √ 2 * Ci) + - (C1 / C2) * (- / √ 2 + / √ 2 * Ci)) 
-         with (C1 / C2 * (2 / √ 2)) by lca.
-       (* rewrite <- Csqrt2_sqrt.
+Proof. rewrite root2_recip_proper, Cdiv_root2.
        unfold Cdiv. 
-       2 : { unfold DtoC. ; simpl.  Set Printing All.
-
-       rewrite <- Cmult_assoc, Cinv_r. ; try lca.
-       apply Csqrt2_neq_0.
-       replace (INR 3) with (IZR 3). lra.
-       unfold INR, IZR, IPR, IPR_2; lra. 
-       *) Admitted. 
-
-Lemma root2_sqr : Z8mult root2 root2 = (2, 0, 0, 0)%Z.
-Proof. easy. Qed. 
-
-
-Lemma root2_root2_recip : D8mult root2_recip root2 = ((2%nat,2), (2%nat,0), (2%nat,0), (2%nat,0))%Z.
-Proof. repeat apply injective_projections; simpl; easy. Qed.
+       rewrite Cmult_comm, D8toC_mult.
+       apply f_equal_gen; try apply f_equal.
+       rewrite D8toC_half; easy.
+       rewrite Z8toC_root2; easy.
+Qed. 
 
 
 
@@ -1533,11 +1999,140 @@ Definition D8toZ8 (d : D8) : Z8 :=
   (DtoZ d.1, DtoZ d.2, DtoZ d.3, DtoZ d.4).
 
 
+Definition D8isZ8 (d : D8) : Prop := 
+  DisZ d.1 /\ DisZ d.2 /\ DisZ d.3 /\ DisZ d.4.
+  
+
+
+Lemma D8isZ8_plus : forall (d1 d2 : D8),
+  D8isZ8 d1 -> D8isZ8 d2 ->
+  D8isZ8 (D8plus d1 d2).
+Proof. intros.
+       destruct d1; repeat destruct p; destruct d2; repeat destruct p.
+       destruct H; destruct H0; destruct H1; destruct H2; destruct H3; destruct H4.
+       unfold D8plus; repeat split; simpl in *.
+       all : apply DisZ_plus; easy.
+Qed.
+
+Lemma D8isZ8_opp : forall (d : D8),
+  D8isZ8 d -> D8isZ8 (D8opp d).
+Proof. intros.
+       destruct d; repeat destruct p.
+       destruct H; destruct H0; destruct H1.
+       unfold D8opp; repeat split; simpl in *.
+       all : apply DisZ_opp; easy.
+Qed.
 
 
 
+Lemma D8isZ8_mult : forall (d1 d2 : D8),
+  D8isZ8 d1 -> D8isZ8 d2 ->
+  D8isZ8 (D8mult d1 d2).
+Proof. intros.
+       destruct d1; repeat destruct p; destruct d2; repeat destruct p.
+       destruct H; destruct H0; destruct H1; destruct H2; destruct H3; destruct H4.
+       unfold D8mult; repeat split; simpl in *.
+       all : repeat (try apply DisZ_plus; try apply DisZ_minus;
+                    try apply DisZ_opp; try apply DisZ_mult); easy.
+Qed.
 
 
+Lemma D8isZ8_pow : forall (d : D8) (n : nat),
+  D8isZ8 d -> D8isZ8 (D8pow d n).
+Proof. intros.
+       induction n; try easy.
+       simpl.
+       apply D8isZ8_mult; easy. 
+Qed.
+
+
+
+Lemma D8isZ8_dec : forall d : D8,
+  { D8isZ8 d } + { ~ D8isZ8 d }.
+Proof. intros. 
+       destruct d; repeat destruct p.
+       unfold D8isZ8; simpl.
+       destruct (DisZ_dec d); destruct (DisZ_dec d0);
+         destruct (DisZ_dec d1); destruct (DisZ_dec d2); 
+         try (left; easy); right; easy.
+Qed.
+
+
+
+Lemma D8toZ8toD8 : forall (d : D8), 
+  D8isZ8 d -> d = Z8toD8 (D8toZ8 d).
+Proof. intros. 
+       destruct d; repeat destruct p.
+       destruct H; destruct H0; destruct H1.
+       repeat apply injective_projections; simpl in *.
+       all : rewrite <- DtoZtoD; easy.
+Qed.
+
+Lemma Z8toD8toZ8 : forall (z : Z8),
+  z = D8toZ8 (Z8toD8 z).
+Proof. intros.
+       destruct z; repeat destruct p. 
+       repeat apply injective_projections; simpl. 
+       all : rewrite <- ZtoDtoZ; easy. 
+Qed.       
+
+
+Lemma D8isZ8_ver : forall (d : D8), (exists (z : Z8), d = Z8toD8 z) -> D8isZ8 d.
+Proof. intros. 
+       destruct H; subst. 
+       destruct x; repeat destruct p.
+       unfold D8isZ8, Z8toD8; simpl.
+       repeat split. 
+       all : apply DisZ_ver. 
+       exists z1; easy.
+       exists z2; easy. 
+       exists z0; easy. 
+       exists z; easy. 
+Qed.
+       
+  
+
+(* Note repeated code to DtoZ_plus! TODO: generalize *)
+Lemma D8toZ8_plus : forall (d1 d2 : D8),
+  D8isZ8 d1 -> D8isZ8 d2 -> 
+  D8toZ8 (D8plus d1 d2) = (Z8plus (D8toZ8 d1) (D8toZ8 d2)).
+Proof. intros.
+       apply Z8toD8_inj.
+       rewrite Z8toD8_plus.
+       do 3 (try rewrite <- D8toZ8toD8; auto).
+       apply D8isZ8_plus; easy.
+Qed.
+
+
+Lemma D8toZ8_mult : forall (d1 d2 : D8),
+  D8isZ8 d1 -> D8isZ8 d2 -> 
+  D8toZ8 (D8mult d1 d2) = Z8mult (D8toZ8 d1) (D8toZ8 d2).
+Proof. intros.
+       apply Z8toD8_inj.
+       rewrite Z8toD8_mult.
+       do 3 (try rewrite <- D8toZ8toD8; auto).
+       apply D8isZ8_mult; easy.
+Qed.
+
+
+Lemma D8isZ8_0 : D8isZ8 D80.
+Proof. easy. Qed.
+
+Lemma D8isZ8_1 : D8isZ8 D81.
+Proof. easy. Qed.
+
+Lemma D8isZ8_2 : D8isZ8 D82.
+Proof. easy. Qed.
+
+
+Lemma D8toZ8_0 : D8toZ8 D80 = Z80.
+Proof. easy. Qed.
+
+Lemma D8toZ8_1 : D8toZ8 D81 = Z81.
+Proof. easy. Qed.
+
+Lemma D8toZ8_2 : D8toZ8 D82 = Z82.
+Proof. easy. Qed.
 
 
 
@@ -1580,6 +2175,15 @@ Qed.
 
 
 
+Lemma F28eq_dec : forall (p p0 : F28), { p = p0 } + { p <> p0 }. 
+Proof. intros. 
+       repeat (destruct p; destruct p0); simpl. 
+       destruct f; destruct f0; destruct f1; destruct f2; 
+         destruct f3; destruct f4; destruct f5; destruct f6;
+         try (left; easy); right; easy. 
+Qed.
+
+
 (* could make this a ring, but I wont for now *)
 (* also, could do this in a less bashy way. Wont generalize well for the version over Z *)
 Lemma F28plus_comm : forall p p0, F28plus p p0 = F28plus p0 p.
@@ -1602,7 +2206,7 @@ Lemma Z8toF28_plus_compact : forall p p0,
 Proof. intros. 
        repeat (destruct p; destruct p0); simpl. 
        unfold Z8plus, F28plus; simpl.
-       repeat rewrite  ZtoF2_plus.
+       repeat rewrite <- ZtoF2_plus.
        easy.
 Qed.
 
@@ -1613,9 +2217,9 @@ Proof. intros.
        rewrite F28mult_eqiv.
        repeat (destruct p; destruct p0); simpl. 
        unfold Z8mult, F28mult'; simpl.
-       repeat rewrite ZtoF2_mult.
-       repeat rewrite ZtoF2_neg.
-       repeat rewrite ZtoF2_plus.
+       repeat rewrite <- ZtoF2_mult.
+       repeat rewrite <- ZtoF2_neg.
+       repeat rewrite <- ZtoF2_plus.
        unfold Z8toF28; simpl.
        easy. 
 Qed.
@@ -1713,8 +2317,6 @@ Qed.
 
 
 
-
-Close Scope Z_scope.
 Open Scope D_scope.
 
 
@@ -1722,34 +2324,102 @@ Open Scope D_scope.
 (* note that this is over C, but this seems correct since we use root2_ver *)
 (* since powers are used, could need to define powers over Z8, which seems annoying *)
 Definition denom_exp (t : D8) (k : nat) : Prop :=
-  exists (z : Z8), (root2^k) * t = z. 
+  D8isZ8 (D8mult (D8pow root2 k) t). 
 
 Definition least_denom_exp (t : D8) (k : nat) : Prop :=
   denom_exp t k /\ forall k', denom_exp t k' -> (k <= k')%nat.
 
 
-Lemma exists_denom_exp : forall t,
-  exists k, denom_exp t k.
+
+
+(*
+ * some helpers to show that there always exists a denom_exp: 
+ *)
+
+
+Lemma exists_two_bound_Dyad : forall (d : Dyadic), 
+  exists k, DisZ (D2 ^, k *, d).
+Proof. intros. 
+       destruct d.
+       - exists 0%nat.
+         rewrite Dmult_0_r.
+         easy.
+       - destruct z.
+         + exists 0%nat; simpl; easy.
+         + exists 0%nat; simpl; easy.
+         + exists (Pos.to_nat p).
+           rewrite Dpow_2_pos; simpl. 
+           rewrite Z.pos_sub_diag. 
+           lia.
+Qed.
+
+Lemma get_weaker_two_bound : forall (d : Dyadic) (k k' : nat),
+  (k <= k')%nat -> 
+  DisZ (D2 ^, k *, d) -> DisZ (D2 ^, k' *, d). 
+Proof. intros. 
+       apply (le_plus_minus k k') in H; auto.
+       rewrite H, Dpow_add, Dmult_comm, <- Dmult_assoc. 
+       apply DisZ_mult.
+       rewrite Dmult_comm; easy.
+       apply DisZ_pow.
+       easy.
+Qed.       
+
+
+Lemma get_weaker_denom_exp : forall (d : D8) (k k' : nat),
+  (k <= k')%nat -> 
+  denom_exp d k -> denom_exp d k'.
+Proof. intros. 
+       unfold denom_exp.
+       apply (le_plus_minus k k') in H; auto.
+       rewrite H, D8pow_add, D8mult_comm, <- D8mult_assoc. 
+       apply D8isZ8_mult.
+       rewrite D8mult_comm; easy.
+       apply D8isZ8_pow.
+       easy.
+Qed.       
+
+
+Lemma exists_two_bound_D8 : forall (d : D8), 
+  exists k, D8isZ8 (D8mult (D8pow D82 k) d). 
+Proof. intros. 
+       destruct d; repeat destruct p.
+       destruct (exists_two_bound_Dyad d); destruct (exists_two_bound_Dyad d0);
+       destruct (exists_two_bound_Dyad d1); destruct (exists_two_bound_Dyad d2).
+       exists (x + x0 + x1 + x2)%nat.
+       unfold D82.
+       rewrite DtoD8_pow, D8mult_d_l.
+       repeat split; simpl.
+       apply (get_weaker_two_bound _ x1); try lia; easy.
+       apply (get_weaker_two_bound _ x2); try lia; easy.
+       apply (get_weaker_two_bound _ x0); try lia; easy.
+       apply (get_weaker_two_bound _ x); try lia; easy.
+Qed.
+
+
+
+Theorem exists_denom_exp : forall d,
+  exists k, denom_exp d k.
 Proof. intros.
-       destruct t; repeat destruct p.
-       destruct d; destruct d0; destruct d1; destruct d2.
-       exists (2 * (n + n0 + n1 + n2))%nat.
-       exists (2^(n + n0 + n2) * z1, 2^(n + n0 + n1) * z2, 
-           2^(n + n1 + n2) * z0, 2^(n0 + n1 + n2) * z)%Z.
-(*       rewrite Z8pow_mult.
-       replace (Z8pow (Z8pow root2 2) (n + n0 + n1 + n2)) with
-         (2^(n + n0 + n1 + n2)%Z, 0, 0, 0)%Z. *)
-       rewrite root2_ver, Cpow_mult.
-       replace (√ 2 ^ 2)%C with C2 by (rewrite RtoC_pow, pow2_sqrt2; easy).
-       unfold D8toC, DtoC; simpl. 
-       repeat rewrite Cmult_plus_distr_l.
-       apply f_equal_gen.
-       apply f_equal_gen; auto.
-       apply f_equal_gen.
-       apply f_equal_gen; auto.
-       apply f_equal_gen.
-       apply f_equal_gen; auto.
-       Admitted. 
+       destruct (exists_two_bound_D8 d).
+       exists (2*x)%nat.
+       unfold denom_exp.
+       rewrite D8pow_mult.
+       replace (D8pow root2 2) with D82; easy.
+Qed. 
+
+
+(*NB: because of decidability, it is easier to wait a bit before proving a 
+  least_denom_exp exists. *)
+
+
+Lemma denom_exp_dec : forall t k, 
+  { denom_exp t k } + { ~ denom_exp t k }.
+Proof. intros. 
+       unfold denom_exp.
+       apply D8isZ8_dec.
+Qed.
+
 
 Lemma exists_least_denom_exp : forall t,
   exists k, least_denom_exp t k.
@@ -1758,61 +2428,37 @@ Proof. intros.
        apply (dec_inh_nat_subset_has_unique_least_element (denom_exp t)) in H'.
        destruct H'; do 2 destruct H. 
        exists x; split; auto.
-       intros. 
-       Admitted.
+       intros.  
+       destruct (denom_exp_dec t n).
+       left; easy.
+       right; easy.
+Qed.
 
 
 
 
+(* TODO: delete if this is not actually used *)
 Definition rho_k (t : D8) (k : nat) : F28 :=
   Z8toF28 (D8toZ8 (D8mult (Z8pow root2 k) t)).
  
 
 
-
+(* NOTE: for the first few lemmas from the paper, I stay pretty close to the paper, but it 
+   may be possible/better to do things slightly faster *)
 
 
 (* the paper has these definition on F28, but I have them on Z8 *)
 Definition reducible (z : Z8) : Prop :=
   exists (y : Z8), Z8mult root2 y = z.
 
+Definition irreducible (z : Z8) : Prop :=
+  ~ (reducible z).
+
 Definition twice_reducible (z : Z8) : Prop :=
-  exists (y : Z8), Z8mult (2, 0, 0, 0)%Z y = z.
+  exists (y : Z8), Z8mult Z82 y = z.
 
 
-(* TODO: might be able to delete these. 4 => 1 is the hardest anyways *)
-Lemma Lemma2_1 : forall z,
-  reducible z -> 
-  Z8toF28 z = (F0, F0, F0, F0) \/ Z8toF28 z = (F1, F0, F1, F0) \/ 
-  Z8toF28 z = (F0, F1, F0, F1) \/ Z8toF28 z = (F1, F1, F1, F1). 
-Proof. intros. 
-       destruct H; subst.
-       rewrite <- mult_by_root2_ver.
-       destruct (Z8toF28 x); repeat destruct p;
-         destruct f; destruct f0; destruct f1; destruct f2; simpl;
-         try (left; easy); try (right; left; easy); 
-         try (right; right; left; easy); right; right; right; easy.
-Qed.
-
-Lemma Lemma2_2 : forall z,
-  Z8toF28 z = (F0, F0, F0, F0) \/ Z8toF28 z = (F1, F0, F1, F0) \/ 
-  Z8toF28 z = (F0, F1, F0, F1) \/ Z8toF28 z = (F1, F1, F1, F1) ->
-  Z8toF28 (Z8mult root2 z) = (F0, F0, F0, F0).
-Proof. intros. 
-       rewrite Z8toF28_mult_compact.
-       repeat (destruct H; try (rewrite H; easy)).
-Qed.
-
-Lemma Lemma2_3 : forall z,
-  Z8toF28 (Z8mult root2 z) = (F0, F0, F0, F0) ->
-  Z8toF28 (Z8mult (Z8conj z) z) = (F0, F0, F0, F0).
-Proof. intros. 
-       rewrite <- square_norm_ver.
-       rewrite <- mult_by_root2_ver in H.
-       destruct (Z8toF28 z); repeat destruct p;
-         destruct f; destruct f0; destruct f1; destruct f2; simpl; try easy.
-Qed.
-
+(* I first prove the second part of Lemma 2: *)
 Lemma twice_reducible_iff_0_res : forall z,
   twice_reducible z <-> Z8toF28 z = (F0, F0, F0, F0).
 Proof. intros; split; intros.
@@ -1845,6 +2491,149 @@ Proof. intros; split; intros.
            lia. 
 Qed.
 
+
+
+(* Note that I changed up the order a bit from the paper *)
+Lemma Lemma2_1 : forall z,
+  reducible z -> 
+  Z8toF28 z = (F0, F0, F0, F0) \/ Z8toF28 z = (F1, F0, F1, F0) \/ 
+  Z8toF28 z = (F0, F1, F0, F1) \/ Z8toF28 z = (F1, F1, F1, F1). 
+Proof. intros. 
+       destruct H; subst.
+       rewrite <- mult_by_root2_ver.
+       destruct (Z8toF28 x); repeat destruct p;
+         destruct f; destruct f0; destruct f1; destruct f2; simpl;
+         try (left; easy); try (right; left; easy); 
+         try (right; right; left; easy); right; right; right; easy.
+Qed.
+
+Lemma Lemma2_2 : forall z,
+  Z8toF28 z = (F0, F0, F0, F0) \/ Z8toF28 z = (F1, F0, F1, F0) \/ 
+  Z8toF28 z = (F0, F1, F0, F1) \/ Z8toF28 z = (F1, F1, F1, F1) ->
+  Z8toF28 (Z8mult (Z8conj z) z) = (F0, F0, F0, F0).
+Proof. intros. 
+       rewrite Z8toF28_mult_compact, Z8conj_F28conj. 
+       destruct (Z8toF28 z); repeat destruct p.
+       destruct f; destruct f0; destruct f1; destruct f2; simpl; try easy.
+       all : repeat (destruct H; try easy).
+Qed.
+
+Lemma Lemma2_3 : forall z,
+  Z8toF28 (Z8mult (Z8conj z) z) = (F0, F0, F0, F0) ->
+  Z8toF28 (Z8mult root2 z) = (F0, F0, F0, F0).  
+Proof. intros. 
+       rewrite Z8toF28_mult_compact, Z8conj_F28conj in *. 
+       destruct (Z8toF28 z); repeat destruct p.
+       destruct f; destruct f0; destruct f1; destruct f2; simpl in *; try easy.
+Qed.
+
+Lemma Lemma2_4 : forall z,
+  Z8toF28 (Z8mult root2 z) = (F0, F0, F0, F0) ->
+  reducible z.
+Proof. intros. 
+       apply twice_reducible_iff_0_res in H.
+       destruct H.
+       rewrite <- root2_sqr in H.
+       rewrite <- Z8mult_assoc in H.
+       apply Z8mult_cancel_l in H.
+       exists x; easy.
+       apply Z8root2_neq_0.
+Qed.
+
+Lemma irreducible_dec : forall z, 
+  { reducible z } + { irreducible z }.
+Proof. intros. 
+       destruct (F28eq_dec (Z8toF28 (Z8mult root2 z)) (F0, F0, F0, F0)).
+       - left. 
+         apply Lemma2_4; easy.
+       - right.
+         unfold irreducible, not; intros; apply n.
+         apply Lemma2_3; apply Lemma2_2; apply Lemma2_1; easy.
+Qed.
+
+
+Lemma Lemma3_1 : forall (d : D8),
+  D8isZ8 d -> 
+  D8isZ8 (D8mult D8half d) <-> twice_reducible (D8toZ8 d).
+Proof. intros; split; intros.
+       - assert (H1 := H0).
+         unfold twice_reducible.
+         apply D8toZ8toD8 in H0; auto.
+         exists (D8toZ8 (D8mult D8half d)).
+         rewrite <- D8toZ8_2, <- D8toZ8_mult, <- D8mult_assoc, 
+           D8mult_2_half, D8mult_1_l; auto.       
+         apply D8isZ8_2.
+       - destruct H0.
+         apply D8isZ8_ver.
+         exists x.
+         apply (f_equal_gen Z8toD8 Z8toD8) in H0; auto.
+         rewrite <- D8toZ8toD8 in H0; auto.
+         rewrite <- H0, Z8toD8_mult, <- D8mult_assoc.
+         (* TODO: this step suggests we define all constants in terms of the base type Z
+            this is what we do in Complex.v *)
+         rewrite Z8toD8_2.
+         rewrite D8mult_half_2, D8mult_1_l.
+         easy.
+Qed.
+
+
+
+Lemma Lemma3_2 : forall (d : D8),
+  D8isZ8 d -> 
+  D8isZ8 (D8mult root2_recip d) <-> reducible (D8toZ8 d).
+Proof. intros; split; intros.
+       - assert (H1 := H0).
+         unfold reducible.
+         apply D8toZ8toD8 in H0; auto.
+         exists (D8toZ8 (D8mult root2_recip d)).
+         rewrite (Z8toD8toZ8 root2), <- D8toZ8_mult, <- D8mult_assoc, 
+           (D8mult_comm root2), root2_root2_recip, D8mult_1_l; auto.
+         apply D8isZ8_ver.
+         exists root2; easy.
+       - apply Lemma2_1 in H0; apply Lemma2_2 in H0; apply Lemma2_3 in H0.
+         apply twice_reducible_iff_0_res in H0. 
+         rewrite (Z8toD8toZ8 root2), <- D8toZ8_mult in H0; auto.
+         apply Lemma3_1  in H0. 
+         rewrite <- D8mult_assoc in H0.
+         rewrite <- root2_recip_proper in H0; easy.
+         apply D8isZ8_mult; auto.
+         all : apply D8isZ8_ver; exists root2; easy.
+Qed.
+
+(* inverse version of Lemma3_2 *)
+Lemma Lemma3_2' : forall (d : D8),
+  D8isZ8 d -> 
+  ~ (D8isZ8 (D8mult root2_recip d)) <-> irreducible (D8toZ8 d).
+Proof. intros; split; intros.
+       - unfold irreducible, not; intros; apply H0.
+         apply Lemma3_2; auto.
+       - unfold not; intros; apply H0.
+         apply Lemma3_2; auto.
+Qed.
+
+
+Lemma Corollary1 : forall (d : D8) (k : nat),
+  k <> 0%nat ->
+  denom_exp d k -> 
+  least_denom_exp d k <-> irreducible (D8toZ8 (D8mult (D8pow root2 k) d)).  
+Proof. intros; split; intros; destruct k; try easy.
+       - destruct H1.
+         unfold denom_exp in H0.
+         apply Lemma3_2'; auto; simpl.
+         repeat rewrite <- D8mult_assoc.
+         rewrite root2_root2_recip, D8mult_1_l.         
+         destruct (D8isZ8_dec (D8mult (D8pow root2 k) d)). 
+         + apply H2 in d0; lia.
+         + easy. 
+       - apply Lemma3_2' in H1; auto; simpl in *.
+         repeat rewrite <- D8mult_assoc in H1.
+         rewrite root2_root2_recip, D8mult_1_l in H1.          
+         split; auto; intros.
+         destruct (ge_dec k' (S k)); try lia. 
+         assert (k' <= k)%nat. lia.
+         apply (get_weaker_denom_exp d k' k) in H3; auto.
+         easy. 
+Qed.
 
 
 
