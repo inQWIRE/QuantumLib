@@ -99,6 +99,7 @@ Proof. intros.
        intros; rewrite Gmult_comm, Ginv_r; easy. 
 Qed.
 
+
 (*
 Add Field C_field_field : C_field_theory.
 *)
@@ -170,6 +171,16 @@ Proof. intros.
        apply (Gplus_cancel_l _ _ (r * 0)).
        rewrite Gplus_0_r, <- Gmult_plus_distr_l, Gplus_0_r; easy. 
 Qed. 
+
+
+Lemma Gopp_neg_1 : forall {R} `{Ring R} (r : R), -1%G * r = -r.
+Proof. intros.
+       apply (Gplus_cancel_l _ _ r).
+       rewrite Gopp_r.
+       replace (Gplus r) with (Gplus (1 * r)) by (rewrite Gmult_1_l; easy).
+       rewrite <- Gmult_plus_distr_r, Gopp_r, Gmult_0_l; easy.
+Qed.       
+
 
 Lemma Ginv_l : forall {F} `{Field F} (f : F), f <> 0 -> (Ginv f) * f = 1.
 Proof. intros; rewrite Gmult_comm; apply Ginv_r; easy. Qed.
