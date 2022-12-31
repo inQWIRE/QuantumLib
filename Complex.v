@@ -130,7 +130,7 @@ Program Instance C_is_ring : Ring C :=
   { Gone := C1
   ; Gmult := Cmult
   }.
-Solve All Obligations with program_simpl; lca. 
+Solve All Obligations with program_simpl; try lca; apply Ceq_dec. 
 
 Program Instance C_is_comm_ring : Comm_Ring C.
 Solve All Obligations with program_simpl; lca. 

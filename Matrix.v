@@ -256,9 +256,11 @@ Program Instance M_is_comm_group : forall n m, Comm_Group (Matrix n m).
 Solve All Obligations with program_simpl; prep_matrix_equality; lca. 
 
 
-Program Instance M_is_vector_space : forall n m, Vector_Space (Matrix n m) C :=
+Program Instance M_is_module_space : forall n m, Module_Space (Matrix n m) C :=
   { Vscale := scale }.
 Solve All Obligations with program_simpl; prep_matrix_equality; lca. 
+
+Program Instance M_is_vector_space : forall n m, Vector_Space (Matrix n m) C.
 
 
 (** Notations *)

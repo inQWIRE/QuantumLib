@@ -1,8 +1,35 @@
 
 Require Import List.       
 Require Export Complex.
+
+(*
 Require Export Quantum. 
 Require Import FTA.
+*)
+
+
+
+
+(* how should I do this? *)
+(*
+Lemma Submonoid_theorem : forall (R : Set) `{Monoid R} (S : Set) 
+                            (S0 : S) (Splus : S -> S -> S) (StoR : S -> R),
+ (forall s1 s2, StoR (Splus s1 s2) = ((StoR s1) + (StoR s2))%G) -> 
+  Monoid S.
+Proof. intros. 
+       split. 
+
+
+Lemma Subring_theorem : forall (R : Set) `{Comm_Ring R} (S : Set) (S0 S1 : S) (Splus : S -> S -> S) 
+                          (Sopp : S -> S) (Smult : S -> S -> S) (StoR : S -> R),
+ (forall s1 s2, StoR (Splus s1 s2) = ((StoR s1) + (StoR s2))%G) -> 
+ (forall s, StoR (Sopp s) = (- (StoR s))%G) ->
+  Monoid S.
+Proof. intros. 
+*)
+
+
+
 
 
 
@@ -191,21 +218,19 @@ Proof. intros.
        
 
 
+
+
+
+Hint Rewrite plus_IZR minus_IZR opp_IZR mult_IZR ZtoC_pow : ZtoR_db.
+
 (* NB: use plus_IZR, mult_IZR, RtoC_plus, RtoC_mult to move between types: *)
 (* quick helper tactic. TODO: centralize these *)
-Ltac fastZtoC := 
-  repeat (repeat rewrite plus_IZR, RtoC_plus;
-          repeat rewrite minus_IZR, RtoC_minus;
-          repeat rewrite opp_IZR, RtoC_opp;
-          repeat rewrite mult_IZR, RtoC_mult;
-          repeat (rewrite ZtoC_pow; try lia)).
+Ltac fastZtoC := repeat (autorewrite with ZtoR_db; autorewrite with RtoC_db; try lia).
 
 
-(* TODO: to smth like this instead 
-Hint Rewrite <- RtoC_opp RtoC_mult RtoC_plus : RtoC_db.
-Hint Rewrite <- RtoC_inv using nonzero : RtoC_db.
-Hint Rewrite RtoC_pow : RtoC_db.
-*)
+
+
+
 
 
 
@@ -590,7 +615,7 @@ Proof. intros.
        lca.
 Qed.
 
-Lemma Dplus_assoc : forall d1 d2 d3, d1 +, d2 +, d3 = d1 +, (d2 +, d3).
+Lemma Dplus_assoc : forall d1 d2 d3, d1 +, (d2 +, d3) = d1 +, d2 +, d3.
 Proof. intros.
        apply DtoC_inj.
        do 4 rewrite DtoC_plus.
@@ -646,7 +671,7 @@ Proof. intros.
        lca.
 Qed.
 
-Lemma Dmult_assoc : forall d1 d2 d3, d1 *, d2 *, d3 = d1 *, (d2 *, d3).
+Lemma Dmult_assoc : forall d1 d2 d3, d1 *, (d2 *, d3) = d1 *, d2 *, d3.
 Proof. intros.
        apply DtoC_inj.
        do 4 rewrite DtoC_mult.
@@ -1118,6 +1143,10 @@ Qed.
 Next Obligation.
   destruct a; destruct b; destruct c; try easy. 
 Qed.
+Next Obligation.
+  destruct a; destruct b; try (left; easy); right; easy. 
+Qed.
+
 
 Program Instance F2_is_comm_ring : Comm_Ring F2.
 Solve All Obligations with program_simpl; destruct a; destruct b; easy.
@@ -1475,6 +1504,8 @@ Proof. intros.
 Qed.
 
 
+Hint Rewrite D8toC_plus D8toC_opp D8toC_mult : D8toC_db.
+
 
 (*TODO: show that the above proves defacto that D8 is a ring *)
 
@@ -1492,54 +1523,94 @@ Proof. lca. Qed.
 
 
 
+(* TODO: look at all this repeated code! *) 
 Lemma D8plus_comm : forall d1 d2, D8plus d1 d2 = D8plus d2 d1.
 Proof. intros.
        apply D8toC_inj.
-       do 2 rewrite D8toC_plus.
+       autorewrite with D8toC_db.
        lca.
 Qed.
 
-Lemma D8plus_assoc : forall d1 d2 d3, D8plus (D8plus d1 d2) d3 = D8plus d1 (D8plus d2 d3).
+Lemma D8plus_assoc : forall d1 d2 d3, D8plus d1 (D8plus d2 d3) = D8plus (D8plus d1 d2) d3.
 Proof. intros.
        apply D8toC_inj.
-       do 4 rewrite D8toC_plus.
+       autorewrite with D8toC_db.
+       lca.
+Qed.
+
+Lemma D8plus_0_l : forall d, D8plus D80 d = d.
+Proof. intros.
+       apply D8toC_inj.
+       autorewrite with D8toC_db.
+       lca.
+Qed.
+
+Lemma D8plus_0_r : forall d, D8plus d D80 = d.
+Proof. intros.
+       apply D8toC_inj.
+       autorewrite with D8toC_db.
        lca.
 Qed.
 
 Lemma D8mult_comm : forall d1 d2, D8mult d1 d2 = D8mult d2 d1.
 Proof. intros.
        apply D8toC_inj.
-       do 2 rewrite D8toC_mult.
+       autorewrite with D8toC_db.
        lca.
 Qed.
 
-Lemma D8mult_assoc : forall d1 d2 d3, D8mult (D8mult d1 d2) d3 = D8mult d1 (D8mult d2 d3).
+Lemma D8mult_assoc : forall d1 d2 d3, D8mult d1 (D8mult d2 d3) = D8mult (D8mult d1 d2) d3.
 Proof. intros.
        apply D8toC_inj.
-       do 4 rewrite D8toC_mult.
+       autorewrite with D8toC_db.
        lca.
 Qed.
 
 
+Lemma D8mult_plus_distr_l : forall d1 d2 d3, 
+    D8mult d1 (D8plus d2 d3) = D8plus (D8mult d1 d2) (D8mult d1 d3).
+Proof. intros.
+       apply D8toC_inj.
+       autorewrite with D8toC_db.
+       lca.
+Qed.
+
+Lemma D8mult_plus_distr_r : forall d1 d2 d3, 
+    D8mult (D8plus d2 d3) d1 = D8plus (D8mult d2 d1) (D8mult d3 d1).
+Proof. intros.
+       apply D8toC_inj.
+       autorewrite with D8toC_db.
+       lca.
+Qed.
+
+Lemma D8mult_0_l : forall d, D8mult D80 d = D80.
+Proof. intros.
+       apply D8toC_inj.
+       autorewrite with D8toC_db.
+       lca.
+Qed.
+
+Lemma D8mult_0_r : forall d, D8mult d D80 = D80.
+Proof. intros.
+       apply D8toC_inj.
+       autorewrite with D8toC_db.
+       lca.
+Qed.
+
 Lemma D8mult_1_l : forall d, D8mult D81 d = d.
-Proof. intros.  
-       destruct d; repeat destruct p.
-       unfold D8mult; simpl.
-       repeat apply injective_projections; simpl. 
-       all : repeat (try rewrite Dmult_0_r; try rewrite Dminus_0_r;
-                     try rewrite Dplus_0_r; try rewrite Dplus_0_l).
-       all : rewrite Dmult_1_l; easy.
-Qed.  
+Proof. intros.
+       apply D8toC_inj.
+       autorewrite with D8toC_db.
+       lca.
+Qed.
 
 Lemma D8mult_1_r : forall d, D8mult d D81 = d.
-Proof. intros.  
-       destruct d; repeat destruct p.
-       unfold D8mult; simpl.
-       repeat apply injective_projections; simpl. 
-       all : repeat (try rewrite Dmult_0_r; try rewrite Dminus_0_r;
-                     try rewrite Dplus_0_r; try rewrite Dplus_0_l).
-       all : rewrite Dmult_1_r; easy.
-Qed.       
+Proof. intros.
+       apply D8toC_inj.
+       autorewrite with D8toC_db.
+       lca.
+Qed.
+     
 
 (* TODO: perhaps also coerce D into D8? *)
 Lemma D8mult_d_l : forall (d d1 d2 d3 d4 : Dyadic), 
@@ -1549,7 +1620,6 @@ Proof. intros.
        all : repeat (try rewrite Dmult_0_r; try rewrite Dminus_0_r;
                      try rewrite Dplus_0_r; try rewrite Dplus_0_l); easy.
 Qed. 
-
 
 
 Lemma D8pow_add : forall (d : D8) (n m : nat), D8pow d (n + m) = D8mult (D8pow d n) (D8pow d m).
@@ -1570,7 +1640,6 @@ Proof. intros.
          apply f_equal_gen; auto.
          lia.
 Qed.
-
 
 
 (*TODO(again!): should probably define DtoD8 somewhere *)
@@ -1648,8 +1717,42 @@ Qed.
 
 
 
+Ltac naive_lD8a := repeat (repeat rewrite D8mult_plus_distr_l;
+                         repeat rewrite D8mult_plus_distr_r;
+                         repeat rewrite D8mult_assoc;
+                         repeat rewrite D8mult_1_l;
+                         repeat rewrite D8mult_1_r; 
+                         repeat rewrite D8mult_0_l;
+                         repeat rewrite D8mult_0_r;
+                         repeat rewrite D8plus_0_l;
+                         repeat rewrite D8plus_0_r; try easy).
 
 
+Ltac lD8a_try1 := apply D8toC_inj; autorewrite with D8toC_db; lca.
+
+
+Program Instance D8_is_monoid : Monoid D8 := 
+  { Gzero := D80
+  ; Gplus := D8plus
+  }.
+Solve All Obligations with program_simpl; lD8a_try1.
+
+Program Instance D8_is_group : Group D8 :=
+  { Gopp := D8opp }.
+Solve All Obligations with program_simpl; lD8a_try1.
+        
+Program Instance D8_is_comm_group : Comm_Group D8.
+Solve All Obligations with program_simpl; lD8a_try1.
+
+                                             
+Program Instance D8_is_ring : Ring D8 :=
+  { Gone := D81
+  ; Gmult := D8mult
+  }.
+Solve All Obligations with program_simpl; try lD8a_try1; apply D8eq_dec.
+
+Program Instance D8_is_comm_ring : Comm_Ring D8.
+Solve All Obligations with program_simpl; lD8a_try1.
 
 
 
@@ -1771,7 +1874,7 @@ Qed.
 
 
 
-
+(* TODO: make tactic that inputs Z8toD8, etc... and that makes these all trivial *)
 Lemma Z8plus_comm : forall (z1 z2 : Z8), Z8plus z1 z2 = Z8plus z2 z1.
 Proof. intros.
        destruct z1; repeat destruct p; destruct z2; repeat destruct p.
@@ -1779,7 +1882,7 @@ Proof. intros.
        repeat apply injective_projections; simpl; lia.
 Qed.       
 
-Lemma Z8plus_assoc : forall (z1 z2 z3 : Z8), Z8plus z1 (Z8plus z2 z3) = Z8plus (Z8plus z2 z1) z3.
+Lemma Z8plus_assoc : forall (z1 z2 z3 : Z8), Z8plus z1 (Z8plus z2 z3) = Z8plus (Z8plus z1 z2) z3.
 Proof. intros.
        destruct z1; repeat destruct p; destruct z2; 
          repeat destruct p; destruct z3; repeat destruct p.
@@ -1794,7 +1897,7 @@ Proof. intros.
        repeat apply injective_projections; simpl; lia.
 Qed.       
 
-Lemma Z8mult_assoc : forall (z1 z2 z3 : Z8), Z8mult z1 (Z8mult z2 z3) = Z8mult (Z8mult z2 z1) z3.
+Lemma Z8mult_assoc : forall (z1 z2 z3 : Z8), Z8mult z1 (Z8mult z2 z3) = Z8mult (Z8mult z1 z2) z3.
 Proof. intros.
        destruct z1; repeat destruct p; destruct z2; 
          repeat destruct p; destruct z3; repeat destruct p.
@@ -1873,7 +1976,7 @@ Proof. intros.
          rewrite Z8mult_1_l; easy.
        - simpl.
          rewrite IHn. 
-         rewrite Z8mult_assoc, (Z8mult_comm _ z).
+         rewrite <- Z8mult_assoc.
          easy.
 Qed.
 
@@ -2358,7 +2461,7 @@ Lemma get_weaker_two_bound : forall (d : Dyadic) (k k' : nat),
   DisZ (D2 ^, k *, d) -> DisZ (D2 ^, k' *, d). 
 Proof. intros. 
        apply (le_plus_minus k k') in H; auto.
-       rewrite H, Dpow_add, Dmult_comm, <- Dmult_assoc. 
+       rewrite H, Dpow_add, Dmult_comm, Dmult_assoc. 
        apply DisZ_mult.
        rewrite Dmult_comm; easy.
        apply DisZ_pow.
@@ -2372,7 +2475,7 @@ Lemma get_weaker_denom_exp : forall (d : D8) (k k' : nat),
 Proof. intros. 
        unfold denom_exp.
        apply (le_plus_minus k k') in H; auto.
-       rewrite H, D8pow_add, D8mult_comm, <- D8mult_assoc. 
+       rewrite H, D8pow_add, D8mult_comm, D8mult_assoc. 
        apply D8isZ8_mult.
        rewrite D8mult_comm; easy.
        apply D8isZ8_pow.
@@ -2560,7 +2663,7 @@ Proof. intros; split; intros.
          unfold twice_reducible.
          apply D8toZ8toD8 in H0; auto.
          exists (D8toZ8 (D8mult D8half d)).
-         rewrite <- D8toZ8_2, <- D8toZ8_mult, <- D8mult_assoc, 
+         rewrite <- D8toZ8_2, <- D8toZ8_mult, D8mult_assoc, 
            D8mult_2_half, D8mult_1_l; auto.       
          apply D8isZ8_2.
        - destruct H0.
@@ -2568,7 +2671,7 @@ Proof. intros; split; intros.
          exists x.
          apply (f_equal_gen Z8toD8 Z8toD8) in H0; auto.
          rewrite <- D8toZ8toD8 in H0; auto.
-         rewrite <- H0, Z8toD8_mult, <- D8mult_assoc.
+         rewrite <- H0, Z8toD8_mult, D8mult_assoc.
          (* TODO: this step suggests we define all constants in terms of the base type Z
             this is what we do in Complex.v *)
          rewrite Z8toD8_2.
@@ -2586,7 +2689,7 @@ Proof. intros; split; intros.
          unfold reducible.
          apply D8toZ8toD8 in H0; auto.
          exists (D8toZ8 (D8mult root2_recip d)).
-         rewrite (Z8toD8toZ8 root2), <- D8toZ8_mult, <- D8mult_assoc, 
+         rewrite (Z8toD8toZ8 root2), <- D8toZ8_mult, D8mult_assoc, 
            (D8mult_comm root2), root2_root2_recip, D8mult_1_l; auto.
          apply D8isZ8_ver.
          exists root2; easy.
@@ -2594,7 +2697,7 @@ Proof. intros; split; intros.
          apply twice_reducible_iff_0_res in H0. 
          rewrite (Z8toD8toZ8 root2), <- D8toZ8_mult in H0; auto.
          apply Lemma3_1  in H0. 
-         rewrite <- D8mult_assoc in H0.
+         rewrite D8mult_assoc in H0.
          rewrite <- root2_recip_proper in H0; easy.
          apply D8isZ8_mult; auto.
          all : apply D8isZ8_ver; exists root2; easy.
@@ -2620,13 +2723,13 @@ Proof. intros; split; intros; destruct k; try easy.
        - destruct H1.
          unfold denom_exp in H0.
          apply Lemma3_2'; auto; simpl.
-         repeat rewrite <- D8mult_assoc.
+         repeat rewrite D8mult_assoc.
          rewrite root2_root2_recip, D8mult_1_l.         
          destruct (D8isZ8_dec (D8mult (D8pow root2 k) d)). 
          + apply H2 in d0; lia.
          + easy. 
        - apply Lemma3_2' in H1; auto; simpl in *.
-         repeat rewrite <- D8mult_assoc in H1.
+         repeat rewrite D8mult_assoc in H1.
          rewrite root2_root2_recip, D8mult_1_l in H1.          
          split; auto; intros.
          destruct (ge_dec k' (S k)); try lia. 

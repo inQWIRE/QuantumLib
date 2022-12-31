@@ -338,7 +338,9 @@ Program Instance R_is_ring : Ring R :=
   { Gone := 1
   ; Gmult := Rmult
   }.
-Solve All Obligations with program_simpl; lra. 
+Solve All Obligations with program_simpl; try lra. 
+Next Obligation. try apply Req_EM_T. Qed.
+
 
 Program Instance R_is_comm_ring : Comm_Ring R.
 Solve All Obligations with program_simpl; lra. 

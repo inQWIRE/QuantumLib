@@ -236,11 +236,12 @@ Qed.
 
 
 
-
+(* TODO: figure out how to get rid of Geq_dec - it is already in Summation.v for rings *)
+(* shouldn't equality on finite types be decidable? *)
 Class FiniteGroup G `{Group G} :=
   { G_list_rep : list G
   ; G_finite_ver : Listing G_list_rep      
-  ; G_eq_dec : forall x y : G, {x = y} + {x <> y}
+  ; Geq_dec : forall g h : G, { g = h } + { g <> h }           
   }.
 
 Infix "·" := Gplus (at level 40) : group_scope.
@@ -515,7 +516,7 @@ Proof. intros.
        apply in_map_iff.
        exists a; split; easy.
        apply (in_coset_cancel H G); auto.
-       apply G_eq_dec.
+       apply Geq_dec.
        apply G_finite_ver.
 Qed.       
 
@@ -758,7 +759,7 @@ Proof. split.
            repeat (try (left; easy); right).
 Qed.
 Next Obligation.
-Proof. destruct x; destruct y; try (left; easy); right; easy. Qed.
+Proof. destruct g; destruct h; try (left; easy); right; easy. Qed.
 
 
 (* **) 

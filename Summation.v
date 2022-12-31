@@ -22,11 +22,10 @@ Infix "+" := Gplus : group_scope.
 Notation "0" := Gzero : group_scope.
 
 
-      
 Class Group G `{Monoid G} :=
   { Gopp : G -> G
   ; Gopp_l : forall g, (Gopp g) + g = 0
-  ; Gopp_r : forall g, g + (Gopp g) = 0             
+  ; Gopp_r : forall g, g + (Gopp g) = 0 
   }.
 
 Class Comm_Group G `{Group G} :=
@@ -38,6 +37,8 @@ Notation "- x" := (Gopp x) : group_scope.
 Infix "-" := Gminus : group_scope.
 
 
+
+(* Geq_dec could be in Monoid, but then lists and matrices wont be monoids *)
 Class Ring R `{Comm_Group R} :=
   { Gone : R
   ; Gmult : R -> R -> R                 
@@ -46,6 +47,7 @@ Class Ring R `{Comm_Group R} :=
   ; Gmult_assoc : forall a b c, Gmult a (Gmult b c) = Gmult (Gmult a b) c 
   ; Gmult_plus_distr_l : forall a b c, Gmult c (a + b) = (Gmult c a) + (Gmult c b)
   ; Gmult_plus_distr_r : forall a b c, Gmult (a + b) c = (Gmult a c) + (Gmult b c)
+  ; Geq_dec : forall a b : R, { a = b } + { a <> b }             
   }.
 
 Class Comm_Ring R `{Ring R} :=
@@ -232,8 +234,6 @@ Program Instance nat_is_monoid : Monoid nat :=
   ; Gplus := plus
   }.
 Solve All Obligations with program_simpl; try lia.
-
-
 
 
 
