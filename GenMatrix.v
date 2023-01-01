@@ -251,10 +251,10 @@ Fixpoint big_kron {m n} (As : list (GenMatrix m n)) :
   end.
 
 (** Product of n copies of A, basically GMpow *)
-Fixpoint GMmult_n n {m} (A : Square m) : Square m :=
-  match n with
+Fixpoint GMmult_n {m} (A : Square m) p : Square m :=
+  match p with
   | 0    => I m
-  | S n' => GMmult A (GMmult_n n' A)
+  | S p' => GMmult A (GMmult_n A p')
   end.
 
 (** Direct sum of n copies of A *)
@@ -280,7 +280,7 @@ Notation "A ⊤" := (transpose A) (at level 0) : genmatrix_scope.
 Notation Σ := (@big_sum F R0).  (* we intoduce Σ notation here *)
 Notation "n ⨂ A" := (kron_n n A) (at level 30, no associativity) : genmatrix_scope.
 Notation "⨂ A" := (big_kron A) (at level 60): genmatrix_scope.
-Notation "n ⨉ A" := (GMmult_n n A) (at level 30, no associativity) : genmatrix_scope.
+Notation "p ⨉ A" := (GMmult_n A p) (at level 30, no associativity) : genmatrix_scope.
 Notation "⟨ u , v ⟩" := (inner_product u v) (at level 0) : genmatrix_scope. 
 
 
@@ -545,7 +545,7 @@ Proof.
 Qed.
 
 Lemma WF_GMmult_n : forall n {m} (A : Square m),
-   WF_GenMatrix A -> WF_GenMatrix (GMmult_n n A).
+   WF_GenMatrix A -> WF_GenMatrix (GMmult_n A n).
 Proof.
   intros.
   induction n; simpl.
@@ -1422,6 +1422,8 @@ Proof.
   reflexivity.
 Qed.
 
+
+
 Lemma big_kron_app : forall {n m} (l1 l2 : list (GenMatrix n m)),
   (forall i, WF_GenMatrix (nth i l1 (@Zero n m))) ->
   (forall i, WF_GenMatrix (nth i l2 (@Zero n m))) ->
@@ -1534,6 +1536,17 @@ Lemma GMmult_n_1_l : forall {n} (A : Square n),
   1 ⨉ A = A.
 Proof. intros n A WF. simpl. rewrite GMmult_1_r; auto. Qed.
 
+
+Lemma GMmult_n_add : forall {n} (A : Square n) (a b : nat),
+  WF_GenMatrix A ->
+  ((a + b) ⨉ A) = (a ⨉ A) × (b ⨉ A).
+Proof. intros. 
+       induction a; simpl.
+       - rewrite GMmult_1_l; auto with wf_db.
+       - rewrite IHa, GMmult_assoc; easy.
+Qed.
+
+
 Lemma GMmult_n_1_r : forall n i,
   i ⨉ (I n) = I n.
 Proof.
@@ -1562,6 +1575,7 @@ Proof.
   reflexivity.
 Qed.
 *)
+
 
 
 
@@ -1680,7 +1694,7 @@ Qed.
 
 (** * Defining matrix altering/col operations *)
 
-
+(*TODO: sometimes its n m and other times its m n, should be consistant *)
 Definition get_col {n m} (i : nat) (S : GenMatrix n m) : Vector n :=
   fun x y => (if (y =? 0) then S x i else 0%G).   
 
