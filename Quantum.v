@@ -1337,6 +1337,23 @@ Qed.
 Hint Rewrite phase_0 phase_2pi phase_pi phase_neg_pi : Q_db.
 
 
+(* now we get some more identities: *)
+
+
+Lemma MmultSS : Sgate × Sgate = σz. 
+Proof. unfold Sgate.
+       rewrite phase_mul.
+       replace (PI / 2 + PI / 2)%R with PI by lra.
+       rewrite phase_pi.
+       easy.
+Qed.
+
+Lemma MmultTT : Tgate × Tgate = Sgate. 
+Proof. unfold Sgate, Tgate.
+       rewrite phase_mul.
+       apply f_equal; lra.
+Qed.
+
 (*****************************)
 (* Positive Semidefiniteness *)
 (*****************************)
