@@ -530,6 +530,7 @@ Proof.
     reflexivity.
 Qed. 
 
+
 Local Open Scope nat_scope.
 
 Lemma big_sum_double_sum : forall {G} `{Monoid G} (f : nat -> nat -> G) (n m : nat),
@@ -599,6 +600,7 @@ Proof.
   lia.
 Qed.
 
+(* this is basically big_sum_assoc *)
 Lemma big_sum_swap_order : forall {G} `{Comm_Group G} (f : nat -> nat -> G) m n,
   big_sum (fun j => big_sum (fun i => f j i) m) n = 
     big_sum (fun i => big_sum (fun j => f j i) n) m.

@@ -990,20 +990,17 @@ Proof.
   intros m n o p A B C.
   unfold GMmult.
   prep_genmatrix_equality.
-  induction n.
-  + simpl.
-    clear B.
-    induction o. reflexivity.
-    simpl. rewrite IHo. ring. 
-  + simpl. 
-    rewrite <- IHn.
-    simpl.
-    rewrite (@big_sum_mult_l F _ _ _ R3).
-    rewrite <- (@big_sum_plus F _ _ R2).
-    apply big_sum_eq.
-    apply functional_extensionality. intros z.
-    ring. 
+  replace (fun y0 : nat => Σ (fun y1 : nat => A x y1 * B y1 y0) n * C y0 y) with 
+    (fun y0 : nat => Σ (fun y1 : nat => A x y1 * B y1 y0 * C y0 y) n).
+  replace (fun y0 : nat => A x y0 * Σ (fun y1 : nat => B y0 y1 * C y1 y) o) with
+    (fun y0 : nat => Σ (fun y1 : nat => A x y0 * (B y0 y1 * C y1 y)) o).
+  rewrite big_sum_swap_order.
+  do 2 (apply big_sum_eq_bounded; intros; dumb_lRa).  
+  all : apply functional_extensionality; intros.  
+  rewrite big_sum_mult_l; easy.
+  rewrite big_sum_mult_r; easy.
 Qed.
+
 
 Lemma GMmult_plus_distr_l : forall (m n o : nat) (A : GenMatrix m n) (B C : GenMatrix n o), 
                            A × (B .+ C) = A × B .+ A × C.
