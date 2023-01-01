@@ -1777,7 +1777,7 @@ Definition Z82 : Z8 := (2,0,0,0).
 
 Definition Z8w : Z8 := (0,1,0,0).
 
-
+Definition Z8i : Z8 := (0,0,1,0).
 
 
 (* TODO: figure out how to minimize repeated code, since this should also be for D8 *)
@@ -1872,6 +1872,13 @@ Proof. unfold D8toC, Z8toD8; simpl.
        lca.
 Qed.  
 
+Lemma Z8toC_i : D8toC (Z8toD8 Z8i) = Ci.
+Proof. unfold D8toC, Z8toD8; simpl. 
+       rewrite Zdiv.Zdiv_0_l.
+       replace (Cz8 * (Cz8 * C1)) with (Cz8 ^ 2) by lca.
+       rewrite Cz8_pow2.
+       lca.
+Qed.  
 
 
 (* TODO: make tactic that inputs Z8toD8, etc... and that makes these all trivial *)
@@ -2424,8 +2431,6 @@ Open Scope D_scope.
 
 
 
-(* note that this is over C, but this seems correct since we use root2_ver *)
-(* since powers are used, could need to define powers over Z8, which seems annoying *)
 Definition denom_exp (t : D8) (k : nat) : Prop :=
   D8isZ8 (D8mult (D8pow root2 k) t). 
 
@@ -2505,15 +2510,12 @@ Theorem exists_denom_exp : forall d,
   exists k, denom_exp d k.
 Proof. intros.
        destruct (exists_two_bound_D8 d).
-       exists (2*x)%nat.
+       exists (2*x)%nat. 
        unfold denom_exp.
        rewrite D8pow_mult.
        replace (D8pow root2 2) with D82; easy.
 Qed. 
 
-
-(*NB: because of decidability, it is easier to wait a bit before proving a 
-  least_denom_exp exists. *)
 
 
 Lemma denom_exp_dec : forall t k, 
@@ -2524,7 +2526,7 @@ Proof. intros.
 Qed.
 
 
-Lemma exists_least_denom_exp : forall t,
+Corollary exists_least_denom_exp : forall t,
   exists k, least_denom_exp t k.
 Proof. intros.
        assert (H' := exists_denom_exp t).
@@ -2537,7 +2539,26 @@ Proof. intros.
        right; easy.
 Qed.
 
-
+Corollary least_denom_exp_dec : forall t k,
+  { least_denom_exp t k } + { ~ least_denom_exp t k }.
+Proof. intros. 
+       destruct (denom_exp_dec t k).
+       - destruct k.
+         left; split; intros; auto; lia.
+         destruct (denom_exp_dec t k).
+         + right.
+           unfold not; intros. 
+           destruct H.
+           apply H0 in d0; lia.
+         + left.
+           split; auto; intros. 
+           bdestruct (k' <=? k)%nat; try lia.
+           apply (get_weaker_denom_exp t k' k) in H0; auto.
+           easy. 
+       - right.  
+         unfold not; intros; apply n.
+         apply H.
+Qed.
 
 
 (* TODO: delete if this is not actually used *)
@@ -2746,154 +2767,3 @@ Qed.
  *
  *)
 
-
-(* NEXT STEP: defining matrices that can be used *)
-
-(*TODO: figure out how to do this*)
-(*possible ideas: 
-  - generaize Matrix.v, so we can get rid of C entirely 
-  - define predicate to determine if a C matrix is actually a D8 matrix 
-  - continue how I do here*)
-
-(*
-
-Definition H_gate (p : D8 * D8) : (D8 * D8) :=
-  (
-
-
-
-
-
-Lemma Lemma4 : forall (d1 d2 : D8) (k : nat),
-  k > 0 -> 
-  denom_exp d1 k -> denom_exp d2 k ->
-  
-
-
-
-
-
-
-
-Set Printing All.
-
-Search (IZR (Z.pow _ _ )).
-
-
-Search (Z.opp (Z.of_nat _)).
-
-rewrite <- pow_IZR.
-       2 : {  rewrite RtoC_pow, pow2_sqrt2.
-              Search ((√ 2 ^ 2)%R).
-         Set Printing All.
-         Search (Cpow (RtoC _ )).
-
-
-       replace ((Cpow (RtoC (sqrt (IZR (Zpos (xO xH))))) (S (S O)))) with C2.
-       Search ((√ 2))%C.
-Set Printing All.
-
-       Search ((_ ^ (_ * _)))%C.
-
-       rewrite 
-       destruct z; do 2 destruct p.
-       unfold Z8toF28.
-       simpl fst. 
-
-
-
-
-
-(* could define as an actual set and then coerce to C *)
-Inductive Dyadic : Cset :=
-| Dy_half : Dyadic (1/2)
-| Dy_inv : forall (d : C), Dyadic d -> Dyadic (-d)
-| Dy_plus : forall (d1 d2 : C), Dyadic d1 -> Dyadic d2 -> Dyadic (d1 + d2)
-| Dy_mult : forall (d1 d2 : C), Dyadic d1 -> Dyadic d2 -> Dyadic (d1 * d2). 
-
-
-(*
-Definition Dyadic_C (c : C) : Prop :=
-  exists d, DtoC d = c.
-*)
-
-
-Lemma Dyadic_plus : forall (z1 z2 : Z) (n1 n2 : nat),
-  (IZR z1 / (2^n1)) + (IZR z2 / (2^n2)) = 
-    IZR (z1 * (2^(Z.of_nat n2))%Z + z2 * 2^(Z.of_nat n1)) / (2^(n1 + n2)).
-Proof. intros. 
-       Admitted. 
-
-Lemma Dyadic_mult : forall (z1 z2 : Z) (n1 n2 : nat),
-  (IZR z1 / (2^n1)) * (IZR z2 / (2^n2)) = 
-    IZR (z1 * z2) / 2^(n1 + n2). 
-Proof. intros. 
-       Admitted. 
-
-
-Lemma Dyadic_ver : forall (c : C),
-  Dyadic c <-> exists (n : nat) (z : Z), IZR z / (2^n) = c.
-Proof. intros; split; intros.  
-       - induction H. 
-         exists (1%nat), 1%Z.
-         lca.
-         destruct IHDyadic as [n [z H0] ].
-         exists n, (-z)%Z.
-         rewrite Ropp_Ropp_IZR, <- H0.
-         lca. 
-         destruct IHDyadic1 as [n1 [z1 H1] ].
-         destruct IHDyadic2 as [n2 [z2 H2] ].
-         exists (n1 + n2)%nat, (z1 * (2^(Z.of_nat n2))%Z + z2 * 2^(Z.of_nat n1))%Z. 
-         rewrite <- Dyadic_plus; subst; easy.
-         destruct IHDyadic1 as [n1 [z1 H1] ].
-         destruct IHDyadic2 as [n2 [z2 H2] ].       
-         exists (n1 + n2)%nat, (z1 * z2)%Z. 
-         rewrite <- Dyadic_mult; subst; easy.
-       - destruct H as [n [z H] ]. 
-         apply Dyadic_ind; intros.
-         apply Dy_half.
-         apply Dy_inv; auto.
-         apply Dy_plus; auto.
-         apply Dy_mult; auto.
-         
-
-       Search (IZR (- _)).
-
-       unfold IZR.
-
-       apply Dyadic_ind.
-
-
-Search IZR.                                              
-
-
-| otI_add : forall (A : Square n) (x y : nat) (c : C), x < n -> y < n -> x <> y -> 
-                                         op_to_I A -> op_to_I (col_add A x y c).
-
-
-
-
-
-
-(* creating a map that describes the effect of multiplication by root2 *)
-Definition mult_by_root2 (x : F28) : F28 :=
-  match x with
-  | (F0, F0, F0, F0) => (F0, F0, F0, F0)
-  | (F0, F0, F0, F1) => (F1, F0, F1, F0)
-  | (F0, F0, F1, F0) => (F0, F1, F0, F1)
-  | (F0, F0, F1, F1) => (F1, F1, F1, F1)
-  | (F0, F1, F0, F0) => (F1, F0, F1, F0)
-  | (F0, F1, F0, F1) => (F0, F0, F0, F0)
-  | (F0, F1, F1, F0) => (F1, F1, F1, F1)
-  | (F0, F1, F1, F1) => (F0, F1, F0, F1)
-  | (F1, F0, F0, F0) => (F0, F1, F0, F1)
-  | (F1, F0, F0, F1) => (F1, F1, F1, F1)
-  | (F1, F0, F1, F0) => (F0, F0, F0, F0)
-  | (F1, F0, F1, F1) => (F1, F0, F1, F0)
-  | (F1, F1, F0, F0) => (F1, F1, F1, F1)
-  | (F1, F1, F0, F1) => (F0, F1, F0, F1)
-  | (F1, F1, F1, F0) => (F1, F0, F1, F0)
-  | (F1, F1, F1, F1) => (F0, F0, F0, F0)
-  end. 
-
-*)
