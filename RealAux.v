@@ -1,10 +1,10 @@
 (** Supplement to Coq's axiomatized Reals *)
-
+  
 Require Export Reals.
 Require Import Psatz.
 Require Export Program.
 Require Export Summation.
-
+ 
 (** * Basic lemmas *)
 
 (** Relevant lemmas from Coquelicot's Rcomplements.v **)
@@ -24,10 +24,10 @@ Lemma Rminus_lt_0 : forall a b, a < b <-> 0 < b - a. Proof. intros. lra. Qed.
 Lemma Rminus_unfold : forall r1 r2, (r1 - r2 = r1 + -r2). Proof. reflexivity. Qed.
 Lemma Rdiv_unfold : forall r1 r2, (r1 / r2 = r1 */ r2). Proof. reflexivity. Qed.
 
-Hint Rewrite Rminus_unfold Rdiv_unfold Ropp_0 Ropp_involutive Rplus_0_l 
+#[export] Hint Rewrite Rminus_unfold Rdiv_unfold Ropp_0 Ropp_involutive Rplus_0_l 
              Rplus_0_r Rmult_0_l Rmult_0_r Rmult_1_l Rmult_1_r : R_db.
-Hint Rewrite <- Ropp_mult_distr_l Ropp_mult_distr_r : R_db.
-Hint Rewrite Rinv_l Rinv_r sqrt_sqrt using lra : R_db.
+#[export] Hint Rewrite <- Ropp_mult_distr_l Ropp_mult_distr_r : R_db.
+#[export] Hint Rewrite Rinv_l Rinv_r sqrt_sqrt using lra : R_db.
 
 Notation "√ n" := (sqrt n) (at level 20) : R_scope.
 
@@ -38,7 +38,7 @@ Proof. intros. unfold Rdiv. rewrite Rmult_assoc. reflexivity. Qed.
 
 Lemma Rmult_div : forall r1 r2 r3 r4 : R, r2 <> 0 -> r4 <> 0 -> 
   r1 / r2 * (r3 / r4) = r1 * r3 / (r2 * r4). 
-Proof. intros. unfold Rdiv. rewrite Rinv_mult_distr; trivial. lra. Qed.
+Proof. intros. unfold Rdiv. rewrite Rinv_mult; trivial. lra. Qed.
 
 Lemma Rdiv_cancel :  forall r r1 r2 : R, r1 = r2 -> r / r1 = r / r2.
 Proof. intros. rewrite H. reflexivity. Qed.
@@ -253,7 +253,7 @@ Proof.
     apply sin_upper_bound_aux; lra.
 Qed.    
 
-Hint Rewrite sin_0 sin_PI4 sin_PI2 sin_PI cos_0 cos_PI4 cos_PI2 
+#[export] Hint Rewrite sin_0 sin_PI4 sin_PI2 sin_PI cos_0 cos_PI4 cos_PI2 
              cos_PI sin_neg cos_neg : trig_db.
 
 (** * glb support *) 
@@ -321,20 +321,20 @@ Qed.
 
 (** * Showing that R is a field, and a vector space over itself *)
 
-Program Instance R_is_monoid : Monoid R := 
+#[export] Program Instance R_is_monoid : Monoid R := 
   { Gzero := 0
   ; Gplus := Rplus
   }.
 Solve All Obligations with program_simpl; try lra.
 
-Program Instance R_is_group : Group R :=
+#[export] Program Instance R_is_group : Group R :=
   { Gopp := Ropp }.
 Solve All Obligations with program_simpl; try lra.
 
-Program Instance R_is_comm_group : Comm_Group R.
+#[export] Program Instance R_is_comm_group : Comm_Group R.
 Solve All Obligations with program_simpl; lra. 
 
-Program Instance R_is_ring : Ring R :=
+#[export] Program Instance R_is_ring : Ring R :=
   { Gone := 1
   ; Gmult := Rmult
   }.
@@ -342,21 +342,21 @@ Solve All Obligations with program_simpl; try lra.
 Next Obligation. try apply Req_EM_T. Qed.
 
 
-Program Instance R_is_comm_ring : Comm_Ring R.
+#[export] Program Instance R_is_comm_ring : Comm_Ring R.
 Solve All Obligations with program_simpl; lra. 
                                                      
-Program Instance R_is_field : Field R :=
+#[export] Program Instance R_is_field : Field R :=
   { Ginv := Rinv }.
 Next Obligation. 
   rewrite Rinv_r; easy.
 Qed.
 
-Program Instance R_is_module_space : Module_Space R R :=
+#[export] Program Instance R_is_module_space : Module_Space R R :=
   { Vscale := Rmult }.
 Solve All Obligations with program_simpl; lra. 
 
 
-Program Instance R_is_vector_space : Vector_Space R R.  
+#[export] Program Instance R_is_vector_space : Vector_Space R R.  
 
 
 

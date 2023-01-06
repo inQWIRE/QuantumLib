@@ -1,15 +1,15 @@
 Require Import List.
 Require Export Prelim.
-
-
-
+ 
+ 
+  
 Declare Scope group_scope.
 Delimit Scope group_scope with G.
 
 Open Scope group_scope.
-
-
-(* TODO: try reserved notation *)
+   
+   
+(* TODO: try reserved notation *) 
 Class Monoid G :=
   { Gzero : G
   ; Gplus : G -> G -> G
@@ -35,6 +35,17 @@ Definition Gminus {G} `{Group G} (g1 g2 : G) := g1 + (Gopp g2).
 
 Notation "- x" := (Gopp x) : group_scope.
 Infix "-" := Gminus : group_scope.
+
+
+
+(* TODO: 
+
+Lemma test : forall x1 x2 x3 x4 x5, 1 + x1 * x2 + x3 + x4 = 2 + x2 + x4... 
+could use free ring and then call ring tactic 
+
+Look in qwire's monoid file for an example 
+
+*)
 
 
 
@@ -229,7 +240,7 @@ Qed.
 
 (* showing that nat is a monoid *)
 
-Program Instance nat_is_monoid : Monoid nat := 
+#[export] Program Instance nat_is_monoid : Monoid nat := 
   { Gzero := 0
   ; Gplus := plus
   }.
@@ -283,7 +294,7 @@ Qed.
 
 Lemma big_sum_eq : forall {G} `{Monoid G} f g n, f = g -> big_sum f n = big_sum g n.
 Proof. intros; subst; reflexivity. Qed.
-
+ 
 Lemma big_sum_0_bounded : forall {G} `{Monoid G} f n, 
     (forall x, (x < n)%nat -> f x = 0) -> big_sum f n = 0. 
 Proof.
@@ -387,7 +398,7 @@ Proof.
   + apply Vscale_zero.
   + rewrite <- IHn.
     rewrite Vscale_dist.
-    reflexivity.
+    reflexivity. 
 Qed.
 
 (* there is a bit of akwardness in that these are very similar and sometimes 
@@ -451,7 +462,7 @@ Proof.
   + rewrite Gplus_assoc, IHn.
     simpl; reflexivity.
 Qed.
-
+ 
 Lemma big_sum_unique : forall {G} `{Monoid G} k (f : nat -> G) n, 
   (exists x, (x < n)%nat /\ f x = k /\ (forall x', x' < n -> x <> x' -> f x' = 0)) ->
   big_sum f n = k.
@@ -473,7 +484,7 @@ Proof.
     intros.
     apply Unique; try easy; lia.
 Qed.  
-
+ 
 Lemma big_sum_sum : forall {G} `{Monoid G} m n f, 
   big_sum f (m + n) = big_sum f m + big_sum (fun x => f (m + x)%nat) n. 
 Proof.
@@ -484,7 +495,7 @@ Proof.
     rewrite IHm.
     repeat rewrite <- Gplus_assoc.
     remember (fun y => f (m + y)%nat) as g.
-    replace (f m) with (g O) by (subst; rewrite plus_0_r; reflexivity).
+    replace (f m) with (g O) by (subst; rewrite Nat.add_0_r; reflexivity).
     replace (f (m + n)%nat) with (g n) by (subst; reflexivity).
     replace (big_sum (fun x : nat => f (S (m + x))) n) with
             (big_sum (fun x : nat => g (S x)) n).
@@ -520,13 +531,13 @@ Proof.
       intros x Hx.
       rewrite Nat.div_add_l by assumption.
       rewrite Nat.div_small; trivial.
-      rewrite plus_0_r.
+      rewrite Nat.add_0_r.
       rewrite Nat.add_mod by assumption.
       rewrite Nat.mod_mul by assumption.
-      rewrite plus_0_l.
+      rewrite Nat.add_0_l.
       repeat rewrite Nat.mod_small; trivial. }
     rewrite <- big_sum_sum.
-    rewrite plus_comm.
+    rewrite Nat.add_comm.
     reflexivity.
 Qed. 
 
@@ -543,9 +554,9 @@ Proof. induction m as [| m'].
          rewrite big_sum_sum.
          apply f_equal_gen; try (apply f_equal_gen; easy).
          apply big_sum_eq_bounded; intros.
-         rewrite mult_comm.
-         rewrite Nat.div_add_l; try lia. 
-         rewrite (plus_comm (m' * n)).
+         rewrite Nat.mul_comm.
+         rewrite Nat.div_add_l; try lia.  
+         rewrite (Nat.add_comm (m' * n)).
          rewrite Nat.mod_add; try lia.
          destruct (Nat.mod_small_iff x n) as [_ HD]; try lia.
          destruct (Nat.div_small_iff x n) as [_ HA]; try lia.
@@ -575,8 +586,8 @@ Proof. intros.
        rewrite <- big_sum_plus.
        apply big_sum_eq_bounded; intros. 
        easy.
-Qed.
-
+Qed. 
+ 
 Lemma nested_big_sum : forall {G} `{Monoid G} m n f,
   big_sum f (2 ^ (m + n))
     = big_sum (fun x => big_sum (fun y => f (x * 2 ^ n + y)%nat) (2 ^ n)) (2 ^ m).
@@ -635,7 +646,7 @@ Proof.
   { apply IHn. intros. apply H. lia. }
   lia.
 Qed.
-
+ 
 (*
  *
  *

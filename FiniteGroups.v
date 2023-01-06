@@ -12,7 +12,7 @@ Require Import Setoid.
 
 
 
-Program Instance list_is_monoid {X} : Monoid (list X) := 
+#[export] Program Instance list_is_monoid {X} : Monoid (list X) := 
   { Gzero := []
   ; Gplus := @app X
   }.
@@ -721,14 +721,14 @@ Definition quatMul (q1 q2 : Quaternion) : Quaternion :=
 
 
   
-Program Instance quat_is_monoid : Monoid Quaternion := 
+#[export] Program Instance quat_is_monoid : Monoid Quaternion := 
   { Gzero := p_1
   ; Gplus := quatMul
   }.
 Solve All Obligations with program_simpl; destruct g; try easy; destruct h; destruct i; easy. 
 
 
-Program Instance quat_is_group : Group Quaternion :=
+#[export] Program Instance quat_is_group : Group Quaternion :=
   { Gopp := quatInv }.
 Solve All Obligations with program_simpl; destruct g; try easy. 
 
@@ -746,7 +746,7 @@ Qed.
 Definition quat_list : list Quaternion := [p_1; p_i; p_j; p_k; n_1; n_i; n_j; n_k].
 
 
-Program Instance quat_is_finitegroup : FiniteGroup Quaternion := 
+#[export] Program Instance quat_is_finitegroup : FiniteGroup Quaternion := 
   { G_list_rep := quat_list
   }.
 Next Obligation. 

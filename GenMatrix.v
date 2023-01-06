@@ -316,8 +316,8 @@ Ltac by_cell :=
   let Hi := fresh "Hi" in 
   let Hj := fresh "Hj" in 
   intros i j Hi Hj; try solve_end;
-  repeat (destruct i as [|i]; simpl; [|apply lt_S_n in Hi]; try solve_end); clear Hi;
-  repeat (destruct j as [|j]; simpl; [|apply lt_S_n in Hj]; try solve_end); clear Hj.
+  repeat (destruct i as [|i]; simpl; [|apply Nat.succ_lt_mono in Hi]; try solve_end); clear Hi;
+  repeat (destruct j as [|j]; simpl; [|apply Nat.succ_lt_mono in Hj]; try solve_end); clear Hj.
 
 Ltac lgma' :=
   apply genmat_equiv_eq;
@@ -592,7 +592,7 @@ Ltac show_wf :=
   let y := fresh "y" in
   let H := fresh "H" in
   intros x y [H | H];
-  apply le_plus_minus in H; rewrite H;
+  apply le_plus_minus' in H; rewrite H;
   cbv;
   destruct_m_eq;
   try ring.
@@ -1214,7 +1214,6 @@ Proof.
   rewrite Cconj_plus_distr.
   reflexivity.
 Qed.
-
 Lemma GMmult_adjoint : forall {m n o : nat} (A : GenMatrix m n) (B : GenMatrix n o),
       (A × B)† = B† × A†.
 Proof.
@@ -1229,7 +1228,6 @@ Proof.
   reflexivity.
   intros; lca. 
 Qed.
-
 Lemma kron_adjoint : forall {m n o p : nat} (A : GenMatrix m n) (B : GenMatrix o p),
   (A ⊗ B)† = A† ⊗ B†.
 Proof. 
@@ -1247,10 +1245,10 @@ Proof.
   unfold I, Gkron.
   prep_genmatrix_equality.
   bdestruct (x =? y); rename H into Eq; subst.
-  + repeat rewrite <- beq_nat_refl; simpl.
+  + repeat rewrite Nat.eqb_refl; simpl.
     destruct n.
     - simpl.
-      rewrite mult_0_r.
+      rewrite Nat.mul_0_r.
       bdestruct (y <? 0); try lia.
       ring. 
     - bdestruct (y mod S n <? S n). 
@@ -1268,13 +1266,13 @@ Proof.
         simpl. apply Nat.neq_succ_0. (* `lia` will solve in 8.11+ *)
         apply Nat.div_small in L1.
         rewrite Nat.div_div in L1; try lia.
-        rewrite mult_comm.
+        rewrite Nat.mul_comm.
         assumption.
       * apply Nat.ltb_nlt in L1. 
         apply Nat.ltb_lt in L2. 
         contradict L1. 
         apply Nat.div_lt_upper_bound. lia.
-        rewrite mult_comm.
+        rewrite Nat.mul_comm.
         assumption.
   + simpl.
     bdestruct (x / n =? y / n); simpl; dumb_lRa.
@@ -1312,7 +1310,8 @@ Lemma sub_mul_mod :
     (x - y * z) mod z = x mod z.
 Proof.
   intros. bdestruct (z =? 0). subst. simpl. lia.
-  specialize (le_plus_minus_r (y * z) x H) as G.
+  specialize (Nat.sub_add (y * z) x H) as G.
+  rewrite Nat.add_comm in G.
   remember (x - (y * z)) as r.
   rewrite <- G. rewrite <- Nat.add_mod_idemp_l by easy. rewrite Nat.mod_mul by easy.
   easy.
@@ -1336,8 +1335,8 @@ Proof.
   intros. intros i j Hi Hj.
   remember (A ⊗ B ⊗ C) as LHS.
   unfold Gkron.  
-  rewrite (mult_comm p r) at 1 2.
-  rewrite (mult_comm q s) at 1 2.
+  rewrite (Nat.mul_comm p r) at 1 2.
+  rewrite (Nat.mul_comm q s) at 1 2.
   assert (m * p * r <> 0) by lia.
   assert (n * q * s <> 0) by lia.
   apply Nat.neq_mul_0 in H as [Hmp Hr].
@@ -1371,7 +1370,7 @@ Proof.
   prep_genmatrix_equality.
   destruct q.
   + simpl.
-    rewrite mult_0_r.
+    rewrite Nat.mul_0_r.
     simpl.
     rewrite Gmult_0_r.
     reflexivity. 
@@ -1534,16 +1533,6 @@ Lemma GMmult_n_1_l : forall {n} (A : Square n),
 Proof. intros n A WF. simpl. rewrite GMmult_1_r; auto. Qed.
 
 
-Lemma GMmult_n_add : forall {n} (A : Square n) (a b : nat),
-  WF_GenMatrix A ->
-  ((a + b) ⨉ A) = (a ⨉ A) × (b ⨉ A).
-Proof. intros. 
-       induction a; simpl.
-       - rewrite GMmult_1_l; auto with wf_db.
-       - rewrite IHa, GMmult_assoc; easy.
-Qed.
-
-
 Lemma GMmult_n_1_r : forall n i,
   i ⨉ (I n) = I n.
 Proof.
@@ -1554,6 +1543,27 @@ Proof.
   rewrite GMmult_1_l; auto with wf_db.
 Qed.
 
+
+Lemma GMmult_n_add : forall {n} (A : Square n) (a b : nat),
+  WF_GenMatrix A ->
+  ((a + b) ⨉ A) = (a ⨉ A) × (b ⨉ A).
+Proof. intros. 
+       induction a; simpl.
+       - rewrite GMmult_1_l; auto with wf_db.
+       - rewrite IHa, GMmult_assoc; easy.
+Qed.
+
+Lemma GMmult_n_mult_r : forall {n} (A : Square n) (a b : nat),
+  WF_GenMatrix A ->
+  b ⨉ (a ⨉ A) = ((a*b) ⨉ A).
+Proof. intros. 
+       induction b; simpl.
+       - replace (a * 0) with 0 by lia; easy. 
+       - replace (a * S b) with (a + a * b) by lia.
+         rewrite GMmult_n_add, <- IHb; auto.
+Qed.
+
+  
 (*
 Lemma GMmult_n_eigenvector : forall {n} (A : Square n) (ψ : Vector n) λ i,
   WF_GenMatrix ψ -> A × ψ = λ .* ψ ->
@@ -2692,7 +2702,7 @@ Proof. intros.
        apply big_sum_eq_bounded; intros.
        bdestruct (e + S x0 =? e); try lia; easy.
        unfold get_col. simpl. 
-       rewrite plus_0_r; easy.
+       rewrite Nat.add_0_r; easy.
 Qed.
 
 (* shows that we can eliminate a column in a matrix using col_add_many *)
@@ -2708,12 +2718,12 @@ Proof. intros.
                      (@GMmult n m 1 (reduce_col T col) (reduce_row as' col)) i 0)%G).
        { unfold GMmult.
          replace (S m) with (col + (S (m - col))) by lia; rewrite big_sum_sum. 
-         rewrite (le_plus_minus col m); try lia; rewrite big_sum_sum. 
+         rewrite (le_plus_minus' col m); try lia; rewrite big_sum_sum. 
          apply f_equal_gen; try apply f_equal; auto. 
          apply big_sum_eq_bounded; intros. 
          unfold get_col, scale, reduce_col, reduce_row. 
          bdestruct (x <? col); simpl; try lia; ring.
-         rewrite <- le_plus_minus, <- big_sum_extend_l, plus_0_r, H0; try lia. 
+         rewrite <- le_plus_minus', <- big_sum_extend_l, Nat.add_0_r, H0; try lia. 
          unfold scale; rewrite Gmult_0_l, Gplus_0_l.
          apply big_sum_eq_bounded; intros. 
          unfold get_col, scale, reduce_col, reduce_row. 
@@ -2916,7 +2926,7 @@ Proof. intros.
        prep_genmatrix_equality. 
        unfold GMmult. 
        bdestruct (x <? m); try lia.
-       rewrite (le_plus_minus x m); try lia.
+       rewrite (le_plus_minus' x m); try lia.
        do 2 rewrite big_sum_sum. 
        apply f_equal_gen; try apply f_equal; auto. 
        apply big_sum_eq_bounded.
@@ -2928,7 +2938,7 @@ Proof. intros.
        rewrite Gplus_comm.
        rewrite (Gplus_comm (col_swap A x y x0 (x + 0)%nat * row_swap B x y (x + 0)%nat y0)%G _).
        bdestruct ((y - x - 1) <? x'); try lia.  
-       rewrite (le_plus_minus (y - x - 1) x'); try lia. 
+       rewrite (le_plus_minus' (y - x - 1) x'); try lia. 
        do 2 rewrite big_sum_sum.
        do 2 rewrite <- Gplus_assoc.
        apply f_equal_gen; try apply f_equal; auto. 
@@ -2985,7 +2995,7 @@ Proof. intros.
        prep_genmatrix_equality. 
        unfold GMmult.   
        bdestruct (x <? m); try lia.
-       rewrite (le_plus_minus x m); try lia.       
+       rewrite (le_plus_minus' x m); try lia.       
        do 2 rewrite big_sum_sum.
        apply f_equal_gen; try apply f_equal; auto. 
        apply big_sum_eq_bounded.
@@ -2997,7 +3007,7 @@ Proof. intros.
        rewrite Gplus_comm. 
        rewrite (Gplus_comm (col_add A x y a x0 (x + 0)%nat * B (x + 0)%nat y0)%G _).
        bdestruct ((y - x - 1) <? x'); try lia.  
-       rewrite (le_plus_minus (y - x - 1) x'); try lia. 
+       rewrite (le_plus_minus' (y - x - 1) x'); try lia. 
        do 2 rewrite big_sum_sum.
        do 2 rewrite <- Gplus_assoc.
        apply f_equal_gen; try apply f_equal; auto. 
@@ -3248,7 +3258,6 @@ Proof. intros.
        rewrite Gmult_assoc.
        rewrite Cinv_l; try ring; easy. 
 Qed.
-
 Lemma row_scale_inv : forall {n m : nat} (S : GenMatrix n m) (x : nat) (a : F),
   a <> 0%G -> S = row_scale (row_scale S x a) x (/ a).
 Proof. intros. 
@@ -3340,7 +3349,7 @@ Proof. intros.
        prep_genmatrix_equality. 
        bdestruct (y =? m); bdestruct (y <? m); try lia; try easy.
        rewrite H1.
-       rewrite <- minus_diag_reverse; easy. 
+       rewrite Nat.sub_diag; easy. 
        rewrite H0, H; try lia; try easy.
 Qed.
 
@@ -3599,14 +3608,11 @@ Qed.
 
 
 (* TODO: could add norm, but need field for everything else 
-
 (* Useful to be able to normalize vectors *)
 Definition norm {n} (ψ : Vector n) : R :=
   sqrt (fst ⟨ψ,ψ⟩).
-
 Definition normalize {n} (ψ : Vector n) :=
   / (norm ψ) .* ψ.
-
 Lemma norm_scale : forall {n} c (v : Vector n), norm (c .* v) = ((Cmod c) * norm v)%R.
 Proof.
   intros n c v.
@@ -3624,7 +3630,6 @@ Proof.
   apply Rplus_le_le_0_compat; apply pow2_ge_0.
   lra.
 Qed.
-
 Lemma normalized_norm_1 : forall {n} (v : Vector n),
   norm v <> 0 -> norm (normalize v) = 1.
 Proof. intros. 
@@ -3659,7 +3664,6 @@ Proof. intros.
        apply div_real.
        easy. 
 Qed. 
-
 Lemma rewrite_norm : forall {d} (ψ : Vector d),
     fst ⟨ψ,ψ⟩ = big_sum (fun i => Cmod (ψ i O) ^ 2)%R d.
 Proof.
@@ -3669,9 +3673,7 @@ Proof.
   apply functional_extensionality. intros.
   unfold adjoint. rewrite <- Cmod_sqr. symmetry. apply RtoC_pow.
 Qed.
-
 Local Open Scope nat_scope.
-
 Lemma norm_real : forall {n} (v : Vector n), snd ⟨v,v⟩ = 0%R. 
 Proof. intros. unfold inner_product, GMmult, adjoint.
        rewrite big_sum_snd_0. easy.
@@ -3679,7 +3681,6 @@ Proof. intros. unfold inner_product, GMmult, adjoint.
        rewrite Gmult_conj_real.
        reflexivity.
 Qed.
-
 Lemma inner_product_ge_0 : forall {d} (ψ : Vector d),
   (0 <= fst ⟨ψ,ψ⟩)%R.
 Proof.
@@ -3692,7 +3693,6 @@ Proof.
   autorewrite with R_db.
   apply Rmult_le_pos; apply Cmod_ge_0.
 Qed.
-
 (* why does sqrt_pos exist? *)
 Lemma norm_ge_0 : forall {d} (ψ : Vector d),
   (0 <= norm ψ)%R.
@@ -3702,7 +3702,6 @@ Proof. intros.
        (* apply sqrt_pos *)
        apply inner_product_ge_0.
 Qed.
-
 Lemma norm_squared : forall {d} (ψ : Vector d),
   ((norm ψ) ^2)%R = fst ⟨ ψ, ψ ⟩.
 Proof. intros.
@@ -3710,7 +3709,6 @@ Proof. intros.
        rewrite pow2_sqrt; auto.
        apply inner_product_ge_0.
 Qed.
-
 (* "Quick" proof of |x| = 0 iff x = 0 *)
 Lemma inner_product_zero_iff_zero : forall {n} (v : Vector n),
   WF_GenMatrix v -> (⟨v,v⟩ = 0%G <-> v = Zero). 
@@ -3763,7 +3761,6 @@ Proof. intros. split.
          rewrite GMmult_0_r. 
          easy.
 Qed.
-
 Lemma norm_zero_iff_zero : forall {n} (v : Vector n),
   WF_GenMatrix v -> (norm v = 0%R <-> v = Zero). 
 Proof. intros. split. 
@@ -3783,9 +3780,7 @@ Proof. intros. split.
          rewrite GMmult_0_r. 
          simpl. apply sqrt_0. 
 Qed.     
-
 Local Close Scope nat_scope.
-
 (* We can now prove Cauchy-Schwartz for vectors with inner_product *)
 Lemma CS_key_lemma : forall {n} (u v : Vector n),
   fst ⟨ (⟨v,v⟩ .* u .+ -1 * ⟨v,u⟩ .* v), (⟨v,v⟩ .* u .+ -1 * ⟨v,u⟩ .* v) ⟩ =
@@ -3817,7 +3812,6 @@ Proof. intros.
          apply Rplus_le_le_0_compat; apply pow2_ge_0.
          rewrite Gmult_comm, Gmult_conj_real; easy. 
 Qed.
-
 Lemma real_ge_0_aux : forall (a b c : R),
   0 <= a -> 0 < b -> (a = b * c)%R ->
   0 <= c.
@@ -3828,7 +3822,6 @@ Proof. intros.
        replace (b * c * / b)%R with (b * /b * c)%R by lra.
        rewrite Rinv_r; try lra. 
 Qed.
-
 Lemma Cauchy_Schwartz_ver1 : forall {n} (u v : Vector n),
   (Cmod ⟨u,v⟩)^2 <= (fst ⟨u,u⟩) * (fst ⟨v,v⟩).
 Proof. intros. 
@@ -3851,7 +3844,6 @@ Proof. intros.
          apply inner_product_ge_0.
          destruct (inner_product_ge_0 v); lra.
 Qed.
-
 Lemma Cauchy_Schwartz_ver2 : forall {n} (u v : Vector n),
   (Cmod ⟨u,v⟩) <= norm u * norm v.
 Proof. intros. 
@@ -3867,7 +3859,6 @@ Proof. intros.
        all : try apply inner_product_ge_0; try apply norm_ge_0.
        apply Cmod_ge_0.
 Qed.
-
 Lemma Cplx_Cauchy_vector :
   forall n (u v : Vector n),
     ((big_sum (fun i => Cmod (u i O) ^ 2) n) * (big_sum (fun i => Cmod (v i O) ^ 2) n) >=
@@ -3886,10 +3877,7 @@ Proof. intros.
        destruct (v x 0%nat); unfold Cmod, pow, Gmult; simpl; lra. 
        destruct (u x 0%nat); unfold Cmod, pow, Gmult; simpl; lra. 
 Qed.
-
-
 Local Open Scope nat_scope.
-
 Lemma Cplx_Cauchy :
   forall n (u v : nat -> C),
     ((big_sum (fun i => Cmod (u i) ^ 2) n) * (big_sum (fun i => Cmod (v i) ^ 2) n) >= Cmod (big_sum (fun i => ((u i)^* * (v i))%G) n) ^ 2)%R.
@@ -3898,7 +3886,6 @@ Proof. intros.
        simpl in *.
        easy. 
 Qed.       
-
 *)
 
 
@@ -4458,7 +4445,7 @@ Ltac fill_differences :=
   | R : _ < _ |- _           => let d := fresh "d" in
                               destruct (lt_ex_diff_r _ _ R);
                               clear R; subst
-  | H : _ = _ |- _           => rewrite <- plus_assoc in H
+  | H : _ = _ |- _           => rewrite <- Nat.add_assoc in H
   | H : ?a + _ = ?a + _ |- _ => apply Nat.add_cancel_l in H; subst
   | H : ?a + _ = ?b + _ |- _ => destruct (lt_eq_lt_dec a b) as [[?|?]|?]; subst
   end; try lia.
@@ -4486,7 +4473,7 @@ Ltac gridify :=
   restore_dims; distribute_plus;
   repeat rewrite Nat.pow_add_r;
   repeat rewrite <- id_kron; simpl;
-  repeat rewrite mult_assoc;
+  repeat rewrite Nat.mul_assoc;
   restore_dims; repeat rewrite <- kron_assoc by auto_wf;
   restore_dims; repeat rewrite kron_mixed_product;
   (* simplify *)
@@ -4513,4 +4500,37 @@ Ltac hide_dimensions := try rewrite <- kron_shadow in *;
 
 
 End LinAlgOverCommRing.
+
+
+(* TODO: add more of these *)
+
+
+
+
+Arguments WF_GenMatrix {F R0 m n}.
+
+
+
+Arguments Zero {F R0 m n}.
+Arguments I {F R0 R1 R2 R3 n}.
+
+
+Arguments trace {F R0 n}.
+Arguments scale {F R0 R1 R2 R3 m n}.
+Arguments GMplus {F R0 m n}.
+Arguments GMopp {F R0 R1 R2 R3 m n}.
+Arguments GMminus {F R0 R1 R2 R3 m n}.
+Arguments GMmult {F R0 R1 R2 R3 m n o}.
+Arguments Gkron {F R0 R1 R2 R3 m n o p}.
+Arguments transpose {F m n}.
+Arguments GMmult_n {F R0 R1 R2 R3 m}.
+Arguments WF_GenMatrix {F R0 m n}.
+
+
+
+
+
+
+
+
 
