@@ -515,6 +515,7 @@ Proof. intros.
        rewrite Cmult_comm, H0; lca.
 Qed.
 
+
 Lemma C_field_theory : field_theory (RtoC 0) (RtoC 1) Cplus Cmult Cminus Copp Cdiv Cinv eq.
 Proof. apply (@G_field_theory C _ _ _ _ _ C_is_field). Qed.
 
@@ -652,6 +653,15 @@ Proof.
     * apply Rsum_nonzero. apply C0_imp in H0. assumption.
     * apply Rsum_nonzero. apply C0_imp in H. assumption.
     * apply Rsum_nonzero. apply C0_imp in H0. assumption.
+Qed.
+
+
+Lemma Cinv_inv : forall c : C, c <> C0 -> / / c = c.
+Proof. intros. 
+       apply (Cmult_cancel_l (/ c)).
+       apply nonzero_div_nonzero; auto.
+       rewrite Cinv_l, Cinv_r; auto.
+       apply nonzero_div_nonzero; auto.
 Qed.
 
 
