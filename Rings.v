@@ -94,6 +94,51 @@ Proof. intros.
        easy.
 Qed.
 
+Lemma Cpow_pos_succ : forall (c : C) (p : positive), 
+  Cpow_pos c (Pos.succ p) = c * Cpow_pos c p.
+Proof. intros.
+       induction p; simpl; auto.
+       - rewrite IHp; lca.
+       - lca.
+Qed.
+
+Lemma Cpow_pos_pred_double : forall (c : C) (p : positive), 
+  c <> 0 -> 
+  Cpow_pos c (Pos.pred_double p) = (/ c) * (Cpow_pos c p * Cpow_pos c p).
+Proof. intros.
+       induction p; simpl; auto.
+       - repeat rewrite Cmult_assoc.
+         rewrite Cinv_l; try lca; auto.
+       - rewrite IHp.
+         repeat rewrite Cmult_assoc.
+         rewrite Cinv_r; try lca; auto.
+       - rewrite Cmult_assoc, Cinv_l; try lca; auto.
+Qed.
+
+Lemma Cpow_pos_inv : forall (c : C) (p : positive),
+  c <> 0 -> 
+  Cpow_pos (/ c) p = / (Cpow_pos c p).
+Proof. intros. 
+       induction p; simpl.
+       - rewrite IHp.
+         repeat rewrite Cinv_mult_distr; auto.
+         2 : apply Cmult_neq_0.
+         all : try apply Cpow_pos_nonzero; auto.
+       - rewrite IHp.
+         rewrite Cinv_mult_distr; try apply Cpow_pos_nonzero; auto.
+       - easy.
+Qed.
+
+Lemma Cpow_pos_real : forall (c : C) (p : positive), 
+  snd c = 0 -> snd (Cpow_pos c p) = 0.
+Proof. intros.
+       induction p; simpl.
+       - rewrite IHp, H; lra.
+       - rewrite IHp; lra.
+       - easy.
+Qed.
+
+
 Lemma Cpow_pos_1 : forall (p : positive),
   Cpow_pos C1 p = C1.
 Proof. intros.
@@ -130,33 +175,87 @@ Proof. intros.
 Qed.
 
 
-Lemma Cpow_pos_Zsub : forall (c : C) (p1 p2 : positive),
-  c <> C0 -> c ^^ (Z.pos_sub p1 p2) = Cpow_pos c p1 * / Cpow_pos c p2.
-Proof. induction p1; intros.
-       - simpl.
-         Admitted. (*perhaps take a different approach, building up from 1+z, then to nats+z *)
-
-
-
-Lemma Cpow_int_add_r : forall (c : C) (z1 z2 : Z), 
-  c <> C0 -> c ^^ (z1 + z2) = c^^z1 * c^^z2.
+Lemma Cpow_int_add_1 : forall (c : C) (z : Z), 
+  c <> C0 -> c ^^ (1 + z) = c * c^^z.
 Proof. intros.
-       destruct z1; destruct z2; try lca; simpl.
-       - rewrite Cpow_pos_add_r; easy.
-       - rewrite Cpow_pos_Zsub; easy. 
-       - rewrite Cpow_pos_Zsub; auto; lca.
-       - rewrite Cpow_pos_add_r, Cinv_mult_distr; auto;
-         apply Cpow_pos_nonzero; easy.
+       destruct z; try lca.
+       - destruct p; simpl; try lca. 
+         rewrite Cpow_pos_succ; lca.
+       - destruct p; simpl.
+         + rewrite <- Cmult_assoc, (Cinv_mult_distr c); auto.
+           rewrite Cmult_assoc, Cinv_r; try lca; auto.
+           apply Cmult_neq_0; apply Cpow_pos_nonzero; easy.
+         + rewrite Cpow_pos_pred_double, Cinv_mult_distr, Cinv_inv; auto.
+           apply nonzero_div_nonzero; auto. 
+           apply Cmult_neq_0; apply Cpow_pos_nonzero; easy.
+         + rewrite Cinv_r; easy.
 Qed.
 
+Lemma Cpow_int_minus_1 : forall (c : C) (z : Z), 
+  c <> C0 -> c ^^ (-1 + z) = / c * c^^z.
+Proof. intros.
+       destruct z; try lca.
+       - destruct p; simpl; try lca. 
+         + repeat rewrite Cmult_assoc.
+           rewrite Cinv_l; auto; lca.
+         + rewrite Cpow_pos_pred_double; auto.
+         + rewrite Cinv_l; easy.
+       - destruct p; simpl; try lca. 
+         + rewrite Cpow_pos_succ, <- Cinv_mult_distr; auto.
+           apply f_equal; lca.
+           repeat apply Cmult_neq_0; try apply Cpow_pos_nonzero; auto.
+         + rewrite <- Cmult_assoc, Cinv_mult_distr; auto.
+           apply Cmult_neq_0; apply Cpow_pos_nonzero; auto.
+         + rewrite Cinv_mult_distr; easy.
+Qed.
 
-Lemma Cpow_int_mult_r : forall (c : C) (z1 z2 : Z), c ^^ (z1 * z2) = (c ^^ z1) ^^ z2.
+Lemma Cpow_int_add_nat : forall (c : C) (n : nat) (z : Z), 
+  c <> C0 -> c ^^ (Z.of_nat n + z) = c^^(Z.of_nat n) * c^^z.
+Proof. intros.
+       induction n; try lca.
+       replace (S n + z)%Z with (1 + (n + z))%Z by lia.
+       replace (Z.of_nat (S n)) with (1 + Z.of_nat n)%Z by lia.       
+       repeat rewrite Cpow_int_add_1; auto.
+       rewrite IHn; lca.
+Qed.
+
+Lemma Cpow_int_minus_nat : forall (c : C) (n : nat) (z : Z), 
+  c <> C0 -> c ^^ (- Z.of_nat n + z) = c^^(- Z.of_nat n) * c^^z.
+Proof. intros. 
+       induction n; try lca.
+       replace (- S n + z)%Z with (- 1 + (- n + z))%Z by lia.
+       replace (- (S n))%Z with (- 1 + - n)%Z by lia.       
+       repeat rewrite Cpow_int_minus_1; auto.
+       rewrite IHn; lca.
+Qed.
+
+Lemma Z_plusminus_nat : forall z : Z, 
+  (exists n : nat, z = n \/ z = -n)%Z.
+Proof. intros. 
+       destruct z.
+       - exists O; left; easy.
+       - exists (Pos.to_nat p); left; lia.
+       - exists (Pos.to_nat p); right; lia.
+Qed.
+
+Theorem Cpow_int_add_r : forall (c : C) (z1 z2 : Z), 
+  c <> C0 -> c ^^ (z1 + z2) = c^^z1 * c^^z2.
+Proof. intros.
+       destruct (Z_plusminus_nat z1) as [n [H0 | H0]].
+       - rewrite H0, Cpow_int_add_nat; easy.
+       - rewrite H0, Cpow_int_minus_nat; easy.
+Qed.
+
+Lemma Cpow_int_mult_r : forall (c : C) (z1 z2 : Z), 
+  c <> C0 -> c ^^ (z1 * z2) = (c ^^ z1) ^^ z2.
 Proof. intros. 
        destruct z1; destruct z2; try lca; simpl.
        all : try (rewrite Cpow_pos_1; lca).
        all : rewrite Cpow_pos_mult_r; try lca. 
-       Admitted.
-
+       all : rewrite Cpow_pos_inv; try apply Cpow_pos_nonzero; auto.
+       rewrite Cinv_inv; auto.
+       do 2 apply Cpow_pos_nonzero; easy.
+Qed.
 
 Lemma Cpow_int_mult_l : forall (c1 c2 : C) (z : Z), 
   c1 <> C0 -> c2 <> C0 -> (c1 * c2) ^^ z = (c1 ^^ z) * (c2 ^^ z).
@@ -168,14 +267,21 @@ Proof. intros.
 Qed.
 
 
-
 Lemma Cpow_inv1 : forall (c : C) (z : Z), c <> C0 -> c^^(-z) = / (c^^z).
 Proof. intros.
-       Admitted.
+       replace (-z)%Z with (z * -1)%Z by lia.
+       rewrite Cpow_int_mult_r; easy.
+Qed.
 
 Lemma Cpow_inv2 : forall (c : C) (z : Z), c <> C0 -> (/ c)^^z = / (c^^z).
 Proof. intros.
-       Admitted.
+       replace z with (-1 * -z)%Z by lia.
+       rewrite Cpow_int_mult_r. 
+       replace ((/ c) ^^ (-1)) with (/ / c) by easy.
+       replace (-1 * - z)%Z with z by lia.
+       rewrite Cinv_inv, Cpow_inv1; auto.
+       apply nonzero_div_nonzero; auto.
+Qed.
 
 
 (* checking that Cpow_int is consistent with Cpow on nats *)
@@ -194,9 +300,16 @@ Qed.
 
 
 Lemma Cpow_int_real : forall (c : C) (z : Z), 
-  snd c = 0 -> snd (c ^^ z) = 0.
+  c <> 0 -> snd c = 0 -> snd (c ^^ z) = 0.
 Proof. intros.
-       Admitted.
+       destruct z; auto.
+       - simpl; apply Cpow_pos_real; auto.
+       - replace (Z.neg p) with (- Z.pos p)%Z by lia.
+         rewrite Cpow_inv1; auto.
+         apply div_real.
+         apply Cpow_pos_real; auto.
+Qed.
+
 
 
 (* foreboding: translating between Cpow_int and Zpow *)
@@ -205,19 +318,25 @@ Lemma ZtoC_pow_nat : forall (z : Z) (n : nat),
 Proof. intros. 
        induction n; try easy.
        rewrite <- Cpow_int_cons in *.
-       simpl. 
-       rewrite <- IHn.
-       Admitted. 
+       replace (S n) with (1 + n)%nat by lia.
+       rewrite Nat2Z.inj_add, Z.pow_add_r, Cpow_add_r; try lia.
+       rewrite mult_IZR, <- IHn, RtoC_mult, RtoC_pow, pow_IZR.
+       apply f_equal_gen; auto.
+Qed.
+
+
 
 (* foreboding: translating between Cpow_int and Zpow *)
 Lemma ZtoC_pow : forall (z n : Z), 
   (n >= 0)%Z ->
   RtoC (IZR (z^n)%Z) = (RtoC (IZR z))^^n.
 Proof. intros.
-       Admitted. 
-       
-
-
+       destruct (Z_plusminus_nat n) as [x [H0 | H0]]; subst.
+       - rewrite ZtoC_pow_nat; easy.
+       - destruct x; try lia.
+         replace (-O)%Z with (Z.of_nat O) by lia.
+         rewrite ZtoC_pow_nat; easy.
+Qed.
 
 
 
@@ -226,9 +345,6 @@ Proof. intros.
 (* NB: use plus_IZR, mult_IZR, RtoC_plus, RtoC_mult to move between types: *)
 (* quick helper tactic. TODO: centralize these *)
 Ltac fastZtoC := repeat (autorewrite with ZtoR_db; autorewrite with RtoC_db; try lia).
-
-
-
 
 
 
@@ -262,6 +378,27 @@ Fixpoint odd_part_pos (p : positive) : positive :=
   | _ => p
   end.
 
+
+
+
+Lemma two_val_pos_mult : forall (p1 p2 : positive),
+  two_val_pos (p1 * p2) = two_val_pos p1 + two_val_pos p2.
+Proof. induction p1; try easy; intros. 
+       - replace (two_val_pos p1~1) with 0 by easy.
+         induction p2; try easy.
+         replace ((xI p1) * (xO p2))%positive with (xO ((xI p1) * p2))%positive by lia.
+         replace (two_val_pos (xO ((xI p1) * p2))%positive) with 
+           (1 + (two_val_pos ((xI p1) * p2)%positive)) by easy.
+         rewrite IHp2; easy.
+       - replace (two_val_pos (xO p1)) with (1 + two_val_pos p1) by easy.
+         rewrite <- Z.add_assoc, <- IHp1.
+         replace ((xO p1) * p2)%positive with (xO (p1 * p2))%positive by lia.
+         easy.
+Qed.
+
+
+
+
 (*
 Fixpoint n_minus_1_over_2 : (p : positive) : positive :=
   match p with 
@@ -290,30 +427,116 @@ Definition odd_part (z : Z) : Z :=
 
 
 
+
+Lemma two_val_mult : forall (z1 z2 : Z),
+  z1 <> 0 -> z2 <> 0 ->
+  two_val (z1 * z2) = two_val z1 + two_val z2.
+Proof. intros.
+       destruct z1; destruct z2; simpl; try easy.
+       all : rewrite two_val_pos_mult; easy.
+Qed.
+
+
+Lemma two_val_plus : forall (z1 z2 : Z),
+  z1 <> 0 -> z2 <> 0 ->
+  two_val (z1 + z2) >= Z.min (two_val z1) (two_val z2).
+Proof. intros. 
+       Admitted. 
+
+
+
+Lemma two_val_odd_part : forall (z : Z),
+  two_val (2 * z + 1) = 0.
+Proof. intros. 
+       destruct z; auto.
+       destruct p; auto.
+Qed.
+
+Lemma two_val_even_part : forall (a : Z),
+  a >= 0 -> two_val (2 ^ a) = a.
+Proof. intros.
+       destruct (Z_plusminus_nat a) as [x [H0 | H0]]; subst.
+       induction x; auto.
+       replace (S x) with (1 + x)%nat by lia.
+       rewrite Nat2Z.inj_add, Z.pow_add_r, two_val_mult; try lia.
+       rewrite IHx; auto; try lia.
+       destruct x; simpl; lia.
+Qed.
+
+
 Lemma twoadic_nonzero : forall (a b : Z),
   a >= 0 -> 2^a * (2 * b + 1) <> 0.
 Proof. intros. 
        apply Z.neq_mul_0; split; try lia.
 Qed.
 
+
 Lemma get_two_val : forall (a b : Z),
   a >= 0 -> 
   two_val (2^a * (2 * b + 1)) = a.
-Proof. Admitted. 
+Proof. intros. 
+       rewrite two_val_mult; auto.
+       rewrite two_val_odd_part, two_val_even_part; try lia.
+       apply Z.pow_nonzero; try lia.
+       lia.
+Qed.       
 
+
+Lemma odd_part_reduce : forall (a : Z),
+  odd_part (2 * a) = odd_part a.
+Proof. intros.
+       induction a; try easy.
+Qed.
 
 Lemma get_odd_part : forall (a b : Z),
   a >= 0 -> 
   odd_part (2^a * (2 * b + 1)) = 2 * b + 1.
-Proof. Admitted. 
+Proof. intros. 
+       destruct (Z_plusminus_nat a) as [x [H0 | H0]]; subst.
+       induction x; try easy.
+       - replace (2 ^ 0%nat * (2 * b + 1)) with (2 * b + 1) by lia.
+         destruct b; simpl; auto.
+         induction p; simpl; easy.
+       - replace (2 ^ S x * (2 * b + 1)) with (2 * (2 ^ x * (2 * b + 1))).
+         rewrite odd_part_reduce, IHx; try lia.
+         replace (S x) with (1 + x)%nat by lia.
+         rewrite Nat2Z.inj_add, Z.pow_add_r; try lia.
+       - destruct x; try easy.
+         replace (2 ^ (- 0%nat) * (2 * b + 1)) with (2 * b + 1) by lia.
+         destruct b; simpl; auto.
+         induction p; simpl; easy.
+Qed.       
 
+
+Lemma break_into_parts : forall (z : Z),
+  z <> 0 -> exists a b, a >= 0 /\ z = (2^a * (2 * b + 1)).
+Proof. intros. 
+       destruct z; try easy.
+       - induction p.
+         + exists 0, (Z.pos p); try easy.
+         + destruct IHp as [a [b [H0 H1]]]; try easy.
+           exists (1 + a), b.
+           replace (Z.pos (xO p)) with (2 * Z.pos p) by easy.
+           split; try lia.
+           rewrite H1, Z.pow_add_r; try lia.
+         + exists 0, 0; split; try lia.
+       - induction p.
+         + exists 0, (Z.neg p - 1); try easy; try lia.
+         + destruct IHp as [a [b [H0 H1]]]; try easy.
+           exists (1 + a), b.
+           replace (Z.neg (xO p)) with (2 * Z.neg p) by easy.
+           split; try lia.
+           rewrite H1, Z.pow_add_r; try lia.
+         + exists 0, (-1); split; try lia.
+Qed.
 
 
 Lemma twoadic_breakdown : forall (z : Z),
   z <> 0 -> z = (2^(two_val z)) * (odd_part z).
-Proof. Admitted.
-
-
+Proof. intros. 
+       destruct (break_into_parts z) as [a [b [H0 H1]]]; auto.
+       rewrite H1, get_two_val, get_odd_part; easy.
+Qed.
 
 Lemma odd_part_pos_odd : forall (p : positive),
   (exists p', odd_part_pos p = xI p') \/ (odd_part_pos p = xH).
@@ -328,6 +551,12 @@ Proof. intros.
        - right; easy.
 Qed.
 
+
+Lemma odd_part_0 : forall (z : Z),
+  odd_part z = 0 -> z = 0.
+Proof. intros.
+       destruct z; simpl in *; easy.
+Qed.
 
 Lemma odd_part_odd : forall (z : Z),
   z <> 0 -> 
@@ -359,20 +588,6 @@ Proof. intros.
          lia. 
 Qed.
      
-
-Lemma two_val_mult : forall (z1 z2 : Z),
-  z1 <> 0 -> z2 <> 0 ->
-  two_val (z1 * z2) = two_val z1 + two_val z2.
-Proof. Admitted. 
-
-
-Lemma two_val_plus : forall (z1 z2 : Z),
-  z1 <> 0 -> z2 <> 0 ->
-  two_val (z1 + z2) >= Z.min (two_val z1) (two_val z2).
-Proof. Admitted. 
-
-
-
 
 
 
@@ -445,13 +660,125 @@ Proof. unfold DtoC, Dhalf.
 Qed.
      
 
+Lemma DtoC_neq_0 : forall (z z0 : Z),
+  (C2 ^^ z * (C2 * z0 + C1))%C <> C0.
+Proof. intros.
+       apply Cmult_neq_0.
+       apply Cpow_int_nonzero. 
+       apply RtoC_neq; lra.
+       replace (C2 * z0 + C1)%C with (RtoC (IZR (2 * z0 + 1)%Z)).
+       unfold not; intros.        
+       apply RtoC_inj in H.
+       apply eq_IZR in H. 
+       lia.
+       fastZtoC.
+       easy.
+Qed.
+
+
+Lemma move_power_2 : forall (z1 z2 : Z) (c1 c2 : C),
+  (C2 ^^ z1 * c1 = C2 ^^ z2 * c2)%C -> (c1 = C2 ^^ (z2 - z1) * c2)%C.
+Proof. intros.
+       apply (Cmult_simplify (C2 ^^ (-z1)) (C2 ^^ (-z1))) in H; auto.
+       do 2 rewrite Cmult_assoc, <- Cpow_int_add_r in H.
+       replace (- z1 + z1) with 0 in H by lia; simpl in H.
+       rewrite Cmult_1_l in H; subst.
+       replace (- z1 + z2) with (z2 - z1) by lia.
+       easy.
+       all : apply RtoC_neq; lra.
+Qed.
+
+
+(* TODO: move these next two lemmas somewhere else, they are never used here *)
+Lemma log2_inj_0 : forall (n : nat),
+  (C2 ^ n)%C = C1 -> n = O.
+Proof. intros. 
+       destruct n; try easy; simpl in *.
+       assert (H' : forall n, (C2 ^ n)%C = RtoC (IZR ((2 ^ n)%Z))).
+       { induction n0; auto.
+         replace (C2 ^ S n0)%C with (C2 * (C2 ^ n0))%C by easy.
+         rewrite IHn0.
+         autorewrite with ZtoR_db; try lia.
+         replace (Z.of_nat (S n0)) with (1 + n0)%Z by lia.
+         rewrite Cpow_int_add_r; try easy.
+         apply RtoC_neq; lra. }
+       rewrite H' in H. 
+       simpl in H.
+       rewrite <- RtoC_mult in H.
+       apply RtoC_inj in H.
+       rewrite <- mult_IZR in H.
+       apply eq_IZR in H. 
+       lia.
+Qed.
+
+
+Lemma log2_inj : forall (n1 n2 : nat), 
+  Cpow C2 n1 = Cpow C2 n2 -> n1 = n2.
+Proof. induction n1.
+       - intros. 
+         replace (C2 ^ 0)%C with C1 in H by easy. 
+         symmetry in H.
+         apply log2_inj_0 in H; easy.
+       - intros.
+         destruct n2.
+         replace (C2 ^ 0)%C with C1 in H by easy. 
+         apply log2_inj_0 in H; easy.
+         simpl in H.
+         rewrite (IHn1 n2); auto.
+         apply Cmult_cancel_l in H; auto.
+         apply RtoC_neq; lra.
+Qed.
+
+
+Lemma DtoC_inj_uneq_case : forall z z0 z1 z2 : Z, 
+  z < z1 -> 
+  (C2 ^^ z * (C2 * z0 + C1))%C = (C2 ^^ z1 * (C2 * z2 + C1))%C ->
+  False.
+Proof. intros. 
+       apply move_power_2 in H0.
+       assert (H' : 0 < z1 - z). lia.
+       destruct (Z_plusminus_nat (z1 - z)) as [x [H1 | H1]]; try lia.
+       rewrite H1 in *.
+       destruct x; try easy.
+       rewrite <- ZtoC_pow_nat in H0.
+       repeat rewrite <- RtoC_mult, <- mult_IZR in H0.
+       repeat rewrite <- RtoC_plus, <- plus_IZR in H0.
+       repeat rewrite <- RtoC_mult, <- mult_IZR in H0.
+       apply RtoC_inj in H0.
+       apply eq_IZR in H0. 
+       replace (Z.of_nat (S x)) with (1 + x)%Z in H0 by lia.
+       rewrite Z.pow_add_r in H0; try lia.
+Qed.
+
+
 (* idea: WLOG v(x) <= v(y), equality case is easy, then reflect back to Z *)
 Lemma DtoC_inj : forall (x y : Dyadic),
   DtoC x = DtoC y -> x = y.
 Proof.
   intros. 
   unfold DtoC in *.
-  Admitted.
+  destruct x; destruct y; try easy.
+  - assert (H' := DtoC_neq_0 z z0).
+    rewrite H in H'; easy.
+  - assert (H' := DtoC_neq_0 z z0).
+    rewrite H in H'; easy.
+  - destruct (Ztrichotomy_inf z z1) as [[H0 | H0] | H0].
+    + apply DtoC_inj_uneq_case in H; lia. 
+    + subst.
+      apply move_power_2 in H.
+      replace (z1 - z1)%Z with 0%Z in H by lia.
+      rewrite Cmult_1_l in H.
+      apply (Cplus_simplify _ _ (-C1) (-C1)) in H; auto.
+      replace (C2 * z0 + C1 + - C1)%C with (C2 * z0)%C in H by lca.
+      replace (C2 * z2 + C1 + - C1)%C with (C2 * z2)%C in H by lca.
+      apply Cmult_cancel_l in H. 
+      apply RtoC_inj in H.
+      apply eq_IZR in H; subst; easy.
+      apply RtoC_neq; lra.
+    + symmetry in H.
+      apply DtoC_inj_uneq_case in H; lia. 
+Qed.
+      
 
 
 
@@ -538,11 +865,14 @@ Infix "^," := Dpow (at level 30) : D_scope.
 
 (* showing compatability *)
 
+
+(* could make this shorter, but it was also expected that this would be the hardest part,
+   so its messiness is warrented *)
 Lemma DtoC_plus : forall d1 d2, DtoC (d1 +, d2) = (DtoC d1 + DtoC d2)%C.
 Proof. intros.
        destruct d1; destruct d2; simpl; try lca.
-       unfold Dplus; destruct (Ztrichotomy_inf z z1); try destruct s.
-       - unfold DtoC. 
+       unfold Dplus; destruct (Ztrichotomy_inf z z1); try destruct s. 
+       - unfold Dplus, DtoC. 
          fastZtoC. 
          rewrite (Cmult_plus_distr_l _ _ z0), (Cmult_assoc C2).
          replace (C2 * C2 ^^ (z1 - z - 1))%C with (C2 ^^ (z1 - z)).
@@ -556,8 +886,48 @@ Proof. intros.
          rewrite <- Cpow_int_add_r.
          apply f_equal; lia.
          apply RtoC_neq; lra.
-       - Admitted. 
+       - subst.
+         replace (2 * z0 + 1 + (2 * z2 + 1))%Z with (2 * (z0 + z2 + 1))%Z by lia.
+         rewrite odd_part_reduce.
+         destruct (Z.eq_dec (z0 + z2 + 1) Z0).
+         rewrite e. simpl.
+         replace (C2 ^^ z1 * (C2 * z0 + C1) + C2 ^^ z1 * (C2 * z2 + C1))%C with
+           (C2 ^^ z1 * C2 * (z0 + z2 + C1))%C by lca.
+         do 2 rewrite <- RtoC_plus, <- plus_IZR.
+         rewrite e.
+         lca.
+         assert (H' : odd_part (z0 + z2 + 1) <> 0). 
+         unfold not; intros; apply n.
+         apply odd_part_0; auto.
+         destruct (odd_part (z0 + z2 + 1)) eqn:E; try easy.
+         all : unfold DtoC; 
+           repeat (repeat rewrite <- RtoC_plus, <- plus_IZR;
+                   repeat rewrite <- RtoC_mult, <- mult_IZR).
+         all : rewrite <- E, odd_part_odd, Cpow_int_add_r, <- Cmult_plus_distr_l, 
+           <- Cmult_assoc; auto; try apply f_equal.
+         all : try (apply RtoC_neq; lra).
+         all : rewrite <- ZtoC_pow, <- odd_part_reduce; try apply two_val_ge_0.
+         all : rewrite <- RtoC_mult, <- mult_IZR, <- RtoC_plus, <- plus_IZR.
+         all : rewrite <- twoadic_breakdown; try lia.
+         all : fastZtoC; lca.
+       - unfold Dplus, DtoC. 
+         fastZtoC. 
+         rewrite (Cmult_plus_distr_l _ _ z2), (Cmult_assoc C2).
+         replace (C2 * C2 ^^ (z - z1 - 1))%C with (C2 ^^ (z - z1)).
+         rewrite <- Cplus_assoc, (Cmult_plus_distr_l _ _ (C2 * z2 + C1)), Cmult_assoc.
+         replace (C2 ^^ z1 * C2 ^^ (z - z1))%C with (C2 ^^ z).
+         lca.
+         rewrite <- Cpow_int_add_r.
+         apply f_equal; lia.
+         apply RtoC_neq; lra.
+         replace (Cmult C2) with (Cmult (C2 ^^ 1)) by (apply f_equal; easy).
+         rewrite <- Cpow_int_add_r.
+         apply f_equal; lia.
+         apply RtoC_neq; lra.       
+Qed.
+ 
 
+         
 
 
 Lemma DtoC_opp : forall d, DtoC (-, d) = (- (DtoC d))%C. 
@@ -1673,8 +2043,9 @@ Qed.
 
 Lemma Dyadic_real : forall (d : Dyadic), snd (DtoC d) = 0.
 Proof. intros. 
-       destruct d; unfold DtoC; simpl; try lra.
-       rewrite Cpow_int_real; simpl; lra.
+       destruct d; unfold DtoC; simpl; try lra.  
+       rewrite Cpow_int_real; simpl; try lra.
+       apply RtoC_neq; lra.
 Qed.
 
 
@@ -2672,6 +3043,18 @@ Proof. intros.
          D8toZ8_mult, <- Z8toD8toZ8; auto.
        apply D8isZ8_ver; exists z; easy.
 Qed.
+
+
+Lemma rho_mult_root2 : forall (d : D8) (k : nat),
+  denom_exp d k ->
+  rho (S k) d = Z8mult root2 (rho k d).
+Proof. intros.
+       rewrite <- rho_mult_z; auto.
+       unfold rho; simpl.
+       rewrite (D8mult_comm root2), <- D8mult_assoc; easy.
+Qed.
+  
+
 
 
 
