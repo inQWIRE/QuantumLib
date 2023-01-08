@@ -438,7 +438,8 @@ Qed.
 
 
 Lemma two_val_plus : forall (z1 z2 : Z),
-  z1 <> 0 -> z2 <> 0 ->
+  z1 <> 0 -> z2 <> 0 -> 
+  z1 + z2 <> 0 ->
   two_val (z1 + z2) >= Z.min (two_val z1) (two_val z2).
 Proof. intros. 
        Admitted. 
@@ -3008,12 +3009,13 @@ Proof. intros.
 Qed.
 
 Lemma denom_exp_reduce : forall (d : D8) (k : nat),
-  denom_exp (D8mult root2 d) k ->
+  denom_exp (D8mult root2 d) k <->
   denom_exp d (S k).
-Proof. intros. 
-       unfold denom_exp in *; simpl in *. 
-       rewrite (D8mult_comm root2), <- D8mult_assoc.
-       easy.
+Proof. intros; split; intros; unfold denom_exp in *; simpl in *. 
+       - rewrite (D8mult_comm root2), <- D8mult_assoc.
+         easy.
+       - rewrite D8mult_assoc, (D8mult_comm _ root2).
+         easy.
 Qed.
 
 
