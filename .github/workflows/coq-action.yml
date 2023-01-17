@@ -16,6 +16,7 @@ jobs:
           - '8.13'
           - '8.14'
           - '8.15'
+          - '8.16'
           - 'dev'
         ocaml_version:
           - 'default'
