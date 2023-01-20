@@ -1067,6 +1067,15 @@ Proof.
 Qed.
 
 
+Lemma Cinv_sqrt2_proper : / RtoC (√ 2) = RtoC (√ 2) / 2.
+Proof. rewrite <- Csqrt2_sqrt.
+       unfold Cdiv.
+       rewrite Cinv_mult_distr, Cmult_assoc, Cinv_r. 
+       lca.
+       all : apply RtoC_neq; apply sqrt2_neq_0.
+Qed.
+
+
 (** * Complex exponentiation **)
 
 
