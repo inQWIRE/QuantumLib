@@ -1785,7 +1785,7 @@ Proof. intros.
 Qed.
 
 
-(* now, we show compact -> open *)
+(* now, we show compact -> closed *)
 Definition bad_point_cover (c : C) : Ccover :=
   fun G => open G /\ exists r, r > 0 /\ G ⊂ (fun c' => Cmod (c' - c) > r).
 
