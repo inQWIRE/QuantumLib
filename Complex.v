@@ -474,6 +474,14 @@ Proof.
   now apply Hz2, Cmod_eq_0.
 Qed.
 
+Lemma Cmult_integral : forall c1 c2 : C, c1 * c2 = 0 -> c1 = 0 \/ c2 = 0.
+Proof. intros. 
+       destruct (Ceq_dec c1 0); try (left; easy).
+       destruct (Ceq_dec c2 0); try (right; easy).
+       apply (Cmult_neq_0 c1 c2) in n0; auto.
+       easy. 
+Qed.
+
 Lemma Cminus_eq_contra : forall r1 r2 : C, r1 <> r2 -> r1 - r2 <> 0.
 Proof.
   intros ; contradict H ; apply injective_projections ;
@@ -1075,6 +1083,16 @@ Proof. rewrite <- Csqrt2_sqrt.
        all : apply RtoC_neq; apply sqrt2_neq_0.
 Qed.
 
+
+Corollary one_sqrt2_Cbasis : forall (a b : Z),
+  (RtoC (IZR a)) + (RtoC (IZR b)) * √2 = 0 -> 
+  (a = 0 /\ b = 0)%Z.
+Proof. intros. 
+       apply one_sqrt2_Rbasis.
+       apply RtoC_inj. 
+       rewrite RtoC_plus, RtoC_mult.
+       easy.
+Qed.
 
 (** * Complex exponentiation **)
 
