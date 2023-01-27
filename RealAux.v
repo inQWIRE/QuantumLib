@@ -38,7 +38,7 @@ Proof. intros. unfold Rdiv. rewrite Rmult_assoc. reflexivity. Qed.
 
 Lemma Rmult_div : forall r1 r2 r3 r4 : R, r2 <> 0 -> r4 <> 0 -> 
   r1 / r2 * (r3 / r4) = r1 * r3 / (r2 * r4). 
-Proof. intros. unfold Rdiv. rewrite Rinv_mult; trivial. lra. Qed.
+Proof. intros. unfold Rdiv. rewrite Rinv_mult_distr; trivial. lra. Qed.
 
 Lemma Rdiv_cancel :  forall r r1 r2 : R, r1 = r2 -> r / r1 = r / r2.
 Proof. intros. rewrite H. reflexivity. Qed.
