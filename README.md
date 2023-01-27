@@ -11,6 +11,11 @@ QuantumLib is a Coq library for reasoning about quantum programs. It was co-deve
 ## Compilation
 
 Tested with Coq versions 8.12 -- 8.15.
+Experimental on 8.16
+
+This project requires `opam` & `dune` to be installed.
+
+Install `dune` using `opam install dune`
 
 To compile run `make all`.
 
