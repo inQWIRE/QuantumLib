@@ -1455,9 +1455,9 @@ Proof. unfold Cz8.
        unfold RtoC, Cinv; simpl.
        apply injective_projections; simpl; try lra.
        rewrite Rmult_1_r, Rmult_0_l, Rplus_0_r.
-       unfold Rdiv. 
-       rewrite Rinv_mult, <- Rmult_assoc, Rinv_r. lra.
-       apply sqrt2_neq_0.
+       unfold Rdiv.
+       rewrite Rinv_mult_distr, <- Rmult_assoc, Rinv_r. lra.
+       all: apply sqrt2_neq_0.
 Qed.
 
       

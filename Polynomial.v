@@ -1705,7 +1705,7 @@ Proof. split; intros.
          unfold Rdiv in *.
          unfold pow in *.
          apply (Rmult_le_pos a) in H1; try lra.
-         rewrite Rmult_plus_distr_l, Rinv_mult, Rmult_plus_distr_l in H1; try lra.
+         rewrite Rmult_plus_distr_l, Rinv_mult_distr, Rmult_plus_distr_l in H1; try lra.
          replace (a * (b * (- b * (/ 2 * / a))))%R 
            with (- b * b * (a * / a) * / 2)%R in H1 by lra. 
          replace (a * (a * (- b * (/ 2 * / a) * (- b * (/ 2 * / a) * 1))))%R
@@ -1722,8 +1722,44 @@ Proof. split; intros.
            unfold Rdiv; repeat rewrite Rinv_mult; try lra.
            replace ((t + b * (/ 2 * / a)) * (t + b * (/ 2 * / a)))%R 
              with (t * t + t * b * / a + (b * b * /a * /a * /4))%R by lra.
-           replace (a * c * (/ a * / a))%R with (c * / a * (a * / a))%R by lra.
-           rewrite Rinv_r, Rmult_1_r; try lra. }
+           replace (a * c * / (a * a))%R with (c * / a)%R; [ | shelve ].
+           rewrite Rminus_unfold.
+           rewrite Rmult_plus_distr_l.
+           repeat rewrite Rmult_plus_distr_r.
+           replace (t * t + b * / (2 * a) * t + (t * (b * / (2 * a)) + b * / (2 * a) * (b * / (2 * a))) +
+           (c * / a + - (b * b * / 4 * / (a * a))))%R with ((t * t + c * / a) + (b * / (2 * a) * t + (t * (b * / (2 * a)) + b * / (2 * a) * (b * / (2 * a))) +
+           (- (b * b * / 4 * / (a * a)))))%R by lra.
+           replace ((c * / a + b * / a * t + t * t))%R with ((t * t + c * / a + (b * / a * t)))%R by lra.
+           apply Rplus_eq_compat_l.
+           replace ((b * / (2 * a) * t + (t * (b * / (2 * a)) + b * / (2 * a) * (b * / (2 * a))) +
+           - (b * b * / 4 * / (a * a)))%R) with (b * / (2 * a) * t + t * (b * / (2 * a)) + ((b * / (2 * a) * (b * / (2 * a))) +
+           - (b * b * / 4 * / (a * a))))%R by lra.
+           replace (b * / (2 * a) * t + (t * (b * / (2 * a))))%R with (
+            ((b * t) + (t * b)) / (2 * a)
+           )%R by lra.
+           replace ((b * t + t * b) / (2 * a))%R with ((b * t) / (a))%R; [ | shelve ].
+           replace (b * / a * t)%R with ((b * / a * t + 0)%R) by lra.
+           replace (b * t / a)%R with (b * / a * t)%R by lra.
+           apply Rplus_eq_compat_l.
+           replace (b * / (2 * a) * (b * / (2 * a)))%R with (b * b * / 4 * / (a * a))%R; [ | shelve ].
+           lra.
+           Unshelve.
+           - rewrite Rinv_mult_distr; try lra.
+             replace (a * c * (/ a * / a))%R with (a * /a *c * / a)%R by lra.
+             rewrite Rinv_r; lra.
+           - replace ((b * t + t * b))%R with (2 * b * t)%R by lra.
+             rewrite 2 Rdiv_unfold.
+             rewrite Rinv_mult_distr; lra.
+           - replace ((b * / (2 * a) * (b * / (2 * a)))%R) with ((b *  b * / (2 * a) * (/ (2 * a)))%R) by lra.
+             rewrite  4 Rmult_assoc.
+             rewrite <- Rinv_mult_distr; try lra.
+             apply Rmult_eq_compat_l.
+             apply Rmult_eq_compat_l.
+             replace 4%R with (2 * 2)%R by lra.
+             replace (2 * 2 * (a * a))%R with (2 * a * (2 * a))%R by lra.
+             rewrite Rinv_mult_distr; try lra.
+             apply Rmult_integral_contrapositive_currified; lra.
+        }
          rewrite <- H1.
          apply Rmult_le_pos; try lra.
          apply Rplus_le_le_0_compat.
