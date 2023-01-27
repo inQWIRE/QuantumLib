@@ -1724,7 +1724,7 @@ Proof. split; intros.
              with (t * t + t * b * / a + (b * b * /a * /a * /4))%R by lra.
            replace (a * c * / (a * a))%R with (c * / a)%R; [ | shelve ].
            rewrite Rminus_unfold.
-           rewrite Rmult_plus_distr_l.
+           repeat rewrite Rmult_plus_distr_l.
            repeat rewrite Rmult_plus_distr_r.
            replace (t * t + b * / (2 * a) * t + (t * (b * / (2 * a)) + b * / (2 * a) * (b * / (2 * a))) +
            (c * / a + - (b * b * / 4 * / (a * a))))%R with ((t * t + c * / a) + (b * / (2 * a) * t + (t * (b * / (2 * a)) + b * / (2 * a) * (b * / (2 * a))) +
