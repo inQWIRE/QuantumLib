@@ -99,7 +99,7 @@ Fixpoint Pmult (p1 p2 : Polynomial) : Polynomial :=
 Definition Popp (p : Polynomial) : Polynomial :=
   Pmult [-C1] p.
 
-#[export] Program Instance P_is_monoid : Monoid Polynomial := 
+Global Program Instance P_is_monoid : Monoid Polynomial := 
   { Gzero := []
   ; Gplus := Pplus
   }.

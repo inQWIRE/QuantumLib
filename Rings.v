@@ -328,7 +328,7 @@ Qed.
 
 
 
-#[export] Hint Rewrite plus_IZR minus_IZR opp_IZR mult_IZR ZtoC_pow : ZtoR_db.
+Hint Rewrite plus_IZR minus_IZR opp_IZR mult_IZR ZtoC_pow : ZtoR_db.
 
 (* NB: use plus_IZR, mult_IZR, RtoC_plus, RtoC_mult to move between types: *)
 (* quick helper tactic. TODO: centralize these *)
@@ -719,7 +719,7 @@ Proof. intros.
 Qed.
 
 
-#[export] Hint Rewrite DtoC_plus DtoC_opp DtoC_minus DtoC_mult DtoC_pow : DtoC_db.
+Hint Rewrite DtoC_plus DtoC_opp DtoC_minus DtoC_mult DtoC_pow : DtoC_db.
 
 
 Ltac lDa_try1 := apply DtoC_inj; autorewrite with DtoC_db; lca.
@@ -1131,7 +1131,8 @@ Proof. intros.
        unfold ZtoD, DtoZ.
        simpl in H.
        destruct (2 ^ z * (2 * z0 + 1))%Z eqn:E.
-       - apply Zmult_integral in E; destruct E; try lia.
+       - apply Zmult_integral in E; destruct E. 
+         all: try (contradict H0; apply Z.pow_nonzero; lia); lia.
        - rewrite <- E.
          rewrite get_two_val, get_odd_part; auto.
          replace (2 * z0 + 1 - 1)%Z with (2 * z0)%Z by lia.
@@ -1291,20 +1292,20 @@ Definition F2mult (x y : F2) : F2 :=
 
  
 
-#[export] Program Instance F2_is_monoid : Monoid F2 := 
+Global Program Instance F2_is_monoid : Monoid F2 := 
   { Gzero := F0
   ; Gplus := F2plus
   }.
 Solve All Obligations with program_simpl; destruct g; try easy; destruct h; destruct i; easy. 
 
-#[export] Program Instance F2_is_group : Group F2 :=
+Global Program Instance F2_is_group : Group F2 :=
   { Gopp := F2opp }.
 Solve All Obligations with program_simpl; destruct g; easy.
 
-#[export] Program Instance F2_is_comm_group : Comm_Group F2.
+Global Program Instance F2_is_comm_group : Comm_Group F2.
 Solve All Obligations with program_simpl; destruct a; destruct b; easy.
                                              
-#[export] Program Instance F2_is_ring : Ring F2 :=
+Global Program Instance F2_is_ring : Ring F2 :=
   { Gone := F1
   ; Gmult := F2mult
   }.
@@ -1323,10 +1324,10 @@ Next Obligation.
 Qed.
 
 
-#[export] Program Instance F2_is_comm_ring : Comm_Ring F2.
+Global Program Instance F2_is_comm_ring : Comm_Ring F2.
 Solve All Obligations with program_simpl; destruct a; destruct b; easy.
 
-#[export] Program Instance F2_is_field : Field F2 :=
+Global Program Instance F2_is_field : Field F2 :=
   { Ginv := F2opp }.
 Next Obligation.
   destruct f; try easy.
@@ -1752,7 +1753,7 @@ Proof. intros.
 Qed.
 
 
-#[export] Hint Rewrite D8toC_plus D8toC_opp D8toC_mult : D8toC_db.
+Hint Rewrite D8toC_plus D8toC_opp D8toC_mult : D8toC_db.
 
 
 (*TODO: show that the above proves defacto that D8 is a ring *)
@@ -1959,27 +1960,27 @@ Ltac naive_lD8a := repeat (repeat rewrite D8mult_plus_distr_l;
 Ltac lD8a_try1 := apply D8toC_inj; autorewrite with D8toC_db; lca.
 
 
-#[export] Program Instance D8_is_monoid : Monoid D8 := 
+Global Program Instance D8_is_monoid : Monoid D8 := 
   { Gzero := D80
   ; Gplus := D8plus
   }.
 Solve All Obligations with program_simpl; lD8a_try1.
 
-#[export] Program Instance D8_is_group : Group D8 :=
+Global Program Instance D8_is_group : Group D8 :=
   { Gopp := D8opp }.
 Solve All Obligations with program_simpl; lD8a_try1.
         
-#[export] Program Instance D8_is_comm_group : Comm_Group D8.
+Global Program Instance D8_is_comm_group : Comm_Group D8.
 Solve All Obligations with program_simpl; lD8a_try1.
 
                                              
-#[export] Program Instance D8_is_ring : Ring D8 :=
+Global Program Instance D8_is_ring : Ring D8 :=
   { Gone := D81
   ; Gmult := D8mult
   }.
 Solve All Obligations with program_simpl; try lD8a_try1; apply D8eq_dec.
 
-#[export] Program Instance D8_is_comm_ring : Comm_Ring D8.
+Global Program Instance D8_is_comm_ring : Comm_Ring D8.
 Solve All Obligations with program_simpl; lD8a_try1.
 
 

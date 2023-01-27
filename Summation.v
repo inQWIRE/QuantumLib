@@ -240,7 +240,7 @@ Qed.
 
 (* showing that nat is a monoid *)
 
-#[export] Program Instance nat_is_monoid : Monoid nat := 
+Global Program Instance nat_is_monoid : Monoid nat := 
   { Gzero := 0
   ; Gplus := plus
   }.
