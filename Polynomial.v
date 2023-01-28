@@ -99,7 +99,7 @@ Fixpoint Pmult (p1 p2 : Polynomial) : Polynomial :=
 Definition Popp (p : Polynomial) : Polynomial :=
   Pmult [-C1] p.
 
-#[export] Program Instance P_is_monoid : Monoid Polynomial := 
+Global Program Instance P_is_monoid : Monoid Polynomial := 
   { Gzero := []
   ; Gplus := Pplus
   }.
@@ -1705,7 +1705,7 @@ Proof. split; intros.
          unfold Rdiv in *.
          unfold pow in *.
          apply (Rmult_le_pos a) in H1; try lra.
-         rewrite Rmult_plus_distr_l, Rinv_mult, Rmult_plus_distr_l in H1; try lra.
+         rewrite Rmult_plus_distr_l, Rinv_mult_distr, Rmult_plus_distr_l in H1; try lra.
          replace (a * (b * (- b * (/ 2 * / a))))%R 
            with (- b * b * (a * / a) * / 2)%R in H1 by lra. 
          replace (a * (a * (- b * (/ 2 * / a) * (- b * (/ 2 * / a) * 1))))%R
@@ -1722,8 +1722,17 @@ Proof. split; intros.
            unfold Rdiv; repeat rewrite Rinv_mult; try lra.
            replace ((t + b * (/ 2 * / a)) * (t + b * (/ 2 * / a)))%R 
              with (t * t + t * b * / a + (b * b * /a * /a * /4))%R by lra.
-           replace (a * c * (/ a * / a))%R with (c * / a * (a * / a))%R by lra.
-           rewrite Rinv_r, Rmult_1_r; try lra. }
+           replace (a * c * (/ a * / a))%R with (c * / a)%R; [ | shelve ].
+           R_field_simplify.
+           easy.
+           lra.
+           Unshelve.
+           rewrite (Rmult_comm a c).
+           rewrite Rmult_assoc.
+           rewrite <- (Rmult_assoc a (/ a)).
+           rewrite Rinv_r.
+           all: lra.
+         }
          rewrite <- H1.
          apply Rmult_le_pos; try lra.
          apply Rplus_le_le_0_compat.
