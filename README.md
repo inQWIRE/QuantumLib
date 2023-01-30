@@ -29,7 +29,7 @@ To install the official release of QuantumLib, run the following.
 ```
 opam repo add coq-released https://coq.inria.fr/opam/released
 opam update
-opam install coq-quantumlib.1.1.0
+opam install coq-quantumlib
 ```
 
 ### Dev
