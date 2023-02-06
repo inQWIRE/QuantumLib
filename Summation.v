@@ -169,6 +169,18 @@ Proof. intros.
        easy. 
 Qed.
 
+
+Lemma Gopp_eq_0 : forall {G} `{Group G} (g : G),
+  - g = 0 -> g = 0.
+Proof. intros. 
+       apply (f_equal Gopp) in H1. 
+       rewrite Gopp_involutive in H1; subst.
+       symmetry. 
+       apply Gopp_unique_l.
+       rewrite Gplus_0_r.
+       easy.
+Qed.
+
 Lemma Vscale_zero : forall {V F} `{Module_Space V F} (c : F),
   c ⋅ 0 = 0.
 Proof. intros.
@@ -485,6 +497,30 @@ Proof.
     apply Unique; try easy; lia.
 Qed.  
  
+Lemma big_sum_unique2 : forall {G} `{Monoid G} k (f : nat -> G) n, 
+  (exists x y, (x < y)%nat /\ (y < n)%nat /\ (f x) + (f y) = k /\
+                 (forall x', x' < n -> x <> x' -> y <> x' -> f x' = 0)) ->
+  big_sum f n = k.
+Proof.                    
+  intros G H k f n [x [y [L1 [L2 [Eq Unique]]]]].
+  induction n; try lia.
+  rewrite <- big_sum_extend_r.
+  destruct (Nat.eq_dec y n).
+  - subst. 
+    apply f_equal_gen; auto; apply f_equal.
+    apply big_sum_unique.
+    exists x; split; auto; split; auto.
+    intros. 
+    apply Unique;
+    lia.
+  - rewrite Unique; try easy; try lia. 
+    rewrite Gplus_0_r. 
+    apply IHn.
+    lia.
+    intros.
+    apply Unique; try easy; lia.
+Qed.  
+
 Lemma big_sum_sum : forall {G} `{Monoid G} m n f, 
   big_sum f (m + n) = big_sum f m + big_sum (fun x => f (m + x)%nat) n. 
 Proof.
@@ -630,6 +666,64 @@ Proof.
   apply big_sum_unique. 
   exists x; split; simpl; auto.
 Qed.
+
+
+
+Local Open Scope nat_scope. 
+
+(* TODO: these should all probably have better names *)
+Lemma big_sum_rearrange : forall {G} `{Ring G} (n : nat) (f g : nat -> nat -> G),
+  (forall x y, x <= y -> f x y = (-1%G) * (g (S y) x))%G ->
+  (forall x y, y <= x -> f (S x) y = (-1%G) * (g y x))%G ->
+  big_sum (fun i => big_sum (fun j => f i j) n) (S n) = 
+  (-1%G * (big_sum (fun i => big_sum (fun j => g i j) n) (S n)))%G.
+Proof. induction n as [| n'].
+       - intros; simpl. 
+         rewrite Gplus_0_r, Gmult_0_r; easy.
+       - intros. 
+         do 2 rewrite big_sum_extend_double.
+         rewrite (IHn' f g); try easy.
+         repeat rewrite Gmult_plus_distr_l.
+         repeat rewrite <- Gplus_assoc.
+         apply f_equal_gen; try apply f_equal; try easy.
+         assert (H' : forall a b c, (a + (b + c) = (a + c) + b)%G). 
+         intros. 
+         rewrite (Gplus_comm b), Gplus_assoc; easy.
+         do 2 rewrite H'.
+         rewrite <- Gmult_plus_distr_l.
+         do 2 rewrite (@big_sum_extend_r G H). 
+         do 2 rewrite (@big_sum_mult_l G _ _ _ H2).  
+         rewrite Gplus_comm.
+         apply f_equal_gen; try apply f_equal.
+         all : apply big_sum_eq_bounded; intros. 
+         apply H3; lia. 
+         apply H4; lia. 
+Qed.
+
+Lemma big_sum_rearrange_cancel : forall {G} `{Ring G} (n : nat) (f : nat -> nat -> G),
+  (forall x y, x <= y -> f x y = (-1%G) * (f (S y) x))%G ->
+  (forall x y, y <= x -> f (S x) y = (-1%G) * (f y x))%G ->
+  big_sum (fun i => big_sum (fun j => f i j) n) (S n) = 0%G.
+Proof. induction n as [| n'].
+       - intros; simpl. 
+         rewrite Gplus_0_r; easy.
+       - intros. 
+         rewrite big_sum_extend_double.
+         rewrite (IHn' f); try easy.
+         rewrite Gplus_0_l.
+         rewrite <- big_sum_extend_r.
+         repeat rewrite <- Gplus_assoc.
+         rewrite H3; auto.
+         replace (- (1) * f (S n') n' + f (S n') n')%G with 0%G. 
+         rewrite Gplus_0_r, <- big_sum_plus.
+         rewrite big_sum_0_bounded; auto; intros. 
+         rewrite H4; try lia.
+         all : rewrite Gopp_neg_1, Gopp_l; easy.
+Qed.
+
+
+Local Close Scope nat_scope.
+
 
 (* Lemma specifically for sums over nats
    TODO: can we generalize to other data types with comparison ops?
