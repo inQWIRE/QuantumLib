@@ -1,9 +1,9 @@
 Require Import Psatz.
 Require Import String.
-Require Export Complex.
-Require Import List.
+Require Export Complex. 
+Require Import List. 
 Require Import Setoid.
-
+ 
 Declare Scope poly_scope.
 Delimit Scope poly_scope with P.
 Open Scope poly_scope.
@@ -99,7 +99,7 @@ Fixpoint Pmult (p1 p2 : Polynomial) : Polynomial :=
 Definition Popp (p : Polynomial) : Polynomial :=
   Pmult [-C1] p.
 
-Program Instance P_is_monoid : Monoid Polynomial := 
+Global Program Instance P_is_monoid : Monoid Polynomial := 
   { Gzero := []
   ; Gplus := Pplus
   }.
@@ -125,7 +125,7 @@ Fixpoint Psum (f : nat -> Polynomial) (n : nat) : Polynomial :=
 Infix "≅" := Peq (at level 70) : poly_scope. 
 Infix "+," := Pplus (at level 50, left associativity) : poly_scope. 
 Infix "*," := Pmult (at level 40, left associativity) : poly_scope.
-Notation "-, P" := (Popp P) (at level 30) : poly_scope. 
+Notation "-, P" := (Popp P) (at level 35) : poly_scope. 
 Notation "P [[ x ]]" := (Peval P x) (at level 0) : poly_scope.  
 
 (* some useful lemmas about Peval *)
@@ -1457,9 +1457,9 @@ Proof. intros.
        rewrite Nat.sub_max_distr_r.
        apply Nat.sub_le_mono_r.
        bdestruct (Datatypes.length (compactify p1) <? Datatypes.length (compactify p2)).
-       - rewrite Max.max_r, length_compactify2; try lia. 
+       - rewrite Nat.max_r, length_compactify2; try lia. 
        - bdestruct (Datatypes.length (compactify p2) <? Datatypes.length (compactify p1)).
-         + rewrite Max.max_l, Pplus_comm, length_compactify2; try lia. 
+         + rewrite Nat.max_l, Pplus_comm, length_compactify2; try lia. 
          + apply Nat.le_antisymm in H; auto.
            rewrite <- Pplus_length1.
            apply length_compactify1.
@@ -1501,7 +1501,7 @@ Proof. induction n as [| n'].
        - intros; simpl. 
          apply (Nat.le_trans _ (max (degree (big_sum f n')) (degree (f n')))).
          apply Pplus_degree1.
-         apply Max.max_lub; auto. 
+         apply Nat.max_lub; auto. 
 Qed.
 
 (* we can now prove the zero product property for polynomials *)
@@ -1672,7 +1672,7 @@ Proof. intros.
            replace (degree (p' ++ [a])) with (length p') by 
            (unfold degree; rewrite <- H0, compactify_idempotent, H0, app_length; simpl; lia). 
            rewrite E1. 
-           apply le_lt_n_Sm; apply Psum_degree; intros. 
+           apply Nat.lt_succ_r; apply Psum_degree; intros. 
            replace (map (Cmult (nth i (p' ++ [a]) C0)) (Ppow [- m; C1] i) +, [C0]) with
              ([(nth i (p' ++ [a]) C0)] *, (Ppow [- m; C1] i)) by easy.
            destruct (Peq_0_dec [nth i (p' ++ [a]) 0%R]).
@@ -1719,11 +1719,20 @@ Proof. split; intros.
          assert (H1 : ((t + b/(2*a))^2 + ((a * c)* /a^2 - b^2/4 * /a^2) = 
                         (c / a + b / a * t + t ^ 2))%R).
          { unfold pow; repeat rewrite Rmult_1_r.
-           unfold Rdiv; repeat rewrite Rinv_mult_distr; try lra.
+           unfold Rdiv; repeat rewrite Rinv_mult; try lra.
            replace ((t + b * (/ 2 * / a)) * (t + b * (/ 2 * / a)))%R 
              with (t * t + t * b * / a + (b * b * /a * /a * /4))%R by lra.
-           replace (a * c * (/ a * / a))%R with (c * / a * (a * / a))%R by lra.
-           rewrite Rinv_r, Rmult_1_r; try lra. }
+           replace (a * c * (/ a * / a))%R with (c * / a)%R; [ | shelve ].
+           R_field_simplify.
+           easy.
+           lra.
+           Unshelve.
+           rewrite (Rmult_comm a c).
+           rewrite Rmult_assoc.
+           rewrite <- (Rmult_assoc a (/ a)).
+           rewrite Rinv_r.
+           all: lra.
+         }
          rewrite <- H1.
          apply Rmult_le_pos; try lra.
          apply Rplus_le_le_0_compat.

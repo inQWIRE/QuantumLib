@@ -113,29 +113,29 @@ Infix "^" := Cpow : C_scope.
 
 (** * Showing that C is a field, and a vector space over itself *)
             
-Program Instance C_is_monoid : Monoid C := 
+Global Program Instance C_is_monoid : Monoid C := 
   { Gzero := C0
   ; Gplus := Cplus
   }.
 Solve All Obligations with program_simpl; try lca.
 
-Program Instance C_is_group : Group C :=
+Global Program Instance C_is_group : Group C :=
   { Gopp := Copp }.
 Solve All Obligations with program_simpl; try lca.
         
-Program Instance C_is_comm_group : Comm_Group C.
+Global Program Instance C_is_comm_group : Comm_Group C.
 Solve All Obligations with program_simpl; lca. 
                                              
-Program Instance C_is_ring : Ring C :=
+Global Program Instance C_is_ring : Ring C :=
   { Gone := C1
   ; Gmult := Cmult
   }.
+Solve All Obligations with program_simpl; try lca; apply Ceq_dec. 
+
+Global Program Instance C_is_comm_ring : Comm_Ring C.
 Solve All Obligations with program_simpl; lca. 
 
-Program Instance C_is_comm_ring : Comm_Ring C.
-Solve All Obligations with program_simpl; lca. 
-
-Program Instance C_is_field : Field C :=
+Global Program Instance C_is_field : Field C :=
   { Ginv := Cinv }.
 Next Obligation.
   assert (H := R1_neq_R0).
@@ -148,9 +148,11 @@ Next Obligation.
   apply injective_projections ; simpl ; apply H.
 Qed.
 
-Program Instance C_is_vector_space : Vector_Space C C :=
+Global Program Instance C_is_module_space : Module_Space C C :=
   { Vscale := Cmult }.
 Solve All Obligations with program_simpl; lca. 
+
+Global Program Instance C_is_vector_space : Vector_Space C C.
 
 
 
@@ -369,6 +371,9 @@ rewrite Cmult_comm.
 now apply Cinv_r.
 Qed.
 
+Lemma Cdiv_1_r : forall c, c / C1 = c.
+Proof. intros. lca. Qed.
+
 Lemma Cmult_plus_distr_l (x y z : C) : x * (y + z) = x * y + x * z.
 Proof.
   apply injective_projections ; simpl ; ring.
@@ -469,6 +474,14 @@ Proof.
   now apply Hz2, Cmod_eq_0.
 Qed.
 
+Lemma Cmult_integral : forall c1 c2 : C, c1 * c2 = 0 -> c1 = 0 \/ c2 = 0.
+Proof. intros. 
+       destruct (Ceq_dec c1 0); try (left; easy).
+       destruct (Ceq_dec c2 0); try (right; easy).
+       apply (Cmult_neq_0 c1 c2) in n0; auto.
+       easy. 
+Qed.
+
 Lemma Cminus_eq_contra : forall r1 r2 : C, r1 <> r2 -> r1 - r2 <> 0.
 Proof.
   intros ; contradict H ; apply injective_projections ;
@@ -476,6 +489,40 @@ Proof.
   now apply (f_equal (@fst R R)) in H.
   now apply (f_equal (@snd R R)) in H.
 Qed.
+
+Lemma Cminus_diag : forall r1 r2, r1 = r2 -> r1 - r2 = C0.
+Proof. intros; subst; lca. 
+Qed.
+
+
+Lemma Cminus_eq_0 : forall r1 r2 : C, r1 - r2 = C0 -> r1 = r2.
+Proof. intros.
+       apply injective_projections; 
+         apply Rminus_diag_uniq. 
+       now apply (f_equal (@fst R R)) in H.
+       now apply (f_equal (@snd R R)) in H.
+Qed.
+
+
+Lemma Cmult_cancel_l : forall a c1 c2 : C,
+  a <> C0 ->
+  a * c1 = a * c2 -> c1 = c2.
+Proof. intros. 
+       apply (f_equal_gen (Cmult (/ a)) (Cmult (/ a))) in H0; auto.
+       do 2 rewrite Cmult_assoc in H0.
+       rewrite Cinv_l in H0; auto.
+       do 2 rewrite Cmult_1_l in H0.
+       easy.
+Qed.
+
+Lemma Cmult_cancel_r : forall a c1 c2 : C,
+  a <> C0 ->
+  c1 * a = c2 * a -> c1 = c2.
+Proof. intros. 
+       apply (Cmult_cancel_l a); auto.
+       rewrite Cmult_comm, H0; lca.
+Qed.
+
 
 Lemma C_field_theory : field_theory (RtoC 0) (RtoC 1) Cplus Cmult Cminus Copp Cdiv Cinv eq.
 Proof. apply (@G_field_theory C _ _ _ _ _ C_is_field). Qed.
@@ -614,6 +661,15 @@ Proof.
     * apply Rsum_nonzero. apply C0_imp in H0. assumption.
     * apply Rsum_nonzero. apply C0_imp in H. assumption.
     * apply Rsum_nonzero. apply C0_imp in H0. assumption.
+Qed.
+
+
+Lemma Cinv_inv : forall c : C, c <> C0 -> / / c = c.
+Proof. intros. 
+       apply (Cmult_cancel_l (/ c)).
+       apply nonzero_div_nonzero; auto.
+       rewrite Cinv_l, Cinv_r; auto.
+       apply nonzero_div_nonzero; auto.
 Qed.
 
 
@@ -778,13 +834,22 @@ Proof.
     reflexivity.
 Qed.
 
-Lemma Cpow_nonzero : forall (r : R) (n : nat), (r <> 0 -> r ^ n <> C0)%C. 
+Lemma Cpow_nonzero_real : forall (r : R) (n : nat), (r <> 0 -> r ^ n <> C0)%C. 
 Proof.
   intros.
   rewrite RtoC_pow. 
   apply C0_fst_neq. 
   apply pow_nonzero. 
   lra.
+Qed.
+
+Lemma Cpow_nonzero : forall (c : C) (n : nat), (c <> C0 -> c ^ n <> C0)%C. 
+Proof.
+  intros.
+  induction n.
+  - simpl; apply C1_neq_C0.
+  - simpl. 
+    apply Cmult_neq_0; easy.
 Qed.
 
 Lemma Cpow_add : forall (c : C) (n m : nat), (c ^ (n + m) = c^n * c^m)%C.
@@ -1009,6 +1074,25 @@ Proof.
   apply sqrt2_neq_0.
 Qed.
 
+
+Lemma Cinv_sqrt2_proper : / RtoC (√ 2) = RtoC (√ 2) / 2.
+Proof. rewrite <- Csqrt2_sqrt.
+       unfold Cdiv.
+       rewrite Cinv_mult_distr, Cmult_assoc, Cinv_r. 
+       lca.
+       all : apply RtoC_neq; apply sqrt2_neq_0.
+Qed.
+
+
+Corollary one_sqrt2_Cbasis : forall (a b : Z),
+  (RtoC (IZR a)) + (RtoC (IZR b)) * √2 = 0 -> 
+  (a = 0 /\ b = 0)%Z.
+Proof. intros. 
+       apply one_sqrt2_Rbasis.
+       apply RtoC_inj. 
+       rewrite RtoC_plus, RtoC_mult.
+       easy.
+Qed.
 
 (** * Complex exponentiation **)
 
@@ -1377,8 +1461,8 @@ Hint Rewrite Cplus_0_l Cplus_0_r Cmult_0_l Cmult_0_r Copp_0
 Hint Rewrite Cmult_plus_distr_l Cmult_plus_distr_r Copp_plus_distr Copp_mult_distr_l 
               Copp_involutive : Cdist_db.
 
-Hint Rewrite <- RtoC_opp RtoC_mult RtoC_plus : RtoC_db.
-Hint Rewrite <- RtoC_inv using nonzero : RtoC_db.
+Hint Rewrite RtoC_opp RtoC_mult RtoC_minus RtoC_plus : RtoC_db.
+Hint Rewrite RtoC_inv using nonzero : RtoC_db.
 Hint Rewrite RtoC_pow : RtoC_db.
 
 Ltac Csimpl := 

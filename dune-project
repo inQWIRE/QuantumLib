@@ -1,6 +1,6 @@
 (lang dune 2.8)
 (name coq-quantumlib)
-(version 1.1.0)
+(version 1.2.0)
 (using coq 0.2)
 
 (generate_opam_files true)

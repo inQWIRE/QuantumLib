@@ -1,15 +1,21 @@
-
-
+ 
+ 
 (** This file contains basic utility, definitions, and proofs. *)
 
 Require Export Bool.
 Require Export Arith.
 Require Export Reals.
 Require Export Psatz.
-Require Export Program.
+Require Export Program. 
 Require Export List.
 
 Export ListNotations.
+
+
+(* a lemma that was removed from Coq in 8.16 that I found quite helpful *)
+Lemma le_plus_minus' : forall m n, m <= n -> n = m + (n - m).
+Proof. lia. Qed.
+
 
 
 (***)
@@ -40,7 +46,7 @@ Lemma Sn_minus_1 : forall (n : nat), S n - 1 = n. Proof. lia. Qed.
 Lemma beq_reflect : forall x y, reflect (x = y) (x =? y).
 Proof.
   intros x y.
-  apply iff_reflect. symmetry.  apply beq_nat_true_iff.
+  apply iff_reflect. symmetry.  apply Nat.eqb_eq.
 Qed.
 
 Lemma blt_reflect : forall x y, reflect (x < y) (x <? y).
@@ -175,8 +181,8 @@ Lemma firstn_repeat : forall A (a : A) m n,
 Proof.
   intros.
   bdestruct (m <=? n).
-  - rewrite firstn_repeat_le, Min.min_l; easy.
-  - rewrite firstn_repeat_ge, Min.min_r; trivial; lia.
+  - rewrite firstn_repeat_le, Nat.min_l; easy.
+  - rewrite firstn_repeat_ge, Nat.min_r; trivial; lia.
 Qed.
 
 Lemma skipn_repeat : forall A (a : A) m n, 
@@ -281,7 +287,7 @@ Tactic Notation "gen" ident(X1) ident(X2) ident(X3) ident(X4) ident(X5) :=
 
 Lemma double_mult : forall (n : nat), (n + n = 2 * n)%nat. Proof. intros. lia. Qed.
 Lemma pow_two_succ_l : forall x, (2^x * 2 = 2 ^ (x + 1))%nat.
-Proof. intros. rewrite mult_comm. rewrite <- Nat.pow_succ_r'. intuition. Qed.
+Proof. intros. rewrite Nat.mul_comm. rewrite <- Nat.pow_succ_r'. intuition. Qed.
 Lemma pow_two_succ_r : forall x, (2 * 2^x = 2 ^ (x + 1))%nat.
 Proof. intros. rewrite <- Nat.pow_succ_r'. intuition. Qed.
 Lemma double_pow : forall (n : nat), (2^n + 2^n = 2^(n+1))%nat. 
@@ -295,15 +301,15 @@ Ltac unify_pows_two :=
   repeat match goal with
   (* NB: this first thing is potentially a bad idea, do not do with 2^1 *)
   | [ |- context[ 4%nat ]]                  => replace 4%nat with (2^2)%nat by reflexivity
-  | [ |- context[ (0 + ?a)%nat]]            => rewrite plus_0_l 
-  | [ |- context[ (?a + 0)%nat]]            => rewrite plus_0_r 
+  | [ |- context[ (0 + ?a)%nat]]            => rewrite Nat.add_0_l 
+  | [ |- context[ (?a + 0)%nat]]            => rewrite Nat.add_0_r 
   | [ |- context[ (1 * ?a)%nat]]            => rewrite Nat.mul_1_l 
   | [ |- context[ (?a * 1)%nat]]            => rewrite Nat.mul_1_r 
   | [ |- context[ (2 * 2^?x)%nat]]          => rewrite <- Nat.pow_succ_r'
   | [ |- context[ (2^?x * 2)%nat]]          => rewrite pow_two_succ_l
   | [ |- context[ (2^?x + 2^?x)%nat]]       => rewrite double_pow 
   | [ |- context[ (2^?x * 2^?y)%nat]]       => rewrite <- Nat.pow_add_r 
-  | [ |- context[ (?a + (?b + ?c))%nat ]]   => rewrite plus_assoc 
+  | [ |- context[ (?a + (?b + ?c))%nat ]]   => rewrite Nat.add_assoc
   | [ |- (2^?x = 2^?y)%nat ]                => apply pow_components; try lia 
   end.
 

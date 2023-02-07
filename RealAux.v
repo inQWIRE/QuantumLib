@@ -1,10 +1,10 @@
 (** Supplement to Coq's axiomatized Reals *)
-
+  
 Require Export Reals.
 Require Import Psatz.
 Require Export Program.
 Require Export Summation.
-
+ 
 (** * Basic lemmas *)
 
 (** Relevant lemmas from Coquelicot's Rcomplements.v **)
@@ -166,6 +166,315 @@ Proof. intros; split; intros.
          apply sqrt2_neq_0.
 Qed.
 
+
+
+
+(** Defining 2-adic valuation of an integer and properties *)
+
+Open Scope Z_scope.
+
+(* could return nat, but int seem better *)
+Fixpoint two_val_pos (p : positive) : Z :=
+  match p with 
+  | xO p' => 1 + (two_val_pos p')
+  | _ => 0
+  end.
+
+Fixpoint odd_part_pos (p : positive) : positive :=
+  match p with 
+  | xO p' => odd_part_pos p'
+  | _ => p
+  end.
+
+
+Lemma two_val_pos_mult : forall (p1 p2 : positive),
+  two_val_pos (p1 * p2) = two_val_pos p1 + two_val_pos p2.
+Proof. induction p1; try easy; intros. 
+       - replace (two_val_pos p1~1) with 0 by easy.
+         induction p2; try easy.
+         replace ((xI p1) * (xO p2))%positive with (xO ((xI p1) * p2))%positive by lia.
+         replace (two_val_pos (xO ((xI p1) * p2))%positive) with 
+           (1 + (two_val_pos ((xI p1) * p2)%positive)) by easy.
+         rewrite IHp2; easy.
+       - replace (two_val_pos (xO p1)) with (1 + two_val_pos p1) by easy.
+         rewrite <- Z.add_assoc, <- IHp1.
+         replace ((xO p1) * p2)%positive with (xO (p1 * p2))%positive by lia.
+         easy.
+Qed.
+
+(* TODO: prove at some point, don't actually need this now though. *)
+(*
+Lemma two_val_pos_plus : forall (p1 p2 : positive),
+  two_val_pos (p1 + p2) >= Z.min (two_val_pos p1) (two_val_pos p2).
+Proof. induction p1; try easy; intros.
+       - replace (two_val_pos p1~1) with 0 by easy.
+         induction p2; try easy.
+         replace ((xI p1) * (xO p2))%positive with (xO ((xI p1) * p2))%positive by lia.
+         replace (two_val_pos (xO ((xI p1) * p2))%positive) with 
+           (1 + (two_val_pos ((xI p1) * p2)%positive)) by easy.
+         rewrite IHp2; easy.
+       - replace (two_val_pos (xO p1)) with (1 + two_val_pos p1) by easy.
+         rewrite <- Z.add_assoc, <- IHp1.
+         replace ((xO p1) * p2)%positive with (xO (p1 * p2))%positive by lia.
+         easy.
+Qed. *)
+
+
+
+
+(* CHECK: maybe only need these for positives since we split on 0, pos, neg, anyways *)
+
+Definition two_val (z : Z) : Z :=
+  match z with 
+  | Z0 => 0 (* poorly defined on 0 *)
+  | Zpos p => two_val_pos p
+  | Zneg p => two_val_pos p
+  end.
+
+
+Definition odd_part (z : Z) : Z :=
+  match z with 
+  | Z0 => 0  (* poorly defined on 0 *)
+  | Zpos p => Zpos (odd_part_pos p)
+  | Zneg p => Zneg (odd_part_pos p)
+  end.
+
+
+(* useful for below since its easier to induct on nats rather than ints *)
+Coercion Z.of_nat : nat >-> Z.
+
+(* helper for the next section to go from nats to ints *)
+Lemma Z_plusminus_nat : forall z : Z, 
+  (exists n : nat, z = n \/ z = - n)%Z.
+Proof. intros. 
+       destruct z.
+       - exists O; left; easy.
+       - exists (Pos.to_nat p); left; lia.
+       - exists (Pos.to_nat p); right; lia.
+Qed.
+
+Lemma two_val_mult : forall (z1 z2 : Z),
+  z1 <> 0 -> z2 <> 0 ->
+  two_val (z1 * z2) = two_val z1 + two_val z2.
+Proof. intros.
+       destruct z1; destruct z2; simpl; try easy.
+       all : rewrite two_val_pos_mult; easy.
+Qed.
+         
+(* TODO: should prove this, but don't actually need it. 
+Lemma two_val_plus : forall (z1 z2 : Z),
+  z1 <> 0 -> z2 <> 0 -> 
+  z1 + z2 <> 0 ->
+  two_val (z1 + z2) >= Z.min (two_val z1) (two_val z2).
+Proof. intros.
+       destruct z1; destruct z2; try easy.
+*)
+       
+
+
+Lemma two_val_odd_part : forall (z : Z),
+  two_val (2 * z + 1) = 0.
+Proof. intros. 
+       destruct z; auto.
+       destruct p; auto.
+Qed.
+
+Lemma two_val_even_part : forall (a : Z),
+  a >= 0 -> two_val (2 ^ a) = a.
+Proof. intros.
+       destruct (Z_plusminus_nat a) as [x [H0 | H0]]; subst.
+       induction x; auto.
+       replace (S x) with (1 + x)%nat by lia.
+       rewrite Nat2Z.inj_add, Z.pow_add_r, two_val_mult; try lia.
+       rewrite IHx; auto; try lia.
+       try (apply (Z.pow_nonzero 2 x); lia).
+       induction x; auto.
+       replace (S x) with (1 + x)%nat by lia.
+       rewrite Nat2Z.inj_add, Z.opp_add_distr, Z.pow_add_r, two_val_mult; try lia.
+Qed.
+
+Lemma twoadic_nonzero : forall (a b : Z),
+  a >= 0 -> 2^a * (2 * b + 1) <> 0.
+Proof. intros. 
+       apply Z.neq_mul_0; split; try lia;
+       try (apply Z.pow_nonzero; lia).
+Qed.
+
+Lemma get_two_val : forall (a b : Z),
+  a >= 0 -> 
+  two_val (2^a * (2 * b + 1)) = a.
+Proof. intros. 
+       rewrite two_val_mult; auto.
+       rewrite two_val_odd_part, two_val_even_part; try lia.
+       apply Z.pow_nonzero; try lia.
+       lia.
+Qed.       
+
+Lemma odd_part_reduce : forall (a : Z),
+  odd_part (2 * a) = odd_part a.
+Proof. intros.
+       induction a; try easy.
+Qed.
+
+Lemma get_odd_part : forall (a b : Z),
+  a >= 0 -> 
+  odd_part (2^a * (2 * b + 1)) = 2 * b + 1.
+Proof. intros. 
+       destruct (Z_plusminus_nat a) as [x [H0 | H0]]; subst.
+       induction x; try easy.
+       - replace (2 ^ 0%nat * (2 * b + 1)) with (2 * b + 1) by lia.
+         destruct b; simpl; auto.
+         induction p; simpl; easy.
+       - replace (2 ^ S x * (2 * b + 1)) with (2 * (2 ^ x * (2 * b + 1))).
+         rewrite odd_part_reduce, IHx; try lia.
+         replace (S x) with (1 + x)%nat by lia.
+         rewrite Nat2Z.inj_add, Z.pow_add_r; try lia.
+       - destruct x; try easy.
+         replace (2 ^ (- 0%nat) * (2 * b + 1)) with (2 * b + 1) by lia.
+         destruct b; simpl; auto.
+         induction p; simpl; easy.
+Qed.       
+
+Lemma break_into_parts : forall (z : Z),
+  z <> 0 -> exists a b, a >= 0 /\ z = (2^a * (2 * b + 1)).
+Proof. intros. 
+       destruct z; try easy.
+       - induction p.
+         + exists 0, (Z.pos p); try easy.
+         + destruct IHp as [a [b [H0 H1]]]; try easy.
+           exists (1 + a), b.
+           replace (Z.pos (xO p)) with (2 * Z.pos p) by easy.
+           split; try lia.
+           rewrite H1, Z.pow_add_r; try lia.
+         + exists 0, 0; split; try lia.
+       - induction p.
+         + exists 0, (Z.neg p - 1); try easy; try lia.
+         + destruct IHp as [a [b [H0 H1]]]; try easy.
+           exists (1 + a), b.
+           replace (Z.neg (xO p)) with (2 * Z.neg p) by easy.
+           split; try lia.
+           rewrite H1, Z.pow_add_r; try lia.
+         + exists 0, (-1); split; try lia.
+Qed.
+
+Lemma twoadic_breakdown : forall (z : Z),
+  z <> 0 -> z = (2^(two_val z)) * (odd_part z).
+Proof. intros. 
+       destruct (break_into_parts z) as [a [b [H0 H1]]]; auto.
+       rewrite H1, get_two_val, get_odd_part; easy.
+Qed.
+
+Lemma odd_part_pos_odd : forall (p : positive),
+  (exists p', odd_part_pos p = xI p') \/ (odd_part_pos p = xH).
+Proof. intros.
+       induction p.
+       - left; exists p; easy. 
+       - destruct IHp.
+         + left. 
+           destruct H.
+           exists x; simpl; easy.
+         + right; simpl; easy.
+       - right; easy.
+Qed.
+
+Lemma odd_part_0 : forall (z : Z),
+  odd_part z = 0 -> z = 0.
+Proof. intros.
+       destruct z; simpl in *; easy.
+Qed.
+
+Lemma odd_part_odd : forall (z : Z),
+  z <> 0 -> 
+  2 * ((odd_part z - 1) / 2) + 1 = odd_part z.
+Proof. intros. 
+       rewrite <- (Zdiv.Z_div_exact_full_2 _ 2); try lia.
+       destruct z; try easy; simpl;
+         destruct (odd_part_pos_odd p).
+       - destruct H0; rewrite H0; simpl.
+         rewrite Pos2Z.pos_xO, Zmult_comm, Zdiv.Z_mod_mult.
+         easy.
+       - rewrite H0; easy.
+       - destruct H0; rewrite H0; simpl.
+         rewrite (Pos2Z.neg_xO (Pos.succ x)), Zmult_comm, Zdiv.Z_mod_mult. 
+         easy.
+       - rewrite H0; easy. 
+Qed.
+
+Lemma two_val_ge_0 : forall (z : Z),
+  two_val z >= 0.
+Proof. intros. 
+       destruct z; simpl; try lia.
+       - induction p; try (simpl; lia). 
+         replace (two_val_pos p~0) with (1 + two_val_pos p) by easy.
+         lia. 
+       - induction p; try (simpl; lia). 
+         replace (two_val_pos p~0) with (1 + two_val_pos p) by easy.
+         lia. 
+Qed.
+     
+
+
+
+(*
+ *
+ *
+ *)
+
+
+Close Scope Z_scope.
+
+
+(** proving that sqrt2 is irrational! *)
+
+
+(* note that the machinery developed in the previous section makes this super easy, 
+   although does not generalize for other primes *)
+Lemma two_not_square : forall (a b : Z),
+  (b <> 0)%Z -> 
+  ~ (a*a = b*b*2)%Z.
+Proof. intros.  
+       unfold not; intros. 
+       destruct (Z.eq_dec a 0); try lia. 
+       apply (f_equal_gen two_val two_val) in H0; auto.
+       do 3 (rewrite two_val_mult in H0; auto); try lia.
+       replace (two_val 2) with 1%Z in H0 by easy.
+       lia. 
+Qed.
+
+
+Theorem sqrt2_irrational : forall (a b : Z),
+  (b <> 0)%Z -> ~ (IZR a = (IZR b) * √ 2).
+Proof. intros. 
+       apply (two_not_square a b) in H.
+       unfold not; intros; apply H.
+       apply (f_equal_gen (fun x => x * x) (fun x => x * x)) in H0; auto.
+       rewrite Rmult_assoc, (Rmult_comm (√ 2)), Rmult_assoc, 
+         sqrt_def, <- Rmult_assoc in H0; try lra.
+       repeat rewrite <- mult_IZR in H0.
+       apply eq_IZR in H0.
+       easy.
+Qed.
+
+
+Corollary one_sqrt2_Rbasis : forall (a b : Z),
+  (IZR a) + (IZR b) * √2 = 0 -> 
+  (a = 0 /\ b = 0)%Z.
+Proof. intros. 
+       destruct (Req_dec (IZR b) 0); subst.
+       split.
+       rewrite H0, Rmult_0_l, Rplus_0_r in H.
+       all : try apply eq_IZR; auto.
+       apply Rplus_opp_r_uniq in H; symmetry in H.
+       assert (H' : b <> 0%Z).
+       unfold not; intros; apply H0.
+       rewrite H1; auto.
+       apply (sqrt2_irrational (-a) b) in H'.
+       rewrite Ropp_Ropp_IZR in H'.
+       easy.
+Qed.
+
+
+
 (* Automation *)
 Ltac R_field_simplify := repeat field_simplify_eq [pow2_sqrt2 sqrt2_inv].
 Ltac R_field := R_field_simplify; easy.
@@ -321,37 +630,42 @@ Qed.
 
 (** * Showing that R is a field, and a vector space over itself *)
 
-Program Instance R_is_monoid : Monoid R := 
+Global Program Instance R_is_monoid : Monoid R := 
   { Gzero := 0
   ; Gplus := Rplus
   }.
 Solve All Obligations with program_simpl; try lra.
 
-Program Instance R_is_group : Group R :=
+Global Program Instance R_is_group : Group R :=
   { Gopp := Ropp }.
 Solve All Obligations with program_simpl; try lra.
 
-Program Instance R_is_comm_group : Comm_Group R.
+Global Program Instance R_is_comm_group : Comm_Group R.
 Solve All Obligations with program_simpl; lra. 
 
-Program Instance R_is_ring : Ring R :=
+Global Program Instance R_is_ring : Ring R :=
   { Gone := 1
   ; Gmult := Rmult
   }.
-Solve All Obligations with program_simpl; lra. 
+Solve All Obligations with program_simpl; try lra. 
+Next Obligation. try apply Req_EM_T. Qed.
 
-Program Instance R_is_comm_ring : Comm_Ring R.
+
+Global Program Instance R_is_comm_ring : Comm_Ring R.
 Solve All Obligations with program_simpl; lra. 
                                                      
-Program Instance R_is_field : Field R :=
+Global Program Instance R_is_field : Field R :=
   { Ginv := Rinv }.
 Next Obligation. 
   rewrite Rinv_r; easy.
 Qed.
 
-Program Instance R_is_vector_space : Vector_Space R R :=
+Global Program Instance R_is_module_space : Module_Space R R :=
   { Vscale := Rmult }.
 Solve All Obligations with program_simpl; lra. 
+
+
+Global Program Instance R_is_vector_space : Vector_Space R R.  
 
 
 

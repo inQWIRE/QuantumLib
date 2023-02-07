@@ -12,7 +12,7 @@ Require Import Setoid.
 
 
 
-Program Instance list_is_monoid {X} : Monoid (list X) := 
+Global Program Instance list_is_monoid {X} : Monoid (list X) := 
   { Gzero := []
   ; Gplus := @app X
   }.
@@ -236,11 +236,12 @@ Qed.
 
 
 
-
+(* TODO: figure out how to get rid of Geq_dec - it is already in Summation.v for rings *)
+(* shouldn't equality on finite types be decidable? *)
 Class FiniteGroup G `{Group G} :=
   { G_list_rep : list G
   ; G_finite_ver : Listing G_list_rep      
-  ; G_eq_dec : forall x y : G, {x = y} + {x <> y}
+  ; Geq_dec : forall g h : G, { g = h } + { g <> h }           
   }.
 
 Infix "·" := Gplus (at level 40) : group_scope.
@@ -515,7 +516,7 @@ Proof. intros.
        apply in_map_iff.
        exists a; split; easy.
        apply (in_coset_cancel H G); auto.
-       apply G_eq_dec.
+       apply Geq_dec.
        apply G_finite_ver.
 Qed.       
 
@@ -720,14 +721,14 @@ Definition quatMul (q1 q2 : Quaternion) : Quaternion :=
 
 
   
-Program Instance quat_is_monoid : Monoid Quaternion := 
+Global Program Instance quat_is_monoid : Monoid Quaternion := 
   { Gzero := p_1
   ; Gplus := quatMul
   }.
 Solve All Obligations with program_simpl; destruct g; try easy; destruct h; destruct i; easy. 
 
 
-Program Instance quat_is_group : Group Quaternion :=
+Global Program Instance quat_is_group : Group Quaternion :=
   { Gopp := quatInv }.
 Solve All Obligations with program_simpl; destruct g; try easy. 
 
@@ -745,7 +746,7 @@ Qed.
 Definition quat_list : list Quaternion := [p_1; p_i; p_j; p_k; n_1; n_i; n_j; n_k].
 
 
-Program Instance quat_is_finitegroup : FiniteGroup Quaternion := 
+Global Program Instance quat_is_finitegroup : FiniteGroup Quaternion := 
   { G_list_rep := quat_list
   }.
 Next Obligation. 
@@ -758,7 +759,7 @@ Proof. split.
            repeat (try (left; easy); right).
 Qed.
 Next Obligation.
-Proof. destruct x; destruct y; try (left; easy); right; easy. Qed.
+Proof. destruct g; destruct h; try (left; easy); right; easy. Qed.
 
 
 (* **) 

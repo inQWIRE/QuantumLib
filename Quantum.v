@@ -1314,6 +1314,17 @@ Proof.
   intros. solve_matrix. rewrite Cexp_add. reflexivity.
 Qed.  
 
+Lemma phase_pow : forall θ n, n ⨉ (phase_shift θ) = phase_shift (INR n * θ).
+Proof. 
+  intros. 
+  induction n.
+  - simpl; rewrite Rmult_0_l, phase_0.
+    reflexivity. 
+  - replace (INR (S n) * θ)%R with (θ + INR n * θ)%R by (rewrite S_INR; lra).
+    rewrite <- phase_mul, <- IHn.
+    easy.
+Qed.  
+
 (* Old, can probably remove *)
 Lemma phase_PI4_m8 : forall k,
   phase_shift (IZR k * PI / 4) = phase_shift (IZR (k - 8) * PI / 4).
@@ -1335,6 +1346,26 @@ Qed.
 
 
 Hint Rewrite phase_0 phase_2pi phase_pi phase_neg_pi : Q_db.
+
+
+(* now we get some more identities: *)
+
+
+Lemma MmultSS : Sgate × Sgate = σz. 
+Proof. unfold Sgate.
+       rewrite phase_mul.
+       replace (PI / 2 + PI / 2)%R with PI by lra.
+       rewrite phase_pi.
+       easy.
+Qed.
+
+Lemma MmultTT : Tgate × Tgate = Sgate. 
+Proof. unfold Sgate, Tgate.
+       rewrite phase_mul.
+       apply f_equal; lra.
+Qed.
+
+Hint Rewrite MmultSS MmultTT : Q_db.
 
 
 (*****************************)

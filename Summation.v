@@ -1,15 +1,15 @@
 Require Import List.
 Require Export Prelim.
-
-
-
+ 
+ 
+  
 Declare Scope group_scope.
 Delimit Scope group_scope with G.
 
 Open Scope group_scope.
-
-
-(* TODO: try reserved notation *)
+   
+   
+(* TODO: try reserved notation *) 
 Class Monoid G :=
   { Gzero : G
   ; Gplus : G -> G -> G
@@ -22,11 +22,10 @@ Infix "+" := Gplus : group_scope.
 Notation "0" := Gzero : group_scope.
 
 
-      
 Class Group G `{Monoid G} :=
   { Gopp : G -> G
   ; Gopp_l : forall g, (Gopp g) + g = 0
-  ; Gopp_r : forall g, g + (Gopp g) = 0             
+  ; Gopp_r : forall g, g + (Gopp g) = 0 
   }.
 
 Class Comm_Group G `{Group G} :=
@@ -38,6 +37,19 @@ Notation "- x" := (Gopp x) : group_scope.
 Infix "-" := Gminus : group_scope.
 
 
+
+(* TODO: 
+
+Lemma test : forall x1 x2 x3 x4 x5, 1 + x1 * x2 + x3 + x4 = 2 + x2 + x4... 
+could use free ring and then call ring tactic 
+
+Look in qwire's monoid file for an example 
+
+*)
+
+
+
+(* Geq_dec could be in Monoid, but then lists and matrices wont be monoids *)
 Class Ring R `{Comm_Group R} :=
   { Gone : R
   ; Gmult : R -> R -> R                 
@@ -46,6 +58,7 @@ Class Ring R `{Comm_Group R} :=
   ; Gmult_assoc : forall a b c, Gmult a (Gmult b c) = Gmult (Gmult a b) c 
   ; Gmult_plus_distr_l : forall a b c, Gmult c (a + b) = (Gmult c a) + (Gmult c b)
   ; Gmult_plus_distr_r : forall a b c, Gmult (a + b) c = (Gmult a c) + (Gmult b c)
+  ; Geq_dec : forall a b : R, { a = b } + { a <> b }             
   }.
 
 Class Comm_Ring R `{Ring R} :=
@@ -64,7 +77,8 @@ Definition Gdiv {G} `{Field G} (g1 g2 : G) := Gmult g1 (Ginv g2).
 Notation "/ x" := (Ginv x) : group_scope.
 Infix "/" := Gdiv : group_scope.
 
-Class Vector_Space V F `{Comm_Group V} `{Field F} :=
+
+Class Module_Space V F `{Comm_Group V} `{Comm_Ring F} :=
   { Vscale : F -> V -> V 
   ; Vscale_1 : forall v, Vscale 1 v = v
   ; Vscale_dist : forall a u v, Vscale a (u + v) = Vscale a u + Vscale a v
@@ -72,6 +86,10 @@ Class Vector_Space V F `{Comm_Group V} `{Field F} :=
   }.  
 
 Infix "⋅" := Vscale (at level 40) : group_scope.
+
+Class Vector_Space V F `{Comm_Group V} `{Field F}. 
+
+
 
 
 (* showing that our notation of comm_ring and field is the same as coqs ring and field tactics *)
@@ -98,6 +116,7 @@ Proof. intros.
        easy.
        intros; rewrite Gmult_comm, Ginv_r; easy. 
 Qed.
+
 
 (*
 Add Field C_field_field : C_field_theory.
@@ -150,7 +169,7 @@ Proof. intros.
        easy. 
 Qed.
 
-Lemma Vscale_zero : forall {V F} `{Vector_Space V F} (c : F),
+Lemma Vscale_zero : forall {V F} `{Module_Space V F} (c : F),
   c ⋅ 0 = 0.
 Proof. intros.
        apply (Gplus_cancel_l _ _ (c ⋅ 0)).
@@ -170,6 +189,16 @@ Proof. intros.
        apply (Gplus_cancel_l _ _ (r * 0)).
        rewrite Gplus_0_r, <- Gmult_plus_distr_l, Gplus_0_r; easy. 
 Qed. 
+
+
+Lemma Gopp_neg_1 : forall {R} `{Ring R} (r : R), -1%G * r = -r.
+Proof. intros.
+       apply (Gplus_cancel_l _ _ r).
+       rewrite Gopp_r.
+       replace (Gplus r) with (Gplus (1 * r)) by (rewrite Gmult_1_l; easy).
+       rewrite <- Gmult_plus_distr_r, Gopp_r, Gmult_0_l; easy.
+Qed.       
+
 
 Lemma Ginv_l : forall {F} `{Field F} (f : F), f <> 0 -> (Ginv f) * f = 1.
 Proof. intros; rewrite Gmult_comm; apply Ginv_r; easy. Qed.
@@ -211,13 +240,11 @@ Qed.
 
 (* showing that nat is a monoid *)
 
-Program Instance nat_is_monoid : Monoid nat := 
+Global Program Instance nat_is_monoid : Monoid nat := 
   { Gzero := 0
   ; Gplus := plus
   }.
 Solve All Obligations with program_simpl; try lia.
-
-
 
 
 
@@ -267,7 +294,7 @@ Qed.
 
 Lemma big_sum_eq : forall {G} `{Monoid G} f g n, f = g -> big_sum f n = big_sum g n.
 Proof. intros; subst; reflexivity. Qed.
-
+ 
 Lemma big_sum_0_bounded : forall {G} `{Monoid G} f n, 
     (forall x, (x < n)%nat -> f x = 0) -> big_sum f n = 0. 
 Proof.
@@ -363,7 +390,7 @@ Proof.
     rewrite Gplus_comm; easy.
 Qed.
 
-Lemma big_sum_scale_l : forall {G} {V} `{Vector_Space G V} c f n, 
+Lemma big_sum_scale_l : forall {G} {V} `{Module_Space G V} c f n, 
     c ⋅ big_sum f n = big_sum (fun x => c ⋅ f x) n.
 Proof.
   intros.
@@ -371,7 +398,7 @@ Proof.
   + apply Vscale_zero.
   + rewrite <- IHn.
     rewrite Vscale_dist.
-    reflexivity.
+    reflexivity. 
 Qed.
 
 (* there is a bit of akwardness in that these are very similar and sometimes 
@@ -435,7 +462,7 @@ Proof.
   + rewrite Gplus_assoc, IHn.
     simpl; reflexivity.
 Qed.
-
+ 
 Lemma big_sum_unique : forall {G} `{Monoid G} k (f : nat -> G) n, 
   (exists x, (x < n)%nat /\ f x = k /\ (forall x', x' < n -> x <> x' -> f x' = 0)) ->
   big_sum f n = k.
@@ -457,7 +484,7 @@ Proof.
     intros.
     apply Unique; try easy; lia.
 Qed.  
-
+ 
 Lemma big_sum_sum : forall {G} `{Monoid G} m n f, 
   big_sum f (m + n) = big_sum f m + big_sum (fun x => f (m + x)%nat) n. 
 Proof.
@@ -468,7 +495,7 @@ Proof.
     rewrite IHm.
     repeat rewrite <- Gplus_assoc.
     remember (fun y => f (m + y)%nat) as g.
-    replace (f m) with (g O) by (subst; rewrite plus_0_r; reflexivity).
+    replace (f m) with (g O) by (subst; rewrite Nat.add_0_r; reflexivity).
     replace (f (m + n)%nat) with (g n) by (subst; reflexivity).
     replace (big_sum (fun x : nat => f (S (m + x))) n) with
             (big_sum (fun x : nat => g (S x)) n).
@@ -504,15 +531,16 @@ Proof.
       intros x Hx.
       rewrite Nat.div_add_l by assumption.
       rewrite Nat.div_small; trivial.
-      rewrite plus_0_r.
+      rewrite Nat.add_0_r.
       rewrite Nat.add_mod by assumption.
       rewrite Nat.mod_mul by assumption.
-      rewrite plus_0_l.
+      rewrite Nat.add_0_l.
       repeat rewrite Nat.mod_small; trivial. }
     rewrite <- big_sum_sum.
-    rewrite plus_comm.
+    rewrite Nat.add_comm.
     reflexivity.
 Qed. 
+
 
 Local Open Scope nat_scope.
 
@@ -526,9 +554,9 @@ Proof. induction m as [| m'].
          rewrite big_sum_sum.
          apply f_equal_gen; try (apply f_equal_gen; easy).
          apply big_sum_eq_bounded; intros.
-         rewrite mult_comm.
-         rewrite Nat.div_add_l; try lia. 
-         rewrite (plus_comm (m' * n)).
+         rewrite Nat.mul_comm.
+         rewrite Nat.div_add_l; try lia.  
+         rewrite (Nat.add_comm (m' * n)).
          rewrite Nat.mod_add; try lia.
          destruct (Nat.mod_small_iff x n) as [_ HD]; try lia.
          destruct (Nat.div_small_iff x n) as [_ HA]; try lia.
@@ -558,8 +586,8 @@ Proof. intros.
        rewrite <- big_sum_plus.
        apply big_sum_eq_bounded; intros. 
        easy.
-Qed.
-
+Qed. 
+ 
 Lemma nested_big_sum : forall {G} `{Monoid G} m n f,
   big_sum f (2 ^ (m + n))
     = big_sum (fun x => big_sum (fun y => f (x * 2 ^ n + y)%nat) (2 ^ n)) (2 ^ m).
@@ -583,6 +611,7 @@ Proof.
   lia.
 Qed.
 
+(* this is basically big_sum_assoc *)
 Lemma big_sum_swap_order : forall {G} `{Comm_Group G} (f : nat -> nat -> G) m n,
   big_sum (fun j => big_sum (fun i => f j i) m) n = 
     big_sum (fun i => big_sum (fun j => f j i) n) m.
@@ -617,7 +646,7 @@ Proof.
   { apply IHn. intros. apply H. lia. }
   lia.
 Qed.
-
+ 
 (*
  *
  *
