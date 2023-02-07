@@ -163,7 +163,9 @@ Lemma embed_commutes : forall (dim : nat) (lp1 lp2 : list ((Square 2) * nat)),
       - simpl in *. inversion H; subst.
       auto.
       - inversion H0; auto.
-      - simpl in H1. rewrite Forall_cons_iff in H1. apply H1.
+      - simpl in H1. 
+        apply Forall_inv_tail in H1.
+        assumption.
     + destruct x, y. apply embed_commutes_base.
       - simpl in H0. inversion H0; subst. simpl in *. intros n0eqn. apply H4. auto.
       - simpl in *. inversion H; subst.
