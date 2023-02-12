@@ -6,7 +6,7 @@
 Require Import Psatz.  
 Require Import Reals.
   
-Require Export GenMatrix.
+Require Export RowColOps.
 
 
 (************************************)
@@ -14,9 +14,10 @@ Require Export GenMatrix.
 (************************************)
 
 Local Open Scope nat_scope.
+Open Scope genmatrix_scope.
 
 
-Section LinAlgOverCommRing2.
+Section LinAlgOverCommRing3.
   Variables (F : Type).   (* F for ring, too bad R is taken :( *)
   Variable (R0 : Monoid F).
   Variable (R1 : Group F).
@@ -25,19 +26,29 @@ Section LinAlgOverCommRing2.
   Variable (R4 : Comm_Ring F).
 
 
+
+
+  
+(*  
 (* TODO: figure out how to get these straight from GenMatrix.v *)
 Notation Vector n := (GenMatrix n 1).
 
 Notation Square n := (GenMatrix n n).
-
-
-(* in many cases, n needs to be made explicit, but not always, hence it is made implicit here *)
-Definition e_i {n : nat} (i : nat) : GenMatrix n 1 :=
-  fun x y => (if (x =? i) && (x <? n) && (y =? 0) then 1 else 0). 
+ *)
 
   
+
+(* in many cases, n needs to be made explicit, but not always, hence it is made implicit here *)
+Definition e_i {n : nat} (i : nat) : Vector n :=
+  fun x y => (if (x =? i) && (x <? n) && (y =? 0) then 1 else 0). 
+
+Open Scope genmatrix_scope.
+
+
+Infix ".*" := scale (at level 40, left associativity) : genmatrix_scope.
+  
 (* using previous def's, takes matrix and increases its rank by 1 (assuming c <> 0) *)
-Definition pad1 {n m : nat} (A : Matrix n m) (c : F) : Matrix (S n) (S m) :=
+Definition pad1 {n m : nat} (A : GenMatrix n m) (c : F) : GenMatrix (S n) (S m) :=
   col_wedge (row_wedge A Zero 0) (c .* e_i 0) 0.
 
 Lemma WF_pad1 : forall {n m : nat} (A : Matrix n m) (c : C),

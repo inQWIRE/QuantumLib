@@ -1,4 +1,4 @@
-
+ 
 
 Require Import Psatz.  
 Require Import Reals. 
@@ -40,21 +40,6 @@ Notation Vector n := (Vector F n).
 
 Notation Σ := (@big_sum F R0).  (* we intoduce Σ notation here *) 
 
-
-
-(* Much less awful *)
-Ltac show_wf := 
-  unfold WF_GenMatrix;
-  let x := fresh "x" in
-  let y := fresh "y" in
-  let H := fresh "H" in
-  intros x y [H | H];
-  apply le_plus_minus' in H; rewrite H;
-  cbv;
-  destruct_m_eq;
-  try ring.
-
-
 (* Create HintDb wf_db. *)
 Hint Resolve WF_Zero WF_I WF_I1 WF_mult WF_plus WF_scale WF_transpose
      WF_outer_product WF_big_kron WF_kron_n WF_kron 
@@ -63,79 +48,27 @@ Hint Extern 2 (_ = _) => unify_pows_two : wf_db.
 
 
 
-(* Utility tactics *)
-Ltac has_hyp P :=
-  match goal with
-    | [ _ : P |- _ ] => idtac
-  end.
-
-Ltac no_hyp P :=
-  match goal with
-    | [ _ : P |- _ ] => fail 1
-    | _             => idtac
-  end.
-
-(* staggered, because it seems to speed things up (it shouldn't) *)
-Ltac auto_wf :=
-  try match goal with
-      |- WF_GenMatrix _ => auto with wf_db;
-                      auto 10 with wf_db;
-                      auto 20 with wf_db;
-                      auto 40 with wf_db;
-                      auto 80 with wf_db;
-                      auto 160 with wf_db
-      end.
-
-(* Puts all well-formedness conditions for M into the context *)
-Ltac collate_wf' M :=
-  match M with
-  (* already in context *)
-  | ?A        => has_hyp (WF_GenMatrix A)
-  (* recursive case *)
-  | ?op ?A ?B => collate_wf' A;
-                collate_wf' B;
-                assert (WF_GenMatrix (op A B)) by auto with wf_db
-  (* base case *)
-  | ?A =>        assert (WF_GenMatrix A) by auto with wf_db
-  (* not a matrix *)
-  | _         => idtac
-  end.
-  
-(* Aggregates well-formedness conditions for context *)
-Ltac collate_wf :=
-  match goal with
-  | |- ?A = ?B      => collate_wf' A; collate_wf' B
-  | |- ?A == ?B     => collate_wf' A; collate_wf' B
-  | |- WF_GenMatrix ?A => collate_wf' A
-  | |- context[?A]  => collate_wf' A 
-  end.
-
-Ltac solve_wf := collate_wf; easy. 
-
-
-
 
 
                     
-
 (** * Defining matrix altering/col operations *)
 
 (*TODO: sometimes its n m and other times its m n, should be consistant *)
-Definition get_col {n m} (i : nat) (S : GenMatrix n m) : GenMatrix n 1 :=
-  fun x y => (if (y =? 0) then S x i else 0%G).   
+Definition get_col {m n} (T : GenMatrix m n) (i : nat) : Vector m :=
+  fun x y => (if (y =? 0) then T x i else 0%G).   
 
-Definition get_row {n m} (i : nat) (S : GenMatrix n m) : GenMatrix 1 m :=
-  fun x y => (if (x =? 0) then S i y else 0%G).  
+Definition get_row {m n} (T : GenMatrix m n) (i : nat) : GenMatrix 1 n :=
+  fun x y => (if (x =? 0) then T i y else 0%G).  
 
-Definition reduce_row {n m} (A : GenMatrix (S n) m) (row : nat) : GenMatrix n m :=
+Definition reduce_row {m n} (T : GenMatrix (S m) n) (row : nat) : GenMatrix m n :=
   fun x y => if x <? row
-             then A x y
-             else A (1 + x) y.
+             then T x y
+             else T (1 + x) y.
 
-Definition reduce_col {n m} (A : GenMatrix n (S m)) (col : nat) : GenMatrix n m :=
+Definition reduce_col {m n} (T : GenMatrix m (S n)) (col : nat) : GenMatrix m n :=
   fun x y => if y <? col
-             then A x y
-             else A x (1 + y).
+             then T x y
+             else T x (1 + y).
 
 (* more specific form for vectors *)
 Definition reduce_vecn {n} (v : Vector (S n)) : Vector n :=
@@ -145,7 +78,7 @@ Definition reduce_vecn {n} (v : Vector (S n)) : Vector n :=
 
 (* More specific form for squares *)
 (* TODO: rename this function and lemmas "get_minor" because... it gets the (i,j) minor!!! *)
-Definition reduce {n} (A : Square (S n)) (row col : nat) : Square n :=
+Definition get_minor {n} (A : Square (S n)) (row col : nat) : Square n :=
   fun x y => (if x <? row 
               then (if y <? col 
                     then A x y
@@ -154,128 +87,121 @@ Definition reduce {n} (A : Square (S n)) (row col : nat) : Square n :=
                     then A (1+x) y
                     else A (1+x) (1+y))).
 
-Definition col_append {n m} (T : GenMatrix n m) (v : Vector n) : GenMatrix n (S m) :=
-  fun i j => if (j =? m) then v i 0 else T i j.
-
-Definition row_append {n m} (T : GenMatrix n m) (v : GenMatrix 1 m) : GenMatrix (S n) m :=
-  fun i j => if (i =? n) then v 0 j else T i j.
-
 (* more general than col_append *)
-Definition smash {n m1 m2} (T1 : GenMatrix n m1) (T2 : GenMatrix n m2) : GenMatrix n (m1 + m2) :=
-  fun i j => if j <? m1 then T1 i j else T2 i (j - m1).
+Definition smash {m n1 n2} (T1 : GenMatrix m n1) (T2 : GenMatrix m n2) : GenMatrix m (n1 + n2) :=
+  fun i j => if j <? n1 then T1 i j else T2 i (j - n1).
 
 (* TDOO: these are more general than col/row_append, may want to remove xx_append *)
-Definition col_wedge {n m} (T : GenMatrix n m) (v : Vector n) (spot : nat) : GenMatrix n (S m) :=
+Definition col_wedge {m n} (T : GenMatrix m n) (v : Vector m) (spot : nat) : GenMatrix m (S n) :=
   fun i j => if j <? spot 
              then T i j
              else if j =? spot
                   then v i 0
                   else T i (j-1).
 
-Definition row_wedge {n m} (T : GenMatrix n m) (v : GenMatrix 1 m) (spot : nat) : GenMatrix (S n) m :=
+Definition row_wedge {m n} (T : GenMatrix m n) (v : GenMatrix 1 m) (spot : nat) : GenMatrix (S m) n :=
   fun i j => if i <? spot 
              then T i j
              else if i =? spot
                   then v 0 j
                   else T (i-1) j.
 
-Definition col_swap {n m : nat} (S : GenMatrix n m) (x y : nat) : GenMatrix n m := 
+Definition col_swap {m n} (T : GenMatrix m n) (x y : nat) : GenMatrix m n := 
   fun i j => if (j =? x) 
-             then S i y
+             then T i y
              else if (j =? y) 
-                  then S i x
-                  else S i j.
+                  then T i x
+                  else T i j.
 
-Definition row_swap {n m : nat} (S : GenMatrix n m) (x y : nat) : GenMatrix n m := 
+Definition row_swap {m n} (T : GenMatrix m n) (x y : nat) : GenMatrix m n := 
   fun i j => if (i =? x) 
-             then S y j
+             then T y j
              else if (i =? y) 
-                  then S x j
-                  else S i j.
+                  then T x j
+                  else T i j.
 
-Definition col_scale {n m : nat} (S : GenMatrix n m) (col : nat) (a : F) : GenMatrix n m := 
+Definition col_scale {m n} (T : GenMatrix m n) (col : nat) (a : F) : GenMatrix m n := 
   fun i j => if (j =? col) 
-             then (a * S i j)%G
-             else S i j.
+             then (a * T i j)%G
+             else T i j.
 
-Definition row_scale {n m : nat} (S : GenMatrix n m) (row : nat) (a : F) : GenMatrix n m := 
+Definition row_scale {m n} (T : GenMatrix m n) (row : nat) (a : F) : GenMatrix m n := 
   fun i j => if (i =? row) 
-             then (a * S i j)%G
-             else S i j.
+             then (a * T i j)%G
+             else T i j.
 
 (* adding one column to another *)
-Definition col_add {n m : nat} (S : GenMatrix n m) (col to_add : nat) (a : F) : GenMatrix n m := 
+Definition col_add {m n} (T : GenMatrix m n) (col to_add : nat) (a : F) : GenMatrix m n := 
   fun i j => if (j =? col) 
-             then (S i j + a * S i to_add)%G
-             else S i j.
+             then (T i j + a * T i to_add)%G
+             else T i j.
 
 (* adding one row to another *)
-Definition row_add {n m : nat} (S : GenMatrix n m) (row to_add : nat) (a : F) : GenMatrix n m := 
+Definition row_add {m n} (T : GenMatrix m n) (row to_add : nat) (a : F) : GenMatrix m n := 
   fun i j => if (i =? row) 
-             then (S i j + a * S to_add j)%G
-             else S i j.
+             then (T i j + a * T to_add j)%G
+             else T i j.
 
 (* generalizing col_add *)
-Definition gen_new_vec (n m : nat) (S : GenMatrix n m) (as' : Vector m) : Vector n :=
-  big_sum (fun i => (as' i 0) .* (get_col i S)) m.
+Definition gen_new_col (m n : nat) (T : GenMatrix m n) (as' : Vector n) : Vector m :=
+  big_sum (fun i => (as' i 0) .* (get_col T i)) n.
 
-Definition gen_new_row (n m : nat) (S : GenMatrix n m) (as' : GenMatrix 1 n) : GenMatrix 1 m :=
-  big_sum (fun i => (as' 0 i) .* (get_row i S)) n.
+Definition gen_new_row (m n : nat) (T : GenMatrix m n) (as' : GenMatrix 1 m) : GenMatrix 1 n :=
+  big_sum (fun i => (as' 0 i) .* (get_row T i)) m.
 
 (* adds all columns to single column *)
-Definition col_add_many {n m} (col : nat) (as' : Vector m) (S : GenMatrix n m) : GenMatrix n m :=
+Definition col_add_many {m n} (T : GenMatrix m n) (as' : Vector n) (col : nat) : GenMatrix m n :=
   fun i j => if (j =? col) 
-             then (S i j + (gen_new_vec n m S as') i 0)%G
-             else S i j.
+             then (T i j + (gen_new_col m n T as') i 0)%G
+             else T i j.
 
-Definition row_add_many {n m} (row : nat) (as' : GenMatrix 1 n) (S : GenMatrix n m) : GenMatrix n m :=
+Definition row_add_many {m n} (T : GenMatrix m n) (as' : GenMatrix 1 m) (row : nat) : GenMatrix m n :=
   fun i j => if (i =? row) 
-             then (S i j + (gen_new_row n m S as') 0 j)%G
-             else S i j.
+             then (T i j + (gen_new_row m n T as') 0 j)%G
+             else T i j.
 
 (* adds single column to each other column *)
-Definition col_add_each {n m} (col : nat) (as' : GenMatrix 1 m) (S : GenMatrix n m) : GenMatrix n m := 
-  S .+ ((get_col col S) × as').
+Definition col_add_each {m n} (T : GenMatrix m n) (as' : GenMatrix 1 n) (col : nat) : GenMatrix m n := 
+  T .+ ((get_col T col) × as').
 
-Definition row_add_each {n m} (row : nat) (as' : Vector n) (S : GenMatrix n m) : GenMatrix n m := 
-  S .+ (as' × get_row row S).
+Definition row_add_each {m n} (T : GenMatrix m n) (as' : Vector m) (row : nat) : GenMatrix m n := 
+  T .+ (as' × get_row T row).
 
-Definition make_col_zero {n m} (col : nat) (S : GenMatrix n m) : GenMatrix n m :=
+Definition make_col_zero {m n} (col : nat) (T : GenMatrix m n) : GenMatrix m n :=
   fun i j => if (j =? col) 
              then 0%G
-             else S i j.
+             else T i j.
 
-Definition make_row_zero {n m} (row : nat) (S : GenMatrix n m) : GenMatrix n m :=
+Definition make_row_zero {m n} (row : nat) (T : GenMatrix m n) : GenMatrix m n :=
   fun i j => if (i =? row) 
              then 0%G
-             else S i j.
+             else T i j.
 
-
-Definition col_to_front {n m : nat} (S : GenMatrix n m) (col : nat) : GenMatrix n m := 
+Definition col_to_front {m n} (T : GenMatrix m n) (col : nat) : GenMatrix m n := 
   fun i j => if (j =? 0) 
-          then S i col
-          else if (j <? col + 1) then S i (j - 1) else S i j.
+          then T i col
+          else if (j <? col + 1) then T i (j - 1) else T i j.
 
-Definition row_to_front {n m : nat} (S : GenMatrix n m) (row : nat) : GenMatrix n m := 
+Definition row_to_front {m n} (T : GenMatrix m n) (row : nat) : GenMatrix m n := 
   fun i j => if (i =? 0) 
-          then S row j
-          else if (i <? row + 1) then S (i - 1) j else S i j.
+          then T row j
+          else if (i <? row + 1) then T (i - 1) j else T i j.
 
-Definition col_replace {n m : nat} (S : GenMatrix n m) (col rep : nat) : GenMatrix n m := 
+Definition col_replace {m n} (T : GenMatrix m n) (col rep : nat) : GenMatrix m n := 
   fun i j => if (j =? rep) 
-          then S i col
-          else S i j.
+          then T i col
+          else T i j.
 
-Definition row_replace {n m : nat} (S : GenMatrix n m) (row rep : nat) : GenMatrix n m := 
+Definition row_replace {m n} (T : GenMatrix m n) (row rep : nat) : GenMatrix m n := 
   fun i j => if (i =? rep) 
-          then S row j
-          else S i j.
+          then T row j
+          else T i j.
 
 
 (** proving lemmas about these new functions *)
 
-Lemma WF_get_col : forall {n m} (i : nat) (S : GenMatrix n m),
-  WF_GenMatrix S -> WF_GenMatrix (get_col i S). 
+Lemma WF_get_col : forall {m n} (i : nat) (T : GenMatrix m n),
+  WF_GenMatrix T -> WF_GenMatrix (get_col T i). 
 Proof. unfold WF_GenMatrix, get_col in *.
        intros.
        bdestruct (y =? 0); try lia; try easy.
@@ -285,8 +211,8 @@ Proof. unfold WF_GenMatrix, get_col in *.
        lia. 
 Qed.
 
-Lemma WF_get_row : forall {n m} (i : nat) (S : GenMatrix n m),
-  WF_GenMatrix S -> WF_GenMatrix (get_row i S). 
+Lemma WF_get_row : forall {m n} (i : nat) (T : GenMatrix m n),
+  WF_GenMatrix T -> WF_GenMatrix (get_row T i). 
 Proof. unfold WF_GenMatrix, get_row in *.
        intros.
        bdestruct (x =? 0); try lia; try easy.
@@ -296,14 +222,14 @@ Proof. unfold WF_GenMatrix, get_row in *.
        right; easy.
 Qed.
 
-Lemma WF_reduce_row : forall {n m} (row : nat) (A : GenMatrix (S n) m),
-  row < (S n) -> WF_GenMatrix A -> WF_GenMatrix (reduce_row A row).
+Lemma WF_reduce_row : forall {m n} (row : nat) (T : GenMatrix (S m) n),
+  row < (S m) -> WF_GenMatrix T -> WF_GenMatrix (reduce_row T row).
 Proof. unfold WF_GenMatrix, reduce_row. intros. 
        bdestruct (x <? row). 
        - destruct H1 as [H1 | H1].
          + assert (nibzo : forall (a b c : nat), a < b -> b < c -> 1 + a < c).
            { lia. }
-           apply (nibzo x row (S n)) in H2.
+           apply (nibzo x row (S m)) in H2.
            simpl in H2. lia. apply H.
          + apply H0; auto.
        - apply H0. destruct H1. 
@@ -311,15 +237,15 @@ Proof. unfold WF_GenMatrix, reduce_row. intros.
          + right. apply H1. 
 Qed.
 
-Lemma WF_reduce_col : forall {n m} (col : nat) (A : GenMatrix n (S m)),
-  col < (S m) -> WF_GenMatrix A -> WF_GenMatrix (reduce_col A col).
+Lemma WF_reduce_col : forall {m n} (col : nat) (T : GenMatrix m (S n)),
+  col < (S n) -> WF_GenMatrix T -> WF_GenMatrix (reduce_col T col).
 Proof. unfold WF_GenMatrix, reduce_col. intros. 
        bdestruct (y <? col). 
        - destruct H1 as [H1 | H1].   
          + apply H0; auto. 
          + assert (nibzo : forall (a b c : nat), a < b -> b < c -> 1 + a < c).
            { lia. }
-           apply (nibzo y col (S m)) in H2.
+           apply (nibzo y col (S n)) in H2.
            simpl in H2. lia. apply H.
        - apply H0. destruct H1.
          + left. apply H1. 
@@ -341,32 +267,32 @@ Proof. intros.
        apply WF_reduce_row; try lia; try easy. 
 Qed.
 
-Lemma reduce_is_redrow_redcol : forall {n} (A : Square (S n)) (row col : nat),
-  reduce A row col = reduce_col (reduce_row A row) col.
+Lemma get_minor_is_redrow_redcol : forall {n} (A : Square (S n)) (row col : nat),
+  get_minor A row col = reduce_col (reduce_row A row) col.
 Proof. intros. 
        prep_genmatrix_equality.
-       unfold reduce, reduce_col, reduce_row.
+       unfold get_minor, reduce_col, reduce_row.
        bdestruct (x <? row); bdestruct (y <? col); try easy.
 Qed. 
 
-Lemma reduce_is_redcol_redrow : forall {n} (A : Square (S n)) (row col : nat),
-  reduce A row col = reduce_row (reduce_col A col) row.
+Lemma get_minor_is_redcol_redrow : forall {n} (A : Square (S n)) (row col : nat),
+  get_minor A row col = reduce_row (reduce_col A col) row.
 Proof. intros. 
        prep_genmatrix_equality.
-       unfold reduce, reduce_col, reduce_row.
+       unfold get_minor, reduce_col, reduce_row.
        bdestruct (x <? row); bdestruct (y <? col); try easy.
 Qed. 
 
-Lemma WF_reduce : forall {n} (A : Square (S n)) (row col : nat),
-  row < S n -> col < S n -> WF_GenMatrix A -> WF_GenMatrix (reduce A row col).
+Lemma WF_get_minor : forall {n} (A : Square (S n)) (row col : nat),
+  row < S n -> col < S n -> WF_GenMatrix A -> WF_GenMatrix (get_minor A row col).
 Proof. intros.
-       rewrite reduce_is_redrow_redcol.
+       rewrite get_minor_is_redrow_redcol.
        apply WF_reduce_col; try easy.
        apply WF_reduce_row; try easy.
 Qed.
 
-Lemma WF_col_swap : forall {n m : nat} (S : GenMatrix n m) (x y : nat),
-  x < m -> y < m -> WF_GenMatrix S -> WF_GenMatrix (col_swap S x y).
+Lemma WF_col_swap : forall {m n} (T : GenMatrix m n) (x y : nat),
+  x < n -> y < n -> WF_GenMatrix T -> WF_GenMatrix (col_swap T x y).
 Proof. unfold WF_GenMatrix, col_swap in *.
        intros. 
        bdestruct (y0 =? x); bdestruct (y0 =? y); destruct H2; try lia. 
@@ -374,8 +300,8 @@ Proof. unfold WF_GenMatrix, col_swap in *.
        auto.
 Qed.
 
-Lemma WF_row_swap : forall {n m : nat} (S : GenMatrix n m) (x y : nat),
-  x < n -> y < n -> WF_GenMatrix S -> WF_GenMatrix (row_swap S x y).
+Lemma WF_row_swap : forall {m n} (T : GenMatrix m n) (x y : nat),
+  x < m -> y < m -> WF_GenMatrix T -> WF_GenMatrix (row_swap T x y).
 Proof. unfold WF_GenMatrix, row_swap in *.
        intros. 
        bdestruct (x0 =? x); bdestruct (x0 =? y); destruct H2; try lia. 
@@ -383,8 +309,8 @@ Proof. unfold WF_GenMatrix, row_swap in *.
        auto.
 Qed.
 
-Lemma WF_col_scale : forall {n m : nat} (S : GenMatrix n m) (x : nat) (a : F),
-  WF_GenMatrix S -> WF_GenMatrix (col_scale S x a).
+Lemma WF_col_scale : forall {m n} (T : GenMatrix m n) (x : nat) (a : F),
+  WF_GenMatrix T -> WF_GenMatrix (col_scale T x a).
 Proof. unfold WF_GenMatrix, col_scale in *.
        intros. 
        apply H in H0.
@@ -393,8 +319,8 @@ Proof. unfold WF_GenMatrix, col_scale in *.
        bdestruct (y =? x); easy.
 Qed.
 
-Lemma WF_row_scale : forall {n m : nat} (S : GenMatrix n m) (x : nat) (a : F),
-  WF_GenMatrix S -> WF_GenMatrix (row_scale S x a).
+Lemma WF_row_scale : forall {m n} (T : GenMatrix m n) (x : nat) (a : F),
+  WF_GenMatrix T -> WF_GenMatrix (row_scale T x a).
 Proof. unfold WF_GenMatrix, row_scale in *.
        intros. 
        apply H in H0.
@@ -403,8 +329,8 @@ Proof. unfold WF_GenMatrix, row_scale in *.
        bdestruct (x0 =? x); easy.
 Qed.
 
-Lemma WF_col_add : forall {n m : nat} (S : GenMatrix n m) (x y : nat) (a : F),
-  x < m -> WF_GenMatrix S -> WF_GenMatrix (col_add S x y a).
+Lemma WF_col_add : forall {m n} (T : GenMatrix m n) (x y : nat) (a : F),
+  x < n -> WF_GenMatrix T -> WF_GenMatrix (col_add T x y a).
 Proof. unfold WF_GenMatrix, col_add in *.
        intros.
        bdestruct (y0 =? x); destruct H1; try lia. 
@@ -412,8 +338,8 @@ Proof. unfold WF_GenMatrix, col_add in *.
        all : apply H0; auto.
 Qed.
 
-Lemma WF_row_add : forall {n m : nat} (S : GenMatrix n m) (x y : nat) (a : F),
-  x < n -> WF_GenMatrix S -> WF_GenMatrix (row_add S x y a).
+Lemma WF_row_add : forall {m n} (T : GenMatrix m n) (x y : nat) (a : F),
+  x < m -> WF_GenMatrix T -> WF_GenMatrix (row_add T x y a).
 Proof. unfold WF_GenMatrix, row_add in *.
        intros.
        bdestruct (x0 =? x); destruct H1; try lia. 
@@ -421,18 +347,18 @@ Proof. unfold WF_GenMatrix, row_add in *.
        all : apply H0; auto.
 Qed.
 
-Lemma WF_gen_new_vec : forall {n m} (S : GenMatrix n m) (as' : Vector m),
-  WF_GenMatrix S -> WF_GenMatrix (gen_new_vec n m S as').
+Lemma WF_gen_new_col : forall {m n} (T : GenMatrix m n) (as' : Vector n),
+  WF_GenMatrix T -> WF_GenMatrix (gen_new_col m n T as').
 Proof. intros.
-       unfold gen_new_vec.
+       unfold gen_new_col. 
        apply WF_Msum; intros. 
        apply WF_scale. 
        apply WF_get_col.
        easy.
 Qed.
 
-Lemma WF_gen_new_row : forall {n m} (S : GenMatrix n m) (as' : GenMatrix 1 n),
-  WF_GenMatrix S -> WF_GenMatrix (gen_new_row n m S as').
+Lemma WF_gen_new_row : forall {m n} (T : GenMatrix m n) (as' : GenMatrix 1 m),
+  WF_GenMatrix T -> WF_GenMatrix (gen_new_row m n T as').
 Proof. intros.
        unfold gen_new_row.
        apply WF_Msum; intros. 
@@ -441,54 +367,30 @@ Proof. intros.
        easy.
 Qed.
 
-Lemma WF_col_add_many : forall {n m} (col : nat) (as' : Vector m) (S : GenMatrix n m),
-  col < m -> WF_GenMatrix S -> WF_GenMatrix (col_add_many col as' S).
+Lemma WF_col_add_many : forall {m n} (T : GenMatrix m n) (as' : Vector n) (col : nat),
+  col < n -> WF_GenMatrix T -> WF_GenMatrix (col_add_many T as' col).
 Proof. unfold WF_GenMatrix, col_add_many.
        intros. 
        bdestruct (y =? col).
-       assert (H4 := (WF_gen_new_vec S as')).
+       assert (H4 := (WF_gen_new_col T as')).
        rewrite H4, H0; try easy.
        ring. destruct H2; lia. 
        rewrite H0; easy.
 Qed.
 
-Lemma WF_row_add_many : forall {n m} (row : nat) (as' : GenMatrix 1 n) (S : GenMatrix n m),
-  row < n -> WF_GenMatrix S -> WF_GenMatrix (row_add_many row as' S).
+Lemma WF_row_add_many : forall {m n} (T : GenMatrix m n) (as' : GenMatrix 1 m) (row : nat),
+  row < m -> WF_GenMatrix T -> WF_GenMatrix (row_add_many T as' row).
 Proof. unfold WF_GenMatrix, row_add_many.
        intros. 
        bdestruct (x =? row).
-       assert (H4 := (WF_gen_new_row S as')).
+       assert (H4 := (WF_gen_new_row T as')).
        rewrite H4, H0; try easy.
        ring. destruct H2; lia. 
        rewrite H0; easy.
 Qed.
 
-Lemma WF_col_append : forall {n m} (T : GenMatrix n m) (v : Vector n),
-  WF_GenMatrix T -> WF_GenMatrix v -> WF_GenMatrix (col_append T v).
-Proof. unfold WF_GenMatrix in *.
-       intros; destruct H1 as [H1 | H1]. 
-       - unfold col_append.
-         rewrite H, H0; try lia. 
-         bdestruct (y =? m); easy. 
-       - unfold col_append.
-         bdestruct (y =? m); try lia. 
-         apply H; lia. 
-Qed.
-
-Lemma WF_row_append : forall {n m} (T : GenMatrix n m) (v : GenMatrix 1 m),
-  WF_GenMatrix T -> WF_GenMatrix v -> WF_GenMatrix (row_append T v).
-Proof. unfold WF_GenMatrix in *.
-       intros; destruct H1 as [H1 | H1]. 
-       - unfold row_append.
-         bdestruct (x =? n); try lia. 
-         apply H; lia. 
-       - unfold row_append.
-         rewrite H, H0; try lia. 
-         bdestruct (x =? n); easy. 
-Qed.
-
-Lemma WF_col_wedge : forall {n m} (T : GenMatrix n m) (v : Vector n) (spot : nat),
-  spot <= m -> WF_GenMatrix T -> WF_GenMatrix v -> WF_GenMatrix (col_wedge T v spot).
+Lemma WF_col_wedge : forall {m n} (T : GenMatrix m n) (v : Vector m) (spot : nat),
+  spot <= n -> WF_GenMatrix T -> WF_GenMatrix v -> WF_GenMatrix (col_wedge T v spot).
 Proof. unfold WF_GenMatrix in *.
        intros; destruct H2 as [H2 | H2]. 
        - unfold col_wedge.
@@ -501,8 +403,8 @@ Proof. unfold WF_GenMatrix in *.
          easy.  
 Qed.
 
-Lemma WF_row_wedge : forall {n m} (T : GenMatrix n m) (v : GenMatrix 1 m) (spot : nat),
-  spot <= n -> WF_GenMatrix T -> WF_GenMatrix v -> WF_GenMatrix (row_wedge T v spot).
+Lemma WF_row_wedge : forall {m n} (T : GenMatrix m n) (v : GenMatrix 1 n) (spot : nat),
+  spot <= m -> WF_GenMatrix T -> WF_GenMatrix v -> WF_GenMatrix (row_wedge T v spot).
 Proof. unfold WF_GenMatrix in *.
        intros; destruct H2 as [H2 | H2]. 
        - unfold row_wedge.
@@ -515,17 +417,17 @@ Proof. unfold WF_GenMatrix in *.
          bdestruct (x <? spot); bdestruct (x =? spot); easy. 
 Qed.
 
-Lemma WF_smash : forall {n m1 m2} (T1 : GenMatrix n m1) (T2 : GenMatrix n m2),
+Lemma WF_smash : forall {m n1 n2} (T1 : GenMatrix m n1) (T2 : GenMatrix m n2),
   WF_GenMatrix T1 -> WF_GenMatrix T2 -> WF_GenMatrix (smash T1 T2).
 Proof. unfold WF_GenMatrix, smash in *.
        intros. 
-       bdestruct (y <? m1).
+       bdestruct (y <? n1).
        - apply H; lia. 
        - apply H0; lia.
 Qed.
 
-Lemma WF_col_add_each : forall {n m} (col : nat) (as' : GenMatrix 1 m) (S : GenMatrix n m),
-  WF_GenMatrix S -> WF_GenMatrix as' -> WF_GenMatrix (col_add_each col as' S).
+Lemma WF_col_add_each : forall {m n} (col : nat) (as' : GenMatrix 1 n) (T : GenMatrix m n),
+  WF_GenMatrix T -> WF_GenMatrix as' -> WF_GenMatrix (col_add_each T as' col).
 Proof. intros.
        unfold col_add_each.
        apply WF_plus; try easy;
@@ -533,8 +435,8 @@ Proof. intros.
        apply WF_get_col; easy.
 Qed.
 
-Lemma WF_row_add_each : forall {n m} (row : nat) (as' : Vector n) (S : GenMatrix n m),
-  WF_GenMatrix S -> WF_GenMatrix as' -> WF_GenMatrix (row_add_each row as' S).
+Lemma WF_row_add_each : forall {m n} (row : nat) (as' : Vector m) (T : GenMatrix m n),
+  WF_GenMatrix T -> WF_GenMatrix as' -> WF_GenMatrix (row_add_each T as' row).
 Proof. intros.
        unfold row_add_each.
        apply WF_plus; try easy;
@@ -542,15 +444,15 @@ Proof. intros.
        apply WF_get_row; easy.
 Qed.
 
-Lemma WF_make_col_zero : forall {n m} (col : nat) (S : GenMatrix n m),
-  WF_GenMatrix S -> WF_GenMatrix (make_col_zero col S).
+Lemma WF_make_col_zero : forall {m n} (col : nat) (T : GenMatrix m n),
+  WF_GenMatrix T -> WF_GenMatrix (make_col_zero col T).
 Proof. unfold make_col_zero, WF_GenMatrix.
        intros. 
        rewrite H; try easy.
        bdestruct (y =? col); easy.
 Qed.
 
-Lemma WF_make_row_zero : forall {n m} (row : nat) (S : GenMatrix n m),
+Lemma WF_make_row_zero : forall {m n} (row : nat) (S : GenMatrix m n),
   WF_GenMatrix S -> WF_GenMatrix (make_row_zero row S).
 Proof. unfold make_row_zero, WF_GenMatrix.
        intros. 
@@ -558,8 +460,8 @@ Proof. unfold make_row_zero, WF_GenMatrix.
        bdestruct (x =? row); easy.
 Qed.
 
-Lemma WF_col_to_front : forall {n m} (S : GenMatrix n m) (col : nat), 
-  col < m -> 
+Lemma WF_col_to_front : forall {m n} (S : GenMatrix m n) (col : nat), 
+  col < n -> 
   WF_GenMatrix S -> 
   WF_GenMatrix (col_to_front S col).
 Proof. intros. 
@@ -567,8 +469,8 @@ Proof. intros.
        bdestruct_all; apply H0; lia.
 Qed.
 
-Lemma WF_row_to_front : forall {n m} (S : GenMatrix n m) (row : nat), 
-  row < n -> 
+Lemma WF_row_to_front : forall {m n} (S : GenMatrix m n) (row : nat), 
+  row < m -> 
   WF_GenMatrix S -> 
   WF_GenMatrix (row_to_front S row).
 Proof. intros. 
@@ -576,8 +478,8 @@ Proof. intros.
        bdestruct_all; apply H0; lia.
 Qed.
 
-Lemma WF_col_replace : forall {n m} (S : GenMatrix n m) (col rep : nat), 
-  rep < m -> 
+Lemma WF_col_replace : forall {m n} (S : GenMatrix m n) (col rep : nat), 
+  rep < n -> 
   WF_GenMatrix S -> 
   WF_GenMatrix (col_replace S col rep).
 Proof. intros. 
@@ -585,8 +487,8 @@ Proof. intros.
        bdestruct_all; apply H0; lia.
 Qed.
 
-Lemma WF_row_replace : forall {n m} (S : GenMatrix n m) (row rep : nat), 
-  rep < n -> 
+Lemma WF_row_replace : forall {m n} (S : GenMatrix m n) (row rep : nat), 
+  rep < m -> 
   WF_GenMatrix S -> 
   WF_GenMatrix (row_replace S row rep).
 Proof. intros. 
@@ -596,30 +498,30 @@ Qed.
 
 
 
-Hint Resolve WF_get_col WF_get_row WF_reduce_row WF_reduce_col WF_reduce_vecn WF_reduce : wf_db.
+Hint Resolve WF_get_col WF_get_row WF_reduce_row WF_reduce_col WF_reduce_vecn WF_get_minor : wf_db.
 Hint Resolve WF_col_swap WF_row_swap WF_col_scale WF_row_scale WF_col_add WF_row_add  : wf_db.
-Hint Resolve WF_gen_new_vec WF_gen_new_row WF_col_add_many WF_row_add_many : wf_db.
-Hint Resolve WF_col_append WF_row_append WF_row_wedge WF_col_wedge WF_smash : wf_db.
+Hint Resolve WF_gen_new_col WF_gen_new_row WF_col_add_many WF_row_add_many : wf_db.
+Hint Resolve WF_row_wedge WF_col_wedge WF_smash : wf_db.
 Hint Resolve WF_col_add_each WF_row_add_each WF_make_col_zero WF_make_row_zero : wf_db.
 Hint Resolve WF_col_to_front WF_row_to_front : wf_db.
 Hint Extern 1 (Nat.lt _ _) => lia : wf_db.
 
-Lemma get_col_reduce_col : forall {n m} (i col : nat) (A : GenMatrix n (S m)),
-  i < col -> get_col i (reduce_col A col) = get_col i A.
+Lemma get_col_reduce_col : forall {m n} (i col : nat) (T : GenMatrix m (S n)),
+  i < col -> get_col (reduce_col T col) i = get_col T i.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold get_col, reduce_col.
        bdestruct (i <? col); try lia; easy.
 Qed.
 
-Lemma get_col_conv : forall {n m} (x y : nat) (S : GenMatrix n m),
-  (get_col y S) x 0 = S x y.
+Lemma get_col_conv : forall {m n} (x y : nat) (T : GenMatrix m n),
+  (get_col T y) x 0 = T x y.
 Proof. intros. unfold get_col.
        easy.
 Qed.
 
 Lemma get_col_mult : forall {n} (i : nat) (A B : Square n),
-  A × (get_col i B) = get_col i (A × B).
+  A × (get_col B i) = get_col (A × B) i.
 Proof. intros. unfold get_col, GMmult.
        prep_genmatrix_equality.
        bdestruct (y =? 0).
@@ -629,7 +531,7 @@ Proof. intros. unfold get_col, GMmult.
 Qed.
 
 Lemma det_by_get_col : forall {n} (A B : Square n),
-  (forall i, get_col i A = get_col i B) -> A = B.
+  (forall i, get_col A i = get_col B i) -> A = B.
 Proof. intros. prep_genmatrix_equality.
        rewrite <- get_col_conv.
        rewrite <- (get_col_conv _ _ B).
@@ -637,7 +539,7 @@ Proof. intros. prep_genmatrix_equality.
        reflexivity.
 Qed.
 
-Lemma col_scale_reduce_col_same : forall {n m} (T : GenMatrix n (S m)) (y col : nat) (a : F),
+Lemma col_scale_reduce_col_same : forall {m n} (T : GenMatrix m (S n)) (y col : nat) (a : F),
   y = col -> reduce_col (col_scale T col a) y = reduce_col T y.
 Proof. intros.
        prep_genmatrix_equality. 
@@ -645,48 +547,48 @@ Proof. intros.
        bdestruct (y0 <? y); bdestruct (y0 =? col); bdestruct (1 + y0 =? col); try lia; easy. 
 Qed.
 
-Lemma col_swap_reduce_before : forall {n : nat} (T : Square (S n)) (row col c1 c2 : nat),
+Lemma col_swap_get_minor_before : forall {n : nat} (A : Square (S n)) (row col c1 c2 : nat),
   col < (S c1) -> col < (S c2) ->
-  reduce (col_swap T (S c1) (S c2)) row col = col_swap (reduce T row col) c1 c2.
+  get_minor (col_swap A (S c1) (S c2)) row col = col_swap (get_minor A row col) c1 c2.
 Proof. intros. 
        prep_genmatrix_equality. 
-       unfold reduce, col_swap.
+       unfold get_minor, col_swap.
        bdestruct (c1 <? col); bdestruct (c2 <? col); try lia. 
        simpl. 
        bdestruct (x <? row); bdestruct (y <? col); bdestruct (y =? c1);
          bdestruct (y =? S c1); bdestruct (y =? c2); bdestruct (y =? S c2); try lia; try easy. 
 Qed.
 
-Lemma col_scale_reduce_before : forall {n : nat} (T : Square (S n)) (x y col : nat) (a : F),
-  y < col -> reduce (col_scale T col a) x y = col_scale (reduce T x y) (col - 1) a.
+Lemma col_scale_get_minor_before : forall {n : nat} (A : Square (S n)) (x y col : nat) (a : F),
+  y < col -> get_minor (col_scale A col a) x y = col_scale (get_minor A x y) (col - 1) a.
 Proof. intros. 
        prep_genmatrix_equality. 
        destruct col; try lia. 
        rewrite Sn_minus_1. 
-       unfold reduce, col_scale. 
+       unfold get_minor, col_scale. 
        bdestruct (x0 <? x); bdestruct (y0 <? y); bdestruct (y0 =? S col);
          bdestruct (y0 =? col); bdestruct (1 + y0 =? S col); try lia; easy. 
 Qed.
 
-Lemma col_scale_reduce_same : forall {n : nat} (T : Square (S n)) (x y col : nat) (a : F),
-  y = col -> reduce (col_scale T col a) x y = reduce T x y.
+Lemma col_scale_get_minor_same : forall {n : nat} (A : Square (S n)) (x y col : nat) (a : F),
+  y = col -> get_minor (col_scale A col a) x y = get_minor A x y.
 Proof. intros. 
        prep_genmatrix_equality. 
-       unfold reduce, col_scale. 
+       unfold get_minor, col_scale. 
        bdestruct (x0 <? x); bdestruct (y0 <? y);
          bdestruct (y0 =? col); bdestruct (1 + y0 =? col); try lia; easy. 
 Qed.
 
-Lemma col_scale_reduce_after : forall {n : nat} (T : Square (S n)) (x y col : nat) (a : F),
-  y > col -> reduce (col_scale T col a) x y = col_scale (reduce T x y) col a.
+Lemma col_scale_get_minor_after : forall {n : nat} (A : Square (S n)) (x y col : nat) (a : F),
+  y > col -> get_minor (col_scale A col a) x y = col_scale (get_minor A x y) col a.
 Proof. intros. 
        prep_genmatrix_equality. 
-       unfold reduce, col_scale. 
+       unfold get_minor, col_scale. 
        bdestruct (x0 <? x); bdestruct (y0 <? y);
          bdestruct (y0 =? col); bdestruct (1 + y0 =? col); try lia; easy. 
 Qed.
 
-Lemma mcz_reduce_col_same : forall {n m} (T : GenMatrix n (S m)) (col : nat),
+Lemma mcz_reduce_col_same : forall {m n} (T : GenMatrix m (S n)) (col : nat),
   reduce_col (make_col_zero col T) col = reduce_col T col.
 Proof. intros. 
        prep_genmatrix_equality. 
@@ -695,7 +597,7 @@ Proof. intros.
          bdestruct (y =? col); bdestruct (1 + y =? col); try lia; easy. 
 Qed.
 
-Lemma mrz_reduce_row_same : forall {n m} (T : GenMatrix (S n) m) (row : nat),
+Lemma mrz_reduce_row_same : forall {m n} (T : GenMatrix (S m) n) (row : nat),
   reduce_row (make_row_zero row T) row = reduce_row T row.
 Proof. intros. 
        prep_genmatrix_equality. 
@@ -704,9 +606,9 @@ Proof. intros.
          bdestruct (x =? row); bdestruct (1 + x =? row); try lia; easy. 
 Qed.
 
-Lemma col_add_many_reduce_col_same : forall {n m} (T : GenMatrix n (S m)) (v : Vector (S m))
+Lemma col_add_many_reduce_col_same : forall {m n} (T : GenMatrix m (S n)) (v : Vector (S n))
                                             (col : nat),
-  reduce_col (col_add_many col v T) col = reduce_col T col.
+  reduce_col (col_add_many T v col) col = reduce_col T col.
 Proof. intros. 
        unfold reduce_col, col_add_many.
        prep_genmatrix_equality. 
@@ -714,9 +616,9 @@ Proof. intros.
          bdestruct (y =? col); bdestruct (1 + y =? col); try lia; easy. 
 Qed.
 
-Lemma row_add_many_reduce_row_same : forall {n m} (T : GenMatrix (S n) m) (v : GenMatrix 1 (S n))
+Lemma row_add_many_reduce_row_same : forall {m n} (T : GenMatrix (S m) n) (v : GenMatrix 1 (S m))
                                             (row : nat),
-  reduce_row (row_add_many row v T) row = reduce_row T row.
+  reduce_row (row_add_many T v row) row = reduce_row T row.
 Proof. intros. 
        unfold reduce_row, row_add_many.
        prep_genmatrix_equality. 
@@ -724,7 +626,7 @@ Proof. intros.
          bdestruct (x =? row); bdestruct (1 + x =? row); try lia; easy. 
 Qed.
 
-Lemma col_wedge_reduce_col_same : forall {n m} (T : GenMatrix n m) (v : Vector m)
+Lemma col_wedge_reduce_col_same : forall {m n} (T : GenMatrix m n) (v : Vector n)
                                          (col : nat),
   reduce_col (col_wedge T v col) col = T.
 Proof. intros.
@@ -736,7 +638,7 @@ Proof. intros.
        all : rewrite p; easy.
 Qed.
 
-Lemma row_wedge_reduce_row_same : forall {n m} (T : GenMatrix n m) (v : GenMatrix 1 n)
+Lemma row_wedge_reduce_row_same : forall {m n} (T : GenMatrix m n) (v : GenMatrix 1 m)
                                          (row : nat),
   reduce_row (row_wedge T v row) row = T.
 Proof. intros.
@@ -748,11 +650,11 @@ Proof. intros.
        all : rewrite p; easy.
 Qed.
 
-Lemma col_add_many_reduce_row : forall {n m} (T : GenMatrix (S n) m) (v : Vector m) (col row : nat),
-  col_add_many col v (reduce_row T row) = reduce_row (col_add_many col v T) row.
+Lemma col_add_many_reduce_row : forall {m n} (T : GenMatrix (S m) n) (v : Vector n) (col row : nat),
+  col_add_many (reduce_row T row) v col = reduce_row (col_add_many T v col) row.
 Proof. intros. 
        prep_genmatrix_equality. 
-       unfold col_add_many, reduce_row, gen_new_vec, scale, get_col. 
+       unfold col_add_many, reduce_row, gen_new_col, scale, get_col. 
        bdestruct (y =? col); try lia; try easy. 
        bdestruct (x <? row); try lia. 
        apply f_equal_gen; auto.
@@ -765,8 +667,8 @@ Proof. intros.
        bdestruct (x <? row); try lia; easy.
 Qed.
 
-Lemma col_swap_same : forall {n m : nat} (S : GenMatrix n m) (x : nat),
-  col_swap S x x = S.
+Lemma col_swap_same : forall {m n} (T : GenMatrix m n) (x : nat),
+  col_swap T x x = T.
 Proof. intros. 
        unfold col_swap. 
        prep_genmatrix_equality. 
@@ -774,8 +676,8 @@ Proof. intros.
        rewrite H; easy.
 Qed. 
 
-Lemma row_swap_same : forall {n m : nat} (S : GenMatrix n m) (x : nat),
-  row_swap S x x = S.
+Lemma row_swap_same : forall {m n} (T : GenMatrix m n) (x : nat),
+  row_swap T x x = T.
 Proof. intros. 
        unfold row_swap. 
        prep_genmatrix_equality. 
@@ -783,8 +685,8 @@ Proof. intros.
        rewrite H; easy.
 Qed. 
 
-Lemma col_swap_diff_order : forall {n m : nat} (S : GenMatrix n m) (x y : nat),
-  col_swap S x y = col_swap S y x.
+Lemma col_swap_diff_order : forall {m n} (T : GenMatrix m n) (x y : nat),
+  col_swap T x y = col_swap T y x.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold col_swap.
@@ -792,8 +694,8 @@ Proof. intros.
        rewrite <- H, <- H0; easy.
 Qed.
 
-Lemma row_swap_diff_order : forall {n m : nat} (S : GenMatrix n m) (x y : nat),
-  row_swap S x y = row_swap S y x.
+Lemma row_swap_diff_order : forall {m n} (T : GenMatrix m n) (x y : nat),
+  row_swap T x y = row_swap T y x.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold row_swap.
@@ -801,8 +703,8 @@ Proof. intros.
        rewrite <- H, <- H0; easy.
 Qed.
 
-Lemma col_swap_inv : forall {n m : nat} (S : GenMatrix n m) (x y : nat),
-  S = col_swap (col_swap S x y) x y.
+Lemma col_swap_inv : forall {m n} (T : GenMatrix m n) (x y : nat),
+  T = col_swap (col_swap T x y) x y.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold col_swap.
@@ -812,8 +714,8 @@ Proof. intros.
        all : (try rewrite H; try rewrite H0; try rewrite H1; easy).
 Qed.
 
-Lemma row_swap_inv : forall {n m : nat} (S : GenMatrix n m) (x y : nat),
-  S = row_swap (row_swap S x y) x y.
+Lemma row_swap_inv : forall {m n} (T : GenMatrix m n) (x y : nat),
+  T = row_swap (row_swap T x y) x y.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold row_swap.
@@ -823,24 +725,24 @@ Proof. intros.
        all : (try rewrite H; try rewrite H0; try rewrite H1; easy).
 Qed.
 
-Lemma col_swap_get_col : forall {n m : nat} (S : GenMatrix n m) (x y : nat),
-  get_col x (col_swap S x y) = get_col y S.
+Lemma col_swap_get_col : forall {m n} (T : GenMatrix m n) (x y : nat),
+  get_col (col_swap T x y) x = get_col T y.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold get_col, col_swap. 
        bdestruct (x =? x); bdestruct (x =? y); try lia; try easy.
 Qed.
 
-Lemma col_swap_get_col_miss : forall {n m : nat} (S : GenMatrix n m) (i x y : nat),
+Lemma col_swap_get_col_miss : forall {m n} (T : GenMatrix m n) (i x y : nat),
   i <> x -> i <> y -> 
-  get_col i (col_swap S x y) = get_col i S.
+  get_col (col_swap T x y) i = get_col T i.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold get_col, col_swap.
        bdestruct_all; easy.
 Qed.
 
-Lemma col_swap_three : forall {n m} (T : GenMatrix n m) (x y z : nat),
+Lemma col_swap_three : forall {m n} (T : GenMatrix m n) (x y z : nat),
   x <> z -> y <> z -> col_swap T x z = col_swap (col_swap (col_swap T x y) y z) x y.
 Proof. intros.
        bdestruct (x =? y).
@@ -857,8 +759,8 @@ Proof. intros.
        easy.
 Qed.
 
-Lemma col_to_front_swap_col : forall {n m} (T : GenMatrix n m) (col : nat),
-  (S col) < m -> 
+Lemma col_to_front_swap_col : forall {m n} (T : GenMatrix m n) (col : nat),
+  (S col) < n -> 
   col_to_front T (S col) = col_to_front (col_swap T col (S col)) col.
 Proof. intros. 
        unfold col_to_front, col_swap.
@@ -868,8 +770,8 @@ Proof. intros.
        easy.
 Qed.
 
-Lemma row_to_front_swap_row : forall {n m} (T : GenMatrix n m) (row : nat),
-  (S row) < n -> 
+Lemma row_to_front_swap_row : forall {m n} (T : GenMatrix m n) (row : nat),
+  (S row) < m -> 
   row_to_front T (S row) = row_to_front (row_swap T row (S row)) row.
 Proof. intros. 
        unfold row_to_front, row_swap.
@@ -880,7 +782,7 @@ Proof. intros.
 Qed.
 
 
-Lemma col_to_front_0 : forall {n m} (T : GenMatrix n m),
+Lemma col_to_front_0 : forall {m n} (T : GenMatrix m n),
   col_to_front T 0 = T.
 Proof. intros. 
        unfold col_to_front.
@@ -888,7 +790,7 @@ Proof. intros.
        bdestruct_all; subst; easy.
 Qed.
 
-Lemma row_to_front_0 : forall {n m} (T : GenMatrix n m),
+Lemma row_to_front_0 : forall {m n} (T : GenMatrix m n),
   row_to_front T 0 = T.
 Proof. intros. 
        unfold row_to_front.
@@ -896,47 +798,48 @@ Proof. intros.
        bdestruct_all; subst; easy.
 Qed.
 
-Lemma reduce_col_to_front : forall {n} (T : Square (S n)) (col x : nat),
-  reduce (col_to_front T col) x 0 = reduce T x col.
+Lemma get_minor_col_to_front : forall {n} (A : Square (S n)) (col x : nat),
+  get_minor (col_to_front A col) x 0 = get_minor A x col.
 Proof. intros.   
-       unfold reduce, col_to_front.
+       unfold get_minor, col_to_front.
        prep_genmatrix_equality.
        bdestruct_all; auto.
        all : apply f_equal; lia.
 Qed.
 
-Lemma reduce_row_to_front : forall {n} (T : Square (S n)) (row y : nat),
-  reduce (row_to_front T row) 0 y = reduce T row y.
+Lemma get_minor_row_to_front : forall {n} (A : Square (S n)) (row y : nat),
+  get_minor (row_to_front A row) 0 y = get_minor A row y.
 Proof. intros.   
-       unfold reduce, row_to_front.
+       unfold get_minor, row_to_front.
        prep_genmatrix_equality.
        bdestruct_all; auto.
        all : apply f_equal_gen; try apply f_equal; lia.
 Qed.
 
-Lemma reduce_col_replace : forall {n} (T : Square (S n)) (col rep x : nat),
-  reduce (col_replace T col rep) x rep = reduce T x rep.
+Lemma get_minor_col_replace : forall {n} (A : Square (S n)) (col rep x : nat),
+  get_minor (col_replace A col rep) x rep = get_minor A x rep.
 Proof. intros. 
-       unfold reduce, col_replace.
+       unfold get_minor, col_replace.
        prep_genmatrix_equality.
        bdestruct_all; subst; auto.
 Qed.
 
-Lemma reduce_row_replace : forall {n} (T : Square (S n)) (row rep y : nat),
-  reduce (row_replace T row rep) rep y = reduce T rep y.
+Lemma get_minor_row_replace : forall {n} (A : Square (S n)) (row rep y : nat),
+  get_minor (row_replace A row rep) rep y = get_minor A rep y.
 Proof. intros. 
-       unfold reduce, row_replace.
+       unfold get_minor, row_replace.
        prep_genmatrix_equality.
        bdestruct_all; subst; auto.
 Qed.
 
-Lemma reduce_row_reduce_col : forall {n m} (A : GenMatrix (S n) (S m)) (i j : nat),
-  reduce_col (reduce_row A i) j = reduce_row (reduce_col A j) i.
+Lemma reduce_row_reduce_col : forall {m n} (T : GenMatrix (S m) (S n)) (i j : nat),
+  reduce_col (reduce_row T i) j = reduce_row (reduce_col T j) i.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold reduce_col, reduce_row.
        bdestruct (y <? j); bdestruct (x <? i); try lia; try easy. 
 Qed.
+
 Lemma reduce_col_swap_01 : forall {n} (A : Square (S (S n))),
   reduce_col (reduce_col (col_swap A 0 1) 0) 0 = reduce_col (reduce_col A 0) 0.
 Proof. intros. 
@@ -947,12 +850,12 @@ Proof. intros.
        easy. 
 Qed.
 
-Lemma reduce_reduce_0 : forall {n} (A : Square (S (S n))) (x y : nat),
+Lemma get_minor_2x_0 : forall {n} (A : Square (S (S n))) (x y : nat),
   x <= y ->
-  (reduce (reduce A x 0) y 0) = (reduce (reduce A (S y) 0) x 0).
+  (get_minor (get_minor A x 0) y 0) = (get_minor (get_minor A (S y) 0) x 0).
 Proof. intros.
        prep_genmatrix_equality.
-       unfold reduce. 
+       unfold get_minor. 
        bdestruct (y0 <? 0); bdestruct (1 + y0 <? 0); try lia. 
        bdestruct (x0 <? y); bdestruct (x0 <? S y); bdestruct (x0 <? x); 
          bdestruct (1 + x0 <? S y); bdestruct (1 + x0 <? x); 
@@ -960,7 +863,7 @@ Proof. intros.
 Qed.     
 
 Lemma col_add_split : forall {n} (A : Square (S n)) (i : nat) (c : F),
-  col_add A 0 i c = col_wedge (reduce_col A 0) (get_col 0 A .+ c.* get_col i A) 0.
+  col_add A 0 i c = col_wedge (reduce_col A 0) (get_col A 0 .+ c.* get_col A i) 0.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold col_add, col_wedge, reduce_col, get_col, GMplus, scale.
@@ -997,7 +900,7 @@ Proof. intros.
        rewrite H3; easy.
 Qed.
 
-Lemma col_swap_end_reduce_col_hit : forall {n m : nat} (T : GenMatrix n (S (S m))) (i : nat),
+Lemma col_swap_end_reduce_col_hit : forall {m n} (T : GenMatrix n (S (S m))) (i : nat),
   i <= m -> col_swap (reduce_col T i) m i = reduce_col (col_swap T (S m) (S i)) i.
 Proof. intros.
        prep_genmatrix_equality. 
@@ -1009,8 +912,8 @@ Proof. intros.
        bdestruct (1 + y =? S i); try lia; easy.
 Qed.
 
-Lemma col_swap_reduce_row : forall {n m : nat} (S : GenMatrix (S n) m) (x y row : nat),
-  col_swap (reduce_row S row) x y = reduce_row (col_swap S x y) row.
+Lemma col_swap_reduce_row : forall {m n} (T : GenMatrix (S n) m) (x y row : nat),
+  col_swap (reduce_row T row) x y = reduce_row (col_swap T x y) row.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold col_swap, reduce_row. 
@@ -1018,8 +921,8 @@ Proof. intros.
 Qed.
 
 
-Lemma col_add_double : forall {n m : nat} (S : GenMatrix n m) (x : nat) (a : F),
-  col_add S x x a = col_scale S x (1 + a)%G.
+Lemma col_add_double : forall {m n} (T : GenMatrix m n) (x : nat) (a : F),
+  col_add T x x a = col_scale T x (1 + a)%G.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold col_add, col_scale. 
@@ -1028,8 +931,8 @@ Proof. intros.
        - easy.
 Qed.
 
-Lemma row_add_double : forall {n m : nat} (S : GenMatrix n m) (x : nat) (a : F),
-  row_add S x x a = row_scale S x (1 + a)%G.
+Lemma row_add_double : forall {m n} (T : GenMatrix m n) (x : nat) (a : F),
+  row_add T x x a = row_scale T x (1 + a)%G.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold row_add, row_scale. 
@@ -1038,8 +941,8 @@ Proof. intros.
        - easy.
 Qed.
 
-Lemma col_add_swap : forall {n m : nat} (S : GenMatrix n m) (x y : nat) (a : F),
-  col_swap (col_add S x y a) x y = col_add (col_swap S x y) y x a. 
+Lemma col_add_swap : forall {m n} (T : GenMatrix m n) (x y : nat) (a : F),
+  col_swap (col_add T x y a) x y = col_add (col_swap T x y) y x a. 
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold col_swap, col_add.
@@ -1047,16 +950,16 @@ Proof. intros.
          bdestruct (y0 =? y); bdestruct (x =? x); try lia; easy. 
 Qed.
        
-Lemma row_add_swap : forall {n m : nat} (S : GenMatrix n m) (x y : nat) (a : F),
-  row_swap (row_add S x y a) x y = row_add (row_swap S x y) y x a. 
+Lemma row_add_swap : forall {m n} (T : GenMatrix m n) (x y : nat) (a : F),
+  row_swap (row_add T x y a) x y = row_add (row_swap T x y) y x a. 
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold row_swap, row_add.
        bdestruct_all; easy.
 Qed.
 
-Lemma col_add_inv : forall {n m : nat} (S : GenMatrix n m) (x y : nat) (a : F),
-  x <> y -> S = col_add (col_add S x y a) x y (-a).
+Lemma col_add_inv : forall {m n} (T : GenMatrix m n) (x y : nat) (a : F),
+  x <> y -> T = col_add (col_add T x y a) x y (-a).
 Proof. intros. 
        prep_genmatrix_equality.
        unfold col_add.
@@ -1064,8 +967,8 @@ Proof. intros.
        ring. easy. 
 Qed.
 
-Lemma row_add_inv : forall {n m : nat} (S : GenMatrix n m) (x y : nat) (a : F),
-  x <> y -> S = row_add (row_add S x y a) x y (-a).
+Lemma row_add_inv : forall {m n} (T : GenMatrix m n) (x y : nat) (a : F),
+  x <> y -> T = row_add (row_add T x y a) x y (-a).
 Proof. intros. 
        prep_genmatrix_equality.
        unfold row_add.
@@ -1073,15 +976,15 @@ Proof. intros.
        ring. easy. 
 Qed.
 
-Lemma col_swap_make_WF : forall {n m} (T : GenMatrix n m) (x y : nat),
-  x < m -> y < m -> col_swap (make_WF T) x y = make_WF (col_swap T x y).
+Lemma col_swap_make_WF : forall {m n} (T : GenMatrix m n) (x y : nat),
+  x < n -> y < n -> col_swap (make_WF T) x y = make_WF (col_swap T x y).
 Proof. intros.
        unfold make_WF, col_swap. 
        prep_genmatrix_equality.
        bdestruct_all; try easy. 
 Qed.
 
-Lemma col_scale_make_WF : forall {n m} (T : GenMatrix n m) (x : nat) (c : F),
+Lemma col_scale_make_WF : forall {m n} (T : GenMatrix m n) (x : nat) (c : F),
   col_scale (make_WF T) x c = make_WF (col_scale T x c).
 Proof. intros.
        unfold make_WF, col_scale. 
@@ -1089,18 +992,18 @@ Proof. intros.
        bdestruct_all; try easy; simpl; ring. 
 Qed.
 
-Lemma col_add_make_WF : forall {n m} (T : GenMatrix n m) (x y : nat) (c : F),
-  x < m -> y < m -> col_add (make_WF T) x y c = make_WF (col_add T x y c).
+Lemma col_add_make_WF : forall {m n} (T : GenMatrix m n) (x y : nat) (c : F),
+  x < n -> y < n -> col_add (make_WF T) x y c = make_WF (col_add T x y c).
 Proof. intros.
        unfold make_WF, col_add. 
        prep_genmatrix_equality.
        bdestruct_all; try easy; simpl; ring. 
 Qed.
 
-Lemma gen_new_vec_0 : forall {n m} (T : GenMatrix n m) (as' : Vector m),
-  as' == Zero -> gen_new_vec n m T as' = Zero.
+Lemma gen_new_vec_0 : forall {m n} (T : GenMatrix m n) (as' : Vector n),
+  as' == Zero -> gen_new_col m n T as' = Zero.
 Proof. intros.
-       unfold genmat_equiv, gen_new_vec in *.
+       unfold genmat_equiv, gen_new_col in *.
        prep_genmatrix_equality.
        rewrite Msum_Fsum.
        unfold Zero in *.
@@ -1110,8 +1013,8 @@ Proof. intros.
        easy.
 Qed.
 
-Lemma gen_new_row_0 : forall {n m} (T : GenMatrix n m) (as' : GenMatrix 1 n),
-  as' == Zero -> gen_new_row n m T as' = Zero.
+Lemma gen_new_row_0 : forall {m n} (T : GenMatrix m n) (as' : GenMatrix 1 m),
+  as' == Zero -> gen_new_row m n T as' = Zero.
 Proof. intros.
        unfold genmat_equiv, gen_new_row in *.
        prep_genmatrix_equality.
@@ -1123,8 +1026,8 @@ Proof. intros.
        easy.
 Qed.
 
-Lemma col_add_many_0 : forall {n m} (col : nat) (T : GenMatrix n m) (as' : Vector m),
-  as' == Zero -> T = col_add_many col as' T.
+Lemma col_add_many_0 : forall {m n} (T : GenMatrix m n) (as' : Vector n) (col : nat),
+  as' == Zero -> T = col_add_many T as' col. 
 Proof. intros. 
        unfold col_add_many in *.
        prep_genmatrix_equality.
@@ -1133,8 +1036,8 @@ Proof. intros.
        unfold Zero; ring. 
 Qed.
 
-Lemma row_add_many_0 : forall {n m} (row : nat) (T : GenMatrix n m) (as' : GenMatrix 1 n),
-  as' == Zero -> T = row_add_many row as' T.
+Lemma row_add_many_0 : forall {m n} (T : GenMatrix m n) (as' : GenMatrix 1 m) (row : nat),
+  as' == Zero -> T = row_add_many T as' row.
 Proof. intros. 
        unfold row_add_many in *.
        prep_genmatrix_equality. 
@@ -1143,9 +1046,9 @@ Proof. intros.
        unfold Zero; ring. 
 Qed.
 
-Lemma gen_new_vec_mat_equiv : forall {n m} (T : GenMatrix n m) (as' bs : Vector m),
-  as' == bs -> gen_new_vec n m T as' = gen_new_vec n m T bs.
-Proof. unfold genmat_equiv, gen_new_vec; intros.
+Lemma gen_new_vec_mat_equiv : forall {m n} (T : GenMatrix m n) (as' bs : Vector n),
+  as' == bs -> gen_new_col m n T as' = gen_new_col m n T bs.
+Proof. unfold genmat_equiv, gen_new_col; intros.
        prep_genmatrix_equality.
        do 2 rewrite Msum_Fsum.
        apply big_sum_eq_bounded; intros. 
@@ -1153,8 +1056,8 @@ Proof. unfold genmat_equiv, gen_new_vec; intros.
        easy.
 Qed.
 
-Lemma gen_new_row_mat_equiv : forall {n m} (T : GenMatrix n m) (as' bs : GenMatrix 1 n),
-  as' == bs -> gen_new_row n m T as' = gen_new_row n m T bs.
+Lemma gen_new_row_mat_equiv : forall {m n} (T : GenMatrix m n) (as' bs : GenMatrix 1 m),
+  as' == bs -> gen_new_row m n T as' = gen_new_row m n T bs.
 Proof. unfold genmat_equiv, gen_new_row; intros.
        prep_genmatrix_equality.
        do 2 rewrite Msum_Fsum.
@@ -1163,22 +1066,22 @@ Proof. unfold genmat_equiv, gen_new_row; intros.
        easy.
 Qed.
 
-Lemma col_add_many_mat_equiv : forall {n m} (col : nat) (T : GenMatrix n m) (as' bs : Vector m),
-  as' == bs -> col_add_many col as' T = col_add_many col bs T.
+Lemma col_add_many_mat_equiv : forall {m n} (T : GenMatrix m n) (as' bs : Vector n) (col : nat),
+  as' == bs -> col_add_many T as' col = col_add_many T bs col.
 Proof. intros. 
        unfold col_add_many.
        rewrite (gen_new_vec_mat_equiv _ as' bs); easy.
 Qed.
 
-Lemma row_add_many_mat_equiv : forall {n m} (row : nat) (T : GenMatrix n m) (as' bs : GenMatrix 1 n),
-  as' == bs -> row_add_many row as' T = row_add_many row bs T.
+Lemma row_add_many_mat_equiv : forall {m n} (T : GenMatrix m n) (as' bs : GenMatrix 1 m) (row : nat),
+  as' == bs -> row_add_many T as' row = row_add_many T bs row.
 Proof. intros. 
        unfold row_add_many.
        rewrite (gen_new_row_mat_equiv _ as' bs); easy.
 Qed.
 
-Lemma col_add_each_0 : forall {n m} (col : nat) (T : GenMatrix n m) (v : GenMatrix 1 m),
-  v = Zero -> T = col_add_each col v T.
+Lemma col_add_each_0 : forall {m n} (T : GenMatrix m n) (v : GenMatrix 1 n) (col : nat),
+  v = Zero -> T = col_add_each T v col.
 Proof. intros. 
        rewrite H.
        unfold col_add_each.
@@ -1186,8 +1089,8 @@ Proof. intros.
        erewrite GMplus_0_r; auto.
 Qed.
 
-Lemma row_add_each_0 : forall {n m} (row : nat) (T : GenMatrix n m) (v : Vector n),
-  v = Zero -> T = row_add_each row v T.
+Lemma row_add_each_0 : forall {m n} (T : GenMatrix m n) (v : Vector m) (row : nat) ,
+  v = Zero -> T = row_add_each T v row.
 Proof. intros. 
        rewrite H.
        unfold row_add_each.
@@ -1196,18 +1099,18 @@ Proof. intros.
 Qed.
 
 (* allows for induction on col_add_many *)
-Lemma col_add_many_col_add : forall {n m} (col e : nat) (T : GenMatrix n m) (as' : Vector m),
-  col <> e -> e < m -> as' col 0 = 0%G ->
-  col_add_many col as' T = 
-  col_add (col_add_many col (make_row_zero e as') T) col e (as' e 0).
+Lemma col_add_many_col_add : forall {m n} (T : GenMatrix m n) (as' : Vector n) (col e : nat),
+  col <> e -> e < n -> as' col 0 = 0%G ->
+  col_add_many T as' col = 
+  col_add (col_add_many T (make_row_zero e as') col) col e (as' e 0).
 Proof. intros. 
-       unfold col_add_many, col_add, gen_new_vec.
+       unfold col_add_many, col_add, gen_new_col.
        prep_genmatrix_equality.
        bdestruct (y =? col); try easy.
        bdestruct (e =? col); try lia.
        rewrite <- Gplus_assoc.
        apply f_equal_gen; try easy.
-       assert (H' : m = e + (m - e)). lia. 
+       assert (H' : n = e + (n - e)). lia. 
        rewrite H'.
        do 2 rewrite Msum_Fsum. 
        rewrite big_sum_sum.
@@ -1217,7 +1120,7 @@ Proof. intros.
        apply big_sum_eq_bounded; intros.
        unfold make_row_zero.
        bdestruct (x0 =? e); try lia; easy. 
-       destruct (m - e); try lia. 
+       destruct (n - e); try lia. 
        do 2 rewrite <- big_sum_extend_l.
        unfold make_row_zero.
        bdestruct (e + 0 =? e); try lia. 
@@ -1232,19 +1135,19 @@ Proof. intros.
 Qed.
 
 (* shows that we can eliminate a column in a matrix using col_add_many *)
-Lemma col_add_many_cancel : forall {n m} (T : GenMatrix n (S m)) (as' : Vector (S m)) (col : nat),
-  col < (S m) -> as' col O = 0%G ->
-  (reduce_col T col) × (reduce_row as' col) = -1%G .* (get_col col T) -> 
-  (forall i : nat, (col_add_many col as' T) i col = 0%G).
+Lemma col_add_many_cancel : forall {m n} (T : GenMatrix m (S n)) (as' : Vector (S n)) (col : nat),
+  col < (S n) -> as' col O = 0%G ->
+  (reduce_col T col) × (reduce_row as' col) = -1%G .* (get_col T col) -> 
+  (forall i : nat, (col_add_many T as' col) i col = 0%G).
 Proof. intros. 
-       unfold col_add_many, gen_new_vec.
+       unfold col_add_many, gen_new_col.
        bdestruct (col =? col); try lia. 
        rewrite Msum_Fsum. 
-       assert (H' : (big_sum (fun x : nat => (as' x O .* get_col x T) i 0) (S m) = 
+       assert (H' : (big_sum (fun x : nat => (as' x O .* get_col T x) i 0) (S n) = 
                      (GMmult (reduce_col T col) (reduce_row as' col)) i 0)%G).
        { unfold GMmult.
-         replace (S m) with (col + (S (m - col))) by lia; rewrite big_sum_sum. 
-         rewrite (le_plus_minus' col m); try lia; rewrite big_sum_sum. 
+         replace (S n) with (col + (S (n - col))) by lia; rewrite big_sum_sum. 
+         rewrite (le_plus_minus' col n); try lia; rewrite big_sum_sum. 
          apply f_equal_gen; try apply f_equal; auto. 
          apply big_sum_eq_bounded; intros. 
          unfold get_col, scale, reduce_col, reduce_row. 
@@ -1262,13 +1165,13 @@ Proof. intros.
        simpl; ring.
 Qed.
 
-Lemma col_add_many_inv : forall {n m} (S : GenMatrix n m) (col : nat) (as' : Vector m),
-  as' col O = 0%G -> S = col_add_many col (-1%G .* as') (col_add_many col as' S).
+Lemma col_add_many_inv : forall {m n} (T : GenMatrix m n) (as' : Vector n) (col : nat) ,
+  as' col O = 0%G -> T = col_add_many (col_add_many T as' col) (-1%G .* as') col.
 Proof. intros. 
-       unfold col_add_many, gen_new_vec.
+       unfold col_add_many, gen_new_col.
        prep_genmatrix_equality. 
        bdestruct (y =? col); try easy.
-       rewrite <- (Gplus_0_r (S x y)).
+       rewrite <- (Gplus_0_r (T x y)).
        rewrite <- Gplus_assoc.
        apply f_equal_gen; try apply f_equal; auto; try ring.
        do 2 rewrite Msum_Fsum.
@@ -1283,10 +1186,10 @@ Proof. intros.
 Qed.
 
 (* like above, allows for induction on col_add_each *)
-Lemma col_add_each_col_add : forall {n m} (col e : nat) (S : GenMatrix n m) (as' : GenMatrix 1 m),
+Lemma col_add_each_col_add : forall {m n} (T : GenMatrix m n) (as' : GenMatrix 1 n) (col e : nat),
   col <> e -> (forall x, as' x col = 0%G) ->
-              col_add_each col as' S = 
-              col_add (col_add_each col (make_col_zero e as') S) e col (as' 0 e).
+              col_add_each T as' col = 
+              col_add (col_add_each T (make_col_zero e as') col) e col (as' 0 e).
 Proof. intros.
        prep_genmatrix_equality.
        unfold col_add_each, col_add, make_col_zero, GMmult, GMplus, get_col, big_sum.
@@ -1296,10 +1199,10 @@ Proof. intros.
        rewrite H2. ring.
 Qed.
 
-Lemma row_add_each_row_add : forall {n m} (row e : nat) (S : GenMatrix n m) (as' : Vector n),
+Lemma row_add_each_row_add : forall {m n} (T : GenMatrix m n) (as' : Vector m) (row e : nat),
   row <> e -> (forall y, as' row y = 0%G) ->
-              row_add_each row as' S = 
-              row_add (row_add_each row (make_row_zero e as') S) e row (as' e 0).
+              row_add_each T as' row = 
+              row_add (row_add_each T (make_row_zero e as') row) e row (as' e 0).
 Proof. intros.
        prep_genmatrix_equality.
        unfold row_add_each, row_add, make_row_zero, GMmult, GMplus, get_row, big_sum.
@@ -1310,18 +1213,19 @@ Proof. intros.
 Qed.
 
 (* must use make_col_zero here instead of just as' col 0 = 0%G, since def requires stronger hyp *)
-Lemma col_add_each_inv : forall {n m} (col : nat) (as' : GenMatrix 1 m) (T : GenMatrix n m),
-  T = col_add_each col (make_col_zero col (-1%G .* as')) 
-                   (col_add_each col (make_col_zero col as') T).
+Lemma col_add_each_inv : forall {m n} (T : GenMatrix m n) (as' : GenMatrix 1 n) (col : nat),
+  T = col_add_each (col_add_each T (make_col_zero col as') col) 
+                   (make_col_zero col (-1%G .* as')) col.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold col_add_each, make_col_zero, GMmult, GMplus, get_col, scale.
        simpl. bdestruct (y =? col); bdestruct (col =? col); try lia; try ring. 
 Qed.
 
-Lemma row_add_each_inv : forall {n m} (row : nat) (as' : Vector n) (T : GenMatrix n m),
-  T = row_add_each row (make_row_zero row (-1%G .* as')) 
-                   (row_add_each row (make_row_zero row as') T).
+Lemma row_add_each_inv : forall {m n} (T : GenMatrix m n) (as' : Vector m) (row : nat),
+  T = row_add_each (row_add_each T (make_row_zero row as') row)
+                   (make_row_zero row (-1%G .* as')) row.
+                   
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold row_add_each, make_row_zero, GMmult, GMplus, get_row, scale.
@@ -1331,23 +1235,23 @@ Qed.
 
 (* we can show that we get from col_XXX to row_XXX via transposing *)
 (* helpful, since we can bootstrap many lemmas on cols for rows *)
-Lemma get_col_transpose : forall {n m} (A : GenMatrix n m) (i : nat),
-  (get_col i A)⊤ = get_row i (A⊤).
+Lemma get_col_transpose : forall {m n} (A : GenMatrix m n) (i : nat),
+  (get_col A i)⊤ = get_row (A⊤) i.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold get_col, get_row, transpose. 
        easy.
 Qed.
 
-Lemma get_row_transpose : forall {n m} (A : GenMatrix n m) (i : nat),
-  (get_row i A)⊤ = get_col i (A⊤).
+Lemma get_row_transpose : forall {m n} (A : GenMatrix m n) (i : nat),
+  (get_row A i)⊤ = get_col (A⊤) i.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold get_col, get_row, transpose. 
        easy.
 Qed.
 
-Lemma col_swap_transpose : forall {n m} (A : GenMatrix n m) (x y : nat),
+Lemma col_swap_transpose : forall {m n} (A : GenMatrix m n) (x y : nat),
   (col_swap A x y)⊤ = row_swap (A⊤) x y.
 Proof. intros. 
        prep_genmatrix_equality. 
@@ -1355,7 +1259,7 @@ Proof. intros.
        easy. 
 Qed.
 
-Lemma row_swap_transpose : forall {n m} (A : GenMatrix n m) (x y : nat),
+Lemma row_swap_transpose : forall {m n} (A : GenMatrix m n) (x y : nat),
   (row_swap A x y)⊤ = col_swap (A⊤) x y.
 Proof. intros. 
        prep_genmatrix_equality. 
@@ -1363,7 +1267,7 @@ Proof. intros.
        easy. 
 Qed.
 
-Lemma col_scale_transpose : forall {n m} (A : GenMatrix n m) (x : nat) (a : F),
+Lemma col_scale_transpose : forall {m n} (A : GenMatrix m n) (x : nat) (a : F),
   (col_scale A x a)⊤ = row_scale (A⊤) x a.
 Proof. intros. 
        prep_genmatrix_equality. 
@@ -1371,7 +1275,7 @@ Proof. intros.
        easy. 
 Qed.
 
-Lemma row_scale_transpose : forall {n m} (A : GenMatrix n m) (x : nat) (a : F),
+Lemma row_scale_transpose : forall {m n} (A : GenMatrix m n) (x : nat) (a : F),
   (row_scale A x a)⊤ = col_scale (A⊤) x a.
 Proof. intros. 
        prep_genmatrix_equality. 
@@ -1379,7 +1283,7 @@ Proof. intros.
        easy. 
 Qed.
 
-Lemma col_add_transpose : forall {n m} (A : GenMatrix n m) (col to_add : nat) (a : F),
+Lemma col_add_transpose : forall {m n} (A : GenMatrix m n) (col to_add : nat) (a : F),
   (col_add A col to_add a)⊤ = row_add (A⊤) col to_add a.
 Proof. intros. 
        prep_genmatrix_equality. 
@@ -1387,7 +1291,7 @@ Proof. intros.
        easy. 
 Qed.
 
-Lemma row_add_transpose : forall {n m} (A : GenMatrix n m) (row to_add : nat) (a : F),
+Lemma row_add_transpose : forall {m n} (A : GenMatrix m n) (row to_add : nat) (a : F),
   (row_add A row to_add a)⊤ = col_add (A⊤) row to_add a.
 Proof. intros. 
        prep_genmatrix_equality. 
@@ -1395,42 +1299,42 @@ Proof. intros.
        easy. 
 Qed.
 
-Lemma col_add_many_transpose : forall {n m} (A : GenMatrix n m) (col : nat) (as' : Vector m),
-  (col_add_many col as' A)⊤ = row_add_many col (as'⊤) (A⊤).
+Lemma col_add_many_transpose : forall {m n} (A : GenMatrix m n) (as' : Vector n) (col : nat),
+  (col_add_many A as' col)⊤ = row_add_many (A⊤) (as'⊤) col.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold row_add_many, col_add_many, transpose. 
        bdestruct (x =? col); try easy.
        apply f_equal_gen; try apply f_equal; auto.  
-       unfold gen_new_vec, gen_new_row, get_col, get_row, scale.
+       unfold gen_new_col, gen_new_row, get_col, get_row, scale.
        do 2 rewrite Msum_Fsum.
        apply big_sum_eq_bounded; intros. 
        easy. 
 Qed.
 
-Lemma row_add_many_transpose : forall {n m} (A : GenMatrix n m) (row : nat) (as' : GenMatrix 1 n),
-  (row_add_many row as' A)⊤ = col_add_many row (as'⊤) (A⊤).
+Lemma row_add_many_transpose : forall {m n} (A : GenMatrix m n) (as' : GenMatrix 1 m) (row : nat),
+  (row_add_many A as' row)⊤ = col_add_many (A⊤) (as'⊤) row.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold row_add_many, col_add_many, transpose. 
        bdestruct (y =? row); try easy. 
        apply f_equal_gen; try apply f_equal; auto. 
-       unfold gen_new_vec, gen_new_row, get_col, get_row, scale.
+       unfold gen_new_col, gen_new_row, get_col, get_row, scale.
        do 2 rewrite Msum_Fsum.
        apply big_sum_eq_bounded; intros. 
        easy. 
 Qed.
 
-Lemma col_add_each_transpose : forall {n m} (A : GenMatrix n m) (col : nat) (as' : GenMatrix 1 m),
-  (col_add_each col as' A)⊤ = row_add_each col (as'⊤) (A⊤).
+Lemma col_add_each_transpose : forall {m n} (A : GenMatrix m n) (as' : GenMatrix 1 n) (col : nat), 
+  (col_add_each A as' col)⊤ = row_add_each (A⊤) (as'⊤) col.
 Proof. intros. 
        unfold row_add_each, col_add_each. 
        rewrite GMplus_transpose.
        rewrite GMmult_transpose; auto.
 Qed.
 
-Lemma row_add_each_transpose : forall {n m} (A : GenMatrix n m) (row : nat) (as' : Vector n),
-  (row_add_each row as' A)⊤ = col_add_each row (as'⊤) (A⊤).
+Lemma row_add_each_transpose : forall {m n} (A : GenMatrix m n) (as' : Vector m) (row : nat),
+  (row_add_each A as' row)⊤ = col_add_each (A⊤) (as'⊤) row.
 Proof. intros. 
        unfold row_add_each, col_add_each. 
        rewrite GMplus_transpose.
@@ -1442,20 +1346,20 @@ Qed.
 
 (** the idea is to show that col operations correspond to multiplication by special matrices. *)
 (** Thus, we show that the col ops all satisfy various multiplication rules *)
-Lemma swap_preserves_mul_lt : forall {n m o} (A : GenMatrix n m) (B : GenMatrix m o) (x y : nat),
-  x < y -> x < m -> y < m -> A × B = (col_swap A x y) × (row_swap B x y).
+Lemma swap_preserves_mul_lt : forall {m n o} (A : GenMatrix m n) (B : GenMatrix n o) (x y : nat),
+  x < y -> x < n -> y < n -> A × B = (col_swap A x y) × (row_swap B x y).
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold GMmult. 
-       bdestruct (x <? m); try lia.
-       rewrite (le_plus_minus' x m); try lia.
+       bdestruct (x <? n); try lia.
+       rewrite (le_plus_minus' x n); try lia.
        do 2 rewrite big_sum_sum. 
        apply f_equal_gen; try apply f_equal; auto. 
        apply big_sum_eq_bounded.
        intros. 
        unfold col_swap, row_swap.
        bdestruct (x1 =? x); bdestruct (x1 =? y); try lia; try easy.   
-       destruct (m - x) as [| x'] eqn:E; try lia. 
+       destruct (n - x) as [| x'] eqn:E; try lia. 
        do 2 rewrite <- big_sum_extend_l.
        rewrite Gplus_comm.
        rewrite (Gplus_comm (col_swap A x y x0 (x + 0)%nat * row_swap B x y (x + 0)%nat y0)%G _).
@@ -1486,8 +1390,8 @@ Proof. intros.
          bdestruct (x + S (y - x - 1 + S x1) =? y); try lia; try easy.
 Qed.           
 
-Lemma swap_preserves_mul : forall {n m o} (A : GenMatrix n m) (B : GenMatrix m o) (x y : nat),
-  x < m -> y < m -> A × B = (col_swap A x y) × (row_swap B x y).
+Lemma swap_preserves_mul : forall {m n o} (A : GenMatrix m n) (B : GenMatrix n o) (x y : nat),
+  x < n -> y < n -> A × B = (col_swap A x y) × (row_swap B x y).
 Proof. intros. bdestruct (x <? y).
        - apply swap_preserves_mul_lt; easy.
        - destruct H1.
@@ -1496,7 +1400,7 @@ Proof. intros. bdestruct (x <? y).
            apply swap_preserves_mul_lt; lia.
 Qed.
 
-Lemma scale_preserves_mul : forall {n m o} (A : GenMatrix n m) (B : GenMatrix m o) (x : nat) (a : F),
+Lemma scale_preserves_mul : forall {m n o} (A : GenMatrix m n) (B : GenMatrix n o) (x : nat) (a : F),
   A × (row_scale B x a) = (col_scale A x a) × B.
 Proof. intros. 
        prep_genmatrix_equality. 
@@ -1510,21 +1414,21 @@ Proof. intros.
        - reflexivity. 
 Qed.        
 
-Lemma add_preserves_mul_lt : forall {n m o} (A : GenMatrix n m) (B : GenMatrix m o) 
+Lemma add_preserves_mul_lt : forall {m n o} (A : GenMatrix m n) (B : GenMatrix n o) 
                                                 (x y : nat) (a : F),
-   x < y -> x < m -> y < m -> A × (row_add B y x a) = (col_add A x y a) × B.
+   x < y -> x < n -> y < n -> A × (row_add B y x a) = (col_add A x y a) × B.
 Proof. intros.  
        prep_genmatrix_equality. 
        unfold GMmult.   
-       bdestruct (x <? m); try lia.
-       rewrite (le_plus_minus' x m); try lia.       
+       bdestruct (x <? n); try lia.
+       rewrite (le_plus_minus' x n); try lia.       
        do 2 rewrite big_sum_sum.
        apply f_equal_gen; try apply f_equal; auto. 
        apply big_sum_eq_bounded.
        intros. 
        unfold row_add, col_add.
        bdestruct (x1 =? y); bdestruct (x1 =? x); try lia; easy. 
-       destruct (m - x) as [| x'] eqn:E; try lia. 
+       destruct (n - x) as [| x'] eqn:E; try lia. 
        do 2 rewrite <- big_sum_extend_l.
        rewrite Gplus_comm. 
        rewrite (Gplus_comm (col_add A x y a x0 (x + 0)%nat * B (x + 0)%nat y0)%G _).
@@ -1555,14 +1459,14 @@ Proof. intros.
          bdestruct (x + S (y - x - 1 + S x1) =? x); try lia; easy. 
 Qed.
 
-Lemma add_preserves_mul : forall {n m o} (A : GenMatrix n m) (B : GenMatrix m o) 
+Lemma add_preserves_mul : forall {m n o} (A : GenMatrix m n) (B : GenMatrix n o) 
                                              (x y : nat) (a : F),
-   x < m -> y < m -> A × (row_add B y x a) = (col_add A x y a) × B.
+   x < n -> y < n -> A × (row_add B y x a) = (col_add A x y a) × B.
 Proof. intros. bdestruct (x <? y).
        - apply add_preserves_mul_lt; easy.
        - destruct H1.
          + rewrite col_add_double, row_add_double. 
-           apply scale_preserves_mul.
+           apply scale_preserves_mul. 
          + rewrite (swap_preserves_mul A _ y (S m0)); try easy.
            rewrite (swap_preserves_mul _ B (S m0) y); try easy.
            rewrite col_add_swap.
@@ -1596,10 +1500,10 @@ Proof. intros; unfold skip_count.
        bdestruct (i1 <? skip); bdestruct (i2 <? skip); try lia. 
 Qed.
 
-Lemma cam_ca_switch : forall {n m} (T : GenMatrix n m) (as' : Vector m) (col to_add : nat) (c : F),
+Lemma cam_ca_switch : forall {m n} (T : GenMatrix m n) (as' : Vector n) (col to_add : nat) (c : F),
   as' col 0 = 0%G -> to_add <> col -> 
-  col_add (col_add_many col as' T) col to_add c = 
-  col_add_many col as' (col_add T col to_add c).
+  col_add (col_add_many T as' col) col to_add c = 
+  col_add_many (col_add T col to_add c) as' col.
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold col_add, col_add_many.
@@ -1609,7 +1513,7 @@ Proof. intros.
        bdestruct (to_add =? col); try lia.
        rewrite Gplus_comm.
        apply f_equal_gen; try apply f_equal; auto. 
-       unfold gen_new_vec.
+       unfold gen_new_col.
        do 2 rewrite Msum_Fsum.
        apply big_sum_eq_bounded; intros. 
        unfold get_col, scale; simpl.
@@ -1617,18 +1521,18 @@ Proof. intros.
        rewrite H4, H; ring.
 Qed.
 
-Lemma col_add_many_preserves_mul_some : forall (n m o e col : nat) 
-                                               (A : GenMatrix n m) (B : GenMatrix m o) (v : Vector m),
-  WF_GenMatrix v -> (skip_count col e) < m -> col < m -> 
+Lemma col_add_many_preserves_mul_some : forall (m n o e col : nat) 
+                                               (A : GenMatrix m n) (B : GenMatrix n o) (v : Vector n),
+  WF_GenMatrix v -> (skip_count col e) < n -> col < n -> 
   (forall i : nat, (skip_count col e) < i -> v i 0 = 0%G) -> v col 0 = 0%G ->
-  A × (row_add_each col v B) = (col_add_many col v A) × B.  
+  A × (row_add_each B v col) = (col_add_many A v col) × B.  
 Proof. induction e as [| e].
-       - intros.
-         destruct m; try easy.
-         rewrite (col_add_many_col_add col (skip_count col 0) _ _); try easy.
-         rewrite <- (col_add_many_0 col A (make_row_zero (skip_count col 0) v)).
-         rewrite (row_add_each_row_add col (skip_count col 0) _ _); try easy.
-         rewrite <- (row_add_each_0 col B (make_row_zero (skip_count col 0) v)).
+       - intros. 
+         destruct n; try easy.  
+         rewrite (col_add_many_col_add _ _ col (skip_count col 0)); try easy.
+         rewrite <- (col_add_many_0 A (make_row_zero (skip_count col 0) v) col).
+         rewrite (row_add_each_row_add _ _ col (skip_count col 0)); try easy.
+         rewrite <- (row_add_each_0 B (make_row_zero (skip_count col 0) v) col).
          apply add_preserves_mul; try easy.
          apply genmat_equiv_eq; auto with wf_db.
          unfold genmat_equiv; intros. 
@@ -1653,9 +1557,9 @@ Proof. induction e as [| e].
          rewrite H2; try easy.
          unfold skip_count in *; simpl in *; lia. 
        - intros. 
-         destruct m; try easy.
-         rewrite (col_add_many_col_add col (skip_count col (S e)) _ _); try easy.
-         rewrite (row_add_each_row_add col (skip_count col (S e)) _ _); try easy.
+         destruct n; try easy.
+         rewrite (col_add_many_col_add _ _ col (skip_count col (S e))); try easy.
+         rewrite (row_add_each_row_add _ _ col (skip_count col (S e))); try easy.
          rewrite add_preserves_mul; try easy.
          rewrite cam_ca_switch. 
          rewrite IHe; try easy; auto with wf_db.
@@ -1682,40 +1586,40 @@ Proof. induction e as [| e].
          apply H; lia. 
 Qed.
 
-Lemma col_add_many_preserves_mul: forall (n m o col : nat) 
-                                               (A : GenMatrix n m) (B : GenMatrix m o) (v : Vector m),
-  WF_GenMatrix v -> col < m -> v col 0 = 0%G ->
-  A × (row_add_each col v B) = (col_add_many col v A) × B.  
+Lemma col_add_many_preserves_mul: forall (m n o col : nat) 
+                                               (A : GenMatrix m n) (B : GenMatrix n o) (v : Vector n),
+  WF_GenMatrix v -> col < n -> v col 0 = 0%G ->
+  A × (row_add_each B v col) = (col_add_many A v col) × B.  
 Proof. intros. 
-       destruct m; try easy.
-       destruct m.
+       destruct n; try easy.
+       destruct n.
        - assert (H' : v = Zero).
          apply genmat_equiv_eq; auto with wf_db.
          unfold genmat_equiv; intros. 
          destruct i; destruct j; destruct col; try lia; easy.
          rewrite <- col_add_many_0, <- row_add_each_0; try easy.
          rewrite H'; easy.
-       - apply (col_add_many_preserves_mul_some _ _ _ m col); try easy.
+       - apply (col_add_many_preserves_mul_some _ _ _ n col); try easy.
          unfold skip_count.
-         bdestruct (m <? col); lia. 
+         bdestruct (n <? col); lia. 
          intros. 
          unfold skip_count in H2.
-         bdestruct (m <? col). 
-         bdestruct (col =? (S m)); try lia. 
-         bdestruct (i =? (S m)). 
+         bdestruct (n <? col). 
+         bdestruct (col =? (S n)); try lia. 
+         bdestruct (i =? (S n)). 
          rewrite H5, <- H4. apply H1.
          apply H; lia. 
          apply H; lia. 
 Qed.
 
 (* we can prove col_add_each version much more easily using transpose *)
-Lemma col_add_each_preserves_mul: forall (n m o col : nat) (A : GenMatrix n m) 
-                                                         (B : GenMatrix m o) (v : GenMatrix 1 m),
-  WF_GenMatrix v -> col < m -> v 0 col = 0%G ->
-  A × (row_add_many col v B) = (col_add_each col v A) × B.  
+Lemma col_add_each_preserves_mul: forall (m n o col : nat) (A : GenMatrix m n) 
+                                                         (B : GenMatrix n o) (v : GenMatrix 1 n),
+  WF_GenMatrix v -> col < n -> v 0 col = 0%G ->
+  A × (row_add_many B v col) = (col_add_each A v col) × B.  
 Proof. intros. 
-       assert (H' : ((B⊤) × (row_add_each col (v⊤) (A⊤)))⊤ = 
-                               ((col_add_many col (v⊤) (B⊤)) × (A⊤))⊤).  
+       assert (H' : ((B⊤) × (row_add_each (A⊤) (v⊤) col))⊤ = 
+                               ((col_add_many (B⊤) (v⊤) col) × (A⊤))⊤).  
        rewrite col_add_many_preserves_mul; auto with wf_db; try easy.
        do 2 rewrite GMmult_transpose in H'; auto.
        rewrite row_add_each_transpose in H'. 
@@ -1753,7 +1657,7 @@ Qed.
 
 Lemma col_add_many_mult_r : forall {n} (A : Square n) (v : Vector n) (col : nat),
   WF_GenMatrix A -> WF_GenMatrix v -> col < n -> v col 0 = 0%G ->
-  col_add_many col v A = A × (row_add_each col v (I n)).
+  col_add_many A v col = A × (row_add_each (I n) v col).
 Proof. intros. 
        rewrite col_add_many_preserves_mul; try easy.
        rewrite GMmult_1_r; auto with wf_db.
@@ -1761,7 +1665,7 @@ Qed.
 
 Lemma col_add_each_mult_r : forall {n} (A : Square n) (v : GenMatrix 1 n) (col : nat),
   WF_GenMatrix A -> WF_GenMatrix v -> col < n -> v 0 col = 0%G ->
-  col_add_each col v A = A × (row_add_many col v (I n)).
+  col_add_each A v col = A × (row_add_many (I n) v col).
 Proof. intros. 
        rewrite col_add_each_preserves_mul; try easy.
        rewrite GMmult_1_r; auto with wf_db.
@@ -1771,7 +1675,7 @@ Qed.
 
 
 (*  TODO: figure out where to put these! 
-Lemma col_scale_inv : forall {n m : nat} (S : GenMatrix n m) (x : nat) (a : F),
+Lemma col_scale_inv : forall {m n} (S : GenMatrix m n) (x : nat) (a : F),
   a <> 0%G -> S = col_scale (col_scale S x a) x (/ a).
 Proof. intros. 
        prep_genmatrix_equality. 
@@ -1780,7 +1684,7 @@ Proof. intros.
        rewrite Gmult_assoc.
        rewrite Cinv_l; try ring; easy. 
 Qed.
-Lemma row_scale_inv : forall {n m : nat} (S : GenMatrix n m) (x : nat) (a : F),
+Lemma row_scale_inv : forall {m n} (S : GenMatrix m n) (x : nat) (a : F),
   a <> 0%G -> S = row_scale (row_scale S x a) x (/ a).
 Proof. intros. 
        prep_genmatrix_equality. 
@@ -1821,7 +1725,7 @@ Qed.
 
 Lemma row_each_col_many_invr_I : forall (n col : nat) (v : Vector n),
   WF_GenMatrix v -> col < n -> v col 0 = 0%G ->
-  row_add_each col v (I n) = col_add_many col v (I n).  
+  row_add_each (I n) v col = col_add_many (I n) v col.  
 Proof. intros. 
        rewrite <- (GMmult_1_r F R0 R1 R2 R3), <- col_add_many_preserves_mul, 
          GMmult_1_l; auto with wf_db. 
@@ -1829,67 +1733,67 @@ Qed.
 
 Lemma row_many_col_each_invr_I : forall (n col : nat) (v : GenMatrix 1 n),
   WF_GenMatrix v -> col < n -> v 0 col = 0%G ->
-  row_add_many col v (I n) = col_add_each col v (I n).  
+  row_add_many (I n) v col = col_add_each (I n) v col.  
 Proof. intros. 
        rewrite <- (GMmult_1_r F R0 R1 R2 R3), <- col_add_each_preserves_mul, 
          GMmult_1_l; auto with wf_db. 
 Qed.
 
-Lemma reduce_append_split : forall {n m} (T : GenMatrix n (S m)), 
-  WF_GenMatrix T -> T = col_append (reduce_col T m) (get_col m T).
+Lemma reduce_append_split : forall {m n} (T : GenMatrix m (S n)), 
+  WF_GenMatrix T -> T = col_wedge (reduce_col T n) (get_col T n) n.
 Proof. intros. 
        prep_genmatrix_equality. 
-       unfold col_append, get_col, reduce_col.
+       unfold col_wedge, get_col, reduce_col.
        bdestruct_all; subst; try easy.
        do 2 (rewrite H; try lia); easy. 
 Qed.
 
-Lemma smash_zero : forall {n m} (T : GenMatrix n m) (i : nat),
-  WF_GenMatrix T -> smash T (@Zero F R0 n i) = T. 
+Lemma smash_zero : forall {m n} (T : GenMatrix m n) (i : nat),
+  WF_GenMatrix T -> smash T (@Zero F R0 m i) = T. 
 Proof. intros. 
        prep_genmatrix_equality.
        unfold smash, Zero. 
-       bdestruct (y <? m); try easy.
+       bdestruct (y <? n); try easy.
        rewrite H; try lia; easy.
 Qed.
 
-Lemma smash_assoc : forall {n m1 m2 m3}
-                           (T1 : GenMatrix n m1) (T2 : GenMatrix n m2) (T3 : GenMatrix n m3),
+Lemma smash_assoc : forall {m n1 n2 n3}
+                           (T1 : GenMatrix m n1) (T2 : GenMatrix m n2) (T3 : GenMatrix m n3),
   smash (smash T1 T2) T3 = smash T1 (smash T2 T3).
 Proof. intros. 
        unfold smash.
        prep_genmatrix_equality.
-       bdestruct (y <? m1 + m2); bdestruct (y <? m1); 
-         bdestruct (y - m1 <? m2); try lia; try easy.
-       assert (H' : y - (m1 + m2) = y - m1 - m2).
+       bdestruct (y <? n1 + n2); bdestruct (y <? n1); 
+         bdestruct (y - n1 <? n2); try lia; try easy.
+       assert (H' : y - (n1 + n2) = y - n1 - n2).
        lia. rewrite H'; easy.
 Qed.
 
-Lemma smash_append : forall {n m} (T : GenMatrix n m) (v : Vector n),
+Lemma smash_append : forall {m n} (T : GenMatrix m n) (v : Vector m),
   WF_GenMatrix T -> WF_GenMatrix v ->
-  col_append T v = smash T v.
+  col_wedge T v n = smash T v.
 Proof. intros. 
-       unfold smash, col_append, WF_GenMatrix in *.
+       unfold smash, col_wedge, WF_GenMatrix in *.
        prep_genmatrix_equality. 
-       bdestruct (y =? m); bdestruct (y <? m); try lia; try easy.
+       bdestruct (y =? n); bdestruct (y <? n); try lia; try easy.
        rewrite H1.
        rewrite Nat.sub_diag; easy. 
        rewrite H0, H; try lia; try easy.
 Qed.
 
-Lemma smash_reduce : forall {n m1 m2} (T1 : GenMatrix n m1) (T2 : GenMatrix n (S m2)),
-  reduce_col (smash T1 T2) (m1 + m2) = smash T1 (reduce_col T2 m2).
+Lemma smash_reduce : forall {m n1 n2} (T1 : GenMatrix m n1) (T2 : GenMatrix m (S n2)),
+  reduce_col (smash T1 T2) (n1 + n2) = smash T1 (reduce_col T2 n2).
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold reduce_col, smash. 
-       bdestruct (y <? m1 + m2); bdestruct (y <? m1); bdestruct (1 + y <? m1);
-         bdestruct (y - m1 <? m2); try lia; try easy.
-       assert (H' : 1 + y - m1 = 1 + (y - m1)). lia.  
+       bdestruct (y <? n1 + n2); bdestruct (y <? n1); bdestruct (1 + y <? n1);
+         bdestruct (y - n1 <? n2); try lia; try easy.
+       assert (H' : 1 + y - n1 = 1 + (y - n1)). lia.  
        rewrite H'; easy.
 Qed.
 
-Lemma split_col : forall {n m} (T : GenMatrix n (S m)), 
-  T = smash (get_col 0 T) (reduce_col T 0).
+Lemma split_col : forall {m n} (T : GenMatrix m (S n)), 
+  T = smash (get_col T 0) (reduce_col T 0).
 Proof. intros. 
        prep_genmatrix_equality. 
        unfold smash, get_col, reduce_col.
@@ -1933,35 +1837,35 @@ Proof. induction n as [| n'].
            apply H; lia. 
 Qed.
 
-Lemma genmat_equiv_dec : forall {n m : nat} (A B : GenMatrix n m), 
+Lemma genmat_equiv_dec : forall {m n} (A B : GenMatrix m n), 
     { A == B } + { ~ (A == B) }.
-Proof. induction m as [| m']. intros.  
+Proof. induction n as [| n']. intros.  
        - left. easy.
-       - intros. destruct (IHm' (reduce_col A m') (reduce_col B m')).
-         + destruct (vec_equiv_dec (get_col m' A) (get_col m' B)).
+       - intros. destruct (IHn' (reduce_col A n') (reduce_col B n')).
+         + destruct (vec_equiv_dec (get_col A n') (get_col B n')).
            * left. 
              unfold genmat_equiv in *.
              intros. 
-             bdestruct (j =? m'); bdestruct (m' <? j); try lia.
+             bdestruct (j =? n'); bdestruct (n' <? j); try lia.
              ++ apply (g0 i 0) in H.
                 do 2 rewrite get_col_conv in H.
                 rewrite H1. easy. lia. 
              ++ apply (g i j) in H.
                 unfold reduce_col in H.
-                bdestruct (j <? m'); try lia; try easy.
+                bdestruct (j <? n'); try lia; try easy.
                 lia. 
            * right. 
              unfold not, genmat_equiv in *.
-             intros. apply n0.
+             intros. apply n.
              intros. 
              destruct j; try easy.
              do 2 rewrite get_col_conv.
              apply H; lia.
          + right. 
            unfold not, genmat_equiv, reduce_col in *.
-           intros. apply n0. 
+           intros. apply n. 
            intros. 
-           bdestruct (j <? m'); try lia.
+           bdestruct (j <? n'); try lia.
            apply H; lia.            
 Qed.
 
@@ -2092,24 +1996,24 @@ Fixpoint Determinant (n : nat) (A : Square n) : F :=
   match n with 
   | 0 => 1
   | S 0 => A 0 0
-  | S n' => (big_sum (fun i => (parity i) * (A i 0) * (Determinant n' (reduce A i 0)))%G n)
+  | S n' => (big_sum (fun i => (parity i) * (A i 0) * (Determinant n' (get_minor A i 0)))%G n)
   end.
 
 Arguments Determinant {n}.
 
 Lemma Det_simplify : forall {n} (A : Square (S n)),
   Determinant A =  
-  (big_sum (fun i => (parity i) * (A i 0) * (Determinant (reduce A i 0)))%G (S n)).
+  (big_sum (fun i => (parity i) * (A i 0) * (Determinant (get_minor A i 0)))%G (S n)).
 Proof. intros. 
        destruct n; try easy.
        simpl; ring.
 Qed.
 
 Lemma Det_simplify_fun : forall {n} (A : Square (S (S n))),
-  (fun i : nat => parity i * A i 0 * Determinant (reduce A i 0))%G =
+  (fun i : nat => parity i * A i 0 * Determinant (get_minor A i 0))%G =
   (fun i : nat => (big_sum (fun j => 
-           (parity i) * (A i 0) * (parity j) * ((reduce A i 0) j 0) * 
-           (Determinant (reduce (reduce A i 0) j 0)))%G (S n)))%G.
+           (parity i) * (A i 0) * (parity j) * ((get_minor A i 0) j 0) * 
+           (Determinant (get_minor (get_minor A i 0) j 0)))%G (S n)))%G.
 Proof. intros. 
        apply functional_extensionality; intros. 
        rewrite Det_simplify. 
@@ -2119,13 +2023,13 @@ Proof. intros.
 Qed.
 
 
-Lemma reduce_I : forall (n : nat), reduce (I (S n)) 0 0 = I n.
+Lemma get_minor_I : forall (n : nat), get_minor (I (S n)) 0 0 = I n.
 Proof. intros.
        apply genmat_equiv_eq.
-       apply WF_reduce; try lia; auto with wf_db.
+       apply WF_get_minor; try lia; auto with wf_db.
        apply WF_I.
        unfold genmat_equiv; intros.
-       unfold reduce, I.
+       unfold get_minor, I.
        bdestruct (i <? 0); bdestruct (j <? 0); try lia. 
        easy. 
 Qed.       
@@ -2139,7 +2043,7 @@ Proof. intros.
          rewrite <- Gplus_0_r.
          rewrite <- Gplus_assoc.
          apply f_equal_gen; try apply f_equal.
-         rewrite reduce_I, IHn'.
+         rewrite get_minor_I, IHn'.
          unfold I; simpl; ring.
          rewrite (@big_sum_extend_r F R0). 
          apply (@big_sum_0_bounded F R0); intros. 
@@ -2155,9 +2059,9 @@ Proof. induction n as [| n'].
          destruct n'; try easy. 
          do 2 rewrite Det_simplify. 
          apply big_sum_eq_bounded; intros. 
-         assert (H' : (reduce (make_WF A) x 0) = make_WF (reduce A x 0)).
+         assert (H' : (get_minor (make_WF A) x 0) = make_WF (get_minor A x 0)).
          { prep_genmatrix_equality.
-           unfold reduce, make_WF.
+           unfold get_minor, make_WF.
            bdestruct_all; try easy. }
          rewrite H', IHn'.
          unfold make_WF. 
@@ -2198,7 +2102,7 @@ Definition M22 : Square 2 :=
 
 
 Lemma Det_M22 : (Determinant M22) = (Gopp (1 + 1 + 1))%G.
-Proof. simpl; unfold M22, reduce; simpl.
+Proof. simpl; unfold M22, get_minor; simpl.
        ring.
 Qed.
 
@@ -2221,19 +2125,19 @@ Proof. induction n.
              apply big_sum_eq_bounded.
              intros. 
              destruct col. 
-             rewrite col_scale_reduce_same; try lia. 
+             rewrite col_scale_get_minor_same; try lia. 
              unfold col_scale. bdestruct (0 =? 0); try lia. 
              ring.
-             rewrite col_scale_reduce_before; try lia.
+             rewrite col_scale_get_minor_before; try lia.
              rewrite Sn_minus_1.
              rewrite IHn; try lia. 
              unfold col_scale. 
              bdestruct (0 =? S col); try lia; ring.
            * destruct col. 
-             rewrite col_scale_reduce_same; try lia. 
+             rewrite col_scale_get_minor_same; try lia. 
              unfold col_scale. bdestruct (0 =? 0); try lia. 
              ring.
-             rewrite col_scale_reduce_before; try lia.
+             rewrite col_scale_get_minor_before; try lia.
              rewrite Sn_minus_1.
              rewrite IHn; try lia. 
              unfold col_scale. 
@@ -2244,7 +2148,7 @@ Qed.
 Lemma Det_diff_1 : forall {n} (A : Square (S (S n))),
   Determinant (col_swap A 0 1) = 
   big_sum (fun i => (big_sum (fun j => (A i 1%nat) * (A (skip_count i j) 0) * (parity i) * (parity j) * 
-                             Determinant (reduce (reduce A i 0) j 0))  
+                             Determinant (get_minor (get_minor A i 0) j 0))  
                              (S n))) (S (S n)).
 Proof. intros. 
        rewrite Det_simplify.
@@ -2252,8 +2156,8 @@ Proof. intros.
        apply big_sum_eq_bounded; intros. 
        apply big_sum_eq_bounded; intros. 
        replace (col_swap A 0 1%nat x 0) with (A x 1%nat) by easy. 
-       assert (H' : @reduce (S n) (col_swap A 0 1%nat) x 0 x0 0 = A (skip_count x x0) 0).
-       { unfold reduce, col_swap, skip_count. 
+       assert (H' : @get_minor (S n) (col_swap A 0 1%nat) x 0 x0 0 = A (skip_count x x0) 0).
+       { unfold get_minor, col_swap, skip_count. 
          simpl. bdestruct (x0 <? x); try easy. } 
        rewrite H'.    
        apply f_equal_gen; try apply f_equal; try easy. 
@@ -2263,7 +2167,7 @@ Qed.
 Lemma Det_diff_2 : forall {n} (A : Square (S (S n))),
   Determinant A = 
   big_sum (fun i => (big_sum (fun j => (A i 0) * (A (skip_count i j) 1%nat) * (parity i) * (parity j) * 
-                             Determinant (reduce (reduce A i 0) j 0))  
+                             Determinant (get_minor (get_minor A i 0) j 0))  
                              (S n))) (S (S n)).
 Proof. intros. 
        rewrite Det_simplify.
@@ -2271,8 +2175,8 @@ Proof. intros.
        apply big_sum_eq_bounded; intros. 
        apply big_sum_eq_bounded; intros. 
        apply f_equal_gen; try apply f_equal; try easy. 
-       assert (H' : @reduce (S n) A x 0 x0 0 = A (skip_count x x0) 1%nat).
-       { unfold reduce, col_swap, skip_count. 
+       assert (H' : @get_minor (S n) A x 0 x0 0 = A (skip_count x x0) 1%nat).
+       { unfold get_minor, col_swap, skip_count. 
          simpl. bdestruct (x0 <? x); try easy. } 
        rewrite H'. 
        ring.
@@ -2292,14 +2196,14 @@ Proof. intros.
          apply f_equal_gen; try apply f_equal. 
          rewrite parity_S.
          ring.  
-         rewrite reduce_reduce_0; easy.
+         rewrite get_minor_2x_0; easy.
        - unfold skip_count. 
          bdestruct (x <? y); bdestruct (y <? (S x)); try lia.
          rewrite Gmult_assoc.
          apply f_equal_gen; try apply f_equal. 
          rewrite parity_S.
          ring. 
-         rewrite <- reduce_reduce_0; easy.
+         rewrite <- get_minor_2x_0; easy.
 Qed.
 
 (* swapping adjacent columns *)
@@ -2314,7 +2218,7 @@ Proof. induction n as [| n'].
            do 2 rewrite (@big_sum_extend_r F R0). 
            rewrite (@big_sum_mult_l F _ _ _ R3).
            apply big_sum_eq_bounded; intros. 
-           rewrite col_swap_reduce_before; try lia. 
+           rewrite col_swap_get_minor_before; try lia. 
            rewrite IHn'; try lia. 
            replace (col_swap A (S i) (S (S i)) x 0%nat) with (A x 0%nat) by easy.
            ring.
@@ -2363,7 +2267,7 @@ Proof. induction col; intros.
 Qed.
 
 Lemma col_0_Det_0 : forall {n} (A : Square n),
-  (exists i, i < n /\ get_col i A = Zero) -> Determinant A = 0.
+  (exists i, i < n /\ get_col A i = Zero) -> Determinant A = 0.
 Proof. intros n A [i [H H0]].
        destruct n; try easy.
        destruct n.
@@ -2387,7 +2291,7 @@ Qed.
 
 Lemma col_scale_same_Det_0_01 : forall {n} (A : Square n) (c : F),
   1 < n -> 
-  get_col 0 A = c .* (get_col 1 A) ->
+  get_col A 0 = c .* (get_col A 1) ->
   Determinant A = 0.
 Proof. intros. 
        destruct n; try lia.
@@ -2407,7 +2311,7 @@ Proof. intros.
          rewrite parity_S.
          do 2 rewrite H'.
          ring. 
-         rewrite reduce_reduce_0; easy.
+         rewrite get_minor_2x_0; easy.
        - unfold skip_count. 
          bdestruct (x <? y); bdestruct (y <? (S x)); try lia.
          rewrite Gmult_assoc.
@@ -2415,12 +2319,12 @@ Proof. intros.
          rewrite parity_S.
          do 2 rewrite H'.
          ring. 
-         rewrite <- reduce_reduce_0; easy.
+         rewrite <- get_minor_2x_0; easy.
 Qed.
 
 Lemma col_scale_same_Det_0_10 : forall {n} (A : Square n) (c : F),
   1 < n -> 
-  c .* get_col 0 A = get_col 1 A ->
+  c .* get_col A 0 = get_col A 1 ->
   Determinant A = 0.
 Proof. intros. 
        apply Gopp_eq_0.
@@ -2432,7 +2336,7 @@ Qed.
 
 Lemma col_scale_same_Det_0 : forall {n} (A : Square n) (c : F) (i j : nat),
   i < n -> j < n -> i <> j ->
-  get_col i A = c .* (get_col j A) ->
+  get_col A i = c .* (get_col A j) ->
   Determinant A = 0%G.
 Proof. intros. 
        bdestruct (i =? 0); bdestruct (j =? 0); 
@@ -2471,7 +2375,7 @@ Proof. intros.
        do 3 rewrite Det_simplify.
        rewrite <- (@big_sum_plus F _ _ R2).
        apply big_sum_eq_bounded; intros. 
-       repeat rewrite reduce_is_redcol_redrow.
+       repeat rewrite get_minor_is_redcol_redrow.
        repeat rewrite col_wedge_reduce_col_same.
        unfold col_wedge, GMplus.
        bdestruct (0 <? 0); bdestruct (0 =? 0); try lia. 
@@ -2484,11 +2388,11 @@ Lemma Determinant_col_add0i : forall {n} (A : Square n) (i : nat) (c : F),
 Proof. intros. 
        destruct n; try easy.
        rewrite col_add_split.
-       assert (H' := (@Det_col_add_comm n (reduce_col A 0) (get_col 0 A) (c .* get_col i A))).
+       assert (H' := (@Det_col_add_comm n (reduce_col A 0) (get_col A 0) (c .* get_col A i))).
        rewrite <- H'.
        rewrite <- Gplus_0_r.
        apply f_equal_gen; try apply f_equal; auto.
-       assert (H1 : col_wedge (reduce_col A 0) (get_col 0 A) 0 = A).
+       assert (H1 : col_wedge (reduce_col A 0) (get_col A 0) 0 = A).
        { prep_genmatrix_equality.
          unfold col_wedge, reduce_col, get_col. 
          destruct y; try easy; simpl. 
@@ -2533,14 +2437,14 @@ Lemma determinant_along_col : forall {n} (A : Square (S (S n))) (col rep : nat),
   rep < S (S n) ->
   Determinant (col_replace A col rep) = 
   big_sum (fun i => (A i col) * ((parity i) * (parity rep) *
-                    (Determinant (reduce A i rep))))%G (S (S n)).
+                    (Determinant (get_minor A i rep))))%G (S (S n)).
 Proof. intros. 
        rewrite <- (Gmult_1_l (Determinant (col_replace A col rep))).
        rewrite <- (parity_sqr rep), <- Gmult_assoc.
        rewrite <- Determinant_col_to_front; auto.
        rewrite Det_simplify, big_sum_mult_l.
        apply big_sum_eq_bounded; intros.
-       rewrite reduce_col_to_front, reduce_col_replace.
+       rewrite get_minor_col_to_front, get_minor_col_replace.
        replace (col_to_front (col_replace A col rep) rep x 0) with (A x col).
        ring.
        unfold col_to_front, col_replace; simpl. 
@@ -2550,7 +2454,7 @@ Qed.
 
 Definition adjugate {n} (A : Square (S n)) : Square (S n) :=
   fun i j => if (i <? (S n)) && (j <? (S n)) 
-          then ((parity (i + j)) * Determinant (reduce A j i))
+          then ((parity (i + j)) * Determinant (get_minor A j i))
           else 0.
             
 Lemma WF_adjugate : forall {n} (A : Square (S n)),
@@ -2622,7 +2526,7 @@ Definition two_level_mat (n : nat) (U : GenMatrix 2 2) (i j : nat) : GenMatrix n
                      if (x =? y) && (x <? n) then 1 else 0.
 
 (* TODO: could generalize this with all the above matric splices *)
-Definition get_two_rows {n m} (M : GenMatrix n m) (i j : nat) : GenMatrix 2 m :=
+Definition get_two_rows {m n} (M : GenMatrix m n) (i j : nat) : GenMatrix 2 n :=
   fun x y => if (x =? 0) then M i y else
             if (x =? 1) then M j y else 0.
 
@@ -2640,7 +2544,7 @@ Proof. intros.
        bdestruct_all; simpl; try lia; easy.
 Qed.
 
-Lemma WF_get_two_rows : forall {n m} (M : GenMatrix n m) i j, 
+Lemma WF_get_two_rows : forall {m n} (M : GenMatrix m n) i j, 
   WF_GenMatrix M ->
   WF_GenMatrix (get_two_rows M i j).
 Proof. intros.   
@@ -2650,10 +2554,10 @@ Proof. intros.
 Qed.
 
 
-Lemma mult_by_one_level_mat : forall n m a i (v : GenMatrix n m),
-  i < n -> 
+Lemma mult_by_one_level_mat : forall m n a i (v : GenMatrix m n),
+  i < m -> 
   WF_GenMatrix v ->
-  (one_level_mat n a i) × v = row_scale v i a.
+  (one_level_mat m a i) × v = row_scale v i a.
 Proof. intros. 
        apply genmat_equiv_eq; auto with wf_db.
        apply WF_mult; auto.
@@ -2668,14 +2572,14 @@ Proof. intros.
 Qed.         
 
 (* TODO: build better machinery to express these facts *)
-Lemma mult_by_two_level_mat_miss : forall n m U i j x y (v : GenMatrix n m),
-  i < n -> j < n ->
+Lemma mult_by_two_level_mat_miss : forall m n U i j x y (v : GenMatrix m n),
+  i < m -> j < m ->
   x <> i -> x <> j ->
   WF_GenMatrix v ->
-  ((two_level_mat n U i j) × v) x y = v x y.
+  ((two_level_mat m U i j) × v) x y = v x y.
 Proof. intros.
        unfold two_level_mat, GMmult.      
-       bdestruct (x <? n).
+       bdestruct (x <? m).
        apply big_sum_unique.
        exists x; split; auto; split.          
        bdestruct_all; simpl; subst; auto; ring.
@@ -2687,10 +2591,10 @@ Proof. intros.
        intros; bdestruct_all; simpl; ring.
 Qed.
 
-Lemma mult_by_two_level_mat_row1 : forall n m U i j y (v : GenMatrix n m),
-  i < j -> j < n ->
+Lemma mult_by_two_level_mat_row1 : forall m n U i j y (v : GenMatrix m n),
+  i < j -> j < m ->
   WF_GenMatrix v ->
-  ((two_level_mat n U i j) × v) i y = (U × (get_two_rows v i j)) O y.
+  ((two_level_mat m U i j) × v) i y = (U × (get_two_rows v i j)) O y.
 Proof. intros.
        unfold two_level_mat, GMmult, get_two_rows.     
        simpl.
@@ -2703,10 +2607,10 @@ Proof. intros.
        ring.
 Qed.
 
-Lemma mult_by_two_level_mat_row2 : forall n m U i j y (v : GenMatrix n m),
-  i < j -> j < n ->
+Lemma mult_by_two_level_mat_row2 : forall m n U i j y (v : GenMatrix m n),
+  i < j -> j < m ->
   WF_GenMatrix v ->
-  ((two_level_mat n U i j) × v) j y = (U × (get_two_rows v i j)) 1%nat y.
+  ((two_level_mat m U i j) × v) j y = (U × (get_two_rows v i j)) 1%nat y.
 Proof. intros.
        unfold two_level_mat, GMmult, get_two_rows.     
        simpl.
@@ -2720,11 +2624,11 @@ Proof. intros.
 Qed.
 
 (* combination of previous two lemmas *)
-Lemma mult_by_two_level_mat : forall n m U i j (v : GenMatrix n m),
-  i < j -> j < n ->
+Lemma mult_by_two_level_mat : forall m n U i j (v : GenMatrix m n),
+  i < j -> j < m ->
   WF_GenMatrix U ->
   WF_GenMatrix v ->
-  get_two_rows ((two_level_mat n U i j) × v) i j = U × (get_two_rows v i j).
+  get_two_rows ((two_level_mat m U i j) × v) i j = U × (get_two_rows v i j).
 Proof. intros. 
        apply genmat_equiv_eq.
        apply WF_get_two_rows; apply WF_mult; auto.
@@ -2789,3 +2693,37 @@ Proof. intros.
          intros. 
          bdestruct_all; simpl; ring.
 Qed.
+
+
+
+  
+End LinAlgOverCommRing2.
+
+Arguments get_col {F R0 m n}.
+Arguments get_row {F R0 m n}.
+Arguments reduce_row {F m n}.
+Arguments reduce_col {F m n}.
+Arguments reduce_vecn {F n}.
+Arguments get_minor {F n}.
+Arguments smash {F R0 m n}.
+Arguments col_wedge {F R0 m n}.
+Arguments row_wedge {F R0 m n}.
+Arguments col_swap {F R0 m n}.
+Arguments row_swap {F R0 m n}.
+Arguments col_scale {F R0 m n}.
+Arguments row_scale {F R0 m n}.
+Arguments col_add {F R0 m n}.
+Arguments row_add {F R0 m n}.
+Arguments gen_new_col {F R0 m n}.
+Arguments gen_new_row {F R0 m n}.
+Arguments col_add_many {F R0 m n}.
+Arguments row_add_many {F R0 m n}.
+Arguments col_add_each {F R0 m n}.
+Arguments row_add_each {F R0 m n}.
+Arguments make_col_zero {F R0 m n}.
+Arguments make_row_zero {F R0 m n}.
+Arguments col_to_front {F R0 m n}.
+Arguments row_to_front {F R0 m n}.
+Arguments col_replace {F R0 m n}.
+Arguments row_replace {F R0 m n}.
+
