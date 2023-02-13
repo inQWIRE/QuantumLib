@@ -148,6 +148,16 @@ Next Obligation.
   apply injective_projections ; simpl ; apply H.
 Qed.
 
+(* TODO: make this less annoying *)
+Global Program Instance C_is_Domain : Domain C.
+Next Obligation.
+  assert (H' : Domain C).
+  apply Field_is_Domain'.
+  inversion H'.
+  simpl in *.
+  apply Gmult_neq_0; auto.
+Qed.
+
 Global Program Instance C_is_module_space : Module_Space C C :=
   { Vscale := Cmult }.
 Solve All Obligations with program_simpl; lca. 

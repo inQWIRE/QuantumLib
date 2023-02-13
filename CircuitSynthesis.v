@@ -1,8 +1,9 @@
   
 Require Export Rings. 
-Require Export Matrix.
-Require Export Quantum.
-Require Export GenMatrix. 
+
+(* Require Export Matrix.
+Require Export Quantum. *) 
+Require Export RowColOps.
 
 
 
@@ -16,6 +17,7 @@ Open Scope genmatrix_scope.
 (* TODO: make sure this fix is actually good *)
 Notation D8Matrix := (GenMatrix D8). 
 
+Notation CMatrix := (GenMatrix Complex.C). 
 (*
 Definition D8Mplus {m n : nat} (A B : D8Matrix m n) : D8Matrix m n := 
   @GMplus _ _ _ _ A B.
@@ -34,18 +36,16 @@ Definition D8Mpow {n : nat} (A : D8Matrix n n) (p : nat) : D8Matrix n n :=
 *)
 
 
-Definition testplus {m n : nat} (A B : D8Matrix m n) :=
-  GMplus A B.
 
 
-Definition D8MtoCM {m n : nat} (A : D8Matrix m n) : Matrix m n := 
+Definition D8MtoCM {m n : nat} (A : D8Matrix m n) : CMatrix m n := 
   fun i j => D8toC (A i j).
 
 
 Lemma D8MtoCM_inj : forall {m n} (A B : D8Matrix m n), 
   D8MtoCM A = D8MtoCM B -> A = B.
 Proof. intros. 
-       prep_matrix_equality.
+       prep_genmatrix_equality.
        apply D8toC_inj. 
        unfold D8MtoCM in H.
        apply (f_equal_gen _ _ x x) in H; 
@@ -54,20 +54,19 @@ Qed.
 
 
 Lemma D8MtoCM_plus : forall {m n} (A B : D8Matrix m n), 
-  D8MtoCM (GMplus A B) = (D8MtoCM A) .+ (D8MtoCM B).
+  D8MtoCM (A .+ B) = (D8MtoCM A) .+ (D8MtoCM B).
 Proof. intros.
-       Set Printing All.
-       unfold D8MtoCM, Mplus; simpl. 
-       prep_matrix_equality.
+       unfold D8MtoCM, GMplus; simpl. 
+       prep_genmatrix_equality.
        rewrite D8toC_plus; easy.
 Qed.
 
 
 Lemma D8MtoCM_opp : forall {m n} (A : D8Matrix m n), 
-  D8MtoCM (GMopp A) = Mopp (D8MtoCM A). 
+  D8MtoCM (GMopp A) = GMopp (D8MtoCM A). 
 Proof. intros. 
-       unfold D8MtoCM, Mopp, Matrix.scale; simpl. 
-       prep_matrix_equality.
+       unfold D8MtoCM, GMopp, GenMatrix.scale; simpl. 
+       prep_genmatrix_equality.
        autorewrite with D8toC_db.
        lca.
 Qed.
@@ -75,8 +74,8 @@ Qed.
 Lemma D8MtoCM_mult : forall {m n o} (A : D8Matrix m n) (B : D8Matrix n o), 
   D8MtoCM (GMmult A B) = (D8MtoCM A) × (D8MtoCM B).
 Proof. intros. 
-       unfold D8MtoCM, Mmult, GMmult; simpl. 
-       prep_matrix_equality.
+       unfold D8MtoCM, GMmult; simpl. 
+       prep_genmatrix_equality.
        rewrite (big_sum_func_distr _ D8toC n).
        apply big_sum_eq_bounded; intros.        
        rewrite D8toC_mult; easy.
@@ -85,11 +84,11 @@ Proof. intros.
 Qed.
 
 Lemma D8MtoCM_pow : forall {m} (A : D8Matrix m m) (p : nat), 
-  D8MtoCM (GMmult_n A p) = p ⨉ (D8MtoCM A).
+  D8MtoCM (p ⨉ A) = p ⨉ (D8MtoCM A).
 Proof. intros. 
        induction p; simpl.
-       - prep_matrix_equality.
-         unfold D8MtoCM, I, Matrix.I.
+       - prep_genmatrix_equality.
+         unfold D8MtoCM, I.
          bdestruct_all; simpl; lca. 
        - rewrite <- IHp, D8MtoCM_mult.
          easy.
@@ -163,7 +162,7 @@ Qed.
 
 
 Lemma DEM_reduce_row : forall {m n} (A : D8Matrix (S m) n) (k : nat),
-  denom_exp_mat A k -> denom_exp_mat (@reduce_row D8 m n A m) k.
+  denom_exp_mat A k -> denom_exp_mat (reduce_row A m) k.
 Proof. intros. 
        unfold denom_exp_mat, reduce_row in *; intros.
        bdestruct (i <? m); try lia. 
@@ -172,7 +171,7 @@ Qed.
 
 
 Lemma DEM_reduce_col : forall {m n} (A : D8Matrix m (S n)) (k : nat),
-  denom_exp_mat A k -> denom_exp_mat (@reduce_col D8 m n A n) k.
+  denom_exp_mat A k -> denom_exp_mat (reduce_col A n) k.
 Proof. intros. 
        unfold denom_exp_mat, reduce_col in *; intros. 
        bdestruct (j <? n); try lia.
@@ -186,7 +185,7 @@ Proof. induction m.
        - intros. 
          exists 0; easy.
        - intros.
-         destruct (IHm (@reduce_row D8 m 1 v m)). 
+         destruct (IHm (reduce_row v m)). 
          destruct (exists_denom_exp (v m O)).
          exists (x + x0).
          unfold denom_exp_mat in *; intros. 
@@ -208,8 +207,8 @@ Proof. induction n.
        - intros.
          exists 0; easy.
        - intros.
-         destruct (IHn (@reduce_col D8 m n A n)). 
-         destruct (exists_denom_exp_vec (@get_col D8 _ m n n A)).
+         destruct (IHn (reduce_col A n)). 
+         destruct (exists_denom_exp_vec (get_col A n)).
          exists (x + x0).
          unfold denom_exp_mat in *; intros. 
          bdestruct (j <? n).
@@ -233,7 +232,7 @@ Proof. induction m.
        - intros; left.
          unfold denom_exp_mat; intros; easy.
        - intros.
-         destruct (IHm (@reduce_row D8 m 1 v m) k). 
+         destruct (IHm (reduce_row v m) k). 
          + destruct (denom_exp_dec (v m O) k).
            * left. 
              unfold denom_exp_mat, reduce_row in *; intros. 
@@ -258,8 +257,8 @@ Proof. induction n.
        - intros; left.
          unfold denom_exp_mat; intros; easy.
        - intros.
-         destruct (IHn (@reduce_col D8 m n A n) k). 
-         + destruct (denom_exp_vec_dec (@get_col D8 _ m n n A) k).
+         destruct (IHn (reduce_col A n) k). 
+         + destruct (denom_exp_vec_dec (get_col A n) k).
            * left.
              unfold denom_exp_mat, reduce_col in *; intros. 
              bdestruct (j <? n); bdestruct (j =? n); try lia.
@@ -465,33 +464,33 @@ Definition dT_to_nth (n : nat) : D8Matrix 2 2 :=
 
 (* translation lemmas *)
 
-Lemma D8MtoCM_I : D8MtoCM dI = Matrix.I 2.
-Proof. prep_matrix_equality.
-       unfold D8MtoCM, dI, Matrix.I, I.
+Lemma D8MtoCM_I : D8MtoCM dI = I 2.
+Proof. prep_genmatrix_equality.
+       unfold D8MtoCM, dI, I.
        bdestruct_all; simpl; lca.
 Qed.
 
-Lemma D8MtoCM_negI : D8MtoCM (GMopp dI) = Mopp (Matrix.I 2).
-Proof. prep_matrix_equality.
-       unfold D8MtoCM, dI, Matrix.I, I, GMopp, Mopp, scale, Matrix.scale.
+Lemma D8MtoCM_negI : D8MtoCM (GMopp dI) = GMopp (I 2).
+Proof. prep_genmatrix_equality.
+       unfold D8MtoCM, dI, I, GMopp.
        bdestruct_all; simpl; lca.
 Qed.
 
 (* TODO: come up with tactic that does this *)
 Lemma D8MtoCM_X : D8MtoCM dX = σx.
-Proof. prep_matrix_equality.
+Proof. prep_genmatrix_equality.
        destruct x; try destruct x;
        destruct y; try destruct y; simpl; try lca.
 Qed.
 
 Lemma D8MtoCM_Z : D8MtoCM dZ = σz.
-Proof. prep_matrix_equality.
+Proof. prep_genmatrix_equality.
        destruct x; try destruct x;
        destruct y; try destruct y; simpl; try lca.
 Qed.
 
 Lemma D8MtoCM_H : D8MtoCM dH = hadamard.
-Proof. prep_matrix_equality.
+Proof. prep_genmatrix_equality.
        unfold dH, D8MtoCM.
        destruct x; try destruct x;
        destruct y; try destruct y; simpl; try lca; simpl.
@@ -499,7 +498,7 @@ Proof. prep_matrix_equality.
 Qed.
 
 Lemma D8MtoCM_S : D8MtoCM dS = Sgate.
-Proof. prep_matrix_equality.
+Proof. prep_genmatrix_equality.
        unfold dS, D8MtoCM.
        destruct x; try destruct x;
        destruct y; try destruct y; simpl; try lca; simpl.
@@ -508,7 +507,7 @@ Proof. prep_matrix_equality.
 Qed.
 
 Lemma D8MtoCM_T : D8MtoCM dT = Tgate.
-Proof. prep_matrix_equality.
+Proof. prep_genmatrix_equality.
        unfold dT, D8MtoCM.
        destruct x; try destruct x;
        destruct y; try destruct y; simpl; try lca; simpl.
@@ -517,7 +516,7 @@ Qed.
 
 Lemma D8MtoCM_T_to_nth : forall n, D8MtoCM (dT_to_nth n) = phase_shift ((PI / 4) * (INR n)).
 Proof. intros. 
-       prep_matrix_equality.
+       prep_genmatrix_equality.
        unfold dT_to_nth, D8MtoCM.
        destruct x; try destruct x;
        destruct y; try destruct y; simpl; try lca; simpl.

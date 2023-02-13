@@ -154,6 +154,11 @@ Definition Zero {F : Type} {R0 : Monoid F} {m n : nat} : GenMatrix F m n := fun 
 Definition I {F : Type} `{R3 : Ring F} (n : nat) : Square F n := 
   (fun x y => if (x =? y) && (x <? n) then 1 else 0).
 
+(* in many cases, n needs to be made explicit, but not always, hence it is made implicit here *)
+Definition e_i {F : Type} `{R3 : Ring F} {n : nat} (i : nat) : Vector F n :=
+  fun x y => (if (x =? i) && (x <? n) && (y =? 0) then 1 else 0). 
+
+
 (* Optional coercion to scalar (should be limited to 1 × 1 matrices):
 Definition to_scalar (m n : nat) (A: GenMatrix m n) : C := A 0 0.
 Coercion to_scalar : GenMatrix >-> C.
@@ -275,7 +280,7 @@ Notation "p ⨉ A" := (GMmult_n A p) (at level 30, no associativity) : genmatrix
 Notation "⟨ u , v ⟩" := (inner_product u v) (at level 0) : genmatrix_scope. 
  
 
-#[export] Hint Unfold Zero I trace dot GMplus GMopp scale GMmult Gkron genmat_equiv transpose : U_db.
+#[export] Hint Unfold Zero I e_i trace dot GMplus GMopp scale GMmult Gkron genmat_equiv transpose : U_db.
 
 
 (* tactics for equality and mat_equality *)
@@ -548,6 +553,14 @@ Proof.
 Qed.
 
 Lemma WF_I1 : WF_GenMatrix (I 1). Proof. apply WF_I. Qed.
+
+Lemma WF_e_i : forall {n : nat} (i : nat),
+  WF_GenMatrix (@e_i _ _ _ _ _ n i).
+Proof. unfold WF_GenMatrix, e_i.
+       intros; destruct H as [H | H].
+       bdestruct (x =? i); bdestruct (x <? n); bdestruct (y =? 0); try lia; easy.
+       bdestruct (x =? i); bdestruct (x <? n); bdestruct (y =? 0); try lia; easy.
+Qed.
 
 Lemma WF_scale : forall {m n : nat} (r : F) (A : GenMatrix m n), 
   WF_GenMatrix A -> WF_GenMatrix (scale r A).

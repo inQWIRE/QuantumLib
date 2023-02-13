@@ -64,8 +64,13 @@ Class Ring R `{Comm_Group R} :=
 Class Comm_Ring R `{Ring R} :=
   { Gmult_comm : forall a b, Gmult a b = Gmult b a }.
 
+Class Domain R `{Ring R} :=
+  { Gmult_neq_0 : forall a b, a <> 0 -> b <> 0 -> Gmult a b <> 0 }.
+
+
 Infix "*" := Gmult : group_scope.
 Notation "1" := Gone : group_scope.
+
 
 Class Field F `{Comm_Ring F} :=
   { Ginv : F -> F
@@ -87,9 +92,7 @@ Class Module_Space V F `{Comm_Group V} `{Comm_Ring F} :=
 
 Infix "⋅" := Vscale (at level 40) : group_scope.
 
-Class Vector_Space V F `{Comm_Group V} `{Field F}. 
-
-
+Class Vector_Space (V F : Type) `{Comm_Group V} `{Field F} {H : Module_Space V F}.
 
 
 (* showing that our notation of comm_ring and field is the same as coqs ring and field tactics *)
@@ -211,6 +214,12 @@ Proof. intros.
        rewrite <- Gmult_plus_distr_r, Gopp_r, Gmult_0_l; easy.
 Qed.       
 
+Lemma Gmult_integral : forall {R} `{Domain R} (a b : R), a * b = 0 -> a = 0 \/ b = 0.
+Proof. intros.
+       destruct (Geq_dec a 0); destruct (Geq_dec b 0); auto.
+       apply (Gmult_neq_0 a b) in n; auto.
+       easy.
+Qed.
 
 Lemma Ginv_l : forall {F} `{Field F} (f : F), f <> 0 -> (Ginv f) * f = 1.
 Proof. intros; rewrite Gmult_comm; apply Ginv_r; easy. Qed.
@@ -229,13 +238,25 @@ Proof. intros.
          <- (Ginv_r a), Gmult_assoc, H6, <- Gmult_assoc; easy. 
 Qed.
 
-Lemma Gmult_neq_0 : forall {F} `{Field F} (a b : F), a <> 0 -> b <> 0 -> a * b <> 0.
-Proof. intros.
+(* this is the best setup I found for conveying the fact that a field is a domain *)
+Lemma field_is_domain : forall {F} `{Field F} a b, a <> 0 -> b <> 0 -> a * b <> 0.
+Proof. intros. 
        unfold not; intros. 
        apply H6.
        rewrite <- (Gmult_1_l b), <- (Ginv_l a), 
          <- Gmult_assoc, H7, Gmult_0_r; auto.
+Qed.
+
+Global Program Instance Field_is_Domain : forall (F : Type) `{Field F}, Domain F.                      
+Next Obligation.
+  apply field_is_domain; auto.
 Qed.       
+
+Lemma Field_is_Domain' : forall {F} `{Field F}, Domain F.
+Proof. intros.
+       apply Field_is_Domain in H4.
+       easy.
+Qed.
 
 Lemma Ginv_mult_distr : forall {F} `{Field F} (a b : F),
     a <> 0 -> b <> 0 ->
@@ -247,6 +268,7 @@ Proof. intros.
        rewrite <- Gmult_assoc, (Gmult_assoc _ a), (Gmult_comm _ a), <- (Gmult_assoc a).
        rewrite Ginv_l, Gmult_1_r, Ginv_l; easy.
 Qed.
+
 
 
 
