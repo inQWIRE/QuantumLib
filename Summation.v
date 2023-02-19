@@ -64,8 +64,10 @@ Class Ring R `{Comm_Group R} :=
 Class Comm_Ring R `{Ring R} :=
   { Gmult_comm : forall a b, Gmult a b = Gmult b a }.
 
+(* I also add 1 <> 0 here, since it is helpful in VecSet *)
 Class Domain R `{Ring R} :=
-  { Gmult_neq_0 : forall a b, a <> 0 -> b <> 0 -> Gmult a b <> 0 }.
+  { Gmult_neq_0 : forall a b, a <> 0 -> b <> 0 -> Gmult a b <> 0 
+  ; G1_neq_0' : Gone <> Gzero }.
 
 
 Infix "*" := Gmult : group_scope.
@@ -251,6 +253,10 @@ Global Program Instance Field_is_Domain : forall (F : Type) `{Field F}, Domain F
 Next Obligation.
   apply field_is_domain; auto.
 Qed.       
+Next Obligation.
+  apply G1_neq_0.
+Qed.       
+
 
 Lemma Field_is_Domain' : forall {F} `{Field F}, Domain F.
 Proof. intros.
@@ -301,6 +307,19 @@ Fixpoint G_big_plus {G} `{Monoid G} (gs : list G) : G :=
   | g :: gs' => g + (G_big_plus gs')
   end. 
 
+
+(* ring mult could also be seen as a monoid, but I think its better to have 
+   separate functions for plus and mult so its more clear what is going on *)
+
+(* exponentiation *)
+Fixpoint Gpow {R} `{Ring R} (r : R) (n : nat) : R :=  
+  match n with
+  | 0%nat => 1
+  | S n' => Gmult r (Gpow r n')
+  end.
+
+Infix "^" := Gpow : group_scope.
+
 Fixpoint G_big_mult {R} `{Ring R} (rs : list R) : R := 
   match rs with
   | nil => 1 
@@ -315,6 +334,38 @@ Fixpoint big_sum {G : Type} `{Monoid G} (f : nat -> G) (n : nat) : G :=
   | S n' => (big_sum f n') + (f n')
   end.
 
+
+(** * Gpow Lemmas *)
+
+Lemma Gpow_add : forall {R} `{Ring R} (r : R) (n m : nat), (r ^ (n + m) = r^n * r^m).
+Proof.
+  intros. induction n. simpl. rewrite Gmult_1_l; easy. 
+  simpl. rewrite IHn. rewrite Gmult_assoc; easy. 
+Qed.
+
+Lemma Gpow_mult : forall {R} `{Ring R} (r : R) (n m : nat), (r ^ (n * m) = (r ^ n) ^ m).
+Proof.
+  intros. induction m. rewrite Nat.mul_0_r. easy.
+  replace (n * (S m))%nat with (n * m + n)%nat by lia.
+  replace (S m) with (m + 1)%nat by lia.
+  do 2 rewrite Gpow_add. 
+  rewrite IHm. simpl. 
+  rewrite Gmult_1_r. 
+  easy. 
+Qed.
+
+Lemma Gpow_nonzero : forall {R} `{Domain R} (r : R) (n : nat), r <> 0 -> r ^ n <> 0.
+Proof.
+  intros.
+  induction n.
+  - simpl; apply G1_neq_0'.
+  - simpl. 
+    apply Gmult_neq_0; easy.
+Qed.
+
+
+
+(** * Big sum lemmas *)
 
 Lemma big_sum_0 : forall {G} `{Monoid G} f n,
     (forall x, f x = 0) -> big_sum f n = 0. 

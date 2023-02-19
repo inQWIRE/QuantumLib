@@ -157,6 +157,14 @@ Next Obligation.
   simpl in *.
   apply Gmult_neq_0; auto.
 Qed.
+Next Obligation.
+assert (H' : Domain C).
+  apply Field_is_Domain'.
+  inversion H'.
+  simpl in *.
+  apply G1_neq_0'; auto.
+Qed.
+
 
 Global Program Instance C_is_module_space : Module_Space C C :=
   { Vscale := Cmult }.
@@ -164,6 +172,18 @@ Solve All Obligations with program_simpl; lca.
 
 Global Program Instance C_is_vector_space : Vector_Space C C.
 
+
+(* TODO: eventually switch Cpow to this? 
+Definition Cpow' := @Gpow C _ _ _ C_is_ring.
+*)
+
+
+Lemma Cpow_Gpow : Cpow = (@Gpow C _ _ _ C_is_ring).
+Proof. intros. 
+       do 2 (apply functional_extensionality; intros).
+       induction x0; simpl; try easy.
+       rewrite IHx0; easy.
+Qed.       
 
 
 (** *** Other usual functions *)
@@ -864,8 +884,9 @@ Qed.
 
 Lemma Cpow_add : forall (c : C) (n m : nat), (c ^ (n + m) = c^n * c^m)%C.
 Proof.
-  intros. induction n. simpl. lca.
-  simpl. rewrite IHn. lca.
+  intros. 
+  rewrite Cpow_Gpow. 
+  rewrite Gpow_add; easy.
 Qed.
 
 Lemma Cpow_mult : forall (c : C) (n m : nat), (c ^ (n * m) = (c ^ n) ^ m)%C.

@@ -399,7 +399,7 @@ Ltac solve_wf := collate_wf; easy.
 (** * Showing that M is a vector space *)
 
 #[export] Program Instance GM_is_monoid : forall {F : Type} {R0 : Monoid F} 
-                                                 m n , Monoid (GenMatrix F m n) := 
+                                                 m n, Monoid (GenMatrix F m n) := 
   { Gzero := @Zero F R0 m n
   ; Gplus := GMplus
   }.
