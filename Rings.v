@@ -328,7 +328,7 @@ Qed.
 
 
 
-Hint Rewrite plus_IZR minus_IZR opp_IZR mult_IZR ZtoC_pow : ZtoR_db.
+#[global] Hint Rewrite plus_IZR minus_IZR opp_IZR mult_IZR ZtoC_pow : ZtoR_db.
 
 (* NB: use plus_IZR, mult_IZR, RtoC_plus, RtoC_mult to move between types: *)
 (* quick helper tactic. TODO: centralize these *)
@@ -719,7 +719,7 @@ Proof. intros.
 Qed.
 
 
-Hint Rewrite DtoC_plus DtoC_opp DtoC_minus DtoC_mult DtoC_pow : DtoC_db.
+#[global] Hint Rewrite DtoC_plus DtoC_opp DtoC_minus DtoC_mult DtoC_pow : DtoC_db.
 
 
 Ltac lDa_try1 := apply DtoC_inj; autorewrite with DtoC_db; lca.
@@ -1753,7 +1753,7 @@ Proof. intros.
 Qed.
 
 
-Hint Rewrite D8toC_plus D8toC_opp D8toC_mult : D8toC_db.
+#[global] Hint Rewrite D8toC_plus D8toC_opp D8toC_mult : D8toC_db.
 
 
 (*TODO: show that the above proves defacto that D8 is a ring *)

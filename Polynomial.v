@@ -1705,7 +1705,7 @@ Proof. split; intros.
          unfold Rdiv in *.
          unfold pow in *.
          apply (Rmult_le_pos a) in H1; try lra.
-         rewrite Rmult_plus_distr_l, Rinv_mult_distr, Rmult_plus_distr_l in H1; try lra.
+         rewrite Rmult_plus_distr_l, Rinv_mult, Rmult_plus_distr_l in H1; try lra.
          replace (a * (b * (- b * (/ 2 * / a))))%R 
            with (- b * b * (a * / a) * / 2)%R in H1 by lra. 
          replace (a * (a * (- b * (/ 2 * / a) * (- b * (/ 2 * / a) * 1))))%R

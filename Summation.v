@@ -1,7 +1,5 @@
 Require Import List.
-Require Export Prelim.
- 
- 
+Require Export Prelim. 
   
 Declare Scope group_scope.
 Delimit Scope group_scope with G.

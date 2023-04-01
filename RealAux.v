@@ -24,10 +24,10 @@ Lemma Rminus_lt_0 : forall a b, a < b <-> 0 < b - a. Proof. intros. lra. Qed.
 Lemma Rminus_unfold : forall r1 r2, (r1 - r2 = r1 + -r2). Proof. reflexivity. Qed.
 Lemma Rdiv_unfold : forall r1 r2, (r1 / r2 = r1 */ r2). Proof. reflexivity. Qed.
 
-Hint Rewrite Rminus_unfold Rdiv_unfold Ropp_0 Ropp_involutive Rplus_0_l 
+#[export] Hint Rewrite Rminus_unfold Rdiv_unfold Ropp_0 Ropp_involutive Rplus_0_l 
              Rplus_0_r Rmult_0_l Rmult_0_r Rmult_1_l Rmult_1_r : R_db.
-Hint Rewrite <- Ropp_mult_distr_l Ropp_mult_distr_r : R_db.
-Hint Rewrite Rinv_l Rinv_r sqrt_sqrt using lra : R_db.
+#[export] Hint Rewrite <- Ropp_mult_distr_l Ropp_mult_distr_r : R_db.
+#[export] Hint Rewrite Rinv_l Rinv_r sqrt_sqrt using lra : R_db.
 
 Notation "√ n" := (sqrt n) (at level 20) : R_scope.
 
@@ -38,7 +38,7 @@ Proof. intros. unfold Rdiv. rewrite Rmult_assoc. reflexivity. Qed.
 
 Lemma Rmult_div : forall r1 r2 r3 r4 : R, r2 <> 0 -> r4 <> 0 -> 
   r1 / r2 * (r3 / r4) = r1 * r3 / (r2 * r4). 
-Proof. intros. unfold Rdiv. rewrite Rinv_mult_distr; trivial. lra. Qed.
+Proof. intros. unfold Rdiv. rewrite Rinv_mult; trivial. lra. Qed.
 
 Lemma Rdiv_cancel :  forall r r1 r2 : R, r1 = r2 -> r / r1 = r / r2.
 Proof. intros. rewrite H. reflexivity. Qed.
@@ -562,7 +562,7 @@ Proof.
     apply sin_upper_bound_aux; lra.
 Qed.    
 
-Hint Rewrite sin_0 sin_PI4 sin_PI2 sin_PI cos_0 cos_PI4 cos_PI2 
+#[export] Hint Rewrite sin_0 sin_PI4 sin_PI2 sin_PI cos_0 cos_PI4 cos_PI2 
              cos_PI sin_neg cos_neg : trig_db.
 
 (** * glb support *) 
