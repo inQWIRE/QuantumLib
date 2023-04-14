@@ -240,25 +240,25 @@ Fixpoint direct_sum_n n {m1 m2} (A : Matrix m1 m2) : Matrix (n*m1) (n*m2) :=
 
 
 (** * Showing that M is a vector space *)
-Program Instance M_is_monoid : forall n m, Monoid (Matrix n m) := 
+#[export] Program Instance M_is_monoid : forall n m, Monoid (Matrix n m) := 
   { Gzero := @Zero n m
   ; Gplus := Mplus
   }.
 Solve All Obligations with program_simpl; prep_matrix_equality; lca. 
 
-Program Instance M_is_group : forall n m, Group (Matrix n m) :=
+#[export] Program Instance M_is_group : forall n m, Group (Matrix n m) :=
   { Gopp := Mopp }.
 Solve All Obligations with program_simpl; prep_matrix_equality; lca. 
 
-Program Instance M_is_comm_group : forall n m, Comm_Group (Matrix n m).
+#[export] Program Instance M_is_comm_group : forall n m, Comm_Group (Matrix n m).
 Solve All Obligations with program_simpl; prep_matrix_equality; lca. 
 
 
-Program Instance M_is_module_space : forall n m, Module_Space (Matrix n m) C :=
+#[export] Program Instance M_is_module_space : forall n m, Module_Space (Matrix n m) C :=
   { Vscale := scale }.
 Solve All Obligations with program_simpl; prep_matrix_equality; lca. 
 
-Program Instance M_is_vector_space : forall n m, Vector_Space (Matrix n m) C.
+#[export] Program Instance M_is_vector_space : forall n m, Vector_Space (Matrix n m) C.
 
 
 (** Notations *)
@@ -4015,16 +4015,16 @@ Hint Rewrite kron_1_l kron_1_r Mmult_1_l Mmult_1_r id_kron id_adjoint_eq
 *)
 
 (* eauto will cause major choking... *)
-Hint Rewrite  @kron_1_l @kron_1_r @Mmult_1_l @Mmult_1_r @Mscale_1_l 
+#[export] Hint Rewrite  @kron_1_l @kron_1_r @Mmult_1_l @Mmult_1_r @Mscale_1_l 
      @id_adjoint_eq @id_transpose_eq using (auto 100 with wf_db) : M_db_light.
-Hint Rewrite @kron_0_l @kron_0_r @Mmult_0_l @Mmult_0_r @Mplus_0_l @Mplus_0_r
+#[export] Hint Rewrite @kron_0_l @kron_0_r @Mmult_0_l @Mmult_0_r @Mplus_0_l @Mplus_0_r
      @Mscale_0_l @Mscale_0_r @zero_adjoint_eq @zero_transpose_eq using (auto 100 with wf_db) : M_db_light.
 
 (* I don't like always doing restore_dims first, but otherwise sometimes leaves 
    unsolvable WF_Matrix goals. *)
 Ltac Msimpl_light := try restore_dims; autorewrite with M_db_light.
 
-Hint Rewrite @Mmult_adjoint @Mplus_adjoint @kron_adjoint @kron_mixed_product
+#[export] Hint Rewrite @Mmult_adjoint @Mplus_adjoint @kron_adjoint @kron_mixed_product
      @adjoint_involutive using (auto 100 with wf_db) : M_db.
 
 Ltac Msimpl := try restore_dims; autorewrite with M_db_light M_db.

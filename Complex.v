@@ -1397,7 +1397,7 @@ Proof.
   lca.
 Qed.
 
-Hint Rewrite Cexp_0 Cexp_PI Cexp_PI2 Cexp_2PI Cexp_3PI2 Cexp_PI4 Cexp_PIm4
+#[export] Hint Rewrite Cexp_0 Cexp_PI Cexp_PI2 Cexp_2PI Cexp_3PI2 Cexp_PI4 Cexp_PIm4
   Cexp_1PI4 Cexp_2PI4 Cexp_3PI4 Cexp_4PI4 Cexp_5PI4 Cexp_6PI4 Cexp_7PI4 Cexp_8PI4
   Cexp_add Cexp_neg Cexp_plus_PI Cexp_minus_PI : Cexp_db.
 
@@ -1442,28 +1442,28 @@ Ltac nonzero :=
   | |- Rle _ _ => lra
   end.
 
-Hint Rewrite Cminus_unfold Cdiv_unfold Ci2 Cconj_R Cconj_opp Cconj_rad2 
+#[export] Hint Rewrite Cminus_unfold Cdiv_unfold Ci2 Cconj_R Cconj_opp Cconj_rad2 
      Cinv_sqrt2_sqrt Cplus_div2
      Cplus_0_l Cplus_0_r Cplus_opp_r Cplus_opp_l Copp_0  Copp_involutive
      Cmult_0_l Cmult_0_r Cmult_1_l Cmult_1_r : C_db.
 
-Hint Rewrite <- Copp_mult_distr_l Copp_mult_distr_r Cdouble : C_db.
-Hint Rewrite Csqrt_sqrt using Psatz.lra : C_db.
-Hint Rewrite Cinv_l Cinv_r using nonzero : C_db.
+#[export] Hint Rewrite <- Copp_mult_distr_l Copp_mult_distr_r Cdouble : C_db.
+#[export] Hint Rewrite Csqrt_sqrt using Psatz.lra : C_db.
+#[export] Hint Rewrite Cinv_l Cinv_r using nonzero : C_db.
 (* Previously in the other direction *)
-Hint Rewrite Cinv_mult_distr using nonzero : C_db.
+#[export] Hint Rewrite Cinv_mult_distr using nonzero : C_db.
 
 (* Light rewriting db *)
-Hint Rewrite Cplus_0_l Cplus_0_r Cmult_0_l Cmult_0_r Copp_0 
+#[export] Hint Rewrite Cplus_0_l Cplus_0_r Cmult_0_l Cmult_0_r Copp_0 
              Cconj_R Cmult_1_l Cmult_1_r : C_db_light.
 
 (* Distributing db *)
-Hint Rewrite Cmult_plus_distr_l Cmult_plus_distr_r Copp_plus_distr Copp_mult_distr_l 
+#[export] Hint Rewrite Cmult_plus_distr_l Cmult_plus_distr_r Copp_plus_distr Copp_mult_distr_l 
               Copp_involutive : Cdist_db.
 
-Hint Rewrite RtoC_opp RtoC_mult RtoC_minus RtoC_plus : RtoC_db.
-Hint Rewrite RtoC_inv using nonzero : RtoC_db.
-Hint Rewrite RtoC_pow : RtoC_db.
+#[export] Hint Rewrite RtoC_opp RtoC_mult RtoC_minus RtoC_plus : RtoC_db.
+#[export] Hint Rewrite RtoC_inv using nonzero : RtoC_db.
+#[export] Hint Rewrite RtoC_pow : RtoC_db.
 
 Ltac Csimpl := 
   repeat match goal with

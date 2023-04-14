@@ -152,23 +152,23 @@ Proof. intros. destruct x,y; lma'. Qed.
 (* Automation *)
 
 (* General matrix rewrites *)
-Hint Rewrite bra0_equiv bra1_equiv ket0_equiv ket1_equiv : ket_db.
-Hint Rewrite bra0ket0 bra0ket1 bra1ket0 bra1ket1 : ket_db.
-Hint Rewrite Mmult_plus_distr_l Mmult_plus_distr_r kron_plus_distr_l kron_plus_distr_r Mscale_plus_distr_r : ket_db.
-Hint Rewrite Mscale_mult_dist_l Mscale_mult_dist_r Mscale_kron_dist_l Mscale_kron_dist_r : ket_db.
-Hint Rewrite Mscale_assoc @Mmult_assoc : ket_db.
-Hint Rewrite Mmult_1_l Mmult_1_r kron_1_l kron_1_r Mscale_0_l Mscale_0_r Mscale_1_l Mplus_0_l Mplus_0_r using (auto with wf_db) : ket_db.
-Hint Rewrite kron_0_l kron_0_r Mmult_0_l Mmult_0_r : ket_db.
-Hint Rewrite @kron_mixed_product : ket_db.
+#[export] Hint Rewrite bra0_equiv bra1_equiv ket0_equiv ket1_equiv : ket_db.
+#[export] Hint Rewrite bra0ket0 bra0ket1 bra1ket0 bra1ket1 : ket_db.
+#[export] Hint Rewrite Mmult_plus_distr_l Mmult_plus_distr_r kron_plus_distr_l kron_plus_distr_r Mscale_plus_distr_r : ket_db.
+#[export] Hint Rewrite Mscale_mult_dist_l Mscale_mult_dist_r Mscale_kron_dist_l Mscale_kron_dist_r : ket_db.
+#[export] Hint Rewrite Mscale_assoc @Mmult_assoc : ket_db.
+#[export] Hint Rewrite Mmult_1_l Mmult_1_r kron_1_l kron_1_r Mscale_0_l Mscale_0_r Mscale_1_l Mplus_0_l Mplus_0_r using (auto with wf_db) : ket_db.
+#[export] Hint Rewrite kron_0_l kron_0_r Mmult_0_l Mmult_0_r : ket_db.
+#[export] Hint Rewrite @kron_mixed_product : ket_db.
 
 (* Quantum-specific identities *)
-Hint Rewrite H0_spec H1_spec Hplus_spec Hminus_spec X0_spec X1_spec Y0_spec Y1_spec
+#[export] Hint Rewrite H0_spec H1_spec Hplus_spec Hminus_spec X0_spec X1_spec Y0_spec Y1_spec
      Z0_spec Z1_spec phase0_spec phase1_spec : ket_db.
-Hint Rewrite CNOT00_spec CNOT01_spec CNOT10_spec CNOT11_spec SWAP_spec : ket_db.
+#[export] Hint Rewrite CNOT00_spec CNOT01_spec CNOT10_spec CNOT11_spec SWAP_spec : ket_db.
 
 Lemma ket2bra : forall n, (ket n) † = bra n. 
 Proof. destruct n; reflexivity. Qed.
-Hint Rewrite ket2bra : ket_db.
+#[export] Hint Rewrite ket2bra : ket_db.
 
 (* TODO: add transpose and adjoint lemmas to ket_db? *)
 Lemma ket0_transpose_bra0 : (ket 0) ⊤ = bra 0.
@@ -1174,8 +1174,8 @@ Qed.
 
 Local Close Scope R_scope.
 
-Hint Rewrite f_to_vec_cnot f_to_vec_σx f_to_vec_phase_shift using lia : f_to_vec_db.
-Hint Rewrite (@update_index_eq bool) (@update_index_neq bool) (@update_twice_eq bool) (@update_same bool) using lia : f_to_vec_db.
+#[export] Hint Rewrite f_to_vec_cnot f_to_vec_σx f_to_vec_phase_shift using lia : f_to_vec_db.
+#[export] Hint Rewrite (@update_index_eq bool) (@update_index_neq bool) (@update_twice_eq bool) (@update_same bool) using lia : f_to_vec_db.
 
 
 (*******************************)

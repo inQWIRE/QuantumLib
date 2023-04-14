@@ -481,10 +481,10 @@ Proof.
   Msimpl; reflexivity.
 Qed.
 
-Hint Rewrite Mmult00 Mmult01 Mmult10 Mmult11 Mmult0X MmultX0 Mmult1X MmultX1 : Q_db.
-Hint Rewrite MmultXX MmultYY MmultZZ MmultHH Mplus01 Mplus10 EPRpair_creation : Q_db.
-Hint Rewrite σx_on_right0 σx_on_right1 σx_on_left0 σx_on_left1 : Q_db.
-Hint Rewrite cancel00 cancel01 cancel10 cancel11 using (auto with wf_db) : Q_db.
+#[export] Hint Rewrite Mmult00 Mmult01 Mmult10 Mmult11 Mmult0X MmultX0 Mmult1X MmultX1 : Q_db.
+#[export] Hint Rewrite MmultXX MmultYY MmultZZ MmultHH Mplus01 Mplus10 EPRpair_creation : Q_db.
+#[export] Hint Rewrite σx_on_right0 σx_on_right1 σx_on_left0 σx_on_left1 : Q_db.
+#[export] Hint Rewrite cancel00 cancel01 cancel10 cancel11 using (auto with wf_db) : Q_db.
 
 Lemma swap_swap : swap × swap = I (2*2). Proof. solve_matrix. Qed.
 
@@ -499,7 +499,7 @@ Proof.
   reflexivity.
 Qed.
 
-Hint Rewrite swap_swap swap_swap_r using (auto 100 with wf_db): Q_db.
+#[export] Hint Rewrite swap_swap swap_swap_r using (auto 100 with wf_db): Q_db.
 
 (* TODO: move these swap lemmas to Permutation.v? *)
 
@@ -1264,7 +1264,7 @@ Qed.
 Lemma braqubit0_sa : ∣0⟩⟨0∣† = ∣0⟩⟨0∣. Proof. lma. Qed.
 Lemma braqubit1_sa : ∣1⟩⟨1∣† = ∣1⟩⟨1∣. Proof. lma. Qed.
 
-Hint Rewrite hadamard_sa σx_sa σy_sa σz_sa cnot_sa swap_sa braqubit1_sa braqubit0_sa control_adjoint phase_adjoint rotation_adjoint : Q_db.
+#[export] Hint Rewrite hadamard_sa σx_sa σy_sa σz_sa cnot_sa swap_sa braqubit1_sa braqubit0_sa control_adjoint phase_adjoint rotation_adjoint : Q_db.
 
 (* Rather use control_adjoint :
 Hint Rewrite control_sa using (autorewrite with M_db; reflexivity) : M_db. *)
@@ -1345,7 +1345,7 @@ Proof.
 Qed.
 
 
-Hint Rewrite phase_0 phase_2pi phase_pi phase_neg_pi : Q_db.
+#[export] Hint Rewrite phase_0 phase_2pi phase_pi phase_neg_pi : Q_db.
 
 
 (* now we get some more identities: *)
@@ -1365,7 +1365,7 @@ Proof. unfold Sgate, Tgate.
        apply f_equal; lra.
 Qed.
 
-Hint Rewrite MmultSS MmultTT : Q_db.
+#[export] Hint Rewrite MmultSS MmultTT : Q_db.
 
 
 (*****************************)
@@ -1804,7 +1804,7 @@ Proof.
     lca.
 Qed.  
 
-Hint Rewrite swap_spec using (auto 100 with wf_db) : Q_db.
+#[export] Hint Rewrite swap_spec using (auto 100 with wf_db) : Q_db.
 
 Example swap_to_0_test_24 : forall (q0 q1 q2 q3 : Vector 2), 
   WF_Matrix q0 -> WF_Matrix q1 -> WF_Matrix q2 -> WF_Matrix q3 ->
