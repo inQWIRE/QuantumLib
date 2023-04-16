@@ -1,7 +1,7 @@
-(lang dune 2.8)
+(lang dune 3.7)
 (name coq-quantumlib)
 (version 1.2.0)
-(using coq 0.2)
+(using coq 0.7)
 
 (generate_opam_files true)
 
@@ -18,4 +18,4 @@
               "\|  about quantum computation and quantum programs.
  )
  (depends
-   (coq (>= 8.12))))
+   (coq (>= 8.17))))
