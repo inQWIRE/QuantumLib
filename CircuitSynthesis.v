@@ -1,5 +1,5 @@
   
-Require Export Rings. 
+Require Export RingExamples. 
 
 (* Require Export Matrix.
 Require Export Quantum. *) 

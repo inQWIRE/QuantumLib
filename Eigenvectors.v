@@ -385,7 +385,7 @@ Proof. intros.
          unfold scale, make_row_zero. 
          bdestruct (x =? x); try lia; lca. 
          apply (mat_prop_col_scale_conv _ _ x (/ (v x 0))); auto with invr_db.
-         apply nonzero_div_nonzero; easy.
+         apply nonzero_Cdiv_nonzero; easy.
          assert (H' : forall A : Square (S n), A = I (S n) -> linearly_independent A).
          { intros. rewrite H3. 
            apply lin_indep_invertible; auto with wf_db.

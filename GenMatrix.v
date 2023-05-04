@@ -9,7 +9,7 @@ Require Export Summation.
 
 
 
-(* TODO: Use matrix equality everywhere, declare equivalence relation *)
+(* TODO: Use matrix equality everywhere, declare equivalence relatioyn *)
 (* TODO: Make all nat arguments to matrix lemmas implicit *)
 
 

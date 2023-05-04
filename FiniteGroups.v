@@ -2,7 +2,6 @@ Require Import List.
 Require Import Prelim.
 Require Import Summation. 
 Require Import FinFun. 
-Require Import ListDec.
 Require Import Setoid.
 
 (* two important list functions used are NoDup and incl *)
@@ -300,34 +299,34 @@ Qed.
 
 (* defining homomorphisms between groups *)
 
-
+(* TODO: could move this to summation.v *)
 (* it would be quite nice to change the order of the inputs here, mirroring f : G -> H *)
-Definition group_homomorphism (H G : Type) `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) : Prop :=
+Definition group_homomorphism (H G : Type) `{Group H} `{Group G} (f : H -> G) : Prop :=
   forall x1 x2, f (x1 · x2) = f x1 · f x2.
 
 
-Definition inclusion_map (H G : Type) `{FiniteGroup H} `{FiniteGroup G}  (f : H -> G) : Prop :=
+Definition inclusion_map (H G : Type) `{Group H} `{Group G}  (f : H -> G) : Prop :=
   Injective f /\ group_homomorphism H G f.
 
 
-Definition sub_group (H G : Type) `{FiniteGroup H} `{FiniteGroup G} : Prop :=
+Definition sub_group (H G : Type) `{Group H} `{Group G} : Prop :=
   exists f, inclusion_map H G f.
 
 
-Lemma homo_id : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G),
+Lemma homo_id : forall H G `{Group H} `{Group G} (f : H -> G),
   group_homomorphism H G f -> f 0 = 0.
 Proof. intros.
        apply (Gplus_cancel_l (f 0) 0 (f 0)).
-       rewrite Gplus_0_r, <- H6, Gplus_0_r.
+       rewrite Gplus_0_r, <- H4, Gplus_0_r.
        easy. 
 Qed.
 
-Lemma homo_inv : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H -> G) (h : H),
+Lemma homo_inv : forall H G `{Group H} `{Group G} (f : H -> G) (h : H),
   group_homomorphism H G f -> f (- h) = - (f h).
 Proof. intros. 
        apply (Gplus_cancel_l _ _ (f h)).
-       rewrite Gopp_r, <- H6, Gopp_r.
-       apply homo_id in H6.
+       rewrite Gopp_r, <- H4, Gopp_r.
+       apply homo_id in H4.
        easy. 
 Qed.
 

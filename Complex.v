@@ -116,7 +116,7 @@ Infix "^" := Cpow : C_scope.
 Global Program Instance C_is_monoid : Monoid C := 
   { Gzero := C0
   ; Gplus := Cplus
-  }.
+  }. 
 Solve All Obligations with program_simpl; try lca.
 
 Global Program Instance C_is_group : Group C :=
@@ -617,7 +617,7 @@ Proof.
     assumption.
 Qed.
 
-Lemma nonzero_div_nonzero : forall c : C, c <> C0 -> / c <> C0.
+Lemma nonzero_Cdiv_nonzero : forall c : C, c <> C0 -> / c <> C0.
 Proof. intros. 
        unfold not; intros. 
         assert (H' : (c * (/ c) = c * C0)%C). 
@@ -697,9 +697,9 @@ Qed.
 Lemma Cinv_inv : forall c : C, c <> C0 -> / / c = c.
 Proof. intros. 
        apply (Cmult_cancel_l (/ c)).
-       apply nonzero_div_nonzero; auto.
+       apply nonzero_Cdiv_nonzero; auto.
        rewrite Cinv_l, Cinv_r; auto.
-       apply nonzero_div_nonzero; auto.
+       apply nonzero_Cdiv_nonzero; auto.
 Qed.
 
 
@@ -886,7 +886,7 @@ Lemma Cpow_add : forall (c : C) (n m : nat), (c ^ (n + m) = c^n * c^m)%C.
 Proof.
   intros. 
   rewrite Cpow_Gpow. 
-  rewrite Gpow_add; easy.
+  rewrite Gpow_add_r; easy.
 Qed.
 
 Lemma Cpow_mult : forall (c : C) (n m : nat), (c ^ (n * m) = (c ^ n) ^ m)%C.
@@ -944,6 +944,46 @@ Proof.
   rewrite Cmod_mult, IHn.
   reflexivity.
 Qed.
+
+
+(** * Lemmas about Cpow_int *)
+
+(* TODO: figure out how to avoid needing to restate these for C specific *)
+
+Lemma Cpow_int_nonzero : forall (c : C) (z : Z), c <> C0 -> c ^^ z <> C0. 
+Proof. intros.
+       apply (@Gpow_int_nonzero C).
+       easy. 
+Qed.
+
+Lemma Cpow_int_add_r : forall (c : C) (z1 z2 : Z), 
+  c <> 0 -> c ^^ (z1 + z2) = c^^z1 * c^^z2.
+Proof. intros.
+       rewrite Gpow_int_add_r; easy.
+Qed.
+
+Lemma Cpow_int_mult_r : forall (c : C) (z1 z2 : Z), 
+  c <> 0 -> c ^^ (z1 * z2) = (c ^^ z1) ^^ z2.
+Proof. intros. 
+       rewrite Gpow_int_mult_r; easy.
+Qed.
+
+Lemma Cpow_int_mult_l : forall (c1 c2 : C) (z : Z), 
+  c1 <> 0 -> c2 <> 0 -> (c1 * c2) ^^ z = (c1 ^^ z) * (c2 ^^ z).
+Proof. intros. 
+       rewrite (@Gpow_int_mult_l C); easy.
+Qed.
+
+Lemma Cpow_inv1 : forall (c : C) (z : Z), c <> 0 -> c^^(-z) = / (c^^z).
+Proof. intros.
+       rewrite Gpow_inv1; easy.
+Qed.
+
+Lemma Cpow_inv2 : forall (c : C) (z : Z), c <> 0 -> (/ c)^^z = / (c^^z).
+Proof. intros.
+       rewrite (@Gpow_inv2 C); easy.
+Qed.
+
 
 
 (** * Lemmas about Cmod *)
@@ -1563,3 +1603,4 @@ Ltac group_Cexp :=
   | |- context [ ?x * (?y * ?z) ] => 
     has_term Cexp x; has_term Cexp y; rewrite (Cmult_assoc x y z)
   end.    
+

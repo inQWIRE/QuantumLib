@@ -541,7 +541,7 @@ Lemma mat_prop_col_scale_conv : forall {n m} (P : forall n m : nat, Matrix n m -
 Proof. intros. 
        inversion H; subst.
        rewrite (col_scale_inv T x c); try easy.
-       apply H2; try apply nonzero_div_nonzero; easy.
+       apply H2; try apply nonzero_Cdiv_nonzero; easy.
 Qed.
 
 Lemma mat_prop_col_add_conv : forall {n m} (P : forall n m : nat, Matrix n m -> Prop)  
@@ -1463,7 +1463,7 @@ Proof. intros.
           prep_matrix_equality. 
           unfold row_scale, Zero. 
           bdestruct (x0 =? x); try lia; lca. 
-          apply nonzero_div_nonzero; easy.
+          apply nonzero_Cdiv_nonzero; easy.
           rewrite scale_preserves_mul. 
           rewrite <- (col_scale_inv T x c); easy.       
 Qed.
@@ -1671,7 +1671,7 @@ Proof. intros.
          apply big_sum_eq_bounded; intros. 
          unfold scale, get_vec; lca.  
        - apply (mat_prop_col_scale_conv _ _ col (/ (col_add_many col v T 0 col))); 
-           try apply nonzero_div_nonzero; try easy.
+           try apply nonzero_Cdiv_nonzero; try easy.
          apply lin_dep_scale_invr.
          apply (gt_dim_lindep_ind_step1 _ col); try lia; auto with wf_db.
          apply mat_equiv_eq; auto with wf_db.
@@ -1962,7 +1962,7 @@ Proof. intros.
          easy.
        - inversion H0; subst. 
          assert (n0' := n0).
-         apply nonzero_div_nonzero in n0.
+         apply nonzero_Cdiv_nonzero in n0.
          apply (H10 _ _ i (col_add_many i (row_wedge v Zero i) A)
                  (/ col_add_many i (row_wedge v Zero i) A 0 i)) in n0.
          assert (H11 : forall i0 : nat, 
@@ -1985,7 +1985,7 @@ Proof. intros.
          apply WF_row_wedge; auto with wf_db; try lia.
          rewrite <- col_row_scale_invr_I.
          apply otI_scale; auto with wf_db.
-         apply nonzero_div_nonzero; auto. 
+         apply nonzero_Cdiv_nonzero; auto. 
          apply otI_I.
          rewrite <- Mmult_assoc.
          rewrite <- col_add_many_mult_r; try easy.
@@ -2062,7 +2062,7 @@ Proof. intros.
        - inversion H0; subst. 
          assert (n0' := n0).
          left. 
-         apply nonzero_div_nonzero in n0.
+         apply nonzero_Cdiv_nonzero in n0.
          apply (H11 _ _ i (col_add_many i (row_wedge v Zero i) A)
                  (/ col_add_many i (row_wedge v Zero i) A 0 i)) in n0.
          assert (H12 : forall i0 : nat, 
@@ -2085,7 +2085,7 @@ Proof. intros.
          apply WF_row_wedge; auto with wf_db; try lia.
          rewrite <- col_row_scale_invr_I.
          apply otI_scale; auto with wf_db.
-         apply nonzero_div_nonzero; auto. 
+         apply nonzero_Cdiv_nonzero; auto. 
          apply otI_I.
          rewrite <- Mmult_assoc.
          rewrite <- col_add_many_mult_r; try easy.

@@ -1,5 +1,6 @@
-Require Export Polynomial.
+
 Require Import Setoid.
+Require Export Polynomial.
 
 (************************************)
 (* First, we define a topology on C *)
