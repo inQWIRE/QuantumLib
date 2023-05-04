@@ -288,7 +288,6 @@ Next Obligation.
   apply G1_neq_0.
 Qed.       
 
-
 Lemma Field_is_Domain' : forall {F} `{Field F}, Domain F.
 Proof. intros.
        apply Field_is_Domain in H4.
@@ -306,6 +305,32 @@ Proof. intros.
        rewrite Ginv_l, Gmult_1_r, Ginv_l; easy.
 Qed.
 
+Lemma nonzero_Gdiv_nonzero : forall {F} `{Field F} (c : F), c <> 0 -> / c <> 0.
+Proof. intros. 
+       unfold not; intros. 
+        assert (H' : c * (/ c) = c * 0). 
+        { rewrite H6; easy. } 
+        rewrite Ginv_r in H'; try easy.
+        rewrite Gmult_0_r in H'.
+        apply G1_neq_0; easy.
+Qed.
+
+Lemma Ginv_inv : forall {F} `{Field F} (c : F), c <> 0 -> / / c = c.
+Proof. intros. 
+       apply (Gmult_cancel_r _ _ (/ c)).
+       apply nonzero_Gdiv_nonzero; auto.
+       rewrite Ginv_l, Ginv_r; auto.
+       apply nonzero_Gdiv_nonzero; auto.
+Qed.       
+
+
+Global Program Instance RingMult_is_Monoid : forall (R : Type) `{Ring R}, Monoid R :=
+  { Gzero := 1
+  ; Gplus := Gmult
+  }.                    
+Next Obligation. apply Gmult_1_l. Qed.
+Next Obligation. apply Gmult_1_r. Qed.
+Next Obligation. apply Gmult_assoc. Qed.
 
 
 
@@ -365,6 +390,14 @@ Fixpoint Gpow {R} `{Ring R} (r : R) (n : nat) : R :=
   | S n' => Gmult r (Gpow r n')
   end.
 
+(* slightly more simplified terms *)
+Fixpoint Gpow' {R} `{Ring R} (r : R) (n : nat) : R :=  
+  match n with
+  | 0%nat => 1
+  | 1%nat => r
+  | S n' => Gmult r (Gpow' r n')
+  end.
+
 Infix "^" := Gpow : group_scope.
 
 Fixpoint G_big_mult {R} `{Ring R} (rs : list R) : R := 
@@ -373,7 +406,6 @@ Fixpoint G_big_mult {R} `{Ring R} (rs : list R) : R :=
   | r :: rs' => r * (G_big_mult rs')
   end. 
 
-
 (** sum to n exclusive *)
 Fixpoint big_sum {G : Type} `{Monoid G} (f : nat -> G) (n : nat) : G := 
   match n with
@@ -381,8 +413,19 @@ Fixpoint big_sum {G : Type} `{Monoid G} (f : nat -> G) (n : nat) : G :=
   | S n' => (big_sum f n') + (f n')
   end.
 
+Definition big_prod {G : Type} `{Ring G} (f : nat -> G) (n : nat) : G :=
+  @big_sum G (RingMult_is_Monoid G) f n.
 
 (** * Gpow Lemmas *)
+
+Lemma Gpow_same : forall {R} `{Ring R} (r : R), Gpow r = Gpow' r.
+Proof. intros.
+       apply functional_extensionality; intros. 
+       induction x; simpl; auto.
+       destruct x. 
+       simpl. rewrite Gmult_1_r; auto.
+       rewrite IHx; auto.
+Qed.
 
 Lemma Gpow_add_r : forall {R} `{Ring R} (r : R) (n m : nat), (r ^ (n + m) = r^n * r^m).
 Proof.
@@ -535,6 +578,21 @@ Proof.
     repeat rewrite <- Gplus_assoc.
     apply f_equal_gen; try easy.
     rewrite Gplus_comm; easy.
+Qed.
+
+Lemma big_prod_mult : forall {G} `{Comm_Ring G} f g n, 
+    big_prod (fun x => f x * g x) n = big_prod f n * big_prod g n.
+Proof.
+  intros.
+  induction n; unfold big_prod in *; simpl. 
+  + rewrite Gmult_1_l; easy.
+  + rewrite IHn.
+    repeat rewrite <- Gmult_assoc.
+    apply f_equal_gen; try easy. 
+    rewrite Gmult_comm.  
+    repeat rewrite <- Gmult_assoc.
+    apply f_equal_gen; try easy.
+    rewrite Gmult_comm; easy.
 Qed.
 
 Lemma big_sum_scale_l : forall {G} {V} `{Module_Space G V} c f n, 
@@ -1034,6 +1092,13 @@ Lemma big_plus_reduce : forall {G} `{Group G} a l,
   G_big_plus (a :: l) = a + G_big_plus l.
 Proof. intros. easy. Qed.
   
+Lemma big_plus_0_l : forall {G} `{Group G} l,
+  G_big_plus (0 :: l) = G_big_plus l.
+Proof. 
+  intros; simpl. 
+  rewrite Gplus_0_l; easy.
+Qed.
+
 Lemma big_plus_inv_r : forall {G} `{Group G} a l,
   G_big_plus (a :: -a :: l) = G_big_plus l.
 Proof. 
@@ -1048,6 +1113,14 @@ Proof.
   rewrite Gplus_assoc, Gopp_l, Gplus_0_l; easy.
 Qed.
 
+Lemma big_plus_cancel_l : forall {G} `{Group G} a l1 l2,
+  G_big_plus l1 = G_big_plus l2 ->
+  G_big_plus (a :: l1) = G_big_plus (a :: l2).
+Proof. 
+  intros; simpl. 
+  rewrite H1; easy.
+Qed.
+
 
 Ltac reify_grp G ge :=
   match ge with
@@ -1056,7 +1129,7 @@ Ltac reify_grp G ge :=
       let r1 := reify_grp G ge1 in
       let r2 := reify_grp G ge2 in
       constr:(gOp r1 r2)
-  | ?ge1 - ?ge2 =>
+  | ?ge1 - ?ge2 => (* technically not needed because we unfold Gminus *)
       let r1 := reify_grp G ge1 in
       let r2 := reify_grp G ge2 in
       constr:(gOp r1 (gInv r2))             
@@ -1067,23 +1140,32 @@ Ltac reify_grp G ge :=
   end.
 
 Ltac solve_group :=
-  unfold Gminus;
   match goal with
   | [ |- @eq ?G ?me1 ?me2 ] =>
       let r1 := reify_grp G me1 in
       let r2 := reify_grp G me2 in
       (* replace me1 with (gdenote r1) by easy;
-         replace me2 with (gdenote r2) by easy; *)
-      change (@eq ?G ?me1 ?me2) with (gdenote r1 = gdenote r2); 
+         replace me2 with (gdenote r2) by easy; *)      
+      replace (eq me1) with (eq (gdenote r1)) by (apply f_equal; easy); symmetry;
+      replace (eq me2) with (eq (gdenote r2)) by (apply f_equal; easy); symmetry;
+      (* change (@eq ?G ?me1 ?me2) with (gdenote r1 = gdenote r2); *)
       apply group_reflect; simpl gflatten;
-      repeat (rewrite Gopp_involutive);
-      repeat (try (rewrite big_plus_inv_r); 
-              try (rewrite big_plus_inv_l); 
+      repeat (rewrite Gopp_involutive); 
+      repeat (repeat 
+                (try rewrite big_plus_inv_r; 
+                 try rewrite big_plus_inv_l; 
+                 try rewrite big_plus_0_l;
+                 try apply big_plus_cancel_l);
               try rewrite big_plus_reduce); simpl; try easy;
       repeat (rewrite Gplus_0_l); 
       repeat (rewrite Gplus_0_r);
-      repeat (rewrite Gplus_assoc); try easy
-  end.
+      repeat (rewrite Gplus_assoc); 
+      repeat (apply f_equal_gen; 
+              match goal with
+              | [ |- Gplus ?me1 = Gplus ?me2 ] => apply f_equal
+              | [ |- ?me1 = ?me2 ] => easy
+              end); try easy
+  end. 
 
 Lemma test2 : forall {G} `{Group G} a b c d, a + b + c + d + 0 - d = a + (b + c) + d - d.
 Proof. intros. solve_group. Qed.
@@ -1094,19 +1176,23 @@ Proof. intros. solve_group. Qed.
 Lemma test4 : forall {G} `{Group G} a, 0 = a + -a.
 Proof. intros. solve_group. Qed.
 
-Lemma test5 : forall {G} `{Group G} a, -a + a + a = a.
-Proof. intros. solve_group. Qed.
+Lemma test5 : forall {G} `{Group G} a, a = -a + a + a.
+Proof. intros. solve_group. Qed. 
 
-Lemma test6 : forall {G} `{Group G} a, a = -a + (a + a).
-Proof. intros. solve_group. Qed.
+(* TODO: figure out how to do this in one call of solve_group *)
+Lemma test6 : forall {G} `{Group G} a b, 0 = -b -a + a + b.
+Proof. intros. solve_group. solve_group. Qed.
 
 Lemma test7 : forall {G} `{Group G}, 0 = -0.
-Proof.  intros. solve_group. Qed.
+Proof. intros. solve_group. Qed.
                
+Lemma test8 : forall {G} `{Comm_Group G} a b c, a + b + (c + b + a) = a + --b + b + c + a - a + a.
+Proof. intros. solve_group. 
+       apply Gplus_comm.
+Qed.       
 
 
-
-(** * multiplication by integers *)
+(** * multiplication by integers: needed for solve_comm_group *)
 
 
 (** times_n lemmas *) 
@@ -1229,10 +1315,8 @@ Lemma times_pos_pred_double : forall {R : Type} `{Group R} (r : R) (p : positive
   times_pos r (Pos.pred_double p) = (- r) + (times_pos r p + times_pos r p).
 Proof. intros.
        induction p; simpl; try solve_group.
-       - do 4 (apply f_equal_gen; auto).
-         rewrite times_pos_comm1, <- Gplus_assoc, times_pos_comm1; solve_group.
+       - rewrite times_pos_comm1, <- Gplus_assoc, times_pos_comm1; solve_group.
        - rewrite IHp; solve_group.
-         do 4 (apply f_equal_gen; auto).
          rewrite times_pos_comm2, <- 2 Gplus_assoc, <- times_pos_comm2; solve_group.
 Qed.
 
@@ -1338,6 +1422,14 @@ Proof. intros.
        - rewrite H1, times_z_minus_nat; easy.
 Qed.
 
+Corollary times_z_opp_r : forall {R : Type} `{Group R} (r : R) (z : Z), 
+  times_z r (- z) = - times_z r z.
+Proof. intros.
+       apply Gopp_unique_l.
+       rewrite <- times_z_add_r, Z.add_opp_diag_l.
+       easy.
+Qed.       
+
 Theorem times_z_mult_r : forall {R : Type} `{Group R} (r : R) (z1 z2 : Z), 
   times_z r (z1 * z2) = times_z (times_z r z1) z2. 
 Proof. intros. 
@@ -1377,30 +1469,27 @@ Qed.
 (** solve_commgroup tactic *)
 
 (* this time, we use nats to track vars since they are easily ordered *)
- Inductive cgexp : Type :=
+Inductive cgexp : Type :=
   | cgIdent : cgexp
   | cgVar : nat -> cgexp 
   | cgOp : cgexp -> cgexp -> cgexp
   | cgInv : cgexp -> cgexp.
 
-(*
-Inductive cgexp_normal : Type :=
-  | cgnIdent : cgexp_normal
-  | cgnInj : nat -> cgexp_normal -> cgexp_normal
-  | cgnX : Z -> cgexp_normal -> cgexp_normal.
-*)
+(* here, nth l i 0 gives the mapping between actual group elems and cgVar i *) 
+Fixpoint cgdenote {G} `{Group G} (l : list G) (ge : cgexp) : G :=
+  match ge with
+  | cgIdent => 0
+  | cgVar i => nth i l 0
+  | cgOp ge1 ge2 => cgdenote l ge1 + cgdenote l ge2
+  | cgInv ge' => - cgdenote l ge'
+  end.
+
+Lemma cgdenote_op : forall {G} `{Group G} (l : list G) (ge1 ge2 : cgexp),
+  cgdenote l (cgOp ge1 ge2) = cgdenote l ge1 + cgdenote l ge2.
+Proof. easy. Qed.
+
 
 Definition cgexp_normal : Type := list Z.
-
-Fixpoint WF_cgen (gen : cgexp_normal) : Prop := 
-  match gen with
-  | [] => True
-  | [z] => match z with 
-          | Z0 => False
-          | _ => True
-          end
-  | z :: l => WF_cgen l
-  end.
 
 Definition V0 : cgexp_normal := [1%Z].
 
@@ -1427,46 +1516,9 @@ Proof. intros.
          destruct n; auto.
 Qed.
 
-
 Lemma succ_Vi : forall (i : nat),
   Vi (S i) = Z0 :: Vi i.
 Proof. easy. Qed.
-
-(*
-Lemma WF_cons : forall (z : Z) (l : cgexp_normal),
-  l <> [] ->
-  WF_cgen l ->
-  WF_cgen (z :: l).
-Proof. intros. 
-       destruct l; easy.
-Qed.
-
-Lemma WF_cons_conv : forall (z : Z) (l : cgexp_normal),
-  WF_cgen (z :: l) ->
-  WF_cgen l.
-Proof. intros. 
-       destruct l; easy.
-Qed.
-
-Lemma WF_cgen_last : forall (l : cgexp_normal) (z : Z),
-  z <> Z0 ->
-  WF_cgen (l ++ [z]).
-Proof. intros. 
-       induction l. 
-       - destruct z; try easy.
-       - rewrite <- app_comm_cons. 
-         destruct (l ++ [z]) eqn:E; try easy.
-         apply (@f_equal (list Z) nat (@length Z)) in E.
-         rewrite app_length in E; simpl in E; lia.
-Qed.         
-
-Lemma WF_Vi : forall (i : nat), WF_cgen (Vi i).
-Proof. intros. 
-       unfold Vi.  
-       apply WF_cgen_last.
-       lia.
-Qed.
-*)
 
 Fixpoint cgenOp (gen1 gen2 : cgexp_normal) : cgexp_normal :=
   match gen1, gen2 with 
@@ -1474,25 +1526,6 @@ Fixpoint cgenOp (gen1 gen2 : cgexp_normal) : cgexp_normal :=
   | _, [] => gen1
   | z1 :: gen1', z2 :: gen2' => (z1 + z2)%Z :: cgenOp gen1' gen2'
   end.
-
-(* 
-Fixpoint cgenOp (gen1 gen2 : cgexp_normal') : cgexp_normal' :=
-  match gen1, gen2 with 
-  | [], _ => gen2
-  | _, [] => gen1
-  |[z1], [z2] => 
-     match (z1 + z2)%Z with
-     | Z0 => []
-     | _ => [(z1 + z2)%Z]
-     end
-  | z1 :: gen1', z2 :: gen2' => 
-      match cgenOp gen1' gen2' with
-      | [] => cgenOp [z1] [z2]
-      | _ => (z1 + z2)%Z :: cgenOp gen1' gen2'
-      end
-  end.
-*) 
-
 
 Definition cgenInv (gen : cgexp_normal) : cgexp_normal :=
   map Z.opp gen. 
@@ -1505,23 +1538,6 @@ Fixpoint cgexp_to_normal (ge : cgexp) : cgexp_normal :=
   | cgInv ge' => cgenInv (cgexp_to_normal ge')
   end.
 
-(* here, nth l i 0 gives the mapping between actual group elems and cgVar i *) 
-Fixpoint cgdenote {G} `{Group G} (l : list G) (ge : cgexp) : G :=
-  match ge with
-  | cgIdent => 0
-  | cgVar i => nth i l 0
-  | cgOp ge1 ge2 => cgdenote l ge1 + cgdenote l ge2
-  | cgInv ge' => - cgdenote l ge'
-  end.
-
-(*
-Fixpoint jump' {X} (l : list X) (n : nat) : list X :=
-  match n with 
-  | O => l
-  | S n' => jump' (tail l) n'
-  end.
-*)
-
 Definition cgendenote {G} `{Group G} (l : list G) (gen : cgexp_normal) : G :=
   big_sum (fun i => times_z (nth i l 0) (nth i gen 0%Z)) (length l).
 
@@ -1529,7 +1545,11 @@ Fixpoint cgendenote' {G} `{Group G} (l : list G) (gen : cgexp_normal) : G :=
   match gen, l with 
   | [], _ => 0
   | _, [] => 0
-  | z :: gen', g :: l' => times_z g z + cgendenote' l' gen'
+  | z :: gen', g :: l' => 
+      match z with
+      | Z0 => cgendenote' l' gen'
+      | _ => times_z g z + cgendenote' l' gen'
+      end
   end.
 
 Lemma cgendenote_same : forall {G} `{Group G} (l : list G) (gen : cgexp_normal),
@@ -1547,7 +1567,9 @@ Proof. induction l.
          unfold cgendenote.
          simpl length. 
          rewrite <- big_sum_extend_l.
+         destruct z; try
          apply f_equal_gen; try apply f_equal; auto.
+         solve_group.
 Qed.
 
 Lemma test_cgendenote : forall {G} `{Group G} (a b c : G), 
@@ -1555,6 +1577,27 @@ Lemma test_cgendenote : forall {G} `{Group G} (a b c : G),
 Proof. intros. 
        unfold cgendenote; simpl. 
        solve_group. 
+Qed.
+
+
+(* two helpers *)
+
+Lemma cgenOp_nth : forall (i : nat) (gen1 gen2 : cgexp_normal),
+  nth i (cgenOp gen1 gen2) 0%Z = ((nth i gen1 0) + (nth i gen2 0))%Z.
+Proof. induction i; intros. 
+       - destruct gen1; destruct gen2; auto. 
+         simpl; lia.
+       - destruct gen1; destruct gen2; auto; simpl.
+         lia.
+         rewrite IHi; auto.
+Qed.
+
+Lemma cgenInv_nth : forall (i : nat) (gen : cgexp_normal),
+  nth i (cgenInv gen) 0%Z = (- nth i gen 0)%Z.
+Proof. induction i; intros. 
+       - destruct gen; auto. 
+       - destruct gen; auto; simpl.
+         rewrite IHi; auto.
 Qed.
 
 Lemma cgendenote_Vi : forall {G} `{Group G} (n : nat) (l : list G),
@@ -1578,40 +1621,6 @@ Proof. intros.
          easy.
 Qed.
 
-Lemma cgendenote_grab_scale : forall {G} `{Group G} (i : nat) (l : list G) (gen : cgexp_normal),
-  (forall j, j <> i -> nth j gen 0%Z = 0%Z) ->
-  cgendenote l gen = times_z (nth i l 0) (nth i gen 0%Z) .
-Proof. intros.          
-       unfold cgendenote.
-       bdestruct (i <? length l)%nat.
-       - erewrite big_sum_unique.
-         easy.
-         exists i. 
-         split; auto.
-         split. easy.
-         intros. 
-         rewrite H1; auto.
-       - rewrite nth_overflow; try lia.  
-         rewrite times_z_0.
-         rewrite big_sum_0_bounded; auto.
-         intros. 
-         rewrite H1; simpl; try lia.
-         easy.
-Qed.
-
-Lemma cgenOp_nth : forall {G} `{Comm_Group G} (i : nat) (gen1 gen2 : cgexp_normal),
-  nth i (cgenOp gen1 gen2) 0%Z = ((nth i gen1 0) + (nth i gen2 0))%Z.
-Proof. induction i; intros. 
-       - destruct gen1; destruct gen2; auto. 
-         simpl; lia.
-       - destruct gen1; destruct gen2; auto; simpl.
-         lia.
-         rewrite IHi; auto.
-Qed.
-
-
-
-
 (* we don't even use Comm_Group until here! *)
 Lemma cgexp_to_normal_correct' : forall {G} `{Comm_Group G} (l : list G) (ge : cgexp),
   cgdenote l ge = cgendenote l (cgexp_to_normal ge).
@@ -1631,172 +1640,1223 @@ Proof. induction ge; simpl.
          apply big_sum_eq_bounded; intros. 
          symmetry.
          apply Gopp_unique_l.
-         rewrite <- times_z_add_r.
+         rewrite <- times_z_add_r, cgenInv_nth, Z.add_opp_diag_l. 
+         easy. 
+         intros. 
+         rewrite Gopp_plus_distr. 
+         apply Gplus_comm.
+Qed.
 
-
-unfold cgenInv.
-         unfold cgendenote.
-
-distr.
-
-       rewrite <- H1.
-
-
-Lemma cgexp_to_normal_correct : forall {G} `{Group G} (l : list G) 
-                                  (ge : cgexp) (gen : cgexp_normal),
-  cgexp_to_normal ge = gen ->
-  cgdenote l ge = cgendenote l gen.
+Lemma cgexp_to_normal_correct : forall {G} `{Comm_Group G} (l : list G) (ge1 ge2: cgexp),
+  cgendenote' l (cgexp_to_normal ge1) = cgendenote' l (cgexp_to_normal ge2) ->
+  cgdenote l ge1 = cgdenote l ge2.
 Proof. intros.  
-       rewrite <- H1.
+       do 2 rewrite cgexp_to_normal_correct', cgendenote_same.
+       easy. 
+Qed.
+
+Ltac intern vars e :=
+  let rec loop n vars' :=
+    match vars' with
+    | [] =>
+      let vars'' := eval simpl in (vars ++ [e]) in
+      constr:((n, vars''))
+    | e :: ?vars'' => constr:((n, vars))
+    | _ :: ?vars'' => loop (S n) vars''
+    end in
+  loop O vars.
+
+Ltac reify_cgrp vars ge :=
+  match ge with
+  | Gzero => constr:((cgIdent, vars))
+  | ?ge1 + ?ge2 => 
+    let r1 := reify_cgrp vars ge1 in
+    match r1 with
+    | (?qe1, ?vars') => 
+      let r2 := reify_cgrp vars' ge2 in
+      match r2 with
+      | (?qe2, ?vars'') => constr:((cgOp qe1 qe2, vars''))
+      end
+    end
+  | ?ge1 - ?ge2 => 
+    let r1 := reify_cgrp vars ge1 in
+    match r1 with
+    | (?qe1, ?vars') => 
+      let r2 := reify_cgrp vars' ge2 in
+      match r2 with
+      | (?qe2, ?vars'') => constr:((cgOp qe1 (cgInv qe2), vars''))
+      end
+    end
+  | -?ge => 
+      let r := reify_cgrp vars ge in
+      match r with
+      | (?qe, ?vars') => constr:((cgInv qe, vars'))
+      end
+  | _ => 
+    let r := intern vars ge in
+    match r with
+    | (?n, ?vars') => constr:((cgVar n, vars'))
+    end
+  end.
+
+Ltac solve_comm_group :=
+  match goal with
+  | [ |- @eq ?G ?ge1 ?ge2 ] =>
+      let r1 := reify_cgrp (@nil G) ge1 in
+      match r1 with 
+      | (?qe1, ?vars) =>
+          let r2 := reify_cgrp vars ge2 in
+          match r2 with
+          | (?qe2, ?vars') => 
+              replace (eq ge1) with (eq (cgdenote vars' qe1)) by (apply f_equal; easy); 
+              symmetry;
+              replace (eq ge2) with (eq (cgdenote vars' qe2)) by (apply f_equal; easy); 
+              symmetry;
+              apply cgexp_to_normal_correct; simpl
+          end
+       end
+  end; solve_group.
+
+Lemma test_scg1 : forall {G} `{Comm_Group G} a b c d, a - b + 0 + c - d + -a + d = c - b. 
+Proof. intros. solve_comm_group. Qed.
+
+Lemma test_scg2 : forall {G} `{Comm_Group G} a b, a + a + b + a - a = b + a + a.
+Proof. intros. solve_comm_group. Qed.
 
 
-induction ge.
+(** solve_comm_monoid (really just ring mult) tactic *)
+
+(* this time, we use nats to track vars since they are easily ordered *)
+Inductive cmexp : Type :=
+  | cmIdent : cmexp
+  | cmVar : nat -> cmexp 
+  | cmOp : cmexp -> cmexp -> cmexp.
+
+(* here, nth l i 0 gives the mapping between actual group elems and cgVar i *) 
+Fixpoint cmdenote {G} `{Ring G} (l : list G) (ge : cmexp) : G :=
+  match ge with
+  | cmIdent => 1
+  | cmVar i => nth i l 1
+  | cmOp ge1 ge2 => cmdenote l ge1 * cmdenote l ge2
+  end.
+
+Lemma cmdenote_op : forall {G} `{Ring G} (l : list G) (me1 me2 : cmexp),
+  cmdenote l (cmOp me1 me2) = cmdenote l me1 * cmdenote l me2.
+Proof. easy. Qed.
+
+
+Definition cmexp_normal : Type := list nat.
+
+Definition V0' : cmexp_normal := [1%nat].
+
+Definition Vi' (i : nat) : cmexp_normal := repeat O i ++ [1%nat].
+
+Lemma nth_Vi' : forall (i : nat) (z : nat), nth i (Vi' i) z = 1%nat.
+Proof. intros.
+       unfold Vi'.
+       rewrite app_nth2. 
+       all : rewrite repeat_length; try lia.
+       replace (i - i)%nat with O by lia; easy.
+Qed.
+
+Lemma nth_Vi'_miss : forall (i j : nat), i <> j -> nth i (Vi' j) 0%nat = 0%nat.
+Proof. intros.
+       unfold Vi'.
+       bdestruct (i <? j)%nat; bdestruct (j <? i)%nat; bdestruct (i =? j)%nat; try lia. 
+       - rewrite app_nth1. 
+         rewrite nth_repeat; auto.
+         rewrite repeat_length; auto. 
+       - rewrite app_nth2. 
+         all : rewrite repeat_length; auto.
+         destruct (i - j)%nat as [|n] eqn:E; try lia; simpl.
+         destruct n; auto.
+Qed.
+
+Lemma succ_Vi' : forall (i : nat),
+  Vi' (S i) = O :: Vi' i.
+Proof. easy. Qed.
+
+Fixpoint cmenOp (men1 men2 : cmexp_normal) : cmexp_normal :=
+  match men1, men2 with 
+  | [], _ => men2
+  | _, [] => men1
+  | n1 :: men1', n2 :: men2' => (n1 + n2)%nat :: cmenOp men1' men2'
+  end.
+
+Fixpoint cmexp_to_normal (ge : cmexp) : cmexp_normal :=
+  match ge with 
+  | cmIdent => []
+  | cmVar i => Vi' i
+  | cmOp ge1 ge2 => cmenOp (cmexp_to_normal ge1) (cmexp_to_normal ge2)
+  end.
+
+Definition cmendenote {G} `{Ring G} (l : list G) (gen : cmexp_normal) : G :=
+  big_prod (fun i => Gpow (nth i l 1) (nth i gen 0%nat)) (length l).
+
+(* this is more complex to make the Ltac better *)
+Fixpoint cmendenote' {G} `{Ring G} (l : list G) (gen : cmexp_normal) : G :=
+  match gen, l with 
+  | [], _ => 1
+  | _, [] => 1
+  | [n], [g] => match n with 
+               | O => 1
+               | _ => Gpow' g n
+               end
+  | n :: gen', g :: l' => 
+      match n with
+      | O => cmendenote' l' gen'
+      | _ => Gpow' g n * cmendenote' l' gen'
+      end
+  end.
+
+Lemma cmendenote_same : forall {G} `{Ring G} l gen,
+  cmendenote l gen = cmendenote' l gen.
+Proof. induction l; intros. 
+       - do 2 (destruct gen; auto). 
+       - destruct gen.
+         unfold cmendenote, big_prod.
+         rewrite big_sum_0_bounded; try easy.
+         intros; simpl. 
+         destruct x; auto.
+         replace (cmendenote' (a :: l) (n :: gen)) with 
+           (Gpow' a n * cmendenote' l gen).
+         rewrite <- IHl.
+         unfold cmendenote, big_prod; simpl length.         
+         rewrite <- big_sum_extend_l.
+         apply f_equal_gen; try apply f_equal; auto.
+         simpl. 
+         rewrite Gpow_same; auto.
+         destruct gen; destruct l; destruct n; simpl;
+           try rewrite Gmult_1_r; auto;
+           rewrite Gmult_1_l; auto.
+Qed.
+
+Lemma test_cmendenote : forall {G} `{Ring G} (a b c : G), 
+  cmendenote [a; b; c] [1; 1; 2]%nat = a * b * c * c.
+Proof. intros.  
+       rewrite cmendenote_same.
+       simpl. 
+       repeat rewrite Gmult_assoc.
+       easy. 
+Qed.
+
+
+(* one helper *)
+
+(* note how this harder lemma means more efficient Ltac *)
+Lemma cmenOp_nth : forall (i : nat) (men1 men2 : cmexp_normal),
+  nth i (cmenOp men1 men2) 0%nat = ((nth i men1 0) + (nth i men2 0))%nat.
+Proof. induction i; intros. 
+       - destruct men1; destruct men2; auto. 
+       - destruct men1; destruct men2; auto; simpl.
+         rewrite IHi; auto.
+Qed.
+
+Lemma cmendenote_Vi' : forall {G} `{Ring G} (n : nat) (l : list G),
+  cmendenote l (Vi' n) = nth n l 1.
+Proof. intros. 
+       unfold cmendenote, big_prod.
+       bdestruct (n <? length l)%nat.
+       - unfold big_prod.
+         rewrite (big_sum_unique (nth n l 1)); auto. 
+         exists n.
+         split; auto.
+         split. 
+         rewrite nth_Vi'; simpl; auto.
+         rewrite Gmult_1_r; auto.
+         intros.
+         rewrite nth_Vi'_miss.
+         easy.
+         auto.
+       - rewrite big_sum_0_bounded.
+         rewrite nth_overflow; auto.
+         intros. 
+         rewrite nth_Vi'_miss; try lia.
+         easy.
+Qed.
+
+(* we don't even use Comm_Group until here! *)
+Lemma cmexp_to_normal_correct : forall {G} `{Comm_Ring G} (l : list G) (me : cmexp),
+  cmdenote l me = cmendenote l (cmexp_to_normal me).
+Proof. induction me; simpl.
+       - rewrite cmendenote_same. 
+         destruct l; try easy.
+       - rewrite cmendenote_Vi'; auto.
+       - rewrite IHme1, IHme2.
+         unfold cmendenote.
+         rewrite <- big_prod_mult. 
+         apply big_sum_eq_bounded; intros.
+         rewrite cmenOp_nth, Gpow_add_r.
+         easy. 
+Qed.
+
+Lemma cmexp_to_normal_correct' : forall {G} `{Comm_Ring G} (l : list G) (me1 me2: cmexp),
+  cmendenote' l (cmexp_to_normal me1) = cmendenote' l (cmexp_to_normal me2) ->
+  cmdenote l me1 = cmdenote l me2.
+Proof. intros.  
+       do 2 rewrite cmexp_to_normal_correct, cmendenote_same.
+       easy. 
+Qed.
+
+
+Ltac reify_cmrp vars me :=
+  match me with
+  | Gone => constr:((cmIdent, vars))
+  | ?me1 * ?me2 => 
+    let r1 := reify_cmrp vars me1 in
+    match r1 with
+    | (?qe1, ?vars') => 
+      let r2 := reify_cmrp vars' me2 in
+      match r2 with
+      | (?qe2, ?vars'') => constr:((cmOp qe1 qe2, vars''))
+      end
+    end
+  | _ => 
+    let r := intern vars me in
+    match r with
+    | (?n, ?vars') => constr:((cmVar n, vars'))
+    end
+  end.
+
+Ltac solve_comm_monoid :=
+  match goal with
+  | [ |- @eq ?G ?ge1 ?ge2 ] =>
+      let r1 := reify_cmrp (@nil G) ge1 in
+      match r1 with 
+      | (?qe1, ?vars) =>
+          let r2 := reify_cmrp vars ge2 in
+          match r2 with
+          | (?qe2, ?vars') => 
+              replace (eq ge1) with (eq (cmdenote vars' qe1)) by (apply f_equal; easy); 
+              symmetry;
+              replace (eq ge2) with (eq (cmdenote vars' qe2)) by (apply f_equal; easy); 
+              symmetry;
+              apply cmexp_to_normal_correct'; simpl; auto
+          end
+       end 
+  end. 
+
+
+
+Lemma test_scm1 : forall {G} `{Comm_Ring G} a b, a * b * 1 = b * a. 
+Proof. intros. solve_comm_monoid; auto. Qed.
+
+Lemma test_scm2 : forall {G} `{Comm_Ring G} a b c, a * (b * c) = a * b * c.
+Proof. intros. solve_comm_monoid; auto. Qed.
+
+
+
+(* Might be useful to develop strong induction for positives *)
+(* TODO: move somewhere else *)
+
+
+Local Open Scope nat_scope. 
+
+Definition true_lt_n (P : nat -> Prop) (k : nat) : Prop :=
+  forall i, i < k -> P i.
+
+Lemma strong_ind' : forall (P : nat -> Prop) (n : nat),
+  (forall m, (forall k : nat, (k < m)%nat -> P k) -> P m) ->
+  true_lt_n P n.
+Proof. intros. 
+       induction n.
+       - unfold true_lt_n; intros; lia.
+       - unfold true_lt_n in *; intros.
+         bdestruct (i <? n).
+         apply IHn; auto.
+         bdestruct (i =? n); try lia.
+         apply H; intros. 
+         apply IHn; subst; auto.
+Qed.
+
+Lemma strong_ind (P : nat -> Prop) :
+  (forall m, (forall k : nat, (k < m)%nat -> P k) -> P m) -> forall n, P n.
+Proof. intros. 
+       assert (H' : true_lt_n P (S n)).
+       apply strong_ind'; auto.
+       unfold true_lt_n in H'.
+       apply H'.
+       lia.
+Qed.
+
+Lemma strong_ind_pos_nat : forall (P : positive -> Prop) (n : nat), 
+  (forall p, (forall p', (p' < p) -> P p')%positive -> P p) -> 
+  P (Pos.of_nat (S n)).
+Proof. intros. 
+       generalize dependent n.
+       apply strong_ind; intros. 
+       apply H; intros.
+       rewrite <- Pos2Nat.id.
+       destruct (Pos.to_nat p') as [| n'] eqn:E; try lia.
+       apply H0.
+       lia. 
+Qed.
+
+Lemma strong_ind_pos : forall (P : positive -> Prop), 
+  (forall p', (forall k, (k < p') -> P k)%positive -> P p') -> 
+  forall p, P p.
+Proof. intros.  
+       rewrite <- Pos2Nat.id.
+       destruct (Pos.to_nat p) as [| n'] eqn:E; try lia.
+       apply strong_ind_pos_nat; auto.
+Qed.
+
+Lemma strong_ind_pos_in_ctx : forall (P : positive -> Prop) (p : positive), 
+  (forall p', (forall k, (k < p') -> P k)%positive -> P p') -> 
+  P p.
+Proof. intros. 
+       generalize dependent p.
+       apply strong_ind_pos; auto.
+Qed.
+
+Lemma pos_sub_simpl_l : forall i p p0,
+  Z.pos_sub (i + p) (i + p0) = Z.pos_sub p p0.
+Proof. intros. 
+       rewrite <- 2 Pos2Z.add_neg_pos, <- Pos2Z.add_neg_neg, <- Pos2Z.add_pos_pos.
+       lia. 
+Qed.
+
+
+(* We need jump for the next section *)
+(*TODO: move this elsewhere *)
+
+Fixpoint jump {X} (l : list X) (p : positive) : list X :=
+  match p with
+  | xH => tail l
+  | xO p' => jump (jump l p') p'
+  | xI p' => jump (jump (tail l) p') p'
+  end.
+
+
+Lemma jump_nil : forall {X} (p : positive),
+  jump (@nil X) p = [].
+Proof. induction p; simpl;
+       repeat rewrite IHp; easy.
+Qed.
+
+Lemma jump_singleton : forall {X} (x : X) (p : positive),
+  jump [x] p = [].
+Proof. induction p; simpl; auto.
+       do 2 rewrite jump_nil; auto.
+       rewrite IHp, jump_nil; auto.
+Qed.
+
+Lemma jump_tail_comm : forall {X} (p : positive) (l : list X),
+  jump (tl l) p = tl (jump l p).
+Proof. induction p; simpl; auto; intros. 
+       do 2 rewrite IHp; auto.
+       do 2 rewrite IHp; auto.
+Qed.
+
+Lemma jump_succ : forall {X} (p : positive) (l : list X) (x : X),
+  jump (x :: l) (Pos.succ p) = jump l p.
+Proof. induction p; intros; simpl; auto.
+       rewrite IHp, 2 jump_tail_comm.
+       destruct ((jump l p)).
+       rewrite 2 jump_nil; easy.
+       rewrite IHp, <- jump_tail_comm.
+       easy.
+Qed.
+
+Lemma jump_add_nat : forall {X} (n : nat) (p : positive) (l : list X),
+  jump l (Pos.of_nat (S n) + p) = jump (jump l (Pos.of_nat (S n))) p.
+Proof. induction n.  
+       - intros; simpl Pos.of_nat.
+         rewrite Pos.add_1_l.
+         destruct l; simpl. 
+         repeat rewrite jump_nil; easy.
+         rewrite jump_succ; easy.
+       - intros.
+         destruct l. 
+         repeat rewrite jump_nil; easy.
+         replace (Pos.of_nat (S (S n)) + p)%positive with 
+           (1 + (Pos.of_nat (S n) + p))%positive by lia.
+         rewrite Pos.add_1_l, jump_succ, IHn; auto.
+         simpl. 
+         rewrite jump_succ; easy.
+Qed.     
+
+Lemma jump_add : forall {X} (p1 p2 : positive) (l : list X),
+  jump l (p1 + p2) = jump (jump l p1) p2.
+Proof. intros. 
+       rewrite <- (Pos2Nat.id p1).
+       destruct (Pos.to_nat p1) eqn:E; try lia.
+       rewrite jump_add_nat.
+       easy.
+Qed.
+
+Lemma jump_tail : forall {X} (p : positive) (l : list X),
+  jump (tl l) p = jump l (1 + p).  
+Proof. intros. 
+       rewrite jump_add. 
+       easy.
+Qed.
+
+
+
+(** solve_comm_ring tactic *)
+
+Local Open Scope group_scope.
+
+(* this time, we use nats to track vars since they are easily ordered *)
+Inductive crexp : Type :=
+  | cr0 : crexp
+  | cr1 : crexp
+  | crVar : nat -> crexp 
+  | crAdd : crexp -> crexp -> crexp
+  | crOpp : crexp -> crexp
+  | crMul : crexp -> crexp -> crexp.
+
+
+Fixpoint crdenote {R} `{Ring R} (l : list R) (re : crexp) : R :=
+  match re with
+  | cr0 => 0
+  | cr1 => 1
+  | crVar i => nth i l 0
+  | crAdd re1 re2 => crdenote l re1 + crdenote l re2
+  | crOpp re => - crdenote l re 
+  | crMul re1 re2 => crdenote l re1 * crdenote l re2
+  end.
+
+Lemma crdenote_add : forall {R} `{Ring R} (l : list R) (re1 re2 : crexp),
+  crdenote l (crAdd re1 re2) = crdenote l re1 + crdenote l re2.
+Proof. easy. Qed.
+
+Lemma crdenote_mul : forall {R} `{Ring R} (l : list R) (re1 re2 : crexp),
+  crdenote l (crMul re1 re2) = crdenote l re1 * crdenote l re2.
+Proof. easy. Qed.
+
+
+
+
+
+(* this is the normal form of crexp *)
+Inductive Pol : Type :=
+  | Pz : Z -> Pol
+  | Pinj : positive -> Pol -> Pol
+  | PX : Pol -> positive -> Pol -> Pol.
+
+Fixpoint Pol_denote {R} `{Ring R} (l : list R) (P : Pol) : R :=
+  match P with
+  | Pz z => times_z 1 z
+  | Pinj j Q => Pol_denote (jump l j) Q
+  | PX P i Q => (Gpow' (nth 1 l 0) (Pos.to_nat i)) * (Pol_denote l P) + Pol_denote (tail l) Q
+  end.
+
+
+Definition P0 := Pz 0.
+Definition P1 := Pz 1.
+
+(* these help force when p : Pol must be a certain form *)
+Definition Pz_pol (P : Pol) : Prop := 
+  match P with
+  | Pz _ => True
+  | _ => False
+  end. 
+
+
+
+
+
+Fixpoint Peq (P P' : Pol) : bool :=
+  match P, P' with
+  | Pz z, Pz z' => (z =? z')%Z
+  | Pinj j Q, Pinj j' Q' =>
+      match (j ?= j')%positive with
+      | Eq => Peq Q Q'
+      | _ => false
+      end
+  | PX P i Q, PX P' i' Q' =>
+      match (i ?= i')%positive with
+      | Eq => if Peq P P' then Peq Q Q' else false
+      | _ => false
+      end
+  | _, _ => false
+  end.
+
+
+Definition mkPinj j P :=
+  match P with
+  | Pz _ => P
+  | Pinj j' Q => Pinj ((j + j'):positive) Q
+  | _ => Pinj j P
+  end.
+
+Definition mkPinj_pred j P:=
+  match j with
+  | xH => P
+  | xO j => Pinj (Pdouble_minus_one j) P
+  | xI j => Pinj (xO j) P
+  end.
+
+Definition mkPX P i Q :=
+  match P with
+  | Pz z => if (z =? 0)%Z then mkPinj xH Q else PX P i Q
+  | Pinj _ _ => PX P i Q
+  | PX P' i' Q' => if (Peq Q' P0) then PX P' (i' + i) Q else PX P i Q
+  end.
+
+Definition mkXi i := PX P1 i P0.
+
+(* note that this is just V1 *)
+Definition mkX := mkXi 1.
+
+(* note that 0 -> Vi 1, 1 -> Vi 2, etc... *)
+Definition mkVi i := 
+  match i with
+  | O => mkX
+  | _ => Pinj (Pos.of_nat i) mkX
+  end.
+
+
+Lemma Pol_mkPinj_add : forall {R} `{Ring R} (p : Pol) (i j : positive),
+  mkPinj i (mkPinj j p) = mkPinj (i + j) p.
+Proof. intros. 
+       destruct p; try easy.
+       simpl. 
+       rewrite Pos.add_assoc.
+       easy.
+Qed.
+
+Lemma Pol_denote_mkPinj : forall {R} `{Ring R} (l : list R) (j : positive) (p : Pol),
+  Pol_denote (jump l j) p = Pol_denote l (mkPinj j p).
+Proof. intros.
+       destruct p; simpl; auto.
+       unfold mkPinj.
+       rewrite jump_add.
+       easy.
+Qed.
+
+Lemma Pol_denote_mkPinj_to_Pinj : forall {R} `{Ring R} (l : list R) (j : positive) (p : Pol),
+  Pol_denote l (mkPinj j p) = Pol_denote l (Pinj j p).
+Proof. intros.
+       destruct p; simpl; auto.
+       rewrite jump_add.
+       easy.
+Qed.
+
+Lemma Pol_denote_mkPX_to_PX : forall {R} `{Comm_Ring R} (l : list R) (j : positive) (p1 p2 : Pol),
+  Pol_denote l (mkPX p1 j p2) = Pol_denote l (PX p1 j p2).
+Proof. intros.
+       destruct p1; simpl; auto.
+       destruct z; simpl; auto.
+       rewrite <- Pol_denote_mkPinj; simpl.
+       rewrite Gmult_0_r, Gplus_0_l; auto.
+       destruct p1_2; simpl; auto.
+       destruct z; simpl; auto.
+       rewrite Pos2Nat.inj_add, <- Gpow_same, Gpow_add_r.
+       apply f_equal_gen; auto; apply f_equal.
+       rewrite Gplus_0_r.
+       solve_comm_monoid.
+Qed.
+
+Lemma Pol_denote_mkVi : forall {R} `{Ring R} (n : nat) (l : list R) (r : R),
+  Pol_denote (r :: l) (mkVi n) = nth n l 0.
+Proof. induction n. 
+       - intros; simpl.
+         rewrite Gmult_1_r; solve_group.
        - intros. 
-
-(*
-Lemma cgenOp_cons : forall (gen1 gen2 : cgexp_normal') (z1 z2 : Z),
-  (z1 + z2)%Z <> Z0 ->
-  cgenOp (z1 :: gen1) (z2 :: gen2) = (z1 + z2)%Z :: (cgenOp gen1 gen2).
-Proof. intros.
-       destruct gen1; destruct gen2.
-       all : simpl; try easy. 
-       destruct (z1 + z2)%Z; try easy.
+         destruct l; unfold mkVi. 
+         simpl. 
+         rewrite jump_singleton; simpl.
+         rewrite Gmult_1_r; solve_group.
+         simpl nth. 
+         rewrite <- (IHn l r0).
+         unfold mkVi. destruct n; simpl; auto.
+         destruct n. simpl.
+         rewrite Gmult_1_r; solve_group.
+         rewrite jump_succ; auto.
 Qed.
 
-Lemma cgenOp_consconsl : forall (gen1 gen2 : cgexp_normal') (z1 z2 z3 : Z),
-  cgenOp (z1 :: z2 :: gen1) (z3 :: gen2) = (z1 + z3)%Z :: (cgenOp (z2 :: gen1) gen2).
+
+(** Additive inverses *)
+
+Fixpoint Popp (P:Pol) : Pol :=
+  match P with
+  | Pz z => Pz (- z)
+  | Pinj j Q => Pinj j (Popp Q)
+  | PX P i Q => PX (Popp P) i (Popp Q)
+  end.
+
+
+(* opp lemmas *)
+
+Lemma Pol_denote_Popp_correct : forall {R} `{Comm_Ring R} (l : list R) (p : Pol),
+  - Pol_denote l p = Pol_denote l (Popp p).
 Proof. intros.
-       simpl; easy. 
+       generalize dependent l.
+       induction p; intros; simpl.
+       - rewrite times_z_opp_r; easy.
+       - rewrite IHp.
+         easy. 
+       - rewrite <- IHp1, <- IHp2, Gopp_plus_distr, Gplus_comm.
+         apply f_equal_gen; auto; apply f_equal.
+         rewrite Gopp_mult_distr_r; easy.
 Qed.
 
-Lemma cgenOp_consconsr : forall (gen1 gen2 : cgexp_normal') (z1 z2 z3 : Z),
-  cgenOp (z1 :: gen1) (z2 :: z3 :: gen2) = (z1 + z2)%Z :: (cgenOp gen1 (z3 :: gen2)).
-Proof. intros.
-       destruct gen1; try easy.
+(** Addition *)
+
+Fixpoint PaddZ (P:Pol) (z:Z) : Pol :=
+  match P with
+  | Pz z1 => Pz (z1 + z)
+  | Pinj j Q => Pinj j (PaddZ Q z)
+  | PX P i Q => PX P i (PaddZ Q z)
+  end.
+
+Section PopI.
+
+  Variable Pop : Pol -> Pol -> Pol.
+  Variable Q : Pol.
+
+  Fixpoint PaddI (j:positive) (P:Pol){struct P} : Pol :=
+   match P with
+   | Pz z => mkPinj j (PaddZ Q z)
+   | Pinj j' Q' =>
+     match ZPminus j' j with
+     | Zpos k =>  mkPinj j (Pop (Pinj k Q') Q)
+     | Z0 => mkPinj j (Pop Q' Q)
+     | Zneg k => mkPinj j' (PaddI k Q')
+     end
+   | PX P i Q' =>
+     match j with
+     | xH => PX P i (Pop Q' Q)
+     | xO j => PX P i (PaddI (Pdouble_minus_one j) Q')
+     | xI j => PX P i (PaddI (xO j) Q')
+     end
+   end.
+
+  Variable P' : Pol.
+
+  Fixpoint PaddX (i':positive) (P:Pol) {struct P} : Pol :=
+   match P with
+   | Pz z => PX P' i' P
+   | Pinj j Q' =>
+     match j with
+     | xH =>  PX P' i' Q'
+     | xO j => PX P' i' (Pinj (Pdouble_minus_one j) Q')
+     | xI j => PX P' i' (Pinj (xO j) Q')
+     end
+   | PX P i Q' =>
+     match ZPminus i i' with
+     | Zpos k => mkPX (Pop (PX P k P0) P') i' Q'
+     | Z0 => mkPX (Pop P P') i Q'
+     | Zneg k => mkPX (PaddX k P) i Q'
+     end
+   end.
+
+End PopI.
+
+ Fixpoint Padd (P P': Pol) {struct P'} : Pol :=
+  match P' with
+  | Pz z' => PaddZ P z'
+  | Pinj j' Q' => PaddI Padd Q' j' P
+  | PX P' i' Q' =>
+    match P with
+    | Pz z => PX P' i' (PaddZ Q' z)
+    | Pinj j Q =>
+      match j with
+      | xH => PX P' i' (Padd Q Q')
+      | xO j => PX P' i' (Padd (Pinj (Pdouble_minus_one j) Q) Q')
+      | xI j => PX P' i' (Padd (Pinj (xO j) Q) Q')
+      end
+    | PX P i Q =>
+      match ZPminus i i' with
+      | Zpos k => mkPX (Padd (PX P k P0) P') i' (Padd Q Q')
+      | Z0 => mkPX (Padd P P') i (Padd Q Q')
+      | Zneg k => mkPX (PaddX Padd P' k P) i (Padd Q Q')
+      end
+    end
+  end.
+
+Notation "P ++ P'" := (Padd P P').
+
+
+(* Add lemmas *)
+ 
+
+Lemma Pol_mkPinj_opp : forall {R} `{Ring R} (p1 p2 : Pol) (i : positive),
+  mkPinj i (p1 ++ p2) = mkPinj i p1 ++ mkPinj i p2. 
+Proof. intros. 
+       destruct p1; destruct p2; simpl; try easy.
+       - rewrite Pol_mkPinj_add; auto.
+       - rewrite pos_sub_simpl_l.
+         destruct (Z.pos_sub p p0);
+           rewrite Pol_mkPinj_add; auto. 
+       - rewrite <- Pos2Z.add_neg_pos, <- Pos2Z.add_pos_pos. 
+         replace (Z.neg i + (Z.pos i + Z.pos p))%Z with (Z.pos p) by lia; auto.
+       - rewrite <- Pos2Z.add_neg_pos, <- Pos2Z.add_neg_neg. 
+         replace (Z.neg i + Z.neg p0 + Z.pos i)%Z with (Z.neg p0) by lia; auto.
+       - rewrite Z.pos_sub_diag; auto. 
 Qed.
 
-Lemma WF_cgenOp : forall (gen1 gen2 : cgexp_normal'),
-  WF_cgen gen1 -> WF_cgen gen2 ->
-  WF_cgen (cgenOp gen1 gen2).
-Proof. induction gen1.
-       - easy.
+Lemma Pol_denote_PaddZ_correct : forall {R} `{Comm_Ring R} (l : list R) (p1 : Pol) (z : Z),
+  Pol_denote l p1 + Pol_denote l (Pz z) = Pol_denote l (PaddZ p1 z).
+Proof. intros. 
+       generalize dependent l.
+       generalize dependent z.
+       induction p1; intros; simpl. 
+       - rewrite times_z_add_r; auto.
+       - rewrite <- IHp1; auto.
+       - rewrite <- IHp1_2; 
+         solve_group.
+Qed.
+
+Lemma Pol_denote_PaddI_correct : forall {R} `{Comm_Ring R} (l : list R) (Pop : Pol -> Pol -> Pol)
+                                        (p1 p2 : Pol) (j : positive),
+  (forall i p1 p2, mkPinj i (Pop p1 p2) = Pop (mkPinj i p1) (mkPinj i p2)) -> 
+  (forall p1 l, Pol_denote l p1 + Pol_denote l p2 = Pol_denote l (Pop p1 p2)) ->
+  Pol_denote l p1 + Pol_denote l (Pinj j p2) = Pol_denote l (PaddI Pop p2 j p1).
+Proof. intros.
+       generalize dependent l.
+       generalize dependent p2.
+       generalize dependent j.
+       induction p1.
+       - intros.  
+         rewrite Gplus_comm, Pol_denote_PaddZ_correct.
+         simpl. 
+         rewrite Pol_denote_mkPinj.
+         easy.
+       - intros; simpl.   
+         destruct (Z.pos_sub p j) eqn:E.             
+         + rewrite H4.  
+           rewrite <- Pos2Z.add_neg_pos in E. 
+           replace p with j by lia.
+           rewrite H5, <- H4, Pol_denote_mkPinj; auto.
+         + rewrite H4; simpl. (* critical step *)
+           rewrite <- Pos2Z.add_neg_pos in E.           
+           replace p with (j + p0)%positive by lia.   
+           replace (Pinj (j + p0) p1) with (mkPinj j (Pinj p0 p1)) by easy.
+           rewrite <- H4, <- Pol_denote_mkPinj, <- H5, <- Pol_denote_mkPinj_to_Pinj,
+             <- Pol_denote_mkPinj, jump_add; auto. 
+         + rewrite <- Pol_denote_mkPinj, <- IHp1; auto. (* critical step *)
+           apply f_equal. 
+           rewrite <- Pos2Z.add_neg_pos in E.           
+           replace j with (p + p0)%positive by lia. 
+           rewrite <- Pol_denote_mkPinj_to_Pinj, <- Pol_denote_mkPinj, jump_add; auto.
+       - intros.
+         destruct j; simpl; rewrite <- Gplus_assoc; apply f_equal.
+         + rewrite <- IHp1_2; auto.
+         + rewrite <- IHp1_2; auto.
+           rewrite <- Pol_denote_mkPinj_to_Pinj, <- Pol_denote_mkPinj.
+           rewrite <- jump_add, jump_tail.
+           replace (1 + Pos.pred_double j)%positive with (j + j)%positive by lia. 
+           easy.  
+         + rewrite H5; auto.
+Qed.
+
+Lemma Pol_denote_PaddX_correct : forall {R} `{Comm_Ring R} (l : list R) (Pop : Pol -> Pol -> Pol)
+                                        (p1 p2 : Pol) (j : positive),
+  (* (forall i p1 p2, mkPinj i (Pop p1 p2) = Pop (mkPinj i p1) (mkPinj i p2)) -> *)
+  (forall p1 l, Pol_denote l p1 + Pol_denote l p2 = Pol_denote l (Pop p1 p2)) ->
+  Pol_denote l p1 + nth 1 l 0 ^ Pos.to_nat j * Pol_denote l p2 = 
+    Pol_denote l (PaddX Pop p2 j p1).
+Proof. intros. 
+       generalize dependent l.
+       generalize dependent p2.
+       generalize dependent j.
+       induction p1.
+       - intros; simpl. 
+         rewrite Gpow_same.
+         rewrite Gplus_comm; easy.
+       - intros.
+         destruct p; simpl.
+         + rewrite Gpow_same, Gplus_comm; easy.
+         + rewrite Gpow_same, Gplus_comm. 
+           rewrite jump_tail, <- jump_add.
+           replace (1 + Pos.pred_double p)%positive with (p + p)%positive by lia.
+           easy.
+         + rewrite Gpow_same, Gplus_comm; easy.
+       - intros; simpl.
+         destruct (Z.pos_sub p j) eqn:E.
+         + rewrite <- Pos2Z.add_neg_pos in E. 
+           replace p with j by lia.
+           rewrite Gpow_same, Pol_denote_mkPX_to_PX; simpl.
+           rewrite <- H4, Gmult_plus_distr_l.
+           solve_comm_group.
+         + rewrite <- Pos2Z.add_neg_pos in E. 
+           replace p with (j + p0)%positive by lia.   
+           rewrite <- Gpow_same, Pos2Nat.inj_add, Pol_denote_mkPX_to_PX, Gpow_add_r; simpl.
+           rewrite <- H4; simpl. 
+           rewrite <- Gpow_same, Gmult_plus_distr_l, <- Gmult_assoc.
+           do 2 solve_comm_group. 
+         + rewrite <- Pos2Z.add_neg_pos in E. 
+           replace j with (p + p0)%positive by lia.   
+           rewrite Pos2Nat.inj_add, Pol_denote_mkPX_to_PX; simpl.
+           rewrite <- IHp1_1, Gpow_add_r, <- Gpow_same, Gmult_plus_distr_l, Gmult_assoc; auto.
+           solve_comm_group.
+Qed.
+
+Lemma Pol_denote_Padd_correct : forall {R} `{Comm_Ring R} (l : list R) (p1 p2 : Pol),
+  Pol_denote l p1 + Pol_denote l p2 = Pol_denote l (p1 ++ p2).
+Proof. intros. 
+       generalize dependent l.
+       generalize dependent p1.
+       induction p2.
        - intros. 
-         destruct gen2; try easy.
-         destruct gen1; easy.
-         destruct gen1; destruct gen2.
-         + simpl.
-           destruct (a + z)%Z; try easy.
-         + rewrite cgenOp_consconsr. 
-           replace (cgenOp [] (z0 :: gen2)) with (z0 :: gen2) by easy.
-           apply WF_cons_conv in H0.
-           apply WF_cons; try easy.
-         + rewrite cgenOp_consconsl. 
-           replace (cgenOp (z0 :: gen1) []) with (z0 :: gen1).  
-           apply WF_cons_conv in H0.
-           apply WF_cons; try easy.
-           destruct gen1; try easy.
-         + rewrite cgenOp_consconsl. 
-           apply WF_cons.
+         rewrite Pol_denote_PaddZ_correct; auto.
+       - intros. 
+         rewrite (Pol_denote_PaddI_correct l Padd); auto.
+         intros. 
+         rewrite Pol_mkPinj_opp; auto.
+       - intros. 
+         destruct p1; simpl. 
+         + rewrite <- Pol_denote_PaddZ_correct; simpl. 
+           solve_comm_group.
+         + destruct p0; simpl. 
+           * rewrite <- IHp2_2, <- Pol_denote_mkPinj_to_Pinj, <- Pol_denote_mkPinj.
+             simpl; solve_comm_group.
+           * rewrite <- IHp2_2, <- Pol_denote_mkPinj_to_Pinj, <- Pol_denote_mkPinj.
+             replace (tl l) with (jump l 1) by easy.
+             rewrite <- 2 jump_add.
+             replace (1 + Pos.pred_double p0)%positive with (p0 + p0)%positive by lia.
+             solve_comm_group.
+           * rewrite <- IHp2_2.
+             solve_comm_group.
+         + destruct (Z.pos_sub p0 p) eqn:E. 
+           all : rewrite Pol_denote_mkPX_to_PX; simpl.
+           * rewrite <- Pos2Z.add_neg_pos in E. 
+             replace p0 with p by lia.
+             rewrite <- IHp2_2, <- IHp2_1.
+             rewrite Gmult_plus_distr_l.
+             solve_comm_group. 
+           * rewrite <- Pos2Z.add_neg_pos in E. 
+             replace p0 with (p1 + p)%positive by lia.
+             rewrite <- IHp2_2, <- IHp2_1.
+             rewrite Gmult_plus_distr_l; simpl. 
+             rewrite Pos2Nat.inj_add, <- Gpow_same, Gpow_add_r.
+             rewrite <- 2 Gplus_assoc.
+             apply f_equal_gen; try apply f_equal.
+             rewrite Gplus_0_r.
+             solve_comm_monoid.
+             solve_comm_group. 
+           * rewrite <- Pos2Z.add_neg_pos in E. 
+             replace p with (p0 + p1)%positive by lia.
+             rewrite <- IHp2_2.
+             rewrite Pos2Nat.inj_add, <- Gpow_same, Gpow_add_r.
+             rewrite 2 Gplus_assoc.
+             apply f_equal_gen; try apply f_equal; auto.
+             rewrite <- Gplus_assoc, (Gplus_comm (Pol_denote (tl l) p1_2)), Gplus_assoc.
+             apply f_equal_gen; try apply f_equal; auto.
+             erewrite <- Pol_denote_PaddX_correct.
+             rewrite Gmult_plus_distr_l, Gmult_assoc; easy. 
+             intros. 
+             apply IHp2_1.
+Qed.
 
-           apply WF_cons.
-           *)_
 
+(** Multiplication *)
+
+ Fixpoint PmulZ_aux (P:Pol) (z:Z) {struct P} : Pol :=
+  match P with
+  | Pz z' => Pz (z' * z)%Z
+  | Pinj j Q => mkPinj j (PmulZ_aux Q z)
+  | PX P i Q => mkPX (PmulZ_aux P z) i (PmulZ_aux Q z)
+  end.
+
+ Definition PmulZ P z :=
+  match z with 
+  | Z0 => P0
+  | _ => if (z =? 1)%Z then P else PmulZ_aux P z
+  end. 
+
+Section PmulI.
+
+  Variable Pmul : Pol -> Pol -> Pol.
+  Variable Q : Pol.
+
+  Fixpoint PmulI (j:positive) (P:Pol) {struct P} : Pol :=
+   match P with
+   | Pz z => mkPinj j (PmulZ Q z)
+   | Pinj j' Q' =>
+     match ZPminus j' j with
+     | Zpos k => mkPinj j (Pmul (Pinj k Q') Q)
+     | Z0 => mkPinj j (Pmul Q' Q)
+     | Zneg k => mkPinj j' (PmulI k Q')
+     end
+   | PX P' i' Q' =>
+     match j with
+     | xH => mkPX (PmulI xH P') i' (Pmul Q' Q)
+     | xO j' => mkPX (PmulI j P') i' (PmulI (Pdouble_minus_one j') Q')
+     | xI j' => mkPX (PmulI j P') i' (PmulI (xO j') Q')
+     end
+   end.
+
+ End PmulI.
+(* A symmetric version of the multiplication *)
+
+ Fixpoint Pmul (P P'' : Pol) {struct P''} : Pol :=
+   match P'' with
+   | Pz z => PmulZ P z
+   | Pinj j' Q' => PmulI Pmul Q' j' P
+   | PX P' i' Q' =>
+     match P with
+     | Pz z => PmulZ P'' z
+     | Pinj j Q =>
+       let QQ' :=
+         match j with
+         | xH => Pmul Q Q'
+         | xO j => Pmul (Pinj (Pdouble_minus_one j) Q) Q'
+         | xI j => Pmul (Pinj (xO j) Q) Q'
+         end in
+       mkPX (Pmul P P') i' QQ'
+     | PX P i Q=>
+       let QQ' := Pmul Q Q' in
+       let PQ' := PmulI Pmul Q' xH P in
+       let QP' := Pmul (mkPinj xH Q) P' in
+       let PP' := Pmul P P' in
+       (mkPX (mkPX PP' i P0 ++ QP') i' P0) ++ mkPX PQ' i QQ'
+     end
+  end.
+
+(* Non symmetric *)
 (*
-Definition svar i := 
-  match i with 
-  | xH => cgnX 1 cgnIdent
-  | xO j => cgnInj (Pos.to_pos (S n') 
-  | xI j => 
+ Fixpoint Pmul_aux (P P' : Pol) {struct P'} : Pol :=
+  match P' with
+  | Pc c' => PmulC P c'
+  | Pinj j' Q' => PmulI Pmul_aux Q' j' P
+  | PX P' i' Q' =>
+     (mkPX (Pmul_aux P P') i' P0) ++ (PmulI Pmul_aux Q' xH P)
+  end.
+ Definition Pmul P P' :=
+  match P with
+  | Pc c => PmulC P' c
+  | Pinj j Q => PmulI Pmul_aux Q j P'
+  | PX P i Q =>
+    (mkPX (Pmul_aux P P') i P0) ++ (PmulI Pmul_aux Q xH P')
   end.
 *)
+Notation "P ** P'" := (Pmul P P') (at level 50).
 
-(*
-Definition mkcgnInj (n : nat) (gen : cgexp_normal) :=
-  match n with
-  | O => gen
-  | S n' => 
-    (match gen with
-     | cgnIdent => cgnIdent
-     | cgnInj n1 gen1 => cgnInj (n + n1) gen1
-     | cgnX _ _ => cgnInj n gen 
-    end)
+
+(* Mul lemmas *)
+ 
+
+Lemma Pol_denote_PmulZ_aux_correct : forall {R} `{Comm_Ring R} (l : list R) (p1 : Pol) (z : Z),
+  Pol_denote l p1 * times_z 1 z = Pol_denote l (PmulZ_aux p1 z).
+Proof. intros. 
+       generalize dependent l.
+       generalize dependent z.
+       induction p1; intros; simpl. 
+       - replace 1 with (1 * 1) by solve_comm_monoid.
+         rewrite times_z_mult, Gmult_1_r; easy.
+       - rewrite Pol_denote_mkPinj_to_Pinj, IHp1; easy.
+       - rewrite Pol_denote_mkPX_to_PX; simpl. 
+         rewrite <- IHp1_1, <- IHp1_2, Gmult_plus_distr_r, Gmult_assoc; easy.
+Qed.
+
+Lemma Pol_denote_PmulZ_correct : forall {R} `{Comm_Ring R} (l : list R) (p1 : Pol) (z : Z),
+  Pol_denote l p1 * Pol_denote l (Pz z) = Pol_denote l (PmulZ p1 z).
+Proof. intros. 
+       destruct z; simpl. 
+       rewrite Gmult_0_r; easy.
+       destruct p; 
+       try rewrite <- Pol_denote_PmulZ_aux_correct; try easy.
+       simpl. rewrite Gmult_1_r; easy.
+       rewrite <- Pol_denote_PmulZ_aux_correct.
+       easy. 
+Qed.
+
+Lemma Pol_denote_PmulI_correct : forall {R} `{Comm_Ring R} (l : list R) (Pmul : Pol -> Pol -> Pol)
+                                        (p1 p2 : Pol) (j : positive),
+  (forall p1 l, Pol_denote l p1 * Pol_denote l p2 = Pol_denote l (Pmul p1 p2)) ->
+  Pol_denote l p1 * Pol_denote l (Pinj j p2) = Pol_denote l (PmulI Pmul p2 j p1).
+Proof. intros.
+       generalize dependent l.
+       generalize dependent p2.
+       generalize dependent j.
+       induction p1.
+       - intros; simpl. 
+         rewrite Pol_denote_mkPinj_to_Pinj; simpl. 
+         rewrite <- Pol_denote_PmulZ_correct; simpl.
+         rewrite Gmult_comm; easy.
+       - intros; simpl.
+         destruct (Z.pos_sub p j) eqn:E; 
+           rewrite <- Pos2Z.add_neg_pos in E; 
+           rewrite Pol_denote_mkPinj_to_Pinj; simpl.
+         + replace p with j by lia.
+           rewrite H4; easy.
+         + replace p with (j + p0)%positive by lia.   
+           rewrite <- H4; simpl.
+           rewrite jump_add; easy.
+         + replace j with (p + p0)%positive by lia.   
+           rewrite <- IHp1; auto.
+           rewrite jump_add; easy.
+       - intros; simpl. 
+         destruct j; simpl; rewrite Pol_denote_mkPX_to_PX; simpl.
+         + rewrite <- IHp1_1, <- IHp1_2; auto.
+           rewrite Gmult_plus_distr_r; simpl.
+           rewrite Gmult_assoc; easy.
+         + rewrite <- IHp1_1, <- IHp1_2; auto.
+           rewrite Gmult_plus_distr_r; simpl.
+           rewrite Gmult_assoc. 
+           rewrite jump_tail, <- jump_add.
+           replace (1 + Pos.pred_double j)%positive with (j + j)%positive by lia.
+           easy.
+         + rewrite <- IHp1_1; auto.
+           rewrite Gmult_plus_distr_r, <- H4; simpl.
+           rewrite Gmult_assoc. 
+           easy.
+Qed.
+
+Lemma Pol_denote_Pmul_correct : forall {R} `{Comm_Ring R} (l : list R) (p1 p2 : Pol),
+  Pol_denote l p1 * Pol_denote l p2 = Pol_denote l (p1 ** p2). 
+Proof. intros. 
+       generalize dependent l.
+       generalize dependent p1.
+       induction p2.
+       - intros. 
+         simpl. 
+         rewrite <- Pol_denote_PmulZ_correct; easy.
+       - intros.
+         erewrite Pol_denote_PmulI_correct; easy.
+       - intros. 
+         simpl. 
+         destruct p1; simpl.
+         + rewrite <- Pol_denote_PmulZ_correct; simpl.
+           rewrite Gmult_plus_distr_l, Gmult_plus_distr_r.
+           apply f_equal_gen; try apply f_equal;
+             solve_comm_monoid.
+         + destruct p0; rewrite Pol_denote_mkPX_to_PX; simpl;
+             rewrite <- IHp2_1, <- IHp2_2, Gmult_plus_distr_l; simpl; 
+             apply f_equal_gen; try apply f_equal;
+             solve_comm_monoid.
+             rewrite jump_tail, <- jump_add.
+             replace (1 + Pos.pred_double p0)%positive with (p0 + p0)%positive by lia.
+             solve_comm_monoid.
+         + rewrite Gmult_plus_distr_l, 2 Gmult_plus_distr_r, 
+             <- Pol_denote_Padd_correct, Pol_denote_mkPX_to_PX; simpl.
+           rewrite <- Pol_denote_Padd_correct, 2 Pol_denote_mkPX_to_PX; simpl.
+           rewrite <- 2 IHp2_1, <- IHp2_2, <- Pol_denote_PmulI_correct; auto.
+           repeat (rewrite Gplus_assoc).
+           rewrite 2 Gplus_0_r, Gmult_plus_distr_l.
+           apply f_equal_gen; try apply f_equal; auto; simpl. 
+           apply f_equal_gen; try apply f_equal; auto; simpl.
+           apply f_equal_gen; try apply f_equal; auto; simpl.
+           solve_comm_monoid.
+           rewrite Pol_denote_mkPinj_to_Pinj; simpl.
+           solve_comm_monoid.
+           solve_comm_monoid.
+Qed.
+
+
+Fixpoint crexp_to_Pol (re : crexp) : Pol :=
+  match re with
+  | cr0 => P0
+  | cr1 => P1
+  | crVar i => mkVi i
+  | crAdd re1 re2 => crexp_to_Pol re1 ++ crexp_to_Pol re2
+  | crOpp re => Popp (crexp_to_Pol re) 
+  | crMul re1 re2 => crexp_to_Pol re1 ** crexp_to_Pol re2
   end.
-*)
 
 
-(*
-Definition cgenOp_Inj (gen : cgexp_normal) (n1 : nat) (gen1 : cgexp_normal) 
-                    (op : cgexp_normal -> cgexp_normal -> cgexp_normal) : cgexp_normal :=
-  match gen with 
-  | cgnIdent => cgnInj n1 gen1
-  | cgnInj n' gen' => if (n' =? n1)%nat then cgnInj n' (op gen' gen1) 
-                     else if (n' <? n1)%nat 
-                          then mkcgnInj n' (op gen' (mkcgnInj (n1 - n') gen1))
-                          else mkcgnInj n1 (op (mkcgnInj (n' - n1) gen') gen1)
-  | cgnX z' gen' => cgnIdent
+(* we don't even use Comm_Group until here! *)
+Lemma crexp_to_Pol_correct : forall {R} `{Comm_Ring R} (l : list R) (re : crexp),
+  crdenote l re = Pol_denote (0 :: l) (crexp_to_Pol re).
+Proof. induction re; simpl; try easy.
+       - rewrite Pol_denote_mkVi.
+         easy.
+       - rewrite IHre1, IHre2. 
+         rewrite Pol_denote_Padd_correct; easy.
+       - rewrite IHre.
+         rewrite Pol_denote_Popp_correct; easy.
+       - rewrite IHre1, IHre2. 
+         rewrite Pol_denote_Pmul_correct; easy.
+Qed.
+
+Lemma crexp_to_Pol_correct' : forall {R} `{Comm_Ring R} (l : list R) (re1 re2: crexp),
+  Pol_denote (0 :: l) (crexp_to_Pol re1) = Pol_denote (0 :: l) (crexp_to_Pol re2) ->
+  crdenote l re1 = crdenote l re2.
+Proof. intros.  
+       do 2 rewrite crexp_to_Pol_correct. 
+       easy. 
+Qed.
+
+
+
+Ltac reify_crexp vars ge :=
+  match ge with
+  | Gzero => constr:((cr0, vars))
+  | Gone => constr:((cr1, vars))             
+  | ?ge1 + ?ge2 => 
+    let r1 := reify_crexp vars ge1 in
+    match r1 with
+    | (?qe1, ?vars') => 
+      let r2 := reify_crexp vars' ge2 in
+      match r2 with
+      | (?qe2, ?vars'') => constr:((crAdd qe1 qe2, vars''))
+      end
+    end
+  | ?ge1 - ?ge2 => 
+    let r1 := reify_crexp vars ge1 in
+    match r1 with
+    | (?qe1, ?vars') => 
+      let r2 := reify_crexp vars' ge2 in
+      match r2 with
+      | (?qe2, ?vars'') => constr:((crAdd qe1 (crOpp qe2), vars''))
+      end
+    end
+  | -?ge => 
+      let r := reify_crexp vars ge in
+      match r with
+      | (?qe, ?vars') => constr:((crOpp qe, vars'))
+      end
+  | ?ge1 * ?ge2 => 
+    let r1 := reify_crexp vars ge1 in
+    match r1 with
+    | (?qe1, ?vars') => 
+      let r2 := reify_crexp vars' ge2 in
+      match r2 with
+      | (?qe2, ?vars'') => constr:((crMul qe1 qe2, vars''))
+      end
+    end
+  | _ => 
+    let r := intern vars ge in
+    match r with
+    | (?n, ?vars') => constr:((crVar n, vars'))
+    end
   end.
 
-Definition cgenOp_X (gen : cgexp_normal) (z1 : Z) (gen1 : cgexp_normal) 
-           (op : cgexp_normal -> cgexp_normal -> cgexp_normal) : cgexp_normal :=
-  match gen with 
-  | cgnIdent => cgnX z1 gen1
-  | cgnInj n' gen' => cgnIdent
-  | cgnX z' gen' => cgnIdent
-  end.
-*)
-
-(*
-Fixpoint testnat (n1 n2 : nat) : nat :=
-  match n1, n2 with 
-  | O, O => O
-  | O, S n2' => S O
-  | S n1', O => S (S O)
-  | S n1', S n2' => testnat n1' n2'
-  end.
 
 
-Fixpoint cgenOp (gen1 gen2 : cgexp_normal) : cgexp_normal :=
-  match gen1, gen2 with 
-  | cgnIdent, _ => gen2
-  | _, cgnIdent => gen1
-  | cgnInj n1 gen1', cgnInj n2 gen2' => 
-      if (n1 =? n2)%nat then mkcgnInj n1 (cgenOp gen1' gen2') 
-                     else if (n1 <? n2)%nat 
-                          then mkcgnInj n1 (cgenOp gen1' (mkcgnInj (n2 - n1) gen2'))
-                          else mkcgnInj n2 (cgenOp (mkcgnInj (n1 - n2) gen1') gen2')
-  | _, _ => cgnIdent
+Ltac solve_comm_ring :=
+  match goal with
+  | [ |- @eq ?G ?re1 ?re2 ] =>
+      let r1 := reify_crexp (@nil G) re1 in
+      match r1 with 
+      | (?qe1, ?vars) =>
+          let r2 := reify_crexp vars re2 in
+          match r2 with
+          | (?qe2, ?vars') => 
+              replace (eq re1) with (eq (crdenote vars' qe1)) by (apply f_equal; easy); 
+              symmetry;
+              replace (eq re2) with (eq (crdenote vars' qe2)) by (apply f_equal; easy); 
+              symmetry;
+              apply crexp_to_Pol_correct'; simpl
+          end
+       end
   end.
 
-  | cgnInj n2 gen2' => 
-    match gen
+
+  
+
+Lemma test_scr1 : forall {R} `{Comm_Ring R} a b c d,
+    a * (b * a + c) - d = c * a + (a * b) * a - d.
+Proof. intros. solve_comm_ring; auto. Qed.
 
 
+Lemma test_scr2 : forall {R} `{Comm_Ring R} a b c d,
+    a * (1 + 1 + (b - 1) * a + c) - d = 
+      -a + c * a + (-a * a) + (a * b) * a - d + (1 + 1 + 1) * a.
+Proof.  intros. solve_comm_ring; auto. Qed.
 
-cgenOp_Inj gen1 n2 gen2' cgenOp
-  | cgnX z2 gen2' => cgenOp_X gen1 z2 gen2' cgenOp
-  end.
+Lemma test_scr3 : forall {R} `{Comm_Ring R} a,
+    a * 0 = 0.
+Proof. intros. solve_comm_ring; auto. Qed.
 
-Fixpoint cgenInv (gen : cgexp_normal) : cgexp_normal :=
-  match gen with
-  | cgnIdent => cgnIdent
-  | cgnInj n gen' => cgnInj n (cgenInv gen')
-  | cgnX z gen' => cgnX (-z) (cgenInv gen')
-  end.
-*)
-
-
-
-
-
-
-
-
-
-   
-
-
-
-
+Lemma test_scr4 : forall {R} `{Comm_Ring R} a b,
+    - (a * b) = a * (-b).
+Proof. intros. solve_comm_ring; auto. Qed.
 
 
 (** exponentiation by integers *)
@@ -1873,237 +2933,195 @@ Proof. intros.
        rewrite Gmult_comm; auto.
 Qed.
 
-Lemma Gpow_pos_succ: forall {R} `{Field R} (r : R) (p : positive), 
+Lemma Gpow_pos_succ: forall {R} `{Ring R} (r : R) (p : positive), 
   Gpow_pos r (Pos.succ p) = r * Gpow_pos r p.
 Proof. intros.
        induction p; simpl; auto.
        - rewrite IHp, <- 2 Gmult_assoc.
          apply f_equal_gen; auto.
-       - lca.
+         rewrite Gmult_assoc, <- Gpow_pos_comm1, Gmult_assoc; auto.
+       - rewrite Gmult_assoc; auto.
 Qed.
 
-Lemma Cpow_pos_pred_double : forall (c : C) (p : positive), 
+Lemma Gpow_pos_pred_double : forall {R} `{Field R} (c : R) (p : positive), 
   c <> 0 -> 
-  Cpow_pos c (Pos.pred_double p) = (/ c) * (Cpow_pos c p * Cpow_pos c p).
+  Gpow_pos c (Pos.pred_double p) = (/ c) * (Gpow_pos c p * Gpow_pos c p).
 Proof. intros.
        induction p; simpl; auto.
-       - repeat rewrite Cmult_assoc.
-         rewrite Cinv_l; try lca; auto.
+       - repeat rewrite Gmult_assoc.
+         rewrite Ginv_l; auto.
+         solve_comm_monoid.
        - rewrite IHp.
-         repeat rewrite Cmult_assoc.
-         rewrite Cinv_r; try lca; auto.
-       - rewrite Cmult_assoc, Cinv_l; try lca; auto.
+         repeat rewrite Gmult_assoc.
+         rewrite Ginv_r; auto. 
+         solve_comm_monoid.
+       - rewrite Gmult_assoc, Ginv_l; auto.
+         solve_comm_monoid.
 Qed.
 
-Lemma Cpow_pos_inv : forall (c : C) (p : positive),
+Lemma Gpow_pos_inv : forall {R} `{Field R} (c : R) (p : positive),
   c <> 0 -> 
-  Cpow_pos (/ c) p = / (Cpow_pos c p).
+  Gpow_pos (/ c) p = / (Gpow_pos c p).
 Proof. intros. 
-       induction p; simpl.
+       induction p; simpl; auto.
        - rewrite IHp.
-         repeat rewrite Cinv_mult_distr; auto.
-         2 : apply Cmult_neq_0.
-         all : try apply Cpow_pos_nonzero; auto.
+         repeat rewrite Ginv_mult_distr; auto.
+         2 : apply Gmult_neq_0; auto.
+         all : try apply Gpow_pos_nonzero; auto.
        - rewrite IHp.
-         rewrite Cinv_mult_distr; try apply Cpow_pos_nonzero; auto.
-       - easy.
+         rewrite Ginv_mult_distr; try apply Gpow_pos_nonzero; auto.
 Qed.
 
-Lemma Cpow_pos_real : forall (c : C) (p : positive), 
-  snd c = 0 -> snd (Cpow_pos c p) = 0.
+Lemma Gpow_pos_1 : forall {R} `{Field R} (p : positive),
+  Gpow_pos 1 p = 1.
 Proof. intros.
        induction p; simpl.
-       - rewrite IHp, H; lra.
-       - rewrite IHp; lra.
-       - easy.
-Qed.
-
-
-Lemma Cpow_pos_1 : forall (p : positive),
-  Cpow_pos C1 p = C1.
-Proof. intros.
-       induction p; simpl.
-       - rewrite IHp; lca.
-       - rewrite IHp; lca.
-       - lca.
+       - rewrite IHp; solve_comm_monoid.
+       - rewrite IHp; solve_comm_monoid.
+       - solve_comm_monoid.
 Qed.
 
 
 (* exponentiation by integers *)
-Definition Cpow_int (c : C) (z : Z) : C :=  
+Definition Gpow_int {R} `{Field R} (c : R) (z : Z) : R :=  
   match z with
-    | Z0 => C1
-    | Zpos p => Cpow_pos c p
-    | Zneg p => / Cpow_pos c p
+    | Z0 => 1
+    | Zpos p => Gpow_pos c p
+    | Zneg p => / Gpow_pos c p
   end.
 
 
-Infix "^^" := Cpow_int (at level 10) : C_scope.
+Infix "^^" := Gpow_int (at level 10) : group_scope.
 
 
-
-Lemma Cpow_int_nonzero : forall (c : C) (z : Z), c <> C0 -> c ^^ z <> C0. 
+Lemma Gpow_int_nonzero : forall {R} `{Field R} (c : R) (z : Z), c <> 0 -> c ^^ z <> 0. 
 Proof. intros.
        destruct z.
-       - apply C1_neq_C0.
-       - apply Cpow_pos_nonzero; easy.
-       - apply nonzero_div_nonzero.
-         apply Cpow_pos_nonzero; easy.
+       - apply G1_neq_0.
+       - apply Gpow_pos_nonzero; easy.
+       - apply nonzero_Gdiv_nonzero.
+         apply Gpow_pos_nonzero; easy.
 Qed.
 
 
-Lemma Cpow_int_add_1 : forall (c : C) (z : Z), 
-  c <> C0 -> c ^^ (1 + z) = c * c^^z.
+Lemma Gpow_int_add_1 : forall {R} `{Field R} (c : R) (z : Z), 
+  c <> 0 -> c ^^ (1 + z) = c * c^^z.
 Proof. intros.
-       destruct z; try lca.
-       - destruct p; simpl; try lca. 
-         rewrite Cpow_pos_succ; lca.
+       destruct z; try (solve_comm_monoid; easy).
+       - destruct p; simpl; try solve_comm_monoid. 
+         rewrite Gpow_pos_succ; solve_comm_monoid. 
        - destruct p; simpl.
-         + rewrite <- Cmult_assoc, (Cinv_mult_distr c); auto.
-           rewrite Cmult_assoc, Cinv_r; try lca; auto.
-           apply Cmult_neq_0; apply Cpow_pos_nonzero; easy.
-         + rewrite Cpow_pos_pred_double, Cinv_mult_distr, Cinv_inv; auto.
-           apply nonzero_div_nonzero; auto. 
-           apply Cmult_neq_0; apply Cpow_pos_nonzero; easy.
-         + rewrite Cinv_r; easy.
+         + rewrite <- Gmult_assoc, (Ginv_mult_distr c); auto.
+           rewrite Gmult_assoc, Ginv_r; try solve_comm_monoid; auto.
+           apply Gmult_neq_0; apply Gpow_pos_nonzero; easy.
+         + rewrite Gpow_pos_pred_double, Ginv_mult_distr, Ginv_inv; auto.
+           apply nonzero_Gdiv_nonzero; auto. 
+           apply Gmult_neq_0; apply Gpow_pos_nonzero; easy.
+         + rewrite Ginv_r; easy.
 Qed.
 
-Lemma Cpow_int_minus_1 : forall (c : C) (z : Z), 
-  c <> C0 -> c ^^ (-1 + z) = / c * c^^z.
+Lemma Gpow_int_minus_1 : forall {R} `{Field R} (c : R) (z : Z), 
+  c <> 0 -> c ^^ (-1 + z) = / c * c^^z.
 Proof. intros.
-       destruct z; try lca.
-       - destruct p; simpl; try lca. 
-         + repeat rewrite Cmult_assoc.
-           rewrite Cinv_l; auto; lca.
-         + rewrite Cpow_pos_pred_double; auto.
-         + rewrite Cinv_l; easy.
-       - destruct p; simpl; try lca. 
-         + rewrite Cpow_pos_succ, <- Cinv_mult_distr; auto.
-           apply f_equal; lca.
-           repeat apply Cmult_neq_0; try apply Cpow_pos_nonzero; auto.
-         + rewrite <- Cmult_assoc, Cinv_mult_distr; auto.
-           apply Cmult_neq_0; apply Cpow_pos_nonzero; auto.
-         + rewrite Cinv_mult_distr; easy.
+       destruct z; try (solve_comm_monoid; easy).
+       - destruct p; simpl; try (solve_comm_monoid; easy).
+         + repeat rewrite Gmult_assoc.
+           rewrite Ginv_l; auto; solve_comm_monoid.
+         + rewrite Gpow_pos_pred_double; auto.
+         + rewrite Ginv_l; easy.
+       - destruct p; simpl; try (solve_comm_monoid; easy).
+         + rewrite Gpow_pos_succ, <- Ginv_mult_distr; auto.
+           apply f_equal; solve_comm_monoid.
+           repeat apply Gmult_neq_0; try apply Gpow_pos_nonzero; auto.
+         + rewrite <- Gmult_assoc, Ginv_mult_distr; auto.
+           apply Gmult_neq_0; apply Gpow_pos_nonzero; auto.
+         + rewrite Ginv_mult_distr; easy.
 Qed.
 
-Lemma Cpow_int_add_nat : forall (c : C) (n : nat) (z : Z), 
-  c <> C0 -> c ^^ (Z.of_nat n + z) = c^^(Z.of_nat n) * c^^z.
+Lemma Gpow_int_add_nat : forall {R} `{Field R} (c : R) (n : nat) (z : Z), 
+  c <> 0 -> c ^^ (Z.of_nat n + z) = c^^(Z.of_nat n) * c^^z.
 Proof. intros.
-       induction n; try lca.
+       induction n; try (solve_comm_monoid; easy).
        replace (S n + z)%Z with (1 + (n + z))%Z by lia.
        replace (Z.of_nat (S n)) with (1 + Z.of_nat n)%Z by lia.       
-       repeat rewrite Cpow_int_add_1; auto.
-       rewrite IHn; lca.
+       repeat rewrite Gpow_int_add_1; auto.
+       rewrite IHn; solve_comm_monoid.
 Qed.
 
-Lemma Cpow_int_minus_nat : forall (c : C) (n : nat) (z : Z), 
-  c <> C0 -> c ^^ (- Z.of_nat n + z) = c^^(- Z.of_nat n) * c^^z.
+Lemma Gpow_int_minus_nat : forall {R} `{Field R} (c : R) (n : nat) (z : Z), 
+  c <> 0 -> c ^^ (- Z.of_nat n + z) = c^^(- Z.of_nat n) * c^^z.
 Proof. intros. 
-       induction n; try lca.
+       induction n; try (solve_comm_monoid; easy).
        replace (- S n + z)%Z with (- 1 + (- n + z))%Z by lia.
        replace (- (S n))%Z with (- 1 + - n)%Z by lia.       
-       repeat rewrite Cpow_int_minus_1; auto.
-       rewrite IHn; lca.
+       repeat rewrite Gpow_int_minus_1; auto.
+       rewrite IHn; solve_comm_monoid.
 Qed.
 
-Theorem Cpow_int_add_r : forall (c : C) (z1 z2 : Z), 
-  c <> C0 -> c ^^ (z1 + z2) = c^^z1 * c^^z2.
+Theorem Gpow_int_add_r : forall {R} `{Field R} (c : R) (z1 z2 : Z), 
+  c <> 0 -> c ^^ (z1 + z2) = c^^z1 * c^^z2.
 Proof. intros.
-       destruct (Z_plusminus_nat z1) as [n [H0 | H0]].
-       - rewrite H0, Cpow_int_add_nat; easy.
-       - rewrite H0, Cpow_int_minus_nat; easy.
+       destruct (Z_plusminus_nat z1) as [n [H6 | H6]].
+       - rewrite H6, Gpow_int_add_nat; easy.
+       - rewrite H6, Gpow_int_minus_nat; easy.
 Qed.
 
-Lemma Cpow_int_mult_r : forall (c : C) (z1 z2 : Z), 
-  c <> C0 -> c ^^ (z1 * z2) = (c ^^ z1) ^^ z2.
+Lemma Gpow_int_mult_r : forall {R} `{Field R} (c : R) (z1 z2 : Z), 
+  c <> 0 -> c ^^ (z1 * z2) = (c ^^ z1) ^^ z2.
 Proof. intros. 
-       destruct z1; destruct z2; try lca; simpl.
-       all : try (rewrite Cpow_pos_1; lca).
-       all : rewrite Cpow_pos_mult_r; try lca. 
-       all : rewrite Cpow_pos_inv; try apply Cpow_pos_nonzero; auto.
-       rewrite Cinv_inv; auto.
-       do 2 apply Cpow_pos_nonzero; easy.
+       destruct z1; destruct z2; simpl; try solve_comm_monoid; simpl.
+       all : try (rewrite Gpow_pos_1; solve_comm_monoid).
+       apply (Gmult_cancel_l _ _ 1).
+       apply G1_neq_0.
+       rewrite Ginv_r, Gmult_1_l; auto.
+       apply G1_neq_0.
+       all : rewrite Gpow_pos_mult_r; try solve_comm_monoid. 
+       all : rewrite Gpow_pos_inv; try apply Gpow_pos_nonzero; auto.
+       solve_comm_monoid.
+       rewrite Ginv_inv; auto.
+       solve_comm_monoid.
+       do 2 apply Gpow_pos_nonzero; easy.
 Qed.
 
-Lemma Cpow_int_mult_l : forall (c1 c2 : C) (z : Z), 
-  c1 <> C0 -> c2 <> C0 -> (c1 * c2) ^^ z = (c1 ^^ z) * (c2 ^^ z).
+Lemma Gpow_int_mult_l : forall {R} `{Field R} (c1 c2 : R) (z : Z), 
+  c1 <> 0 -> c2 <> 0 -> (c1 * c2) ^^ z = (c1 ^^ z) * (c2 ^^ z).
 Proof. intros. 
-       destruct z; try lca; simpl. 
-       rewrite Cpow_pos_mult_l; easy.
-       rewrite Cpow_pos_mult_l, Cinv_mult_distr; auto; 
-       apply Cpow_pos_nonzero; easy.
+       destruct z; try solve_comm_monoid; simpl. 
+       rewrite Gpow_pos_mult_l; solve_comm_monoid.
+       rewrite Gpow_pos_mult_l, Ginv_mult_distr; auto;
+       try apply Gpow_pos_nonzero; auto; solve_comm_monoid.
 Qed.
 
 
-Lemma Cpow_inv1 : forall (c : C) (z : Z), c <> C0 -> c^^(-z) = / (c^^z).
+Lemma Gpow_inv1 : forall {R} `{Field R} (c : R) (z : Z), c <> 0 -> c^^(-z) = / (c^^z).
 Proof. intros.
        replace (-z)%Z with (z * -1)%Z by lia.
-       rewrite Cpow_int_mult_r; easy.
+       rewrite Gpow_int_mult_r; easy.
 Qed.
 
-Lemma Cpow_inv2 : forall (c : C) (z : Z), c <> C0 -> (/ c)^^z = / (c^^z).
+Lemma Gpow_inv2 : forall {R} `{Field R} (c : R) (z : Z), c <> 0 -> (/ c)^^z = / (c^^z).
 Proof. intros.
        replace z with (-1 * -z)%Z by lia.
-       rewrite Cpow_int_mult_r. 
+       rewrite Gpow_int_mult_r. 
        replace ((/ c) ^^ (-1)) with (/ / c) by easy.
        replace (-1 * - z)%Z with z by lia.
-       rewrite Cinv_inv, Cpow_inv1; auto.
-       apply nonzero_div_nonzero; auto.
+       rewrite Ginv_inv, Gpow_inv1; auto.
+       apply nonzero_Gdiv_nonzero; auto.
 Qed.
 
 
 (* checking that Cpow_int is consistent with Cpow on nats *)
-Lemma Cpow_int_cons : forall (c : C) (n : nat),
+Lemma Gpow_int_cons : forall {R} `{Field R} (c : R) (n : nat),
   c^n = c ^^ n.
 Proof. intros. 
-       destruct n; try lca.
-       unfold Cpow_int.
+       destruct n; try easy. 
+       unfold Gpow_int.
        destruct (Z.of_nat (S n)) eqn:E; try easy.
-       rewrite Cpow_pos_to_nat.
+       rewrite Gpow_pos_to_nat.
        apply f_equal_gen; try apply f_equal; auto.
        apply Pos2Z.inj_pos in E.
        rewrite <- E, SuccNat2Pos.id_succ.
        easy.
-Qed.
-
-
-Lemma Cpow_int_real : forall (c : C) (z : Z), 
-  c <> 0 -> snd c = 0 -> snd (c ^^ z) = 0.
-Proof. intros.
-       destruct z; auto.
-       - simpl; apply Cpow_pos_real; auto.
-       - replace (Z.neg p) with (- Z.pos p)%Z by lia.
-         rewrite Cpow_inv1; auto.
-         apply div_real.
-         apply Cpow_pos_real; auto.
-Qed.
-
-
-
-(* foreboding: translating between Cpow_int and Zpow *)
-Lemma ZtoC_pow_nat : forall (z : Z) (n : nat), 
-  RtoC (IZR (z^n)%Z) = (RtoC (IZR z))^^n.
-Proof. intros. 
-       induction n; try easy.
-       rewrite <- Cpow_int_cons in *.
-       replace (S n) with (1 + n)%nat by lia.
-       rewrite Nat2Z.inj_add, Z.pow_add_r, Cpow_add_r; try lia.
-       rewrite mult_IZR, <- IHn, RtoC_mult, RtoC_pow, pow_IZR.
-       apply f_equal_gen; auto.
-Qed.
-
-
-
-(* foreboding: translating between Cpow_int and Zpow *)
-Lemma ZtoC_pow : forall (z n : Z), 
-  (n >= 0)%Z ->
-  RtoC (IZR (z^n)%Z) = (RtoC (IZR z))^^n.
-Proof. intros.
-       destruct (Z_plusminus_nat n) as [x [H0 | H0]]; subst.
-       - rewrite ZtoC_pow_nat; easy.
-       - destruct x; try lia.
-         replace (-O)%Z with (Z.of_nat O) by lia.
-         rewrite ZtoC_pow_nat; easy.
 Qed.
 
 
