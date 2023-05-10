@@ -2862,19 +2862,9 @@ Proof. intros. solve_comm_ring; auto. Qed.
 Lemma test_scr5 : forall {R} `{Comm_Ring R} (a : R) (x : nat) (f : R -> R) (u : nat -> nat -> R),
   f (u x O) * a = a * f (u x O).
 Proof. intros. 
-       Set Printing All. 
        solve_comm_ring.
-
-
-
-
-
-
-Lemma test1 : forall {F : Type}  `{CSubring F} (f : F -> F)
-                     (u : nat -> nat -> F) (c b : F) (x : nat),
-  f (u x 0) = f (u x 0).
-
-
+       auto. 
+Qed.
 
 
 (** exponentiation by integers *)
