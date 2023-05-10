@@ -804,7 +804,7 @@ Proof. intros. lgma. Qed.
 
 Lemma GMplus_0_r : forall (m n : nat) (A : GenMatrix m n), A .+ Zero = A.
 Proof. intros. lgma. Qed.
-    
+
 Lemma GMmult_0_l : forall (m n o : nat) (A : GenMatrix n o), @Zero F R0 m n × A = Zero.
 Proof.
   intros m n o A. 
@@ -812,7 +812,7 @@ Proof.
   prep_genmatrix_equality.
   apply (@big_sum_0 F R0).  
   intros.
-  ring.
+  solve_comm_ring; auto. 
 Qed.
 
 Lemma GMmult_0_r : forall (m n o : nat) (A : GenMatrix m n), A × @Zero F R0 n o = Zero.
@@ -822,7 +822,7 @@ Proof.
   prep_genmatrix_equality.
   apply (@big_sum_0 F R0). 
   intros.
-  ring. 
+  solve_comm_ring; auto. 
 Qed.
 
 (* using <= because our form big_sum is exclusive. *)
@@ -847,8 +847,8 @@ Proof.
       simpl in *.
       unfold I in *.
       bdestruct (x =? k); bdestruct (x <? m); subst; try lia.
-      rewrite IHl by lia; simpl; ring.
-      rewrite IHr by lia; simpl; ring.
+      rewrite IHl by lia; simpl; solve_comm_ring; auto. 
+      rewrite IHr by lia; simpl; solve_comm_ring; auto. 
 Qed.
 
 Lemma GMmult_1_l_mat_eq : forall (m n : nat) (A : GenMatrix m n), I m × A == A.
@@ -894,8 +894,8 @@ Proof.
     unfold I in *.
     bdestruct (k =? z); subst.
     - bdestruct (z <? n); try lia.
-      rewrite IHl by lia; simpl; ring.
-    - rewrite IHr by lia; simpl; ring.
+      rewrite IHl by lia; simpl; solve_comm_ring; auto.
+    - rewrite IHr by lia; simpl; solve_comm_ring; auto.
 Qed.
 
 Lemma GMmult_1_r_mat_eq : forall (m n : nat) (A : GenMatrix m n), A × I n ≡ A.
@@ -932,7 +932,7 @@ Proof.
   apply (@big_sum_0_bounded F R0). 
   intros z L. 
   unfold I__inf, I.
-  bdestruct (x =? z). lia. ring. 
+  bdestruct (x =? z). lia. solve_comm_ring; auto.  
   unfold I__inf, I in *.
   erewrite big_sum_eq.
   apply Hr.
@@ -954,7 +954,7 @@ Proof.
   apply (@big_sum_0_bounded F R0). 
   intros z L. 
   unfold I__inf, I.
-  bdestruct (z =? y). lia. ring. 
+  bdestruct (z =? y). lia. solve_comm_ring; auto.  
   unfold I__inf, I in *.
   erewrite big_sum_eq.
   apply Hr.
@@ -991,7 +991,7 @@ Proof.
   rewrite 2 Nat.div_1_r.
   rewrite 2 Nat.mod_1_r.
   simpl.
-  ring. 
+  solve_comm_ring; auto. 
 Qed.
 
 (* This side is more limited *)
@@ -1001,8 +1001,8 @@ Proof.
   intros m n A WF.
   prep_genmatrix_equality.
   unfold I, Gkron.
-  bdestruct (m =? 0). rewrite 2 WF by lia. ring. 
-  bdestruct (n =? 0). rewrite 2 WF by lia. ring. 
+  bdestruct (m =? 0). rewrite 2 WF by lia. solve_comm_ring; auto. 
+  bdestruct (n =? 0). rewrite 2 WF by lia. solve_comm_ring; auto. 
   bdestruct (x / m <? 1); rename H1 into Eq1.
   bdestruct (x / m =? y / n); rename H1 into Eq2; simpl.
   + assert (x / m = 0)%nat by lia. clear Eq1. rename H1 into Eq1.
@@ -1011,7 +1011,7 @@ Proof.
     rewrite Nat.div_small_iff in Eq2 by lia.
     rewrite Nat.div_small_iff in Eq1 by lia.
     rewrite 2 Nat.mod_small; trivial.
-    ring. 
+    solve_comm_ring; auto. 
   + assert (x / m = 0)%nat by lia. clear Eq1.
     rewrite H1 in Eq2. clear H1.
     assert (y / n <> 0)%nat by lia. clear Eq2.

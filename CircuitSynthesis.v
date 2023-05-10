@@ -1,8 +1,8 @@
-  
+   
 Require Export RingExamples. 
 
-(* Require Export Matrix.
-Require Export Quantum. *) 
+(* Require Export Matrix. *)
+(* Require Import Quantum. *)
 Require Export RowColOps.
 
 
@@ -475,6 +475,8 @@ Proof. prep_genmatrix_equality.
        unfold D8MtoCM, dI, I, GMopp.
        bdestruct_all; simpl; lca.
 Qed.
+
+(* 
 
 (* TODO: come up with tactic that does this *)
 Lemma D8MtoCM_X : D8MtoCM dX = σx.
@@ -1134,7 +1136,7 @@ Inductive vType (n : nat) : Type :=
   | Arrow : vType n -> vType n -> vType n
   | Err : vType n.
 
-
+*)
 
 
 

@@ -14,6 +14,8 @@ Require Export Pad.
 (* Unitary Properties on Basis Kets *)
 (************************************)
 
+Close Scope group_scope.
+
 Notation "∣ + ⟩" := (/√2 .* ∣ 0 ⟩ .+ /√2 .* ∣ 1 ⟩).
 Notation "∣ - ⟩" := (/√2 .* ∣ 0 ⟩ .+ (-/√2) .* ∣ 1 ⟩).
 

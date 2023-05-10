@@ -34,6 +34,8 @@ Proof. intros.
        lca. 
 Qed.
 
+Close Scope group_scope.
+
 Lemma destruct_from_last : forall {X} (n : nat) (d : X) (l : list X),
   length l = S n -> l = (firstn n l) ++ [nth n l d].
 Proof. induction n as [| n'].

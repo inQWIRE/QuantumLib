@@ -2368,7 +2368,7 @@ End PopI.
     end
   end.
 
-Notation "P ++ P'" := (Padd P P').
+Notation "P ++ P'" := (Padd P P') : group_scope.
 
 
 (* Add lemmas *)
