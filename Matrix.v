@@ -61,8 +61,8 @@ Definition mat_equiv {m n : nat} (A B : Matrix m n) : Prop :=
 Infix "==" := mat_equiv (at level 70) : matrix_scope.
 
 Lemma mat_equiv_refl : forall m n (A : Matrix m n), mat_equiv A A.
-Proof. unfold mat_equiv; reflexivity. Qed.
 
+Proof. unfold mat_equiv; reflexivity. Qed.
 Lemma mat_equiv_eq : forall {m n : nat} (A B : Matrix m n),
   WF_Matrix A -> 
   WF_Matrix B -> 
@@ -164,8 +164,6 @@ Coercion to_scalar : Matrix >-> C.
 (* This isn't used, but is interesting *)
 Definition I__inf := fun x y => if x =? y then C1 else C0.
 Notation "I∞" := I__inf : matrix_scope.
-
-
 
 Definition trace {n : nat} (A : Square n) := 
   big_sum (fun x => A x x) n.
