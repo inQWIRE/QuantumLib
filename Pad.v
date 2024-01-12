@@ -219,29 +219,29 @@ Ltac rem_max_min :=
    unfold gt, ge, abs_diff in *;
   repeat match goal with 
   | [ H: (?a < ?b)%nat |- context[Nat.max (?a - ?b) (?b - ?a)] ] => 
-    rewrite (Max.max_r (a - b) (b - a)) by lia 
+    rewrite (Nat.max_r (a - b) (b - a)) by lia 
   | [ H: (?a < ?b)%nat |- context[Nat.max (?b - ?a) (?a - ?b)] ] => 
-    rewrite (Max.max_l (b - a) (a - b)) by lia 
+    rewrite (Nat.max_l (b - a) (a - b)) by lia 
   | [ H: (?a <= ?b)%nat |- context[Nat.max (?a - ?b) (?b - ?a)] ] => 
-    rewrite (Max.max_r (a - b) (b - a)) by lia 
+    rewrite (Nat.max_r (a - b) (b - a)) by lia 
   | [ H: (?a <= ?b)%nat |- context[Nat.max (?b - ?a) (?a - ?b)] ] => 
-    rewrite (Max.max_l (b - a) (a - b)) by lia   
+    rewrite (Nat.max_l (b - a) (a - b)) by lia   
   | [ H: (?a < ?b)%nat |- context[Nat.min ?a ?b] ] => 
-    rewrite Min.min_l by lia 
+    rewrite Nat.min_l by lia 
   | [ H: (?a < ?b)%nat |- context[Nat.max ?a ?b] ] => 
-    rewrite Max.max_r by lia 
+    rewrite Nat.max_r by lia 
   | [ H: (?a < ?b)%nat |- context[Nat.min ?b ?a] ] => 
-    rewrite Min.min_r by lia 
+    rewrite Nat.min_r by lia 
   | [ H: (?a < ?b)%nat |- context[Nat.max ?b ?a] ] => 
-    rewrite Max.max_l by lia 
+    rewrite Nat.max_l by lia 
   | [ H: (?a <= ?b)%nat |- context[Nat.min ?a ?b] ] => 
-    rewrite Min.min_l by lia 
+    rewrite Nat.min_l by lia 
   | [ H: (?a <= ?b)%nat |- context[Nat.max ?a ?b] ] => 
-    rewrite Max.max_r by lia 
+    rewrite Nat.max_r by lia 
   | [ H: (?a <= ?b)%nat |- context[Nat.min ?b ?a] ] => 
-    rewrite Min.min_r by lia 
+    rewrite Nat.min_r by lia 
   | [ H: (?a <= ?b)%nat |- context[Nat.max ?b ?a] ] => 
-    rewrite Max.max_l by lia 
+    rewrite Nat.max_l by lia 
   end.
 
 Definition pad2x2_u (dim n : nat) (u : Square 2) : Square (2^dim) := @embed dim [(u,n)].
@@ -336,7 +336,8 @@ Proof.
   intros. unfold pad2x2_u, pad2x2_ctrl, abs_diff. bdestruct_all; simpl; rem_max_min;
   Msimpl; trivial.
   + repeat rewrite Mmult_plus_distr_l; repeat rewrite Mmult_plus_distr_r.
-  rewrite le_plus_minus_r by (apply Nat.lt_le_incl; trivial).
+    rewrite (Nat.add_comm n (o - n)).
+    rewrite Nat.sub_add by (apply Nat.lt_le_incl; trivial).
   repeat rewrite embed_mult; simpl.
   rewrite (embed_commutes dim [(A, m); (∣1⟩⟨1∣, n); (B, o)] [(∣1⟩⟨1∣, n); (B, o); (A, m)]).
   rewrite (embed_commutes dim [(A, m); (∣0⟩⟨0∣, n); (I 2, o)] [(∣0⟩⟨0∣, n); (I 2, o); (A, m)]).
@@ -345,7 +346,8 @@ Proof.
   all : rewrite perm_swap; apply perm_skip; apply perm_swap.
 
   + repeat rewrite Mmult_plus_distr_l; repeat rewrite Mmult_plus_distr_r.
-  rewrite le_plus_minus_r by trivial; repeat rewrite embed_mult; simpl.
+    rewrite (Nat.add_comm o (n - o)).
+  rewrite Nat.sub_add by trivial; repeat rewrite embed_mult; simpl.
   rewrite (embed_commutes dim [(A, m); (B, o); (∣1⟩⟨1∣, n)] [(B, o); (∣1⟩⟨1∣, n); (A, m)]).
   rewrite (embed_commutes dim [(A, m); (I 2, o); (∣0⟩⟨0∣, n)] [(I 2, o); (∣0⟩⟨0∣, n); (A, m)]).
   trivial.
