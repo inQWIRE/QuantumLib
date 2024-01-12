@@ -1605,8 +1605,8 @@ Qed.
 Lemma product_0 : forall f n, product (fun _ : nat => false) f n = false.
 Proof.
   intros f n.
-  induction n; simpl; auto.
-  rewrite IHn; reflexivity.
+  induction n; simpl; auto;
+    rewrite IHn; reflexivity.
 Qed.
 
 Lemma nat_to_funbool_0 : forall n, nat_to_funbool n 0 = (fun _ => false).
