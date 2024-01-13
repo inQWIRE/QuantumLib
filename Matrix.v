@@ -306,8 +306,8 @@ Ltac by_cell :=
   let Hi := fresh "Hi" in 
   let Hj := fresh "Hj" in 
   intros i j Hi Hj; try solve_end;
-  repeat (destruct i as [|i]; simpl; [|apply lt_S_n in Hi]; try solve_end); clear Hi;
-  repeat (destruct j as [|j]; simpl; [|apply lt_S_n in Hj]; try solve_end); clear Hj.
+  repeat (destruct i as [|i]; simpl; [|apply <- Nat.succ_lt_mono in Hi]; try solve_end); clear Hi;
+  repeat (destruct j as [|j]; simpl; [|apply <- Nat.succ_lt_mono in Hj]; try solve_end); clear Hj.
 
 Ltac lma' :=
   apply mat_equiv_eq;
@@ -543,10 +543,12 @@ Ltac show_wf :=
   let y := fresh "y" in
   let H := fresh "H" in
   intros x y [H | H];
-  apply le_plus_minus in H; rewrite H;
+  apply Nat.sub_add in H;
+  rewrite Nat.add_comm in H;
+  rewrite <- H;
   cbv;
   destruct_m_eq;
-  try lca.
+  try lca.                                        
 
 (* Create HintDb wf_db. *)
 #[export] Hint Resolve WF_Zero WF_I WF_I1 WF_mult WF_plus WF_scale WF_transpose
@@ -1191,7 +1193,7 @@ Proof.
   + repeat rewrite <- beq_nat_refl; simpl.
     destruct n.
     - simpl.
-      rewrite mult_0_r.
+      rewrite Nat.mul_0_r.
       bdestruct (y <? 0); try lia.
       autorewrite with C_db; reflexivity.
     - bdestruct (y mod S n <? S n). 
@@ -1209,13 +1211,13 @@ Proof.
         simpl. apply Nat.neq_succ_0. (* `lia` will solve in 8.11+ *)
         apply Nat.div_small in L1.
         rewrite Nat.div_div in L1; try lia.
-        rewrite mult_comm.
+        rewrite Nat.mul_comm.
         assumption.
       * apply Nat.ltb_nlt in L1. 
         apply Nat.ltb_lt in L2. 
         contradict L1. 
         apply Nat.div_lt_upper_bound. lia.
-        rewrite mult_comm.
+        rewrite Nat.mul_comm.
         assumption.
   + simpl.
     bdestruct (x / n =? y / n); simpl; try lca.
@@ -1226,7 +1228,6 @@ Proof.
     rewrite (Nat.div_mod y (S n)) by lia.
     rewrite H, H0; reflexivity.
 Qed.
-
 
 Local Open Scope nat_scope.
 
@@ -1253,7 +1254,8 @@ Lemma sub_mul_mod :
     (x - y * z) mod z = x mod z.
 Proof.
   intros. bdestruct (z =? 0). subst. simpl. lia.
-  specialize (le_plus_minus_r (y * z) x H) as G.
+  specialize (Nat.sub_add (y * z) x H) as G.
+  rewrite Nat.add_comm in G.
   remember (x - (y * z)) as r.
   rewrite <- G. rewrite <- Nat.add_mod_idemp_l by easy. rewrite Nat.mod_mul by easy.
   easy.
@@ -1277,8 +1279,8 @@ Proof.
   intros. intros i j Hi Hj.
   remember (A ⊗ B ⊗ C) as LHS.
   unfold kron.  
-  rewrite (mult_comm p r) at 1 2.
-  rewrite (mult_comm q s) at 1 2.
+  rewrite (Nat.mul_comm p r) at 1 2.
+  rewrite (Nat.mul_comm q s) at 1 2.
   assert (m * p * r <> 0) by lia.
   assert (n * q * s <> 0) by lia.
   apply Nat.neq_mul_0 in H as [Hmp Hr].
@@ -1312,7 +1314,7 @@ Proof.
   prep_matrix_equality.
   destruct q.
   + simpl.
-    rewrite mult_0_r.
+    rewrite Nat.mul_0_r.
     simpl.
     rewrite Cmult_0_r.
     reflexivity. 
@@ -2622,7 +2624,7 @@ Proof. intros.
        apply big_sum_eq_bounded; intros.
        bdestruct (e + S x0 =? e); try lia; easy.
        unfold get_vec. simpl. 
-       rewrite plus_0_r; easy.
+       rewrite Nat.add_0_r; easy.
 Qed.
 
 (* shows that we can eliminate a column in a matrix using col_add_many *)
@@ -2637,13 +2639,16 @@ Proof. intros.
        assert (H' : (big_sum (fun x : nat => (as' x 0 .* get_vec x T) i 0) (S m) = 
                      (@Mmult n m 1 (reduce_col T col) (reduce_row as' col)) i 0)%C).
        { unfold Mmult.
-         replace (S m) with (col + (S (m - col))) by lia; rewrite big_sum_sum. 
-         rewrite (le_plus_minus col m); try lia; rewrite big_sum_sum. 
+         replace (S m) with (col + (S (m - col))) by lia; rewrite big_sum_sum.
+         rewrite <- (Nat.sub_add col m);
+           try rewrite (Nat.add_comm (m - col) col);
+           try lia; rewrite big_sum_sum.
          apply Cplus_simplify. 
          apply big_sum_eq_bounded; intros. 
          unfold get_vec, scale, reduce_col, reduce_row. 
          bdestruct (x <? col); simpl; try lia; lca.
-         rewrite <- le_plus_minus, <- big_sum_extend_l, plus_0_r, H0; try lia. 
+         rewrite (Nat.add_comm col (m - col)).
+         rewrite (Nat.sub_add col m), <- big_sum_extend_l, Nat.add_0_r, H0; try lia. 
          unfold scale; rewrite Cmult_0_l, Cplus_0_l.
          apply big_sum_eq_bounded; intros. 
          unfold get_vec, scale, reduce_col, reduce_row. 
@@ -2846,7 +2851,8 @@ Proof. intros.
        prep_matrix_equality. 
        unfold Mmult. 
        bdestruct (x <? m); try lia.
-       rewrite (le_plus_minus x m); try lia.
+       rewrite <- (Nat.sub_add x m);
+         try rewrite (Nat.add_comm (m - x) x); try lia.
        do 2 rewrite big_sum_sum. 
        apply Cplus_simplify. 
        apply big_sum_eq_bounded.
@@ -2858,7 +2864,9 @@ Proof. intros.
        rewrite Cplus_comm.
        rewrite (Cplus_comm (col_swap A x y x0 (x + 0)%nat * row_swap B x y (x + 0)%nat y0)%C _).
        bdestruct ((y - x - 1) <? x'); try lia.  
-       rewrite (le_plus_minus (y - x - 1) x'); try lia. 
+       rewrite <- (Nat.sub_add (y - x - 1) x');
+         try rewrite (Nat.add_comm (x' - (y - x - 1)) (y - x - 1));
+         try lia. 
        do 2 rewrite big_sum_sum.
        do 2 rewrite <- Cplus_assoc.
        apply Cplus_simplify. 
@@ -2915,7 +2923,9 @@ Proof. intros.
        prep_matrix_equality. 
        unfold Mmult.   
        bdestruct (x <? m); try lia.
-       rewrite (le_plus_minus x m); try lia.       
+       rewrite <- (Nat.sub_add x m);
+         try rewrite (Nat.add_comm (m - x) x);
+         try lia.
        do 2 rewrite big_sum_sum.
        apply Cplus_simplify. 
        apply big_sum_eq_bounded.
@@ -2927,7 +2937,9 @@ Proof. intros.
        rewrite Cplus_comm. 
        rewrite (Cplus_comm (col_add A x y a x0 (x + 0)%nat * B (x + 0)%nat y0)%C _).
        bdestruct ((y - x - 1) <? x'); try lia.  
-       rewrite (le_plus_minus (y - x - 1) x'); try lia. 
+       rewrite <- (Nat.sub_add (y - x - 1) x');
+         try rewrite (Nat.add_comm (x' - (y - x - 1)) (y - x - 1));
+         try lia. 
        do 2 rewrite big_sum_sum.
        do 2 rewrite <- Cplus_assoc.
        apply Cplus_simplify. 
@@ -3242,7 +3254,7 @@ Proof. intros.
        prep_matrix_equality. 
        bdestruct (y =? m); bdestruct (y <? m); try lia; try easy.
        rewrite H1.
-       rewrite <- minus_diag_reverse; easy. 
+       rewrite Nat.sub_diag; easy. 
        rewrite H0, H; try lia; try easy.
 Qed.
 
@@ -4347,7 +4359,7 @@ Ltac fill_differences :=
   | R : _ < _ |- _           => let d := fresh "d" in
                               destruct (lt_ex_diff_r _ _ R);
                               clear R; subst
-  | H : _ = _ |- _           => rewrite <- plus_assoc in H
+  | H : _ = _ |- _           => rewrite <- Nat.add_assoc in H
   | H : ?a + _ = ?a + _ |- _ => apply Nat.add_cancel_l in H; subst
   | H : ?a + _ = ?b + _ |- _ => destruct (lt_eq_lt_dec a b) as [[?|?]|?]; subst
   end; try lia.
@@ -4375,7 +4387,7 @@ Ltac gridify :=
   restore_dims; distribute_plus;
   repeat rewrite Nat.pow_add_r;
   repeat rewrite <- id_kron; simpl;
-  repeat rewrite mult_assoc;
+  repeat rewrite Nat.mul_assoc;
   restore_dims; repeat rewrite <- kron_assoc by auto_wf;
   restore_dims; repeat rewrite kron_mixed_product;
   (* simplify *)

@@ -67,7 +67,7 @@ Proof.
   induction n; simpl.
   - Msimpl_light. reflexivity.
   - replace (2^n + (2^n + 0)) with (2^n * 2) by lia.
-    replace (1^n + 0) with (1*1) by (rewrite Nat.pow_1_l, plus_0_r; lia). 
+    replace (1^n + 0) with (1*1) by (rewrite Nat.pow_1_l, Nat.add_0_r; lia). 
     rewrite Nat.pow_1_l.
     rewrite kron_mixed_product.
     rewrite <- IHn.
@@ -129,8 +129,7 @@ Qed.
 
 Lemma CNOT_spec : forall (x y : nat), (x < 2)%nat -> (y < 2)%nat -> cnot × ∣ x,y ⟩ = ∣ x, (x + y) mod 2 ⟩.
 Proof.
-  intros; destruct x as [| [|x]], y as [| [|y]]; try lia; lma'.
-Qed.
+  intros; destruct x as [| [|x]], y as [| [|y]]; try lia; lma'. Qed.
 
 Lemma CNOT00_spec : cnot × ∣ 0,0 ⟩ = ∣ 0,0 ⟩.
 Proof. lma'. Qed.
@@ -646,7 +645,8 @@ Proof.
   repeat rewrite Nat.add_0_r.
   rewrite <- Nat.add_succ_l.
   replace (S (2 ^ n - 1)) with (1 + (2 ^ n - 1)) by easy.
-  rewrite <- le_plus_minus.
+  rewrite (Nat.add_comm 1 (2 ^ n - 1)).
+  rewrite Nat.sub_add.
   rewrite <- Nat.add_sub_assoc.
   reflexivity.
   all: induction n; simpl; try lia.
@@ -1605,8 +1605,8 @@ Qed.
 Lemma product_0 : forall f n, product (fun _ : nat => false) f n = false.
 Proof.
   intros f n.
-  induction n; simpl; auto.
-  rewrite IHn; reflexivity.
+  induction n; simpl; auto;
+    rewrite IHn; reflexivity.
 Qed.
 
 Lemma nat_to_funbool_0 : forall n, nat_to_funbool n 0 = (fun _ => false).

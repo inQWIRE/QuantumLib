@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches: ['main']
   pull_request:
@@ -18,6 +19,7 @@ jobs:
           - '8.15'
           - '8.16'
           - '8.17'
+          - '8.18'
           - 'dev'
         ocaml_version:
           - 'default'
@@ -29,4 +31,3 @@ jobs:
           opam_file: 'coq-quantumlib.opam'
           coq_version: ${{ matrix.coq_version }}
           ocaml_version: ${{ matrix.ocaml_version }}
-

@@ -6,7 +6,6 @@ Require Export Complex.
 Require Export Quantum. 
 Require Import FTA.
 
-
 (****************************)
 (** * Proving some indentities *)
 (****************************)
@@ -40,7 +39,8 @@ Lemma XH_eq_HZ : σx × hadamard = hadamard × σz. Proof. lma'. Qed.
 Lemma SX_eq_YS : Sgate × σx = σy × Sgate. Proof. lma'; unfold Mmult;
                                                    simpl; rewrite Cexp_PI2; lca. Qed.
 Lemma SZ_eq_ZS : Sgate × σz = σz × Sgate. Proof. lma'; unfold Mmult;
-                                                   simpl; rewrite Cexp_PI2; lca. Qed.
+                                              simpl; rewrite Cexp_PI2; lca. Qed.
+
 Lemma cnotX1 : cnot × (σx ⊗ I 2) = (σx ⊗ σx) × cnot. Proof. lma'. Qed.
 Lemma cnotX2 : cnot × (I 2 ⊗ σx) = (I 2 ⊗ σx) × cnot. Proof. lma'. Qed.
 Lemma cnotZ1 : cnot × (σz ⊗ I 2) = (σz ⊗ I 2) × cnot. Proof. lma'. Qed.
@@ -258,8 +258,8 @@ Proof. induction n as [| n'].
              assert (H1 := (IHn' (reduce A 0 0))).
              rewrite p in H1; easy. }
            rewrite H', Pplus_comm, Pplus_degree2; auto. 
-           rewrite H1. 
-           apply le_lt_n_Sm.
+           rewrite H1.
+           rewrite Nat.lt_succ_r.
            apply Psum_degree; intros. 
            assert (H2 : prep_mat A (S i) 0 = [A (S i) 0]).
            { unfold prep_mat. 
@@ -885,7 +885,7 @@ Proof. induction m2 as [| m2'].
          exists Zero.
          split. easy.
          rewrite smash_zero; try easy.
-         rewrite plus_0_r.
+         rewrite Nat.add_0_r.
          apply H2.
        - intros. 
          rewrite (split_col T2) in *.
@@ -1180,8 +1180,9 @@ Proof. intros a b m H0 Hdiv Hmod.
        rewrite Hdiv in Hmod.
        assert (H : m * (b / m) + (a - m * (b / m)) = m * (b / m) + (b - m * (b / m))).
        { rewrite Hmod. reflexivity. }
-       rewrite <- (le_plus_minus  (m * (b / m)) a) in H.
-       rewrite <- (le_plus_minus  (m * (b / m)) b) in H.
+       rewrite (Nat.add_comm (m * (b / m)) (a - m * (b / m))) in H.
+       rewrite (Nat.add_comm (m * (b / m)) (b - m * (b / m))) in H.
+       rewrite ! Nat.sub_add in H.
        apply H.
        apply Nat.mul_div_le; apply H0.
        rewrite <- Hdiv; apply Nat.mul_div_le; apply H0.
