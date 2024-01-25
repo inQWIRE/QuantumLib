@@ -1472,6 +1472,10 @@ Proof.
   assumption.
 Qed.
 
+(* This was removed from std lib without replacement in 8.19 *)
+Lemma mult_O_le_stt : forall n m : nat, (m = 0 \/ n <= m * n)%nat.
+Proof. intros. induction m. auto. right. lia. Qed.
+
 Lemma rewrite_pr_outcome_sum : forall n k (u : Square (2 ^ (n + k))) f,
   WF_Matrix u ->
   pr_outcome_sum (apply_u u) (fun x => f (fst k x)) 
@@ -1503,7 +1507,7 @@ Proof.
     rewrite <- le_plus_minus' in H0.
     rewrite Nat.add_comm in H0.
     assumption.
-    destruct (Arith_prebase.mult_O_le_stt (2^k) (2^n))%nat; auto.
+    destruct (mult_O_le_stt (2^k) (2^n))%nat; auto.
     assert (2 <> 0)%nat by lia.
     apply (pow_positive 2 n) in H2.
     lia.
