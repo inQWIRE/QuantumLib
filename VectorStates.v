@@ -67,7 +67,7 @@ Proof.
   induction n; simpl.
   - Msimpl_light. reflexivity.
   - replace (2^n + (2^n + 0)) with (2^n * 2) by lia.
-    replace (1^n + 0) with (1*1) by (rewrite Nat.pow_1_l, plus_0_r; lia). 
+    replace (1^n + 0) with (1*1) by (rewrite Nat.pow_1_l, Nat.add_0_r; lia). 
     rewrite Nat.pow_1_l.
     rewrite kron_mixed_product.
     rewrite <- IHn.
@@ -445,7 +445,7 @@ Proof.
   reflexivity.
   exists j.
   repeat split; trivial.
-  rewrite <- 2 beq_nat_refl; simpl; lca.
+  rewrite 2 Nat.eqb_refl; simpl; lca.
   intros j' Hj.
   bdestruct_all; auto. 
   all : intros; simpl; try lca.
@@ -646,7 +646,7 @@ Proof.
   repeat rewrite Nat.add_0_r.
   rewrite <- Nat.add_succ_l.
   replace (S (2 ^ n - 1)) with (1 + (2 ^ n - 1)) by easy.
-  rewrite <- le_plus_minus.
+  rewrite <- le_plus_minus'.
   rewrite <- Nat.add_sub_assoc.
   reflexivity.
   all: induction n; simpl; try lia.
@@ -1605,7 +1605,8 @@ Qed.
 Lemma product_0 : forall f n, product (fun _ : nat => false) f n = false.
 Proof.
   intros f n.
-  induction n; simpl; auto.
+  induction n; simpl.
+  reflexivity.
   rewrite IHn; reflexivity.
 Qed.
 
@@ -1729,8 +1730,8 @@ Proof.
   rewrite Mscale_vkron_distr_r.
   apply f_equal2.  
   repeat rewrite <- RtoC_inv by nonzero.
-  rewrite RtoC_pow. 
-  rewrite <- Rinv_pow by nonzero. 
+  rewrite RtoC_pow.
+  rewrite pow_inv by nonzero.
   rewrite <- sqrt_pow by lra. 
   reflexivity.
   apply vkron_to_vsum2.

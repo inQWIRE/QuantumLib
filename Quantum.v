@@ -1147,7 +1147,7 @@ Proof.
   distribute_adjoint.
   distribute_scale.
   rewrite UA, Cmult_comm, H. 
-  lma'.
+  lma.
 Qed.
 
 

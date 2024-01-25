@@ -49,8 +49,10 @@ time-of-build-pretty.log
 .CoqMakefile.d
 CoqMakefile*
 Makefile.coq*
+Makefile.conf
 
 _build
 
 docs
 /.vscode
+.DS_Store

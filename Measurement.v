@@ -59,7 +59,7 @@ Proof.
   unfold prob_partial_meas.
   rewrite norm_squared.
   unfold inner_product, Mmult, adjoint.
-  rewrite (@big_sum_func_distr C R _ C_is_group _ R_is_group), mult_1_l.
+  rewrite (@big_sum_func_distr C R _ C_is_group _ R_is_group), Nat.mul_1_l.
   apply big_sum_eq_bounded; intros. 
   unfold probability_of_outcome.
   assert (H' : forall c, ((Cmod c)^2)%R = fst (c^* * c)).

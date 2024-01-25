@@ -162,7 +162,7 @@ Proof.
   bdestruct_all; simpl; try lca.
   subst.
   rewrite andb_true_r in H.
-  apply beq_nat_false in H.
+  apply Nat.eqb_neq in H.
   assert (pinv (p x) = pinv (p y)) by auto.
   destruct (Hp x) as [_ [_ [H5 _]]]; auto.
   destruct (Hp y) as [_ [_ [H6 _]]]; auto.
@@ -198,7 +198,7 @@ Proof.
   bdestruct_all; simpl; try lca.
   subst.
   rewrite 2 andb_true_r in H.
-  apply beq_nat_false in H.
+  apply Nat.eqb_neq in H.
   contradiction.
 Qed.
 
@@ -287,7 +287,7 @@ Proof.
   intros z.
   bdestruct_all; simpl; try lca.
   rewrite andb_true_r in H.
-  apply beq_nat_false in H.
+  apply Nat.eqb_neq in H.
   subst z.
   erewrite funbool_to_nat_eq in H2.
   2: { intros. rewrite funbool_to_nat_inverse. reflexivity.

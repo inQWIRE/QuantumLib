@@ -102,7 +102,7 @@ Lemma sample_ub_lt :  forall l r,
 Proof.
   induction l; intros. unfold sum_over_list in H. simpl in H. lra.
   simpl. destruct (Rlt_le_dec r a). lia.
-  apply lt_n_S. apply IHl. rewrite sum_over_list_cons in H. lra.
+  apply -> Nat.succ_lt_mono. apply IHl. rewrite sum_over_list_cons in H. lra.
 Qed.
 
 Lemma sample_lb : forall l r, (0 <= sample l r)%nat.
@@ -1498,12 +1498,12 @@ Proof.
     replace (2 ^ (n + k))%nat with (2 ^ n * 2 ^ k)%nat by unify_pows_two.
     apply (Nat.mul_le_mono_r _ _ (2^k)%nat) in H0.
     rewrite Nat.mul_sub_distr_r in H0.
-    rewrite mult_1_l in H0.
+    rewrite Nat.mul_1_l in H0.
     apply (Nat.add_lt_le_mono x0 (2^k)%nat) in H0; auto.
-    rewrite <- le_plus_minus in H0.
-    rewrite plus_comm in H0.
+    rewrite <- le_plus_minus' in H0.
+    rewrite Nat.add_comm in H0.
     assumption.
-    destruct (mult_O_le (2^k) (2^n))%nat; auto.
+    destruct (Arith_prebase.mult_O_le_stt (2^k) (2^n))%nat; auto.
     assert (2 <> 0)%nat by lia.
     apply (pow_positive 2 n) in H2.
     lia.

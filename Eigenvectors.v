@@ -259,7 +259,7 @@ Proof. induction n as [| n'].
              rewrite p in H1; easy. }
            rewrite H', Pplus_comm, Pplus_degree2; auto. 
            rewrite H1. 
-           apply le_lt_n_Sm.
+           apply Nat.lt_succ_r.
            apply Psum_degree; intros. 
            assert (H2 : prep_mat A (S i) 0 = [A (S i) 0]).
            { unfold prep_mat. 
@@ -356,7 +356,7 @@ Proof. intros.
        prep_matrix_equality.
        unfold get_vec, form_basis.
        bdestruct (y =? 0).
-       rewrite <- beq_nat_refl, H0; easy.
+       rewrite Nat.eqb_refl, H0; easy.
        unfold WF_Matrix in H.
        rewrite H; try easy.
        right. 
@@ -885,7 +885,7 @@ Proof. induction m2 as [| m2'].
          exists Zero.
          split. easy.
          rewrite smash_zero; try easy.
-         rewrite plus_0_r.
+         rewrite Nat.add_0_r.
          apply H2.
        - intros. 
          rewrite (split_col T2) in *.
@@ -1180,8 +1180,8 @@ Proof. intros a b m H0 Hdiv Hmod.
        rewrite Hdiv in Hmod.
        assert (H : m * (b / m) + (a - m * (b / m)) = m * (b / m) + (b - m * (b / m))).
        { rewrite Hmod. reflexivity. }
-       rewrite <- (le_plus_minus  (m * (b / m)) a) in H.
-       rewrite <- (le_plus_minus  (m * (b / m)) b) in H.
+       rewrite <- (le_plus_minus'  (m * (b / m)) a) in H.
+       rewrite <- (le_plus_minus'  (m * (b / m)) b) in H.
        apply H.
        apply Nat.mul_div_le; apply H0.
        rewrite <- Hdiv; apply Nat.mul_div_le; apply H0.

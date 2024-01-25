@@ -14,7 +14,10 @@ Export ListNotations.
 
 (* a lemma that was removed from Coq in 8.16 that I found quite helpful *)
 Lemma le_plus_minus' : forall m n, m <= n -> n = m + (n - m).
-Proof. lia. Qed.
+Proof. intros. rewrite Nat.add_comm. rewrite Nat.sub_add; easy. Qed.
+
+Lemma le_plus_minus_r': forall n m : nat, n <= m -> n + (m - n) = m.
+Proof. intros. rewrite Nat.add_comm. rewrite Nat.sub_add; easy. Qed.
 
 
 
