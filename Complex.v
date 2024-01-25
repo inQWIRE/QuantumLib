@@ -624,6 +624,7 @@ Proof.  intros.
         rewrite <- H' in H2. easy.
 Qed.
 
+
 Lemma Cinv_mult_distr : forall c1 c2 : C, c1 <> 0 -> c2 <> 0 -> / (c1 * c2) = / c1 * / c2.
 Proof.
   intros.
@@ -634,7 +635,7 @@ Proof.
     rewrite Rmult_div.
     rewrite Rmult_opp_opp.
     unfold Rminus.
-    rewrite <- RIneq.Ropp_div.
+    rewrite <- Ropp_div.
     rewrite <- Rdiv_plus_distr.
     rewrite Rmult_plus_distr_r.
     rewrite Rmult_plus_distr_l.

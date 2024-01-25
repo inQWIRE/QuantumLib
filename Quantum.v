@@ -898,7 +898,8 @@ Proof.
         ++ apply functional_extensionality. intros x.
            bdestructΩ (n + x <? n).
            bdestructΩ (n <=? n + x).
-           rewrite minus_plus.
+           rewrite (Nat.add_comm n x).
+           rewrite Nat.add_sub.
            easy.
         ++ intros x L.
            bdestructΩ (y =? x).
@@ -955,7 +956,8 @@ Proof.
         ++ apply functional_extensionality. intros z.
            bdestructΩ (n + z <? n).
            bdestructΩ (n <=? n + z).
-           rewrite minus_plus.
+           rewrite (Nat.add_comm n z).
+           rewrite Nat.add_sub.
            easy.
         ++ rewrite big_sum_0. easy.
            intros z.

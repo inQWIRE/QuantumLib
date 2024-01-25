@@ -290,13 +290,13 @@ Tactic Notation "gen" ident(X1) ident(X2) ident(X3) ident(X4) ident(X5) :=
 
 Lemma double_mult : forall (n : nat), (n + n = 2 * n)%nat. Proof. intros. lia. Qed.
 Lemma pow_two_succ_l : forall x, (2^x * 2 = 2 ^ (x + 1))%nat.
-Proof. intros. rewrite Nat.mul_comm. rewrite <- Nat.pow_succ_r'. intuition. Qed.
+Proof. intros. rewrite Nat.mul_comm. rewrite <- Nat.pow_succ_r'. auto with *. Qed.
 Lemma pow_two_succ_r : forall x, (2 * 2^x = 2 ^ (x + 1))%nat.
-Proof. intros. rewrite <- Nat.pow_succ_r'. intuition. Qed.
+Proof. intros. rewrite <- Nat.pow_succ_r'. auto with *. Qed.
 Lemma double_pow : forall (n : nat), (2^n + 2^n = 2^(n+1))%nat. 
 Proof. intros. rewrite double_mult. rewrite pow_two_succ_r. reflexivity. Qed.
 Lemma pow_components : forall (a b m n : nat), a = b -> m = n -> (a^m = b^n)%nat.
-Proof. intuition. Qed.
+Proof. auto with *. Qed.
 Lemma pow_positive : forall a b, a <> 0 -> 0 < a ^ b.
 Proof. intros. induction b; simpl; lia. Qed.  
 
@@ -378,7 +378,7 @@ Qed.
 Corollary subset_self : forall (X : Type) (l1 : list X),
   l1 ⊆ l1. 
 Proof. intros X l1. assert (H: l1 ⊆ (l1 ++ [])). { apply subset_concat_l. }
-       rewrite <- app_nil_end in H. apply H. 
+       rewrite app_nil_r in H. apply H. 
 Qed.
 
 Lemma subsets_add : forall (X : Type) (l1 l2 l3 : list X),
