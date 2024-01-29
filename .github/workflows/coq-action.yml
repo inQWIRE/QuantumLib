@@ -15,6 +15,7 @@ jobs:
           - '8.16'
           - '8.17'
           - '8.18'
+          - '8.19'
         ocaml_version:
           - 'default'
       fail-fast: false # don't stop jobs if one fails
