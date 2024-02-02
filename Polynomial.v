@@ -1031,7 +1031,7 @@ Lemma Peq_skipn_Peq_nil : forall (p1 p2 : Polynomial),
   skipn (length p1) p2 ≅ [].
 Proof. intros. 
        apply Peq_firstn_eq in H0; auto.
-       rewrite (app_nil_end p1) in H.
+       rewrite <- (app_nil_r p1) in H.
        rewrite H0, <- (firstn_skipn (length p1)) in H. 
        apply Peq_app_Peq in H.
        easy. 
@@ -1378,14 +1378,16 @@ Proof. apply ind_from_end; try easy.
          destruct H0 as [n [a [p' [H1 H2] ] ] ].
          exists (S n), a, p'.
          split; auto. 
-         rewrite H2, app_assoc_reverse.
+         rewrite H2, <- app_assoc.
          apply f_equal_gen; try easy.
          simpl. 
          rewrite repeat_cons.
          easy. 
        - exists 0, x, l.
-         split; auto.         
-         apply app_nil_end.
+         split; auto. 
+         simpl.        
+         rewrite app_nil_r.
+         easy.
 Qed.
 
 Lemma compactify_breakdown : forall (p : Polynomial),
@@ -1705,7 +1707,7 @@ Proof. split; intros.
          unfold Rdiv in *.
          unfold pow in *.
          apply (Rmult_le_pos a) in H1; try lra.
-         rewrite Rmult_plus_distr_l, Rinv_mult_distr, Rmult_plus_distr_l in H1; try lra.
+         rewrite Rmult_plus_distr_l, Rinv_mult, Rmult_plus_distr_l in H1; try lra.
          replace (a * (b * (- b * (/ 2 * / a))))%R 
            with (- b * b * (a * / a) * / 2)%R in H1 by lra. 
          replace (a * (a * (- b * (/ 2 * / a) * (- b * (/ 2 * / a) * 1))))%R

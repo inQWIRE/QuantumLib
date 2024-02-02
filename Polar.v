@@ -56,7 +56,7 @@ Proof. intros.
        assert (H0 := Rmax_Cmod (x, y)).
        apply (Rle_trans (Rabs (fst (x, y)))) in H0; try apply Rmax_l; simpl in *.
        apply (Rmult_le_compat_r (/ Cmod (x, y))) in H0.
-       rewrite Rinv_r, <- (Rabs_pos_eq (Cmod _)), <- Rabs_Rinv, <- Rabs_mult in H0.
+       rewrite Rinv_r, <- (Rabs_pos_eq (Cmod _)), <- Rabs_inv, <- Rabs_mult in H0.
        all : try (left; apply Rinv_0_lt_compat); try apply Cmod_ge_0; try apply Cmod_gt_0.
        all : try (unfold not; intros; apply H; apply Cmod_eq_0; easy).
        destruct H0.
@@ -78,7 +78,7 @@ Proof. intros.
        apply (Rle_trans (Rabs (fst (x, y)))) in H0; try apply Rmax_l; simpl in *.
        destruct H0.
        - apply (Rmult_lt_compat_r (/ Cmod (x, y))) in H0.
-         rewrite Rinv_r, <- (Rabs_pos_eq (Cmod _)), <- Rabs_Rinv, <- Rabs_mult in H0.
+         rewrite Rinv_r, <- (Rabs_pos_eq (Cmod _)), <- Rabs_inv, <- Rabs_mult in H0.
          all : try (apply Rinv_0_lt_compat; apply Cmod_gt_0).
          all : try apply Cmod_ge_0.
          all : try (unfold not; intros; apply H'; apply Cmod_eq_0; easy).
@@ -160,7 +160,7 @@ Lemma div_subtract_helper : forall (x y : R),
 Proof. intros.  
        unfold Rdiv.
        rewrite Rsqr_mult.
-       rewrite Rsqr_inv.
+       rewrite Rsqr_inv'.
        rewrite <- (Rinv_r ((Cmod (x, y))²)).
        replace (((Cmod (x, y))² * / (Cmod (x, y))² + - (x² * / (Cmod (x, y))²))%R) with
          ( ((Cmod (x, y))² - x²) * / ((Cmod (x, y))²))%R by lra.
@@ -173,7 +173,6 @@ Proof. intros.
        unfold Rsqr in H0.
        apply Rmult_integral in H0; apply Cmod_eq_0. 
        destruct H0; easy.
-       apply Cmod_eq_0; easy.
 Qed.
 
 Lemma rect_to_polar_to_rect : forall (z : C),

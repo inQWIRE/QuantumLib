@@ -16,7 +16,7 @@ Global Program Instance list_is_monoid {X} : Monoid (list X) :=
   { Gzero := []
   ; Gplus := @app X
   }.
-Next Obligation. rewrite app_nil_end; easy. Qed.
+Next Obligation. rewrite <- app_nil_r; easy. Qed.
 Next Obligation. rewrite app_assoc; easy. Qed.
 
 

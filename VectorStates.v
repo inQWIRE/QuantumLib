@@ -67,7 +67,7 @@ Proof.
   induction n; simpl.
   - Msimpl_light. reflexivity.
   - replace (2^n + (2^n + 0)) with (2^n * 2) by lia.
-    replace (1^n + 0) with (1*1) by (rewrite Nat.pow_1_l, plus_0_r; lia). 
+    replace (1^n + 0) with (1*1) by (rewrite Nat.pow_1_l, Nat.add_0_r; lia). 
     rewrite Nat.pow_1_l.
     rewrite kron_mixed_product.
     rewrite <- IHn.
@@ -152,23 +152,23 @@ Proof. intros. destruct x,y; lma'. Qed.
 (* Automation *)
 
 (* General matrix rewrites *)
-Hint Rewrite bra0_equiv bra1_equiv ket0_equiv ket1_equiv : ket_db.
-Hint Rewrite bra0ket0 bra0ket1 bra1ket0 bra1ket1 : ket_db.
-Hint Rewrite Mmult_plus_distr_l Mmult_plus_distr_r kron_plus_distr_l kron_plus_distr_r Mscale_plus_distr_r : ket_db.
-Hint Rewrite Mscale_mult_dist_l Mscale_mult_dist_r Mscale_kron_dist_l Mscale_kron_dist_r : ket_db.
-Hint Rewrite Mscale_assoc @Mmult_assoc : ket_db.
-Hint Rewrite Mmult_1_l Mmult_1_r kron_1_l kron_1_r Mscale_0_l Mscale_0_r Mscale_1_l Mplus_0_l Mplus_0_r using (auto with wf_db) : ket_db.
-Hint Rewrite kron_0_l kron_0_r Mmult_0_l Mmult_0_r : ket_db.
-Hint Rewrite @kron_mixed_product : ket_db.
+#[global] Hint Rewrite bra0_equiv bra1_equiv ket0_equiv ket1_equiv : ket_db.
+#[global] Hint Rewrite bra0ket0 bra0ket1 bra1ket0 bra1ket1 : ket_db.
+#[global] Hint Rewrite Mmult_plus_distr_l Mmult_plus_distr_r kron_plus_distr_l kron_plus_distr_r Mscale_plus_distr_r : ket_db.
+#[global] Hint Rewrite Mscale_mult_dist_l Mscale_mult_dist_r Mscale_kron_dist_l Mscale_kron_dist_r : ket_db.
+#[global] Hint Rewrite Mscale_assoc @Mmult_assoc : ket_db.
+#[global] Hint Rewrite Mmult_1_l Mmult_1_r kron_1_l kron_1_r Mscale_0_l Mscale_0_r Mscale_1_l Mplus_0_l Mplus_0_r using (auto with wf_db) : ket_db.
+#[global] Hint Rewrite kron_0_l kron_0_r Mmult_0_l Mmult_0_r : ket_db.
+#[global] Hint Rewrite @kron_mixed_product : ket_db.
 
 (* Quantum-specific identities *)
-Hint Rewrite H0_spec H1_spec Hplus_spec Hminus_spec X0_spec X1_spec Y0_spec Y1_spec
+#[global] Hint Rewrite H0_spec H1_spec Hplus_spec Hminus_spec X0_spec X1_spec Y0_spec Y1_spec
      Z0_spec Z1_spec phase0_spec phase1_spec : ket_db.
-Hint Rewrite CNOT00_spec CNOT01_spec CNOT10_spec CNOT11_spec SWAP_spec : ket_db.
+#[global] Hint Rewrite CNOT00_spec CNOT01_spec CNOT10_spec CNOT11_spec SWAP_spec : ket_db.
 
 Lemma ket2bra : forall n, (ket n) † = bra n. 
 Proof. destruct n; reflexivity. Qed.
-Hint Rewrite ket2bra : ket_db.
+#[global] Hint Rewrite ket2bra : ket_db.
 
 (* TODO: add transpose and adjoint lemmas to ket_db? *)
 Lemma ket0_transpose_bra0 : (ket 0) ⊤ = bra 0.
@@ -445,7 +445,7 @@ Proof.
   reflexivity.
   exists j.
   repeat split; trivial.
-  rewrite <- 2 beq_nat_refl; simpl; lca.
+  rewrite 2 Nat.eqb_refl; simpl; lca.
   intros j' Hj.
   bdestruct_all; auto. 
   all : intros; simpl; try lca.
@@ -646,7 +646,7 @@ Proof.
   repeat rewrite Nat.add_0_r.
   rewrite <- Nat.add_succ_l.
   replace (S (2 ^ n - 1)) with (1 + (2 ^ n - 1)) by easy.
-  rewrite <- le_plus_minus.
+  rewrite <- le_plus_minus'.
   rewrite <- Nat.add_sub_assoc.
   reflexivity.
   all: induction n; simpl; try lia.
@@ -1174,8 +1174,8 @@ Qed.
 
 Local Close Scope R_scope.
 
-Hint Rewrite f_to_vec_cnot f_to_vec_σx f_to_vec_phase_shift using lia : f_to_vec_db.
-Hint Rewrite (@update_index_eq bool) (@update_index_neq bool) (@update_twice_eq bool) (@update_same bool) using lia : f_to_vec_db.
+#[global] Hint Rewrite f_to_vec_cnot f_to_vec_σx f_to_vec_phase_shift using lia : f_to_vec_db.
+#[global] Hint Rewrite (@update_index_eq bool) (@update_index_neq bool) (@update_twice_eq bool) (@update_same bool) using lia : f_to_vec_db.
 
 
 (*******************************)
@@ -1605,7 +1605,8 @@ Qed.
 Lemma product_0 : forall f n, product (fun _ : nat => false) f n = false.
 Proof.
   intros f n.
-  induction n; simpl; auto.
+  induction n; simpl.
+  reflexivity.
   rewrite IHn; reflexivity.
 Qed.
 
@@ -1729,8 +1730,8 @@ Proof.
   rewrite Mscale_vkron_distr_r.
   apply f_equal2.  
   repeat rewrite <- RtoC_inv by nonzero.
-  rewrite RtoC_pow. 
-  rewrite <- Rinv_pow by nonzero. 
+  rewrite RtoC_pow.
+  rewrite pow_inv by nonzero.
   rewrite <- sqrt_pow by lra. 
   reflexivity.
   apply vkron_to_vsum2.

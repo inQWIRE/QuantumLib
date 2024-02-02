@@ -316,8 +316,8 @@ Ltac by_cell :=
   let Hi := fresh "Hi" in 
   let Hj := fresh "Hj" in 
   intros i j Hi Hj; try solve_end;
-  repeat (destruct i as [|i]; simpl; [|apply Nat.succ_lt_mono in Hi]; try solve_end); clear Hi;
-  repeat (destruct j as [|j]; simpl; [|apply Nat.succ_lt_mono in Hj]; try solve_end); clear Hj.
+  repeat (destruct i as [|i]; simpl; [|apply <- Nat.succ_lt_mono in Hi]; try solve_end); clear Hi;
+  repeat (destruct j as [|j]; simpl; [|apply <- Nat.succ_lt_mono in Hj]; try solve_end); clear Hj.
 
 Ltac lgma' :=
   apply genmat_equiv_eq;
@@ -3639,7 +3639,7 @@ Proof. intros.
        simpl.  
        autorewrite with R_db.
        rewrite Rmult_comm.
-       rewrite Rinv_mult_distr; try easy. 
+       rewrite Rinv_mult; try easy. 
        rewrite <- Rmult_comm.
        rewrite <- Rmult_assoc.
        rewrite Rinv_r; try easy.
@@ -3648,7 +3648,7 @@ Proof. intros.
        unfold Cinv.
        simpl. 
        autorewrite with R_db.
-       rewrite Rinv_mult_distr; try easy. 
+       rewrite Rinv_mult; try easy. 
        rewrite <- Rmult_assoc.
        rewrite Rinv_r; try easy.
        autorewrite with R_db.
