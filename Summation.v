@@ -2837,7 +2837,7 @@ Ltac solve_comm_ring :=
        end
   end.
 
-
+ 
   
 
 Lemma test_scr1 : forall {R} `{Comm_Ring R} a b c d,
@@ -2858,10 +2858,50 @@ Lemma test_scr4 : forall {R} `{Comm_Ring R} a b,
     - (a * b) = a * (-b).
 Proof. intros. solve_comm_ring; auto. Qed.
 
+(*
+(* fail if not equal, go to next thing if equal *)
+Ltac test_equal e e' :=
+  let H = fresh in
+  try to generate a proof that they are equal 
 
-Lemma test_scr5 : forall {R} `{Comm_Ring R} (a : R) (x : nat) (f : R -> R) (u : nat -> nat -> R),
-  f (u x O) * a = a * f (u x O).
-Proof. intros. 
+
+Ltac intern' vars e :=
+  let rec loop n vars' :=
+    match vars' with
+    | [] =>
+      let vars'' := eval simpl in (vars ++ [e]) in
+      constr:((n, vars''))
+    | e' :: ?vars'' => (* add tactic test_equal here which tests equality via reflexivity, taking advantage of if a branch fails, Ltac goes to next line, so if equality test fails, then goes to next line. *)
+        constr:((n, vars))
+    | _ :: ?vars'' => loop (S n) vars''
+    end in
+  loop O vars.
+*)
+
+Lemma test_scr5 : forall {R} `{Comm_Ring R} (u : nat -> R),
+  u 0 = u 0.
+Proof. intros.
+       
+  match goal with
+  | [ |- @eq ?G ?re1 ?re2 ] =>
+      let r1 := reify_crexp (@nil G) re1 in
+      match r1 with 
+      | (?qe1, ?vars) =>
+          let r2 := reify_crexp vars re2 in
+          match r2 with
+          | (?qe2, ?vars') => 
+              replace (eq re1) with (eq (crdenote vars' qe1)) by (apply f_equal; easy); 
+              symmetry;
+              replace (eq re2) with (eq (crdenote vars' qe2)) by (apply f_equal; easy); 
+              symmetry
+              
+          end
+       end
+  end.
+
+
+
+       
        solve_comm_ring.
        auto. 
 Qed.

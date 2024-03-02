@@ -6,7 +6,6 @@ Require Export Complex.
 Require Export Quantum. 
 Require Import FTA.
 
-
 (****************************)
 (** * Proving some indentities *)
 (****************************)
@@ -25,7 +24,7 @@ Lemma Y_eq_iXZ : σy = Ci .* σx × σz. Proof. lma'. Qed.
 Lemma H_eq_Hadjoint : hadamard† = hadamard. Proof. lma'. Qed.
 
 
-Hint Rewrite Y_eq_iXZ H_eq_Hadjoint : Q_db.
+#[export] Hint Rewrite Y_eq_iXZ H_eq_Hadjoint : Q_db.
 
 Lemma ItimesIid : I 2 × I 2 = I 2. Proof. lma'. Qed.      
 Lemma XtimesXid : σx × σx = I 2. Proof. lma'. Qed.      
@@ -33,7 +32,7 @@ Lemma YtimesYid : σy × σy = I 2. Proof. lma'. Qed.
 Lemma ZtimesZid : σz × σz = I 2. Proof. lma'. Qed.
 Lemma HtimesHid : hadamard × hadamard = I 2. Proof. lma'; Hhelper. Qed.
 
-Hint Rewrite ItimesIid XtimesXid YtimesYid ZtimesZid HtimesHid : Q_db.
+#[export] Hint Rewrite ItimesIid XtimesXid YtimesYid ZtimesZid HtimesHid : Q_db.
 
 Lemma ZH_eq_HX : σz × hadamard = hadamard × σx. Proof. lma'. Qed.
 Lemma XH_eq_HZ : σx × hadamard = hadamard × σz. Proof. lma'. Qed.
@@ -46,7 +45,7 @@ Lemma cnotX2 : cnot × (I 2 ⊗ σx) = (I 2 ⊗ σx) × cnot. Proof. lma'. Qed.
 Lemma cnotZ1 : cnot × (σz ⊗ I 2) = (σz ⊗ I 2) × cnot. Proof. lma'. Qed.
 Lemma cnotZ2 : cnot × (I 2 ⊗ σz) = (σz ⊗ σz) × cnot. Proof. lma'. Qed.
 
-Hint Rewrite ZH_eq_HX XH_eq_HZ SX_eq_YS SZ_eq_ZS cnotX1 cnotX2 cnotZ1 cnotZ2 : Q_db.
+#[export] Hint Rewrite ZH_eq_HX XH_eq_HZ SX_eq_YS SZ_eq_ZS cnotX1 cnotX2 cnotZ1 cnotZ2 : Q_db.
 
 
 (*******************************)
@@ -309,7 +308,7 @@ Proof. intros.
        rewrite H0; easy.
 Qed.
      
-Lemma exists_eigenvector : forall (n : nat) (A : Square (S n)),
+Theorem exists_eigenvector : forall (n : nat) (A : Square (S n)),
   WF_Matrix A -> 
   exists (c : C) (v : Vector (S n)), WF_Matrix v /\ v <> Zero /\ A × v = c.* v.
 Proof. intros. 
@@ -328,7 +327,8 @@ Proof. intros.
        rewrite <- H4.
        lma. 
 Qed.
-    
+
+
 (************************************)
 (** * Lemmas relating to forming bases *)
 (************************************)
@@ -481,6 +481,10 @@ Qed.
 (*****************************************************************************************)
 (** * Defining and verifying the gram_schmidt algorythm and proving v can be part of an onb *)
 (*****************************************************************************************)
+
+(** TODO: do this whole section again by proving QR factorization, should be easier and more 
+    general. Specifically, you should be able to give a formula for R^{-1} so then AR^{-1} = Q 
+ *)
 
 
 (* proj of v onto u *)
