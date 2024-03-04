@@ -1738,8 +1738,8 @@ Proof. intros.
        simpl. autorewrite with R_db.  
        replace (Cmod (T 0%nat (S x)) * Cmod (T 0%nat (S x)))%R with (Rsqr (Cmod (T 0%nat (S x)))).
        apply Rle_0_sqr.
-       unfold Rsqr; easy.
-       apply PeanoNat.lt_S_n in H3.
+       unfold Rsqr; easy. 
+       apply Nat.succ_lt_mono in H3.
        easy.
 Qed.
 
