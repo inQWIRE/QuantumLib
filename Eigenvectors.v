@@ -709,8 +709,8 @@ Qed.
 
 Lemma WF_gsui : forall {n} (T : Square n) i, 
   i < n -> WF_Matrix T -> WF_Matrix (gram_schmidt_until_i T i).
-Proof. induction i; intros. 
-       auto with wf_db.
+Proof. induction i; intros.
+       simpl; auto with wf_db.
        simpl. 
        apply WF_mult.
        apply IHi; auto; lia.
@@ -1739,8 +1739,8 @@ Proof. intros.
        replace (Cmod (T 0%nat (S x)) * Cmod (T 0%nat (S x)))%R with (Rsqr (Cmod (T 0%nat (S x)))).
        apply Rle_0_sqr.
        unfold Rsqr; easy.
-       apply Arith_prebase.lt_S_n in H3.
-       easy. 
+       apply PeanoNat.lt_S_n in H3.
+       easy.
 Qed.
 
 (* this is the crucial step of Schur for => spectral theorem *)

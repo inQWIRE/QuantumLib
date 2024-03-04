@@ -1316,7 +1316,8 @@ Lemma sub_mul_mod :
     (x - y * z) mod z = x mod z.
 Proof.
   intros. bdestruct (z =? 0). subst. simpl. lia.
-  specialize (le_plus_minus_r (y * z) x H) as G.
+  specialize (Nat.sub_add (y * z) x H) as G.
+  rewrite Nat.add_comm in G.
   remember (x - (y * z)) as r.
   rewrite <- G. rewrite <- Nat.add_mod_idemp_l by easy. rewrite Nat.mod_mul by easy.
   easy.
