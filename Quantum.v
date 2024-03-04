@@ -1152,9 +1152,22 @@ Proof.
   lma.
 Qed.
 
+Lemma pad1_unitary : forall (n : nat) (c : C) (A : Square n),
+  WF_Unitary A ->
+  (c * c ^*)%C = C1 ->
+  WF_Unitary (pad1 A c).
+Proof. intros.
+       split.
+       destruct H; auto with wf_db.
+       rewrite pad1_adjoint, <- pad1_mult.
+       destruct H.
+       rewrite H1, Cmult_comm, H0, pad1_I. 
+       easy.
+Qed.
+
 
 #[export] Hint Resolve transpose_unitary cnot_unitary notc_unitary id_unitary : unit_db.
-#[export] Hint Resolve swap_unitary zero_not_unitary kron_unitary big_kron_unitary big_kron_unitary' Mmult_unitary scale_unitary : unit_db.
+#[export] Hint Resolve swap_unitary zero_not_unitary kron_unitary big_kron_unitary big_kron_unitary' Mmult_unitary scale_unitary pad1_unitary : unit_db.
 
 
 

@@ -1,4 +1,5 @@
 Require Export Pad.
+Require Export CauchySchwarz.
 
 (* This file provides abstractions for describing quantum states as vectors.
    - f_to_vec describes classical states as boolean functions
@@ -1310,7 +1311,6 @@ Lemma WF_vkron : forall n (f : nat -> Vector 2),
 Proof.
   intros. 
   induction n; simpl; auto with wf_db.
-  apply WF_kron; auto. lia.
 Qed.
 #[export] Hint Resolve WF_vkron: wf_db.
 
