@@ -1184,6 +1184,28 @@ Proof. reflexivity. Qed.
 
 (* Maybe change to "Hermitian?" *)
 
+
+(* same as WF + self_adjoint, but will keep all the below lemmas which are used elsewhere *)
+Definition WF_Hermitian {n} (A : Square n) :=
+  WF_Matrix A /\ A† = A.
+
+
+Lemma plus_hermitian : forall {n} (A B : Square n),  
+  WF_Hermitian A -> WF_Hermitian B ->
+  WF_Hermitian (A .+ B).
+Proof. intros n A B [H H0] [H1 H2].
+       split; auto with wf_db.
+       rewrite Mplus_adjoint, H0, H2.
+       easy.
+Qed.
+
+Lemma I_hermitian : forall {n}, WF_Hermitian (I n).
+Proof. intros.
+       split; auto with wf_db.
+       apply id_adjoint_eq.
+Qed.
+
+
 Definition id_sa := id_adjoint_eq.
 
 Lemma hadamard_sa : hadamard† = hadamard.
@@ -1290,6 +1312,10 @@ Proof. solve_matrix. Qed.
 Lemma notc_decomposition : σx ⊗ ∣1⟩⟨1∣ .+ I 2 ⊗ ∣0⟩⟨0∣ = notc.
 Proof. solve_matrix. Qed.                                               
 
+
+
+
+
 (*********************)
 (** ** Phase Lemmas **)
 (*********************)
@@ -1387,8 +1413,23 @@ Qed.
 (* Positive Semidefiniteness *)
 (*****************************)
 
+(* TODO: should unify this def with the newly defined inner_product *)
 Definition positive_semidefinite {n} (A : Square n) : Prop :=
   forall (z : Vector n), WF_Matrix z -> fst ((z† × A × z) O O) >= 0.  
+
+Lemma positive_semidefinite_unitary_conj : forall {n} (A U : Square n),
+  WF_Unitary U ->
+  positive_semidefinite A ->
+  positive_semidefinite (U† × A × U).
+Proof. intros. 
+       unfold positive_semidefinite in *.
+       intros. 
+       replace ((z) † × ((U) † × A × U) × z) with (((z) † × (U†)) × A × (U × z)).
+       rewrite <- Mmult_adjoint.
+       apply H0.
+       destruct H; auto with wf_db.
+       repeat rewrite Mmult_assoc; easy.
+Qed.
 
 Lemma pure_psd : forall (n : nat) (ϕ : Vector n), (WF_Matrix ϕ) -> positive_semidefinite (ϕ × ϕ†). 
 Proof.

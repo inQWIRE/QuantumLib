@@ -2430,8 +2430,30 @@ Proof. intros.
          lca.
 Qed.    
 
+Lemma matrix_by_basis_adjoint : forall {m n} (T : Matrix m n) (i : nat),
+  i < m -> 
+  get_row T i = (e_i i)† × T.
+Proof. intros. 
+       unfold get_row, e_i, Mmult, adjoint.
+       prep_matrix_equality.
+       bdestruct (x =? 0). 
+       - rewrite (big_sum_unique (T i y) _ m); try easy.
+         exists i. split.
+         apply H. split.
+         bdestruct (i =? i); bdestruct (i <? m); try lia; simpl; lca.  
+         intros.
+         bdestruct (x' =? i); try lia; simpl; lca. 
+       - rewrite big_sum_0; try reflexivity.
+         intros. rewrite andb_false_r. 
+         lca.
+Qed.    
 
-
+Lemma get_entry_with_e_i : forall {m n} (T : Matrix m n) (i j : nat),
+  i < m -> j < n ->
+  T i j = ((e_i i)† × T × (e_i j)) O O.
+Proof. intros.
+       rewrite <- matrix_by_basis_adjoint, <- matrix_by_basis; auto.
+Qed.
 
 
 (** * Lemmas related to 1pad *)
@@ -2816,8 +2838,6 @@ Qed.
 (***********************************************************)
 
 
-
-
 Fixpoint parity (n : nat) : C := 
   match n with 
   | 0 => C1
@@ -2853,7 +2873,6 @@ Proof. intros.
        - rewrite plus_Sn_m, parity_S, parity_S, IHn. 
          ring. 
 Qed.
-
 
 
 

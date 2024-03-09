@@ -624,7 +624,6 @@ Proof.  intros.
         rewrite <- H' in H2. easy.
 Qed.
 
-
 Lemma Cinv_mult_distr : forall c1 c2 : C, c1 <> 0 -> c2 <> 0 -> / (c1 * c2) = / c1 * / c2.
 Proof.
   intros.
@@ -673,7 +672,17 @@ Proof. intros.
        apply nonzero_div_nonzero; auto.
 Qed.
 
-
+Lemma Cconj_eq_implies_real : forall c : C, c = Cconj c -> snd c = 0%R.
+Proof. intros. 
+       unfold Cconj in H.
+       apply (f_equal snd) in H.
+       simpl in H.
+       assert (H' : (2 * snd c = 0)%R).
+       replace (2 * snd c)%R with (snd c + (- snd c))%R by lra.
+       lra.
+       replace (snd c) with (/2 * (2 * snd c))%R by lra.
+       rewrite H'; lra.
+Qed.
 
 (** * some C big_sum specific lemmas *)
 

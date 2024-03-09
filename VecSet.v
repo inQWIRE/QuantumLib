@@ -1588,6 +1588,9 @@ Proof. intros.
        apply WF_adjugate.
 Qed.
 
+
+#[export] Hint Resolve WF_Minverse : wf_db.
+
 Lemma Mmult_Minverse_l : forall {n} (A : Square n),
   WF_Matrix A -> 
   Determinant A <> C0 ->
@@ -2239,13 +2242,74 @@ Proof. intros.
        rewrite Determinant_transpose_WF; auto with wf_db.
 Qed.
 
+(* TODO: move to Matrix.v if this would actually be useful somewhere else *)
+Definition Mconj {n} (A : Square n) : Square n := fun i j => (A i j)^*.
+
+Lemma adjoint_transpose : forall {n} (A : Square n), A† = Mconj (A⊤).
+Proof. intros. easy. Qed.
+
+Lemma Cconj_parity : forall x, parity x = parity x ^*.
+Proof. intros. 
+       induction x; try lca.
+       rewrite parity_S, Cconj_mult_distr, <- IHx. 
+       lca. 
+Qed.
+
+Lemma Mconj_det : forall {n} (A : Square n),
+  Determinant (Mconj A) = (Determinant A)^*.
+Proof. induction n; intros.
+       lca.
+       do 2 rewrite Det_simplify.
+       rewrite (@big_sum_func_distr C C _ _ _ C_is_group).
+       apply big_sum_eq_bounded; intros.
+       rewrite 2 Cconj_mult_distr.
+       apply f_equal_gen; try apply f_equal.
+       apply f_equal_gen; try apply f_equal.
+       apply Cconj_parity.
+       easy. 
+       rewrite <- IHn.
+       apply f_equal_gen; try apply f_equal; auto.
+       prep_matrix_equality.
+       unfold get_minor, Mconj.
+       bdestruct_all; easy.
+       intros.
+       lca.
+Qed.
+
+Lemma Mconj_adjugate : forall {n} (A : Square n),
+  adjugate (Mconj A) = Mconj (adjugate A).
+Proof. destruct n; intros.
+       prep_matrix_equality.
+       unfold Mconj; simpl; lca.
+       unfold adjugate, Mconj.
+       prep_matrix_equality.
+       bdestruct_all; simpl; try lca.
+       rewrite Cconj_mult_distr.
+       apply f_equal_gen; try apply f_equal.
+       apply Cconj_parity.
+       rewrite <- Mconj_det.
+       apply f_equal_gen; auto.
+       prep_matrix_equality. 
+       unfold get_minor, Mconj.
+       bdestruct_all; easy.
+Qed.       
+
+Corollary Determinant_adjoint : forall {n} (A : Square n), 
+  (Determinant A)^* = (Determinant A†).
+Proof. intros. 
+       rewrite adjoint_transpose, Mconj_det, Determinant_transpose.
+       easy.
+Qed.
 
 (** Now we get some results about the adjugate of a matrix *)
 
-Lemma adjugate_transpose : forall {n} (A : Square (S n)),
+Lemma adjugate_transpose : forall {n} (A : Square n),
   WF_Matrix A ->   
-  adjugate A⊤ = (adjugate A)⊤.
+  adjugate (A⊤) = (adjugate A)⊤.
 Proof. intros. 
+       destruct n.
+       prep_matrix_equality. 
+       unfold transpose; easy.
        apply mat_equiv_eq; auto with wf_db.
        unfold mat_equiv; intros.
        unfold adjugate.
@@ -2253,6 +2317,38 @@ Proof. intros.
        unfold transpose. 
        bdestruct_all; simpl.
        repeat (apply f_equal_gen; try lia); easy.
+Qed.
+
+Lemma adjugate_adjoint : forall {n} (A : Square n),
+  WF_Matrix A ->   
+  adjugate (A†) = (adjugate A)†.
+Proof. intros. 
+       rewrite adjoint_transpose, Mconj_adjugate, adjugate_transpose; auto.
+Qed.       
+
+Lemma Minverse_transpose : forall {n} (A : Square n),
+  WF_Matrix A ->   
+  Minverse (A⊤) = (Minverse A)⊤.
+Proof. intros.
+       unfold Minverse.
+       rewrite adjugate_transpose, <- Determinant_transpose; auto.
+Qed.
+
+Lemma Minverse_adjoint : forall {n} (A : Square n),
+  WF_Matrix A ->   
+  Minverse (A†) = (Minverse A)†.
+Proof. intros.
+       unfold Minverse.
+       rewrite adjugate_adjoint, <- Determinant_adjoint, Mscale_adj; auto.
+       apply f_equal_gen; try apply f_equal; auto.
+       remember (Determinant A) as a.
+       unfold Cconj, Cinv. 
+       apply c_proj_eq; simpl.
+       replace (- snd a * (- snd a * 1))%R with (snd a * (snd a * 1))%R by lra.
+       easy.
+       replace (- snd a * (- snd a * 1))%R with (snd a * (snd a * 1))%R by lra.
+       rewrite 2 Rdiv_unfold, Ropp_mult_distr_l.
+       easy.
 Qed.
 
 Theorem mult_by_adjugate_r : forall {n} (A : Square (S n)), 

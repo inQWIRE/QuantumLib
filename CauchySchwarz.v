@@ -1,7 +1,7 @@
 Require Import Psatz.  
 Require Import Reals.
   
-Require Export RowColOps.
+Require Export VecSet.
 
 
 Local Close Scope nat_scope.
@@ -43,6 +43,21 @@ Proof. intros.
        apply big_sum_eq_bounded; intros.
        lca.
 Qed.       
+
+Lemma inner_product_adjoint_r : forall {m n} (A : Matrix m n) (u : Vector m) (v : Vector n),
+  ⟨u, A × v⟩ = ⟨A† × u, v⟩.
+Proof. intros. 
+       unfold inner_product. 
+       rewrite Mmult_adjoint, adjoint_involutive, Mmult_assoc.
+       easy.
+Qed.
+
+Lemma inner_product_adjoint_l : forall {m n} (A : Matrix m n) (u : Vector n) (v : Vector m),
+  ⟨A × u, v⟩ = ⟨u, A† × v⟩.
+Proof. intros. 
+       rewrite inner_product_adjoint_r, adjoint_involutive. 
+       easy.
+Qed.
 
 Lemma inner_product_big_sum_l : forall {n} (u : Vector n) (f : nat -> Vector n) (k : nat),
   ⟨big_sum f k, u⟩ = big_sum (fun i => ⟨f i, u⟩) k.
@@ -204,6 +219,7 @@ Proof.
   apply Rmult_le_pos; apply Cmod_ge_0.
 Qed.
 
+
 (* why does sqrt_pos exist? *)
 Lemma norm_ge_0 : forall {d} (ψ : Vector d),
   (0 <= norm ψ)%R.
@@ -303,6 +319,34 @@ Proof. intros.
        apply norm_zero_iff_zero; auto.
 Qed.
 
+Corollary fst_inner_product_zero_iff_zero : forall {n} (v : Vector n),
+  WF_Matrix v -> ((fst ⟨v,v⟩) = 0%R <-> v = Zero).
+Proof. intros; split; intros. 
+       apply inner_product_zero_iff_zero; auto.
+       apply c_proj_eq; auto.
+       rewrite norm_real; auto.
+       apply inner_product_zero_iff_zero in H0; auto.
+       rewrite H0; easy.
+Qed.
+
+Corollary fst_inner_product_nonzero_iff_nonzero : forall {n} (v : Vector n),
+  WF_Matrix v -> ((fst ⟨v,v⟩) <> 0%R <-> v <> Zero).
+Proof. intros; split; intros;
+       contradict H0; apply fst_inner_product_zero_iff_zero; easy.
+Qed.
+
+Lemma nonzero_inner_product_gt_0 : forall {d} (ψ : Vector d),
+  WF_Matrix ψ -> ψ <> Zero ->
+  (0 < fst ⟨ψ,ψ⟩)%R.
+Proof.
+  intros.
+  assert (H' : forall r : R, (0 <= r -> r <> 0 -> 0 < r)%R).
+  intros; lra.
+  apply H'.
+  apply inner_product_ge_0.
+  apply fst_inner_product_nonzero_iff_nonzero; easy.
+Qed.
+
 (* useful in some scenarios and also does not require WF *)
 Corollary nonzero_entry_implies_nonzero_norm : forall {n} (v : Vector n) (i : nat),
   i < n -> v i 0 <> C0 -> norm v <> 0%R.
@@ -315,8 +359,6 @@ Proof. intros.
        unfold make_WF; bdestruct_all; easy.
        lca.
 Qed.
-
-
 
 Local Close Scope nat_scope.
 
@@ -363,10 +405,21 @@ Proof. intros.
        rewrite Rinv_r; try lra. 
 Qed.
 
+Lemma real_gt_0_aux : forall (a b c : R),
+  0 < a -> 0 < b -> (a = b * c)%R ->
+  0 < c.
+Proof. intros. 
+       replace c with (a * / b)%R.
+       apply Rlt_mult_inv_pos; auto.
+       subst.
+       replace (b * c * / b)%R with (b * /b * c)%R by lra.
+       rewrite Rinv_r; try lra. 
+Qed.
+
 Lemma Cauchy_Schwartz_ver1 : forall {n} (u v : Vector n),
   (Cmod ⟨u,v⟩)^2 <= (fst ⟨u,u⟩) * (fst ⟨v,v⟩).
-Proof. intros. 
-       destruct (Req_dec (fst ⟨v,v⟩) 0).
+Proof. intros.  
+       destruct (Req_dec (fst ⟨v,v⟩) 0). 
        - rewrite H. 
          rewrite inner_product_mafe_WF_l, inner_product_mafe_WF_r in H.
          rewrite inner_product_mafe_WF_r.
@@ -388,7 +441,7 @@ Qed.
 
 Lemma Cauchy_Schwartz_ver2 : forall {n} (u v : Vector n),
   (Cmod ⟨u,v⟩) <= norm u * norm v.
-Proof. intros. 
+Proof. intros.  
        rewrite <- (sqrt_pow2 (Cmod ⟨ u, v ⟩)), <- (sqrt_pow2 (norm v)), <- (sqrt_pow2 (norm u)).
        rewrite <- sqrt_mult.
        apply sqrt_le_1.
@@ -421,7 +474,6 @@ Proof. intros.
        destruct (u x 0%nat); unfold Cmod, pow, Cmult; simpl; lra. 
 Qed.
 
-
 Local Open Scope nat_scope.
 
 Lemma Cplx_Cauchy :
@@ -431,4 +483,91 @@ Proof. intros.
        assert (H := Cplx_Cauchy_vector n (fun i j => u i) (fun i j => v i)).
        simpl in *.
        easy. 
-Qed.       
+Qed.
+
+Local Close Scope nat_scope.
+
+
+Lemma Cauchy_Schwartz_strict_ver1 : forall {n} (u v : Vector n),
+  WF_Matrix u -> WF_Matrix v ->
+  (forall c d, c <> C0 \/ d <> C0 -> c .* u <> d .* v) ->
+  (Cmod ⟨u,v⟩)^2 < (fst ⟨u,u⟩) * (fst ⟨v,v⟩).
+Proof. intros.  
+       destruct (Req_dec (fst ⟨v,v⟩) 0). 
+       - apply fst_inner_product_zero_iff_zero in H2; auto.
+         assert (H' : C0 .* u = C1 .* v).
+         subst. lma.
+         apply H1 in H'.
+         easy.
+         right. 
+         apply C1_neq_C0.
+       - assert (H3 := CS_key_lemma u v).  
+         assert (H' : forall r, 0 <= r -> r <> 0 -> 0 < r). 
+         intros.  
+         lra.
+         apply real_gt_0_aux in H3.
+         lra.
+         apply H'.
+         apply inner_product_ge_0.
+         apply fst_inner_product_nonzero_iff_nonzero; auto with wf_db.
+         assert (H'' : ⟨ v, v ⟩ .* u <> ⟨ v, u ⟩ .* v).
+         { apply H1. 
+           left.
+           contradict H2.
+           rewrite H2; easy. }
+         contradict H''.
+         replace (⟨ v, u ⟩ .* v) with (⟨ v, u ⟩ .* v .+ Zero) by lma.
+         rewrite <- H''. 
+         lma. (* lma does great here! *)
+         apply H'; auto.
+         apply inner_product_ge_0.
+Qed.
+
+Lemma Cauchy_Schwartz_strict_ver2 : forall {n} (u v : Vector n),
+  WF_Matrix u -> WF_Matrix v ->
+  linearly_independent (smash u v) ->
+  Cmod ⟨u,v⟩ < norm u * norm v.
+Proof. intros.
+       rewrite <- (sqrt_pow2 (Cmod ⟨ u, v ⟩)), <- (sqrt_pow2 (norm v)), <- (sqrt_pow2 (norm u)).
+       rewrite <- sqrt_mult.
+       apply sqrt_lt_1.
+       all : try apply pow2_ge_0.
+       apply Rmult_le_pos.
+       all : try apply pow2_ge_0.
+       unfold norm.
+       rewrite pow2_sqrt, pow2_sqrt.
+       apply Cauchy_Schwartz_strict_ver1.
+       all : try apply inner_product_ge_0; try apply norm_ge_0; auto.
+       intros. 
+       apply Classical_Prop.or_not_and in H2.
+       contradict H2.
+       unfold linearly_independent in H1.
+       assert (H' : list2D_to_matrix [[c]; [-d]] = Zero).
+       apply H1.
+       apply WF_list2D_to_matrix; try easy.
+       intros. repeat (destruct H3; subst; try easy).
+       replace (@Mmult n (Init.Nat.add (S O) (S O)) (S O)  
+                       (smash u v) 
+                       (list2D_to_matrix [[c]; [-d]])) with (c .* u .+ (-d) .* v).
+       rewrite H2; lma.
+       apply mat_equiv_eq; auto with wf_db.
+       apply WF_mult; auto with wf_db.
+       apply WF_list2D_to_matrix; try easy.
+       intros. repeat (destruct H3; subst; try easy).
+       unfold mat_equiv; intros. 
+       unfold Mmult, smash, list2D_to_matrix, Mplus, scale; simpl.
+       destruct j; try lia.
+       lca.
+       unfold list2D_to_matrix in H'; simpl in H'.
+       split.
+       replace C0 with (@Zero 2%nat 1%nat 0%nat 0%nat) by easy. 
+       rewrite <- H'; easy.
+       replace d with (- (- d)) by lca.
+       replace (-d) with C0. lca.
+       replace C0 with (@Zero 2%nat 1%nat 1%nat 0%nat) by easy. 
+       rewrite <- H'; easy.
+       apply Cmod_ge_0.
+Qed.
+
+
+
