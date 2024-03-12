@@ -2235,15 +2235,6 @@ Definition normalize_diagonal {m n} (A : Matrix m n) : Square n :=
             | right _ => ((Cmod (A i j)) / (A i j))%C
             end else C0.
 
-Lemma Cinv_Cconj : forall c : C, (/ (c ^*) = (/ c) ^*)%C.
-Proof. intros. 
-       unfold Cinv, Cconj; simpl.
-       apply c_proj_eq; simpl; try lra.
-       apply f_equal. lra.
-       rewrite <- Rdiv_opp_l.
-       apply f_equal. lra.
-Qed.
-
 Lemma normalize_diagonal_unit : forall {m n} (A : Matrix m n),
   WF_Unitary (normalize_diagonal A).
 Proof. intros. 
@@ -2339,12 +2330,12 @@ Proof. intros.
        simpl; apply Cmod_ge_0.
        simpl; auto.
        destruct H'.
-       rewrite H1; try easy.
-       right; easy.
+       rewrite H1; simpl; try easy; try lra.
+       right. easy.
        destruct H'.
        rewrite H2.
        split.
-       all : try easy.
+       all : simpl; try lra; try easy.
 Qed.
 
 Theorem SVD : forall {m n} (A : Matrix m n),

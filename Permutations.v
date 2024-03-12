@@ -241,7 +241,7 @@ Proof. induction n.
          split; auto.
          intros. 
          destruct i; try lia.
-         easy.
+         lra.
        - intros.  
          destruct (IHn f) as [n0 [H H0] ]. 
          destruct (Rlt_le_dec (f n0) (f (S n))). 
@@ -262,7 +262,7 @@ Proof. induction n.
            apply H0 in H3.
            lra.
            bdestruct (i =? S n)%nat; try lia; subst.
-           easy.
+           lra.
 Qed.
 
 Lemma order_real_function : forall n (f : nat -> R), 
