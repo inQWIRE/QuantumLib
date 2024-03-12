@@ -41,7 +41,7 @@ Definition reduce_vecn {n} (v : Vector (S n)) : Vector n :=
              else v (1 + x) y.
 
 (* More specific form for squares *)
-Definition get_minor {n} (A : Square (S n)) (row col : nat) : Square n :=
+Definition get_minor {m n} (A : Matrix (S m) (S n)) (row col : nat) : Matrix m n :=
   fun x y => (if x <? row 
               then (if y <? col 
                     then A x y
@@ -248,7 +248,7 @@ Proof. intros.
        apply WF_reduce_row; try lia; try easy. 
 Qed.
 
-Lemma get_minor_is_redrow_redcol : forall {n} (A : Square (S n)) (row col : nat),
+Lemma get_minor_is_redrow_redcol : forall {m n} (A : Matrix (S m) (S n)) (row col : nat),
   get_minor A row col = reduce_col (reduce_row A row) col.
 Proof. intros. 
        prep_matrix_equality.
@@ -256,7 +256,7 @@ Proof. intros.
        bdestruct (x <? row); bdestruct (y <? col); try easy.
 Qed. 
 
-Lemma get_minor_is_redcol_redrow : forall {n} (A : Square (S n)) (row col : nat),
+Lemma get_minor_is_redcol_redrow : forall {m n} (A : Matrix (S m) (S n)) (row col : nat),
   get_minor A row col = reduce_row (reduce_col A col) row.
 Proof. intros. 
        prep_matrix_equality.
@@ -264,8 +264,8 @@ Proof. intros.
        bdestruct (x <? row); bdestruct (y <? col); try easy.
 Qed. 
 
-Lemma WF_get_minor : forall {n} (A : Square (S n)) (row col : nat),
-  row < S n -> col < S n -> WF_Matrix A -> WF_Matrix (get_minor A row col).
+Lemma WF_get_minor : forall {m n} (A : Matrix (S m) (S n)) (row col : nat),
+  row < S m -> col < S n -> WF_Matrix A -> WF_Matrix (get_minor A row col).
 Proof. intros.
        rewrite get_minor_is_redrow_redcol.
        apply WF_reduce_col; try easy.
@@ -568,7 +568,7 @@ Proof. intros. unfold get_col, Mmult.
          apply Cmult_0_r.
 Qed.
 
-Lemma det_by_get_col : forall {n} (A B : Square n),
+Lemma det_by_get_col : forall {m n} (A B : Matrix m n),
   (forall i, get_col A i = get_col B i) -> A = B.
 Proof. intros. prep_matrix_equality.
        rewrite <- get_col_conv.
@@ -1434,6 +1434,25 @@ Proof. intros.
 Qed.
        
 
+(* lemmas about operations w.r.t.involving adjoint *) 
+
+Lemma col_swap_adjoint : forall {m n} (T : Matrix m n) (x y : nat), 
+  col_swap (adjoint T) x y = adjoint (row_swap T x y).
+Proof. intros. 
+       unfold adjoint, col_swap, row_swap.
+       prep_matrix_equality.
+       bdestruct_all; easy.
+Qed.
+
+Lemma row_swap_adjoint : forall {m n} (T : Matrix m n) (x y : nat), 
+  row_swap (adjoint T) x y = adjoint (col_swap T x y).
+Proof. intros. 
+       unfold adjoint, col_swap, row_swap.
+       prep_matrix_equality.
+       bdestruct_all; easy.
+Qed.
+
+
 (*
 (** * building up machinery to undo scaling *)
 
@@ -2242,65 +2261,11 @@ Qed.
 
 
 
+
 (** proving lemmas about (I n) *)
 
-Lemma col_swap_mult_r : forall {m n} (A : Matrix m n) (x y : nat),
-  x < n -> y < n -> WF_Matrix A -> 
-  col_swap A x y = A × (row_swap (I n) x y).
-Proof. intros.
-       assert (H2 := (swap_preserves_mul A (row_swap (I n) x y) x y)).
-       rewrite <- (Mmult_1_r _ _ (col_swap A x y)); auto with wf_db.
-       rewrite H2; try easy.
-       rewrite <- (row_swap_inv (I n) x y).
-       reflexivity. 
-Qed.
 
-Lemma col_scale_mult_r : forall {m n} (A : Matrix m n) (x : nat) (a : C),
-  WF_Matrix A -> 
-  col_scale A x a = A × (row_scale (I n) x a).
-Proof. intros. 
-       rewrite scale_preserves_mul.
-       rewrite Mmult_1_r; auto with wf_db. 
-Qed.
-
-Lemma col_scale_many_mult_r : forall {m n} (A : Matrix m n) (as' : Matrix 1 n),
-  WF_Matrix A -> 
-  col_scale_many A as' = A × (row_scale_many (I n) (as'⊤)).
-Proof. intros. 
-       rewrite scale_many_preserves_mul.
-       rewrite Mmult_1_r; auto with wf_db. 
-Qed.
-
-
-Lemma col_add_mult_r : forall {m n} (A : Matrix m n) (x y : nat) (a : C),
-  x < n -> y < n -> WF_Matrix A -> 
-  col_add A x y a = A × (row_add (I n) y x a).
-Proof. intros. 
-       rewrite add_preserves_mul; auto.
-       rewrite Mmult_1_r; auto with wf_db. 
-Qed.
-
-Lemma col_add_many_mult_r : forall {m n} (A : Matrix m n) (v : Vector n) (col : nat),
-  WF_Matrix A -> WF_Matrix v -> col < n -> v col 0 = C0 ->
-  col_add_many A v col = A × (row_add_each (I n) v col).
-Proof. intros. 
-       rewrite col_add_many_preserves_mul; try easy.
-       rewrite Mmult_1_r; auto with wf_db.
-Qed.
-
-Lemma col_add_each_mult_r : forall {m n} (A : Matrix m n) (v : Matrix 1 n) (col : nat),
-  WF_Matrix A -> WF_Matrix v -> col < n -> v 0 col = C0 ->
-  col_add_each A v col = A × (row_add_many (I n) v col).
-Proof. intros. 
-       rewrite col_add_each_preserves_mul; try easy.
-       rewrite Mmult_1_r; auto with wf_db.
-Qed.
-
-
-  
-
-
-(* now we prove facts about the ops on (I n) *)
+(* first, facts about the ops on (I n) *)
 Lemma col_row_swap_invr_I : forall (n x y : nat), 
   x < n -> y < n -> col_swap (I n) x y = row_swap (I n) x y.
 Proof. intros. 
@@ -2349,6 +2314,74 @@ Proof. intros.
        rewrite <- (Mmult_1_r), <- col_add_each_preserves_mul, 
          Mmult_1_l; auto with wf_db. 
 Qed.
+
+
+(* Now to the column/row operations matrices!! *)
+Lemma col_swap_mult_r : forall {m n} (A : Matrix m n) (x y : nat),
+  x < n -> y < n -> WF_Matrix A -> 
+  col_swap A x y = A × (row_swap (I n) x y).
+Proof. intros.
+       assert (H2 := (swap_preserves_mul A (row_swap (I n) x y) x y)). 
+       rewrite <- (Mmult_1_r _ _ (col_swap A x y)); auto with wf_db.
+       rewrite H2; try easy.
+       rewrite <- (row_swap_inv (I n) x y).
+       reflexivity. 
+Qed.
+
+Lemma row_swap_mult_l : forall {m n} (A : Matrix m n) (x y : nat),
+  x < m -> y < m -> WF_Matrix A -> 
+  row_swap A x y = (col_swap (I m) x y) × A.
+Proof. intros.
+       assert (H2 := (swap_preserves_mul (row_swap (I m) x y) A x y)). 
+       rewrite <- (Mmult_1_l _ _ (row_swap A x y)); auto with wf_db.
+       rewrite col_row_swap_invr_I; auto.
+       rewrite H2; try easy.
+       rewrite <- col_row_swap_invr_I; auto.
+       rewrite <- (col_swap_inv (I m) x y).
+       reflexivity. 
+Qed.
+
+Lemma col_scale_mult_r : forall {m n} (A : Matrix m n) (x : nat) (a : C),
+  WF_Matrix A -> 
+  col_scale A x a = A × (row_scale (I n) x a).
+Proof. intros. 
+       rewrite scale_preserves_mul.
+       rewrite Mmult_1_r; auto with wf_db. 
+Qed.
+
+Lemma col_scale_many_mult_r : forall {m n} (A : Matrix m n) (as' : Matrix 1 n),
+  WF_Matrix A -> 
+  col_scale_many A as' = A × (row_scale_many (I n) (as'⊤)).
+Proof. intros. 
+       rewrite scale_many_preserves_mul.
+       rewrite Mmult_1_r; auto with wf_db. 
+Qed.
+
+
+Lemma col_add_mult_r : forall {m n} (A : Matrix m n) (x y : nat) (a : C),
+  x < n -> y < n -> WF_Matrix A -> 
+  col_add A x y a = A × (row_add (I n) y x a).
+Proof. intros. 
+       rewrite add_preserves_mul; auto.
+       rewrite Mmult_1_r; auto with wf_db. 
+Qed.
+
+Lemma col_add_many_mult_r : forall {m n} (A : Matrix m n) (v : Vector n) (col : nat),
+  WF_Matrix A -> WF_Matrix v -> col < n -> v col 0 = C0 ->
+  col_add_many A v col = A × (row_add_each (I n) v col).
+Proof. intros. 
+       rewrite col_add_many_preserves_mul; try easy.
+       rewrite Mmult_1_r; auto with wf_db.
+Qed.
+
+Lemma col_add_each_mult_r : forall {m n} (A : Matrix m n) (v : Matrix 1 n) (col : nat),
+  WF_Matrix A -> WF_Matrix v -> col < n -> v 0 col = C0 ->
+  col_add_each A v col = A × (row_add_many (I n) v col).
+Proof. intros. 
+       rewrite col_add_each_preserves_mul; try easy.
+       rewrite Mmult_1_r; auto with wf_db.
+Qed.
+
 
 
 
@@ -2555,7 +2588,7 @@ Proof. intros.
        destruct x; destruct y; easy.  
 Qed.
 
-Lemma get_minor_pad1 : forall {n : nat} (A : Square n) (c : C),
+Lemma get_minor_pad1 : forall {m n : nat} (A : Matrix m n) (c : C),
   A = get_minor (pad1 A c) 0 0.
 Proof. intros. 
        rewrite get_minor_is_redrow_redcol.
@@ -2880,7 +2913,8 @@ Fixpoint Determinant (n : nat) (A : Square n) : C :=
   match n with 
   | 0 => C1
   | S 0 => A 0 0
-  | S n' => (big_sum (fun i => (parity i) * (A i 0) * (Determinant n' (get_minor A i 0)))%C n)
+  | S n' => (big_sum (fun i => (parity i) * (A i 0) * 
+                                 (Determinant n' (get_minor A i 0)))%C n)
   end.
 
 Arguments Determinant {n}.
@@ -3082,7 +3116,7 @@ Proof. intros.
        apply big_sum_eq_bounded; intros. 
        apply big_sum_eq_bounded; intros. 
        replace (col_swap A O 1%nat x O) with (A x 1%nat) by easy. 
-       assert (H' : @get_minor (S n) (col_swap A O 1%nat) x O x0 O = A (skip_count x x0) O).
+       assert (H' : @get_minor (S n) (S n) (col_swap A O 1%nat) x O x0 O = A (skip_count x x0) O).
        { unfold get_minor, col_swap, skip_count. 
          simpl. bdestruct (x0 <? x)%nat; try easy. } 
        rewrite H'.    
@@ -3101,7 +3135,7 @@ Proof. intros.
        apply big_sum_eq_bounded; intros. 
        apply big_sum_eq_bounded; intros. 
        apply f_equal_gen; try apply f_equal; try easy. 
-       assert (H' : @get_minor (S n) A x 0 x0 0 = A (skip_count x x0) 1%nat).
+       assert (H' : @get_minor (S n) (S n) A x 0 x0 0 = A (skip_count x x0) 1%nat).
        { unfold get_minor, col_swap, skip_count. 
          simpl. bdestruct (x0 <? x); try easy. } 
        rewrite H'. 

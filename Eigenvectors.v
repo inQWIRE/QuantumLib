@@ -6,6 +6,7 @@ Require Export Complex.
 Require Export CauchySchwarz.
 Require Export Quantum. 
 Require Import FTA.
+Require Import Permutations.
 
 
 (****************************)
@@ -19,7 +20,7 @@ Ltac Hhelper :=
    unfold I;
    simpl;
    C_field_simplify;
-   try lca;
+   try lca; 
    C_field.
 
 Lemma Y_eq_iXZ : σy = Ci .* σx × σz. Proof. lma'. Qed.
@@ -67,7 +68,7 @@ Definition orthonormal {n m} (S : Matrix n m) : Prop :=
 Definition WF_Orthonormal {n m} (S : Matrix n m) : Prop := 
   WF_Matrix S /\ orthonormal S. 
 
-Lemma inner_product_is_mult : forall {n} (i j : nat) (S : Square n),
+Lemma inner_product_is_mult : forall {m n} (i j : nat) (S : Matrix m n),
   inner_product (get_col S i) (get_col S j) = (S† × S) i j.
 Proof. intros. unfold inner_product, get_col, Mmult, adjoint.
        apply big_sum_eq.
@@ -174,11 +175,11 @@ Qed.
 (** * We now define diagonal matrices and diagonizable matrices, proving basic lemmas *)
 (***********************************************************************************)
 
-Definition WF_Diagonal {n : nat} (A : Square n) : Prop := 
+Definition WF_Diagonal {m n : nat} (A : Matrix m n) : Prop := 
   WF_Matrix A /\ forall i j, i <> j -> A i j = C0.
 
 
-Lemma diag_Zero : forall n : nat, WF_Diagonal (@Zero n n).
+Lemma diag_Zero : forall m n : nat, WF_Diagonal (@Zero m n).
 Proof. intros n. split; auto with wf_db. Qed.
 
 Lemma diag_I : forall n : nat, WF_Diagonal (I n). 
@@ -212,10 +213,10 @@ Proof.
   rewrite H0, H2; try easy; lca.
 Qed.
 
-Lemma diag_mult : forall {n : nat} (A B : Square n), 
+Lemma diag_mult : forall {m n o : nat} (A : Matrix m n) (B : Matrix n o), 
   WF_Diagonal A -> WF_Diagonal B -> WF_Diagonal (A × B).
 Proof.
-  intros n A B [H H0] [H1 H2].
+  intros m n o A B [H H0] [H1 H2].
   split; auto with wf_db. 
   intros.
   unfold Mmult. 
@@ -225,6 +226,19 @@ Proof.
   + rewrite H2; try lia; lca. 
   + rewrite H0, Cmult_0_l.    
     reflexivity. auto.
+Qed.
+
+Lemma diag_pad1 : forall {m n} (A : Matrix m n) (c : C),
+  WF_Diagonal A <-> WF_Diagonal (pad1 A c).
+Proof. intros; split; intros; destruct H; split; auto with wf_db; intros.
+       destruct i; destruct j; auto; try lia.
+       unfold pad1, col_wedge, row_wedge, e_i, scale.
+       lca. 
+       rewrite pad1_conv, H0; auto.
+       eapply WF_pad1_conv.
+       apply H.
+       erewrite <- pad1_conv.
+       rewrite H0; auto.
 Qed.
 
 (* short lemma to prove diag_kron *)
@@ -364,16 +378,16 @@ Proof.
 Qed.
 
 Lemma diagble_switch : forall {n : nat} (A B X X' : Square n),
-  WF_Matrix A -> WF_Matrix B -> WF_Matrix X -> WF_Matrix X' -> 
+  WF_Matrix A -> WF_Matrix X -> WF_Matrix X' -> 
   X × X' = I n -> B = X × A × X' ->
   A = X' × B × X.
 Proof. intros. 
-       rewrite H4. 
+       rewrite H3. 
        repeat rewrite <- Mmult_assoc. 
-       apply Minv_flip in H3; auto.
-       rewrite H3, Mmult_1_l; auto.
+       apply Minv_flip in H2; auto.
+       rewrite H2, Mmult_1_l; auto.
        rewrite Mmult_assoc. 
-       rewrite H3, Mmult_1_r; auto. 
+       rewrite H2, Mmult_1_r; auto. 
 Qed.       
 
 (**************************************)
@@ -1275,7 +1289,7 @@ Proof. intros.
 Qed.
 
 
-Corollary unit_out_of_v : forall {n} (v : Vector n) (x : nat),
+Corollary unit_out_of_v : forall {n} (v : Vector n),
   WF_Matrix v -> v <> Zero -> 
   exists S : Square n, WF_Unitary S /\ get_col S 0 = normalize v.
 Proof. intros.
@@ -1528,24 +1542,40 @@ Proof. intros.
        lma. 
 Qed.
 
-
 (**************************************************)
 (** * Proving that every matrix has a Schur Decomposition *)
 (**************************************************)
 
-
-(* first, a helper def *)
-Definition first_col_e_i {n} (A : Square n) :=
+(* first, two helper defs *)
+Definition first_col_e_i {m n} (A : Matrix m n) :=
   forall i, 0 < i -> A i 0 = C0. 
 
-Lemma fce_pad1 : forall {n} (A : Square n) (a : C),
+Definition first_row_e_i {m n} (A : Matrix m n) :=
+  forall i, 0 < i -> A 0 i = C0. 
+
+Lemma fce_pad1 : forall {m n} (A : Matrix m n) (a : C),
   first_col_e_i (pad1 A a).
 Proof. intros. 
        unfold first_col_e_i, pad1, col_wedge, row_wedge, e_i, scale; intros.
        bdestruct_all; lca.
 Qed.
 
-Lemma fce_mult : forall {n} (A B : Square n),
+Lemma fre_pad1 : forall {m n} (A : Matrix m n) (a : C),
+  first_row_e_i (pad1 A a).
+Proof. intros. 
+       unfold first_row_e_i, pad1, col_wedge, row_wedge, e_i, scale; intros.
+       bdestruct_all; lca.
+Qed.
+
+Lemma frc_and_fre_pad1 : forall {m n} (A : Matrix m n) (a : C),
+  first_col_e_i (pad1 A a) /\ first_row_e_i (pad1 A a).
+Proof. intros.
+       split.
+       apply fce_pad1.
+       apply fre_pad1.
+Qed.
+
+Lemma fce_mult : forall {m n o} (A : Matrix m n) (B : Matrix n o),
   first_col_e_i A -> first_col_e_i B ->
   first_col_e_i (A × B).
 Proof. intros.
@@ -1560,7 +1590,33 @@ Proof. intros.
        lia.
 Qed.
 
-Lemma fce_get_minor_reduction : forall {n} (A B : Square (S n)),
+Lemma fre_mult : forall {m n o} (A : Matrix m n) (B : Matrix n o),
+  first_row_e_i A -> first_row_e_i B ->
+  first_row_e_i (A × B).
+Proof. intros.
+       unfold first_row_e_i, Mmult; intros.
+       rewrite big_sum_0_bounded; auto.
+       intros. 
+       destruct x.
+       rewrite H0; auto.
+       lca.
+       rewrite H. 
+       lca.
+       lia.
+Qed.
+
+Lemma fce_and_fre_mult : forall {m n o} (A : Matrix m n) (B : Matrix n o),
+  (first_col_e_i A /\ first_row_e_i A) -> 
+  (first_col_e_i B /\ first_row_e_i B) -> 
+  (first_col_e_i (A × B) /\ first_row_e_i (A × B)).
+Proof. intros.
+       destruct H; destruct H0.
+       split.
+       apply fce_mult; auto.
+       apply fre_mult; auto.
+Qed.
+
+Lemma fce_get_minor_reduction : forall {m n o} (A : Matrix (S m) (S n)) (B : Matrix (S n) (S o)),
   first_col_e_i A -> 
   get_minor (A × B) 0 0 = (get_minor A 0 0) × (get_minor B 0 0).
 Proof. intros. 
@@ -1576,7 +1632,33 @@ Proof. intros.
        easy.
 Qed.
 
-Lemma first_col_e_i_ver : forall {n} (A : Square n),
+Lemma fre_get_minor_reduction : forall {m n o} (A : Matrix (S m) (S n)) (B : Matrix (S n) (S o)),
+  first_row_e_i B -> 
+  get_minor (A × B) 0 0 = (get_minor A 0 0) × (get_minor B 0 0).
+Proof. intros. 
+       prep_matrix_equality.
+       unfold get_minor, Mmult.
+       bdestruct_all.
+       rewrite <- big_sum_extend_l.
+       rewrite H; try lia.
+       Csimpl.
+       apply big_sum_eq_bounded.
+       intros. 
+       bdestruct_all.
+       easy.
+Qed.
+
+Lemma first_col_e_i_ver_weak : forall {m n} (A : Matrix m n) (c : C),
+  WF_Matrix A -> get_col A 0 = c .* e_i 0 -> first_col_e_i A.
+Proof. intros. 
+       unfold first_col_e_i; intros.
+       rewrite <- (get_col_conv i 0).
+       rewrite H0.
+       unfold scale, e_i.
+       bdestruct_all; lca.
+Qed.       
+
+Lemma first_col_e_i_ver : forall {m n} (A : Matrix m n),
   WF_Matrix A -> (first_col_e_i A <-> get_col A 0 = A 0 0 .* e_i 0).
 Proof. intros. 
        split; intros.
@@ -1588,14 +1670,10 @@ Proof. intros.
          simpl.
          rewrite H0; try lia.
          lca.
-       - unfold first_col_e_i; intros.
-         rewrite <- (get_col_conv i 0).
-         rewrite H0.
-         unfold scale, e_i.
-         bdestruct_all; lca.
+       - eapply first_col_e_i_ver_weak; try apply H0; easy.
 Qed.
 
-Lemma first_entry_e_i : forall {n} (A : Square (S n)) (c : C),
+Lemma first_entry_e_i : forall {m n} (A : Matrix (S m) n) (c : C),
   get_col A 0 = c .* e_i 0 -> A 0 0 = c.
 Proof. intros. 
        rewrite <- (get_col_conv 0 0), H.
@@ -1604,7 +1682,7 @@ Proof. intros.
        lca.
 Qed.
 
-Lemma first_entry_e_i' : forall {n} (A : Square (S n)) (c : C),
+Lemma first_entry_e_i' : forall {m n} (A : Matrix (S m) n) (c : C),
   get_col A 0 = c .* e_i 0 -> 
   get_col A 0 = A 0 0 .* e_i 0.
 Proof. intros. 
@@ -1638,11 +1716,29 @@ Proof. intros.
        rewrite H; auto; lia.
 Qed.
 
+Lemma diagonal_reduction : forall {m n} (A : Matrix (S m) (S n)),
+  WF_Matrix A ->
+  (first_col_e_i A /\ first_row_e_i A) -> WF_Diagonal (get_minor A 0 0) -> 
+  WF_Diagonal A.
+Proof. intros. destruct H0. 
+       split; auto.
+       destruct H1.
+       intros. 
+       destruct j.
+       rewrite H0; auto; lia.
+       destruct i.
+       rewrite H2; auto; lia. 
+       replace (A (S i) (S j)) with (get_minor A 0 0 i j).
+       rewrite H3; auto; lia.
+       unfold get_minor.
+       bdestruct_all. easy.
+Qed.
+
+
 (* this proof works quite nicely on a higher level now that we have build up many matrix tools *)
 Lemma Schur_reduction_step : forall {n} (A : Square (S n)),
   WF_Matrix A ->
-  exists X, WF_Unitary X /\
-  (exists c : C, get_col (X†×A×X) 0 = c .* e_i 0).
+  exists X, WF_Unitary X /\ first_col_e_i (X†×A×X). 
 Proof. intros n A Hwf.
        destruct (exists_eigenvector _ A) as [c [v [H [H0 H1] ] ] ]; auto. 
        assert (H' := H0).
@@ -1652,10 +1748,10 @@ Proof. intros n A Hwf.
        assert (H5 : WF_Unitary T).
        apply unit_is_orthonormal; easy.
        split; auto.  
-       exists c.
+       apply (first_col_e_i_ver_weak _ c); auto with wf_db.
        rewrite matrix_by_basis; try lia. 
        apply (Mmult_cancel_l T); auto with wf_db.
-       apply unit_det_neq_0.
+       apply unit_det_neq_0.  
        apply unit_is_orthonormal.
        split; auto.
        repeat rewrite <- Mmult_assoc. 
@@ -1666,8 +1762,7 @@ Proof. intros n A Hwf.
        unfold normalize.
        rewrite Mscale_mult_dist_r, H1.
        lma'.
-Qed.
-
+Qed. 
 
 (* this one is also not too bad, once we have the obscure lemmas above *)
 Theorem Schur_form : forall {n} (A : Square n),
@@ -1679,18 +1774,16 @@ Proof. induction n; intros.
          rewrite Mmult_0_r.
          prep_matrix_equality.
          unfold I; bdestruct_all; easy.
-       - destruct (Schur_reduction_step A) as [X [H0 [c H1] ] ]; auto.
+       - destruct (Schur_reduction_step A) as [X [H0 H1] ]; auto.
          destruct (IHn (get_minor (X†×A×X) 0 0)) as [X' [H2 H3] ].
-         destruct H0; auto with wf_db.
+         destruct H0; auto with wf_db. 
          exists (X × pad1 X' C1).
          split.   
          apply Mmult_unitary; auto.
-         apply pad1_unitary; auto.
+         apply pad1_unitary; auto. 
          lca.
          rewrite Mmult_adjoint.
-         apply first_entry_e_i' in H1.
-         rewrite pad1_adjoint, 2 Mmult_assoc, <- (Mmult_assoc _ A), <- (Mmult_assoc _ X). 
-         apply first_col_e_i_ver in H1.
+         rewrite pad1_adjoint, 2 Mmult_assoc, <- (Mmult_assoc _ A), <- (Mmult_assoc _ X).
          apply upper_triangular_reduction.
          + repeat (apply fce_mult; try easy); apply fce_pad1.
          + rewrite 2 fce_get_minor_reduction; auto.
@@ -1698,7 +1791,6 @@ Proof. induction n; intros.
            rewrite <- Mmult_assoc.
            easy.
            apply fce_pad1.
-         + destruct H0; auto with wf_db.
 Qed.
 
 (* we need a few more lemmas, using the above machinery *)
@@ -1839,6 +1931,460 @@ Proof. intros.
        repeat (try split; auto with wf_db).
 Qed.
 
+
+(***************)
+(* Proving SVD *)
+(***************)
+
+
+(* TODO: Reorganize if necessary *)
+(* NB: the logic of the first few lemmas here seems a bit random, since I ended up using 
+   a different approach, so things are a bit piecemeal *)
+
+Local Open Scope R_scope.
+
+(** facts about Σ *)
+
+Definition WF_Nonnegative {m n} (A : Matrix m n) :=
+  WF_Matrix A /\ forall (i j : nat), (Re (A i j) >= 0 /\ Im (A i j) = 0)%R.
+
+Definition ordered_diag {m n} (Σ : Matrix m n) := 
+  (forall i j, (i < n)%nat -> (j <= i)%nat -> Cmod (Σ i i) <= Cmod (Σ j j)).
+
+Definition nonzero_cutoff {m n} (Σ : Matrix m n) (r : nat) := 
+  (r < n)%nat /\ (forall j, (j < r)%nat -> fst (Σ j j) <> 0) /\ (forall j, (r <= j)%nat -> fst (Σ j j) = 0).
+
+(*
+Definition WF_OrderedSigma {m n} (Σ : Matrix m n) := 
+  WF_Diagonal Σ /\ WF_Nonnegative Σ /\ 
+  (forall i j, (i < j)%nat -> fst (Σ i i) <= fst (Σ j j)).
+*)
+
+Corollary perm_mat_preserves_diag : forall {n} (D : Square n) f, 
+  WF_Diagonal D -> 
+  permutation n f ->
+  WF_Diagonal ((perm_mat n f)† × D × ((perm_mat n f))). 
+Proof. intros.
+       assert (H' : WF_Matrix (adjoint (perm_mat n f) × D × perm_mat n f)).
+       destruct H; auto with wf_db.
+       split; auto.
+       intros. 
+       bdestruct (i <? n); bdestruct (j <? n).
+       destruct H.
+       rewrite perm_mat_conjugate; auto.
+       apply H4.
+       contradict H1.
+       apply (permutation_is_injective n) in H1; auto.
+       all : rewrite H'; auto; lia.
+Qed.
+
+(* making order_real_function constructive should be doable...  
+   It probably even already exists *)
+Theorem unitary_orders_diagonal : forall {n} (S : Square n), 
+  WF_Diagonal S -> 
+  exists U, WF_Unitary U /\ WF_Diagonal (U† × S × U) /\ ordered_diag (U† × S × U).
+Proof. intros. 
+       destruct (order_real_function n (fun i => Cmod (S i i))) as [l [H0 H1] ].
+       exists ((perm_mat n (stack_fswaps Datatypes.id l))).
+       split. 
+       apply perm_mat_unitary.
+       apply stack_fswaps_permutation; auto; apply id_permutation.
+       split. 
+       apply perm_mat_preserves_diag; auto.
+       apply stack_fswaps_permutation; auto; apply id_permutation.
+       unfold ordered_diag; intros.
+       destruct H.
+       rewrite 2 perm_mat_conjugate; auto; try lia.
+       apply H1; try lia. 
+       all : apply stack_fswaps_permutation; auto; apply id_permutation.
+Qed.
+
+Lemma pos_semi_def_diag_implies_nonneg : forall {n} (A : Square n), 
+  WF_Diagonal A -> 
+  WF_Hermitian A ->
+  positive_semidefinite A ->
+  WF_Nonnegative A.
+Proof. intros.
+       destruct H.
+       split; auto; intros.
+       bdestruct (i =? j)%nat; subst. 
+       split.
+       bdestruct (j <? n)%nat.
+       rewrite get_entry_with_e_i; auto.
+       apply H1; auto with wf_db.
+       rewrite H. simpl; lra.
+       left; easy.
+       apply Cconj_eq_implies_real.
+       destruct H0.
+       replace ((A j j)^*) with ((A† j j)^* ).
+       unfold adjoint.
+       lca.
+       rewrite H3; easy.
+       rewrite H2; auto; split; simpl.
+       lra.
+       easy.
+Qed.
+
+Lemma AAadjoint_zero_implies_A_zero : forall {m n} (A : Matrix m n),
+  WF_Matrix A ->
+  A† × A = Zero -> A = Zero.
+Proof. intros. 
+       apply det_by_get_col.
+       intros.
+       bdestruct (i <? n).
+       replace (get_col Zero i) with (@Zero m 1%nat). 
+       apply inner_product_zero_iff_zero; auto with wf_db.
+       rewrite inner_product_is_mult, H0; easy.
+       unfold get_col, Zero. 
+       prep_matrix_equality.
+       bdestruct_all; easy.       
+       apply mat_equiv_eq; auto with wf_db.
+       unfold mat_equiv, get_col; intros.
+       bdestruct_all. 
+       rewrite H; auto.
+Qed.
+
+Lemma first_entry_nonzero_if_nonzero_spd : forall {n} (X U : Square n),
+  WF_Matrix X -> WF_Unitary U ->
+  WF_Hermitian X ->  
+  positive_semidefinite X -> 
+  WF_Diagonal (U† × X × U) -> 
+  ordered_diag (U† × X × U) ->
+  fst ((U† × X × U) O O) = 0 ->
+  X = Zero.
+Proof. intros. 
+       assert (H' : U†×X×U = Zero).
+       { apply mat_equiv_eq; auto with wf_db.
+         destruct H0; auto with wf_db.
+         unfold mat_equiv; intros. 
+         bdestruct (i =? j); subst.
+         assert (H'' : (U† × X × U) O O = C0).
+         apply c_proj_eq.
+         rewrite H5; easy.
+         apply pos_semi_def_diag_implies_nonneg in H3.
+         destruct H3.
+         destruct (H8 O O).
+         unfold Im in H10; easy.
+         rewrite <- (adjoint_involutive _ _ U).
+         replace (U†††) with (U†) by (rewrite adjoint_involutive; easy).
+         apply unit_conj_hermitian; auto; auto with unit_db.
+         apply positive_semidefinite_unitary_conj; auto.
+         unfold Zero; simpl.
+         apply Cmod_eq_0.
+         unfold ordered_diag in H4.
+         apply Rle_antisym.
+         replace 0 with (Cmod (((U) † × X × U) O O)).
+         apply H4; auto; lia.
+         rewrite H'', Cmod_0; easy.
+         apply Cmod_ge_0.
+         destruct H3.
+         rewrite H9; easy. }
+       symmetry in H'.
+       apply diagble_switch in H'.   
+       rewrite H', Mmult_0_r, Mmult_0_l; easy.
+       all : destruct H0; auto with wf_db.
+Qed.     
+
+Lemma AAadjoint_decomposition : forall {m n} (A : Matrix (S m) (S n)),
+  WF_Matrix A -> A <> Zero -> 
+  exists (V : Square (S n)), 
+    WF_Unitary V /\ WF_Diagonal ((V† × A†) × (A × V)) 
+    /\ fst (((V† × A†) × (A × V)) O O) <> 0%R.
+Proof. intros. 
+       destruct (Spectral_Theorem (A† × A)) as [U [H1 H2] ]; auto with wf_db.
+       distribute_adjoint.
+       rewrite adjoint_involutive.
+       lma.
+       destruct (unitary_orders_diagonal (U†×(A†×A)×U)) as [U' [H3 [H4 H5] ] ]; auto.
+       exists (U × U'). 
+       split; auto with unit_db.
+       split.
+       rewrite Mmult_adjoint.
+       repeat rewrite <- Mmult_assoc in *.
+       apply H4.
+       rewrite <- (Mmult_assoc _ A).
+       contradict H0. 
+
+       
+       apply AAadjoint_zero_implies_A_zero; auto.
+       apply (first_entry_nonzero_if_nonzero_spd _ (U × U')); auto with unit_db; auto with wf_db.
+       apply AadjointA_hermitian; auto.
+       apply positive_semidefinite_AadjointA; auto.
+       all : try rewrite Mmult_adjoint in *; repeat rewrite Mmult_assoc in *; try easy. 
+Qed.
+
+Lemma SVD_reduction_step : forall {m n} (A : Matrix (S m) (S n)),
+  WF_Matrix A ->
+  exists U V, WF_Unitary U /\ WF_Unitary V /\ 
+           first_col_e_i (U† × A × V) /\ first_row_e_i (U† × A × V).
+Proof. intros.
+       destruct (mat_equiv_dec Zero A).
+       - exists (I (S m)), (I (S n)).
+         split; auto with unit_db. 
+         split; auto with unit_db.
+         replace A with (@Zero (S m) (S n)).
+         rewrite Mmult_0_r, Mmult_0_l.
+         unfold first_col_e_i, first_row_e_i; split; intros; easy.
+         apply mat_equiv_eq; auto with wf_db.
+       - destruct (AAadjoint_decomposition A) as [V [H1 [H2 H3] ] ]; auto.
+         contradict n0.
+         rewrite n0; easy.
+         assert (H' : get_col (A × V) O <> Zero).
+         { apply fst_inner_product_nonzero_iff_nonzero.
+           destruct H1; auto with wf_db.
+           rewrite inner_product_is_mult.
+           rewrite Mmult_adjoint. 
+           easy. }
+         destruct (unit_out_of_v (get_col (A × V) O)) as [U [H4 H5] ].
+         destruct H1; auto with wf_db.
+         easy.
+         exists U, V.
+         split; auto; split; auto.
+         assert (H0' : WF_Matrix ((U) † × A × V)).
+         destruct H1; destruct H4; auto with wf_db.
+         split.  
+         assert (H1' : norm (get_col (A × V) 0) .* get_col U 0 = get_col (A × V) 0).
+         { rewrite H5.
+           unfold normalize.
+           rewrite Mscale_assoc, Cinv_r, Mscale_1_l; auto.
+           contradict H'.
+           apply RtoC_inj in H'.
+           apply norm_zero_iff_zero; auto.
+           destruct H1; auto with wf_db. }
+         + unfold first_col_e_i; intros. 
+           bdestruct (i <? S m).
+           2 : rewrite H0'; auto.
+           rewrite get_entry_with_e_i; try lia.
+           replace (adjoint (e_i i) × ((U) † × A × V) × e_i 0) with 
+             (adjoint (U × e_i i) × ((A × V) × e_i 0)).
+           apply unit_is_orthonormal in H4.
+           destruct H4; destruct H7; unfold orthogonal in H7. 
+           rewrite <- 2 matrix_by_basis; auto; try lia.
+           rewrite <- H1', Mscale_mult_dist_r.
+           unfold scale. 
+           unfold inner_product in H7. 
+           rewrite (H7 i O); try lia; lca.
+           rewrite Mmult_adjoint, <- 4 Mmult_assoc; easy.         
+         + unfold first_row_e_i; intros.
+           bdestruct (i <? S n).
+           2 : rewrite H0'; auto.
+           rewrite get_entry_with_e_i; try lia.
+           replace (adjoint (e_i 0) × ((U) † × A × V) × e_i i) with 
+             (adjoint (U × e_i 0) × ((A × V) × e_i i)).
+           rewrite <- 2 matrix_by_basis; auto; try lia.
+           rewrite H5.
+           unfold normalize.
+           rewrite Mscale_adj, Mscale_mult_dist_l.
+           unfold scale.
+           replace ((adjoint (get_col (A × V) O) × get_col (A × V) i) O O)
+             with (⟨ get_col (A × V) O, get_col (A × V) i ⟩) by easy.
+           rewrite inner_product_is_mult.
+           destruct H2.
+           rewrite Mmult_adjoint, H7; try lia; lca.
+           rewrite Mmult_adjoint, <- 4 Mmult_assoc; easy.         
+Qed.
+
+Lemma SVD_weak : forall {m n} (A : Matrix m n),
+  WF_Matrix A ->
+  exists (U : Square m) (V : Square n), 
+    WF_Unitary U /\ WF_Unitary V /\ WF_Diagonal (U†×A×V).
+Proof. induction m; intros.
+       - exists (I 0), (I n);
+         repeat (split; auto with unit_db). 
+         auto with wf_db.
+         intros. 
+         replace A with (@Zero 0 n).
+         rewrite Mmult_0_r, Mmult_0_l; easy.
+         prep_matrix_equality.
+         rewrite H; auto.
+         left; lia.
+       - destruct n.
+         exists (I (S m)), (I 0);
+         repeat (split; auto with unit_db). 
+         destruct (SVD_reduction_step A) as [U [V [H0 [H1 H2] ] ] ]; auto.
+         destruct (IHm n (get_minor (U†×A×V) 0 0)) as [U' [V' [H3 [H4 H5 ] ] ] ].
+         destruct H0; destruct H1; auto with wf_db.
+         exists (U × pad1 U' C1).
+         exists (V × pad1 V' C1). 
+         assert (H' :  WF_Unitary (U × pad1 U' C1)).
+         { apply Mmult_unitary; auto.
+           apply pad1_unitary; auto.
+           lca. }
+         assert (H0' :   WF_Unitary (V × pad1 V' C1)). 
+         { apply Mmult_unitary; auto.
+           apply pad1_unitary; auto.
+           lca. }
+         split; auto; split; auto.
+         destruct H'; destruct H0'.
+         apply diagonal_reduction; auto with wf_db.
+         rewrite Mmult_adjoint, pad1_adjoint, 2 Mmult_assoc, 
+           <- (Mmult_assoc _ A), <- (Mmult_assoc _ V).
+         repeat (apply fce_and_fre_mult; try apply frc_and_fre_pad1; try easy). 
+         rewrite Mmult_adjoint, pad1_adjoint, 2 Mmult_assoc, fce_get_minor_reduction; auto.
+         rewrite <- 2 Mmult_assoc, fre_get_minor_reduction; auto.
+         rewrite <- 2 get_minor_pad1. 
+         rewrite <- Mmult_assoc; easy.
+         apply fre_pad1.
+         apply fce_pad1.
+Qed.
+
+Definition normalize_diagonal {m n} (A : Matrix m n) : Square n :=
+  fun i j => if (i =? j) && (i <? n) then 
+            match (Ceq_dec (A i j) C0) with 
+            | left _ => C1
+            | right _ => ((Cmod (A i j)) / (A i j))%C
+            end else C0.
+
+Lemma Cinv_Cconj : forall c : C, (/ (c ^*) = (/ c) ^*)%C.
+Proof. intros. 
+       unfold Cinv, Cconj; simpl.
+       apply c_proj_eq; simpl; try lra.
+       apply f_equal. lra.
+       rewrite <- Rdiv_opp_l.
+       apply f_equal. lra.
+Qed.
+
+Lemma normalize_diagonal_unit : forall {m n} (A : Matrix m n),
+  WF_Unitary (normalize_diagonal A).
+Proof. intros. 
+       apply unit_is_orthonormal.
+       split. 
+       unfold WF_Matrix, normalize_diagonal; intros.
+       bdestruct_all; simpl; easy.
+       split.
+       unfold orthogonal, normalize_diagonal; intros. 
+       unfold inner_product, Mmult, adjoint, get_col.
+       rewrite big_sum_0_bounded; auto.
+       intros; simpl.
+       bdestruct_all; simpl; lca.
+       intros. 
+       unfold norm, get_col, inner_product, adjoint, Mmult; simpl.
+       rewrite (big_sum_unique C1).
+       simpl.
+       apply sqrt_1.
+       exists i; split; auto.
+       split.
+       unfold normalize_diagonal.
+       bdestruct_all; simpl.
+       destruct (Ceq_dec (A i i) 0); try lca.
+       unfold Cdiv. 
+       rewrite Cconj_mult_distr.
+       rewrite <- Cinv_Cconj.
+       replace ((Cmod (A i i)) ^*)%C with (RtoC (Cmod (A i i))).
+       replace (Cmod (A i i) * / (A i i) ^* * (Cmod (A i i) * / A i i))%C
+               with ((Cmod (A i i) * Cmod (A i i)) * ((/ (A i i)^* * / (A i i))))%C by lca.
+                Search (/ _ * / _)%C.
+      rewrite <- Cinv_mult_distr, <- Cmod_sqr; simpl.
+      rewrite Cmult_1_r, Cinv_r; auto.
+      apply Cmult_neq_0.
+      all : try (contradict n0; apply Cmod_eq_0; apply RtoC_inj in n0; auto). 
+      apply Cconj_neq_0; auto.
+      auto.
+      unfold Cconj, Cmod.
+      apply c_proj_eq; simpl; lra.
+      intros. 
+      unfold normalize_diagonal.
+      bdestruct_all; simpl.
+      lca.
+Qed.                
+
+Lemma normalize_diagonal_diagonal : forall {m n} (A : Matrix m n),
+  WF_Diagonal (normalize_diagonal A).
+Proof. intros. 
+       split.
+       apply normalize_diagonal_unit.
+       intros.
+       unfold normalize_diagonal.
+       bdestruct_all; simpl; easy.
+Qed.
+
+Lemma normalize_diagonal_diag_entry : forall {m n} (A : Matrix m n) (i : nat),
+  (i < n)%nat ->
+  (A × (normalize_diagonal A)) i i = Cmod (A i i).
+Proof. intros.   
+       unfold Mmult.
+       rewrite (big_sum_unique (RtoC (Cmod (A i i)))).
+       easy.
+       exists i.
+       split; auto.
+       split.
+       unfold normalize_diagonal.
+       bdestruct_all; simpl.
+       destruct (Ceq_dec (A i i) 0).
+       rewrite e, Cmod_0; simpl; lca. 
+       replace (A i i * (Cmod (A i i) / A i i))%C with 
+         ((A i i) * / (A i i) * (Cmod (A i i)))%C by lca.
+       rewrite Cinv_r; try lca; auto.
+       intros.
+       unfold normalize_diagonal.
+       bdestruct_all; simpl.
+       lca.
+Qed.
+
+Lemma normalize_diagonal_ver : forall {m n} (A : Matrix m n),
+  WF_Diagonal A ->
+  WF_Nonnegative (A × (normalize_diagonal A)).
+Proof. intros.   
+       assert (H' : WF_Diagonal (A × (normalize_diagonal A))).
+       { apply diag_mult; auto.
+         apply normalize_diagonal_diagonal. }
+       split. 
+       destruct H; destruct H'; auto with wf_db.
+       intros.
+       bdestruct (i =? j); subst. 
+       bdestruct (j <? n); subst. 
+       rewrite normalize_diagonal_diag_entry; auto.
+       split.
+       apply Rle_ge.
+       simpl; apply Cmod_ge_0.
+       simpl; auto.
+       destruct H'.
+       rewrite H1; try easy.
+       right; easy.
+       destruct H'.
+       rewrite H2.
+       split.
+       all : try easy.
+Qed.
+
+Theorem SVD : forall {m n} (A : Matrix m n),
+  WF_Matrix A ->
+  exists (U : Square m) (L : Matrix m n) (V : Square n), 
+    WF_Unitary U /\ WF_Unitary V /\ 
+      WF_Diagonal L /\ WF_Nonnegative L /\ 
+      A = U × L × V†. 
+Proof. intros. 
+       destruct (SVD_weak A) as [U [V [H0 [H1 H2] ] ] ]; auto.
+       destruct (normalize_diagonal_ver ((U) † × A × V)); auto. 
+       exists U, ((U) † × A × V × normalize_diagonal ((U) † × A × V)), 
+         (V × (normalize_diagonal (U† × A × V)) ). 
+       split; auto; split.
+       apply Mmult_unitary; try apply adjoint_unitary; auto.
+       apply normalize_diagonal_unit.
+       split. 
+       apply diag_mult; auto.
+       apply normalize_diagonal_diagonal.
+       split. 
+       apply normalize_diagonal_ver; auto.
+       distribute_adjoint.
+       rewrite <- 4 Mmult_assoc.
+       destruct H0.
+       apply Minv_flip in H5; auto with wf_db.       
+       rewrite H5, Mmult_1_l; auto with wf_db.
+       rewrite (Mmult_assoc (A × V)).
+       destruct (normalize_diagonal_unit (U† × A × V)).
+       apply Minv_flip in H7; auto with wf_db.
+       rewrite H7, Mmult_1_r; auto with wf_db.
+       destruct H1.
+       apply Minv_flip in H8; auto with wf_db.
+       rewrite Mmult_assoc, H8, Mmult_1_r; auto.
+       destruct H1.
+       auto with wf_db.
+Qed.       
+
+Local Open Scope C_scope.
+
+
 (***************************)
 (* Facts about eigenvalues *)
 (***************************)
@@ -1906,237 +2452,8 @@ Proof. intros.
 Qed.       
 
 
-(******************)
-(** * Proving SVD *)
-(******************)
-
-(* TODO: Reorganize if necessary *)
-
-
-Definition WF_Nonnegative {m n} (A : Matrix m n) :=
-  WF_Matrix A /\ forall (i j : nat), (Re (A i j) >= 0 /\ Im (A i j) = 0)%R.
-
-Definition sqrt_matrix {n} (L : Square n) : Square n := (fun i j => sqrt (fst (L i j))).
-  
-Lemma WF_sqrt_matrix : forall {n} (L : Square n), 
-  WF_Matrix L -> WF_Matrix (sqrt_matrix L).
-Proof. intros. 
-       unfold sqrt_matrix, WF_Matrix; intros.
-       rewrite H; auto; simpl.
-       rewrite sqrt_0.
-       easy.
-Qed.       
-
-Lemma sqrt_matrix_sqr : forall {n} (L : Square n),
-  WF_Diagonal L -> WF_Nonnegative L -> 
-  sqrt_matrix L × sqrt_matrix L = L.
-Proof. intros. 
-       destruct H; auto.
-       apply mat_equiv_eq.
-       apply WF_mult; apply WF_sqrt_matrix; auto.
-       easy.
-       unfold mat_equiv; intros. 
-       unfold Mmult.
-       bdestruct (i =? j)%nat; subst.
-       rewrite (big_sum_unique (L j j)); auto.
-       exists j; split; auto.
-       split.
-       unfold sqrt_matrix.
-       destruct H0.
-       destruct (H4 j j). 
-       rewrite <- RtoC_mult, sqrt_def.      
-       apply c_proj_eq; simpl; auto.
-       unfold Re in H5; lra.
-       intros. 
-       unfold sqrt_matrix.
-       repeat rewrite H1; auto.
-       simpl.
-       rewrite sqrt_0; lca.
-       rewrite H1; auto.
-       rewrite big_sum_0_bounded; auto.
-       intros.
-       unfold sqrt_matrix.
-       bdestruct (i =? x)%nat. bdestruct (j =? x)%nat; try lia. 
-       rewrite (H1 x j); simpl; auto.
-       rewrite sqrt_0; lca.
-       rewrite (H1 i x); simpl; auto.
-       rewrite sqrt_0; lca.
-Qed.
-
-Lemma sqrt_matrix_diag : forall {n} (L : Square n),
-  WF_Diagonal L -> WF_Diagonal (sqrt_matrix L).
-Proof. intros. 
-       destruct H; split.
-       apply WF_sqrt_matrix; auto.
-       intros. 
-       unfold sqrt_matrix.
-       rewrite H0; auto; simpl.
-       rewrite sqrt_0; lca.
-Qed.
-
-Lemma sqrt_matrix_nonneg : forall {n} (L : Square n),
-  WF_Diagonal L -> WF_Nonnegative L -> 
-  WF_Nonnegative (sqrt_matrix L).
-Proof. intros. 
-       destruct H0.
-       split. 
-       apply WF_sqrt_matrix; auto.
-       intros.
-       unfold sqrt_matrix.
-       split; simpl; auto.
-       apply Rle_ge.
-       apply sqrt_pos. 
-Qed.
-
-Lemma sqrt_matrix_det_neq_0 : forall {n} (L : Square n),
-  WF_Diagonal L -> WF_Nonnegative L -> 
-  Determinant L <> C0 ->
-  Determinant (sqrt_matrix L) <> C0.
-Proof. intros. 
-       contradict H1.
-       rewrite <- (sqrt_matrix_sqr L), <- Determinant_multiplicative; auto.
-       rewrite H1; lca. 
-Qed.
-
-Lemma pos_semi_def_diag_implies_nonneg : forall {n} (A : Square n), 
-  WF_Diagonal A -> 
-  WF_Hermitian A ->
-  positive_semidefinite A ->
-  WF_Nonnegative A.
-Proof. intros.
-       destruct H.
-       split; auto; intros.
-       bdestruct (i =? j)%nat; subst. 
-       split.
-       bdestruct (j <? n)%nat.
-       rewrite get_entry_with_e_i; auto.
-       apply H1; auto with wf_db.
-       rewrite H. simpl; lra.
-       left; easy.
-       apply Cconj_eq_implies_real.
-       destruct H0.
-       replace ((A j j)^*) with ((A† j j)^* ).
-       unfold adjoint.
-       lca.
-       rewrite H3; easy.
-       rewrite H2; auto; split; simpl.
-       lra.
-       easy.
-Qed.
-
-Lemma AAadjoint_decomposition : forall {m n} (A : Matrix m n),
-  WF_Matrix A -> 
-  exists (U L: Square m), 
-    WF_Unitary U /\ WF_Diagonal L /\ WF_Nonnegative L /\ A × A† = U × L × U†.
-Proof. intros. 
-       destruct (Spectral_Theorem (A × A†)) as [U [H0 H1] ].
-       auto with wf_db.
-       distribute_adjoint.
-       rewrite adjoint_involutive; lma.
-       exists U, (((U) † × (A × (A) †) × U)).
-       split; auto.
-       split; auto.
-       split.
-       apply pos_semi_def_diag_implies_nonneg; auto.
-       destruct H0.
-       split; auto with wf_db.
-       distribute_adjoint.
-       rewrite 2 adjoint_involutive, 3 Mmult_assoc; easy.
-       apply positive_semidefinite_unitary_conj; auto.
-       unfold positive_semidefinite; intros.
-       replace ((((z) † × (A × (A) †) × z) 0%nat 0%nat)) with 
-         (⟨ A† × z, A† × z⟩).
-       apply Rle_ge.
-       apply inner_product_ge_0.
-       unfold inner_product.
-       apply f_equal_gen; auto.
-       apply f_equal_gen; auto.
-       distribute_adjoint.
-       rewrite adjoint_involutive, 3 Mmult_assoc; easy.
-       destruct H0.
-       repeat rewrite Mmult_assoc.
-       apply Minv_flip in H2; auto with wf_db.
-       rewrite H2.
-       repeat rewrite <- Mmult_assoc.
-       rewrite H2.
-       rewrite Mmult_1_r, Mmult_1_l; auto with wf_db.
-Qed.
-
-(* this should be more general, i.e., for all matrices, but will require machinery that
-   is not yet developted, eg, completing an orthonormal vector set, not just a single vector. *)
-Lemma SVD_invertible : forall {n} (A : Square n), 
-  WF_Matrix A -> invertible A -> 
-  exists (U L V: Square n), 
-    WF_Unitary U /\ WF_Unitary V /\ WF_Diagonal L /\ WF_Nonnegative L /\ A = U × L × V.
-Proof. intros.  
-       destruct (AAadjoint_decomposition A) as [U [L [H1 [H2 [H3 H4] ] ] ] ]; auto.
-       exists U, (sqrt_matrix L), (Minverse (sqrt_matrix L) × U† × A). 
-       split; auto.
-       assert (H' : Determinant (sqrt_matrix L) <> C0). 
-       { apply sqrt_matrix_det_neq_0; auto.
-         destruct H3; destruct H1.
-         apply diagble_switch in H4; auto with wf_db.
-         rewrite H4, <- 3 Determinant_multiplicative.
-         repeat apply Cmult_neq_0.
-         rewrite <- Determinant_adjoint.
-         apply Cconj_neq_0.
-         apply unit_det_neq_0; split; auto.
-         apply invertible_iff_det_neq_0; auto.
-         rewrite <- Determinant_adjoint.
-         apply Cconj_neq_0.
-         apply invertible_iff_det_neq_0; auto.
-         apply unit_det_neq_0; split; auto.
-         apply Minv_flip; auto with wf_db. }  
-       split.
-       split.
-       destruct H1; auto with wf_db. 
-       apply Minv_flip; destruct H1; auto with wf_db.
-       distribute_adjoint.
-       rewrite Mmult_assoc, <- (Mmult_assoc A), H4.
-       rewrite adjoint_involutive.
-       rewrite <- (Mmult_assoc _ U), (Mmult_assoc (U × L)), H5.
-       rewrite 3 Mmult_assoc, <- (Mmult_assoc _ U), H5.
-       rewrite 2 Mmult_1_l; auto with wf_db.      
-       replace (adjoint (Minverse (sqrt_matrix L))) with (Minverse (sqrt_matrix L)).
-       replace (@Mmult n n n L) with (@Mmult n n n (sqrt_matrix L × sqrt_matrix L)).
-       rewrite Mmult_assoc, Mmult_Minverse_r, Mmult_1_r, Mmult_Minverse_l; auto.
-       all : try apply WF_sqrt_matrix; auto.
-       all : try (destruct H2; easy).
-       rewrite sqrt_matrix_sqr; auto.
-       rewrite <- Minverse_adjoint.
-       apply f_equal.
-       unfold adjoint, Cconj.
-       prep_matrix_equality.
-       apply c_proj_eq; auto; simpl; try lra.
-       bdestruct (x =? y)%nat; subst.
-       easy.
-       destruct H2.
-       rewrite 2 H7; auto.
-       apply WF_sqrt_matrix.
-       destruct H2; easy.
-       apply WF_mult; destruct H2; auto.
-       apply WF_mult; auto with wf_db.
-       split.
-       apply sqrt_matrix_diag; easy.
-       split.
-       apply sqrt_matrix_nonneg; auto.
-       rewrite 2 Mmult_assoc, <- (Mmult_assoc (sqrt_matrix L)).
-       rewrite Mmult_Minverse_r, Mmult_1_l, <- Mmult_assoc.
-       destruct H1.
-       apply Minv_flip in H5.
-       rewrite H5, Mmult_1_l.
-       all : auto with wf_db.
-       destruct H1; auto with wf_db.
-       apply WF_sqrt_matrix.
-       apply H2.
-Qed.
-
-
-
-
-
-
-(**************************************************)
+           
+ (**************************************************)
 (** * Defining eignestates to be used in type system *)
 (**************************************************)
 

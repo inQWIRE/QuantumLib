@@ -4,6 +4,7 @@
 Require Import Psatz.
 Require Import Reals.
 Require Export VecSet.
+Require Export CauchySchwarz.
 
 (* Using our (complex, unbounded) matrices, their complex numbers *)
 
@@ -1005,8 +1006,26 @@ Qed.
 #[export] Hint Resolve H_unitary S_unitary T_unitary σx_unitary σy_unitary σz_unitary : unit_db.
 #[export] Hint Resolve phase_unitary rotation_unitary x_rotation_unitary y_rotation_unitary control_unitary : unit_db.
 
-                                
-Lemma transpose_unitary : forall n (A : Matrix n n), WF_Unitary A -> WF_Unitary (A†).
+          
+Lemma transpose_unitary : forall n (A : Matrix n n), WF_Unitary A -> WF_Unitary (A⊤).
+Proof.
+  intros. 
+  simpl.
+  split.
+  + destruct H; auto with wf_db.
+  + destruct H.
+    replace ((A⊤)†) with ((A†)⊤).
+    rewrite <- Mmult_transpose.
+    rewrite Minv_flip; auto with wf_db.
+    prep_matrix_equality.
+    unfold transpose, I.
+    bdestruct_all; easy.
+    prep_matrix_equality.
+    unfold transpose, adjoint.
+    easy.
+Qed.
+                      
+Lemma adjoint_unitary : forall n (A : Matrix n n), WF_Unitary A -> WF_Unitary (A†).
 Proof.
   intros. 
   simpl.
@@ -1166,7 +1185,7 @@ Proof. intros.
 Qed.
 
 
-#[export] Hint Resolve transpose_unitary cnot_unitary notc_unitary id_unitary : unit_db.
+#[export] Hint Resolve transpose_unitary adjoint_unitary cnot_unitary notc_unitary id_unitary : unit_db.
 #[export] Hint Resolve swap_unitary zero_not_unitary kron_unitary big_kron_unitary big_kron_unitary' Mmult_unitary scale_unitary pad1_unitary : unit_db.
 
 
@@ -1205,6 +1224,34 @@ Proof. intros.
        apply id_adjoint_eq.
 Qed.
 
+Lemma unit_conj_hermitian : forall {n} (A U : Square n), 
+  WF_Hermitian A -> WF_Unitary U ->
+  WF_Hermitian (U × A × U†). 
+Proof. intros. 
+       destruct H.
+       split.
+       destruct H0; auto with wf_db.
+       rewrite 2 Mmult_adjoint, adjoint_involutive, Mmult_assoc, H1.
+       easy.
+Qed.
+
+Lemma AAadjoint_hermitian : forall {m n} (A : Matrix m n),
+  WF_Matrix A ->
+  WF_Hermitian (A × A†).
+Proof. intros.
+       split; auto with wf_db.
+       rewrite Mmult_adjoint, adjoint_involutive.
+       easy.
+Qed.
+
+Lemma AadjointA_hermitian : forall {m n} (A : Matrix m n),
+  WF_Matrix A ->
+  WF_Hermitian (A† × A).
+Proof. intros.
+       split; auto with wf_db.
+       rewrite Mmult_adjoint, adjoint_involutive.
+       easy.
+Qed.
 
 Definition id_sa := id_adjoint_eq.
 
@@ -1417,6 +1464,27 @@ Qed.
 Definition positive_semidefinite {n} (A : Square n) : Prop :=
   forall (z : Vector n), WF_Matrix z -> fst ((z† × A × z) O O) >= 0.  
 
+Lemma positive_semidefinite_AAadjoint : forall {m n} (A : Matrix m n),
+  positive_semidefinite (A × A†).
+Proof. intros. 
+       unfold positive_semidefinite.
+       intros. 
+       replace (((z) † × (A × (A) †) × z) 0%nat 0%nat) with (⟨ A† × z, A† × z ⟩).
+       apply Rle_ge; apply inner_product_ge_0.
+       unfold inner_product.
+       distribute_adjoint.
+       rewrite adjoint_involutive, 3 Mmult_assoc. 
+       easy.
+Qed.
+
+Lemma positive_semidefinite_AadjointA : forall {m n} (A : Matrix m n),
+  positive_semidefinite (A† × A).
+Proof. intros. 
+       assert (H' := (positive_semidefinite_AAadjoint A†)).
+       rewrite adjoint_involutive in H'.
+       easy.
+Qed.
+
 Lemma positive_semidefinite_unitary_conj : forall {n} (A U : Square n),
   WF_Unitary U ->
   positive_semidefinite A ->
@@ -1429,6 +1497,24 @@ Proof. intros.
        apply H0.
        destruct H; auto with wf_db.
        repeat rewrite Mmult_assoc; easy.
+Qed.
+
+Lemma positive_semidefinite_unitary_conj_conv : forall {n} (A U : Square n),
+  WF_Unitary U ->
+  positive_semidefinite (U† × A × U) ->
+  positive_semidefinite A.
+Proof. intros. 
+       unfold positive_semidefinite in *.
+       intros.        
+       replace ((z) † × A × z) with (((U† × z)† × (U† × A × U) × (U† × z))).
+       apply H0.
+       destruct H; auto with wf_db.
+       distribute_adjoint.
+       rewrite adjoint_involutive.
+       destruct H.
+       apply Minv_flip in H2; auto with wf_db.
+       rewrite 3 Mmult_assoc, <- (Mmult_assoc _ _ z), H2, Mmult_1_l; auto.
+       rewrite <- 2 (Mmult_assoc U), H2, <- 2 Mmult_assoc, Mmult_1_r; auto with wf_db. 
 Qed.
 
 Lemma pure_psd : forall (n : nat) (ϕ : Vector n), (WF_Matrix ϕ) -> positive_semidefinite (ϕ × ϕ†). 

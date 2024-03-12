@@ -442,6 +442,14 @@ Lemma pad_A_ctrl_commutes : forall dim m n o A B,
 Proof.
   intros.
   unfold pad_ctrl, pad_u, pad.
+(*
+  bdestruct_all; try lia. 
+  all : repeat rewrite Mmult_0_l; repeat rewrite Mmult_0_r; auto.
+  prep_matrix_equality.
+  unfold Mmult.
+  unfold kron.
+  apply mat_equiv_eq. apply WF_mult.
+*)
   gridify; trivial.
 Qed.
 
