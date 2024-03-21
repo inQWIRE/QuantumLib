@@ -572,8 +572,14 @@ Lemma WF_bra0 : WF_Matrix ⟨0∣. Proof. show_wf. Qed.
 Lemma WF_bra1 : WF_Matrix ⟨1∣. Proof. show_wf. Qed.
 Lemma WF_qubit0 : WF_Matrix ∣0⟩. Proof. show_wf. Qed.
 Lemma WF_qubit1 : WF_Matrix ∣1⟩. Proof. show_wf. Qed.
-Lemma WF_braqubit0 : WF_Matrix ∣0⟩⟨0∣. Proof. show_wf. Qed.
-Lemma WF_braqubit1 : WF_Matrix ∣1⟩⟨1∣. Proof. show_wf. Qed.
+Lemma WF_braket0 : WF_Matrix ∣0⟩⟨0∣. Proof. show_wf. Qed.
+Lemma WF_braket1 : WF_Matrix ∣1⟩⟨1∣. Proof. show_wf. Qed.
+
+#[deprecated(note="Use WF_braket0 instead")]
+Notation WF_braqubit0 := WF_braket0 (only parsing).
+#[deprecated(note="Use WF_braket1 instead")]
+Notation WF_braqubit1 := WF_braket1 (only parsing).
+
 Lemma WF_bool_to_ket : forall b, WF_Matrix (bool_to_ket b). 
 Proof. destruct b; show_wf. Qed.
 Lemma WF_bool_to_matrix : forall b, WF_Matrix (bool_to_matrix b).
@@ -603,7 +609,7 @@ Lemma WF_ybasis_plus : WF_Matrix ∣R⟩. Proof. show_wf. Qed.
 Lemma WF_ybasis_minus : WF_Matrix ∣L⟩. Proof. show_wf. Qed.
 
 
-#[export] Hint Resolve WF_bra0 WF_bra1 WF_qubit0 WF_qubit1 WF_braqubit0 WF_braqubit1 : wf_db.
+#[export] Hint Resolve WF_bra0 WF_bra1 WF_qubit0 WF_qubit1 WF_braket0 WF_braket1 WF_braqubit0 WF_braqubit1 : wf_db.
 #[export] Hint Resolve WF_bool_to_ket WF_bool_to_matrix WF_bool_to_matrix' : wf_db.
 #[export] Hint Resolve WF_ket WF_bra WF_bools_to_matrix : wf_db.
 #[export] Hint Resolve WF_xbasis_plus WF_xbasis_minus WF_ybasis_plus WF_ybasis_minus : wf_db. 
@@ -701,18 +707,30 @@ Proof.
     bdestruct (y <? 2*(S n)); try lia. 
     replace y with ((y - 2 * S n) + 2*(S n))%nat by lia. 
     rewrite Nat.div_add; try lia.
-    rewrite WF_braqubit0, WF_braqubit1; try lca; try (right; lia).
+    rewrite WF_braket0, WF_braket1; try lca; try (right; lia).
     rewrite H0; try (left; easy).
     bdestruct (x <? 2*(S m)); try lia. 
     replace x with ((x - 2 * S m) + 2*(S m))%nat by lia. 
     rewrite Nat.div_add; try lia.
-    rewrite WF_braqubit0, WF_braqubit1; try lca; try (left; lia).
+    rewrite WF_braket0, WF_braket1; try lca; try (left; lia).
     rewrite H0; try (left; easy).
     bdestruct (x <? 2*(S m)); try lia. 
     replace x with ((x - 2 * S m) + 2*(S m))%nat by lia. 
     rewrite Nat.div_add; try lia.
-    rewrite WF_braqubit0, WF_braqubit1; try lca; try (left; lia).
+    rewrite WF_braket0, WF_braket1; try lca; try (left; lia).
 Qed.
+
+
+
+Lemma cnot_decomposition : ∣1⟩⟨1∣ ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I 2 = cnot.
+Proof. solve_matrix. Qed.                                               
+
+Lemma notc_decomposition : σx ⊗ ∣1⟩⟨1∣ .+ I 2 ⊗ ∣0⟩⟨0∣ = notc.
+Proof. solve_matrix. Qed.                                               
+
+
+
+
 
 (***************************)
 (** Unitaries are unitary **)
@@ -1201,58 +1219,205 @@ Proof. reflexivity. Qed.
 (* Self-adjointness *)
 (********************)
 
-(* Maybe change to "Hermitian?" *)
 
 
-(* same as WF + self_adjoint, but will keep all the below lemmas which are used elsewhere *)
-Definition WF_Hermitian {n} (A : Square n) :=
-  WF_Matrix A /\ A† = A.
+Definition hermitian {n} (A : Square n) :=
+  A† = A.
 
 
-Lemma plus_hermitian : forall {n} (A B : Square n),  
-  WF_Hermitian A -> WF_Hermitian B ->
-  WF_Hermitian (A .+ B).
-Proof. intros n A B [H H0] [H1 H2].
-       split; auto with wf_db.
-       rewrite Mplus_adjoint, H0, H2.
-       easy.
-Qed.
 
-Lemma I_hermitian : forall {n}, WF_Hermitian (I n).
+Lemma I_hermitian : forall {n}, hermitian (I n).
 Proof. intros.
-       split; auto with wf_db.
        apply id_adjoint_eq.
 Qed.
 
+Lemma hadamard_hermitian : hermitian hadamard. 
+Proof.
+  prep_matrix_equality.
+  repeat (try destruct x; try destruct y; try lca; trivial).
+Qed.
+
+Lemma σx_hermitian : hermitian σx.
+Proof. 
+  prep_matrix_equality. 
+  repeat (try destruct x; try destruct y; try lca; trivial).
+Qed.
+
+Lemma σy_hermitian : hermitian σy.
+Proof.
+  prep_matrix_equality. 
+  repeat (try destruct x; try destruct y; try lca; trivial).
+Qed.
+
+Lemma σz_hermitian : hermitian σz.
+Proof.
+  prep_matrix_equality. 
+  repeat (try destruct x; try destruct y; try lca; trivial).
+Qed.
+
+Lemma cnot_hermitian : hermitian cnot.
+Proof.
+  prep_matrix_equality. 
+  repeat (try destruct x; try destruct y; try lca; trivial).
+Qed.
+
+Lemma swap_hermitian : hermitian swap.
+Proof.
+  prep_matrix_equality. 
+  repeat (try destruct x; try destruct y; try lca; trivial).
+Qed.
+
+
+
+(* some more general herm lemmas *)
+
+Lemma plus_hermitian : forall {n} (A B : Square n),  
+  hermitian A -> hermitian B ->
+  hermitian (A .+ B).
+Proof. intros n A B H H0.
+       unfold hermitian. 
+       distribute_adjoint. 
+       rewrite H, H0.
+       easy.
+Qed.
+
+Lemma adjoint_hermitian : forall {n} (A : Square n),  
+  hermitian A ->
+  hermitian A†.
+Proof. intros.
+       unfold hermitian. 
+       do 2 rewrite H.
+       easy.
+Qed.
+
 Lemma unit_conj_hermitian : forall {n} (A U : Square n), 
-  WF_Hermitian A -> WF_Unitary U ->
-  WF_Hermitian (U × A × U†). 
+  hermitian A -> WF_Unitary U ->
+  hermitian (U × A × U†). 
 Proof. intros. 
-       destruct H.
-       split.
        destruct H0; auto with wf_db.
-       rewrite 2 Mmult_adjoint, adjoint_involutive, Mmult_assoc, H1.
+       unfold hermitian.
+       rewrite 2 Mmult_adjoint, adjoint_involutive, Mmult_assoc, H.
        easy.
 Qed.
 
 Lemma AAadjoint_hermitian : forall {m n} (A : Matrix m n),
-  WF_Matrix A ->
-  WF_Hermitian (A × A†).
+  hermitian (A × A†).
 Proof. intros.
-       split; auto with wf_db.
+       unfold hermitian.
        rewrite Mmult_adjoint, adjoint_involutive.
        easy.
 Qed.
 
 Lemma AadjointA_hermitian : forall {m n} (A : Matrix m n),
-  WF_Matrix A ->
-  WF_Hermitian (A† × A).
+  hermitian (A† × A).
 Proof. intros.
-       split; auto with wf_db.
+       unfold hermitian.
        rewrite Mmult_adjoint, adjoint_involutive.
        easy.
 Qed.
 
+Lemma control_adjoint : forall n (U : Square n), (control U)† = control (U†).
+Proof.
+  intros n U.
+  unfold control, adjoint.
+  prep_matrix_equality.
+  rewrite Nat.eqb_sym.
+  bdestruct (y =? x). 
+  - subst.
+    bdestruct (x <? n); bdestruct (n <=? x); try lia; simpl; lca.
+  - rewrite 2 andb_false_r.
+    rewrite andb_comm.
+    rewrite (if_dist _ _ _ Cconj).
+    rewrite Cconj_0.
+    reflexivity.
+Qed.
+
+Lemma control_hermitian : forall (n : nat) (A : Square n), 
+  hermitian A -> hermitian (control A).  
+Proof.
+  intros n A H.
+  unfold hermitian in *.
+  rewrite control_adjoint.
+  rewrite H.
+  easy.
+Qed.  
+
+Lemma phase_adjoint : forall ϕ, (phase_shift ϕ)† = phase_shift (-ϕ). 
+Proof.
+  intros ϕ.
+  unfold phase_shift, adjoint.
+  prep_matrix_equality.
+  destruct_m_eq; try lca.
+  unfold Cexp, Cconj. 
+  rewrite cos_neg, sin_neg.
+  easy.
+Qed.
+
+
+(* x and y rotation adjoints aren't x and rotations? *)
+
+Lemma rotation_adjoint : forall θ ϕ λ, (rotation θ ϕ λ)† = rotation (-θ) (-λ) (-ϕ).
+Proof.
+  intros.
+  unfold rotation, adjoint.
+  prep_matrix_equality.
+  destruct_m_eq; try lca;
+  unfold Cexp, Cconj;
+  apply injective_projections; simpl;
+  try rewrite <- Ropp_plus_distr;
+  autorewrite with R_db;
+  autorewrite with trig_db;
+  try rewrite (Rplus_comm λ ϕ);
+  autorewrite with R_db;
+  reflexivity.
+Qed.
+
+Lemma braket0_hermitian : hermitian ∣0⟩⟨0∣. Proof. lma. Qed.
+Lemma braket1_hermitian : hermitian ∣1⟩⟨1∣. Proof. lma. Qed.
+
+
+#[global] Hint Rewrite hadamard_hermitian σx_hermitian σy_hermitian σz_hermitian cnot_hermitian swap_hermitian braket1_hermitian braket0_hermitian control_adjoint phase_adjoint rotation_adjoint : Q_db.
+
+
+
+(* THESE ARE TO BE PHASED OUT *) 
+
+
+
+#[deprecated(note="Use I_hermitian instead")]
+Notation id_sa := I_hermitian (only parsing).
+
+#[deprecated(note="Use hadamard_hermitian instead")]
+Notation hadamard_sa := hadamard_hermitian (only parsing).
+
+#[deprecated(note="Use σx_hermitian instead")]
+Notation σx_sa := σx_hermitian (only parsing).
+
+#[deprecated(note="Use σy_hermitian instead")]
+Notation σy_sa := σy_hermitian (only parsing).
+
+#[deprecated(note="Use σz_hermitian instead")]
+Notation σz_sa := σz_hermitian (only parsing).
+
+#[deprecated(note="Use cnot_hermitian instead")]
+Notation cnot_sa := cnot_hermitian (only parsing).
+
+#[deprecated(note="Use swap_hermitian instead")]
+Notation swap_sa := swap_hermitian (only parsing).
+
+#[deprecated(note="Use control_hermitian instead")]
+Notation control_sa := control_hermitian (only parsing).
+
+
+#[deprecated(note="Use braket0_hermitian instead")]
+Notation braqubit0_sa := braket0_hermitian (only parsing).
+
+#[deprecated(note="Use braket1_hermitian instead")]
+Notation braqubit1_sa := braket1_hermitian (only parsing).
+
+
+
+(*
 Definition id_sa := id_adjoint_eq.
 
 Lemma hadamard_sa : hadamard† = hadamard.
@@ -1279,6 +1444,7 @@ Proof.
   repeat (try destruct x; try destruct y; try lca; trivial).
 Qed.
 
+
 Lemma cnot_sa : cnot† = cnot.
 Proof.
   prep_matrix_equality. 
@@ -1291,21 +1457,8 @@ Proof.
   repeat (try destruct x; try destruct y; try lca; trivial).
 Qed.
 
-Lemma control_adjoint : forall n (U : Square n), (control U)† = control (U†).
-Proof.
-  intros n U.
-  unfold control, adjoint.
-  prep_matrix_equality.
-  rewrite Nat.eqb_sym.
-  bdestruct (y =? x). 
-  - subst.
-    bdestruct (x <? n); bdestruct (n <=? x); try lia; simpl; lca.
-  - rewrite 2 andb_false_r.
-    rewrite andb_comm.
-    rewrite (if_dist _ _ _ Cconj).
-    rewrite Cconj_0.
-    reflexivity.
-Qed.
+
+
 
 Lemma control_sa : forall (n : nat) (A : Square n), 
     A† = A -> (control A)† = (control A).
@@ -1316,50 +1469,16 @@ Proof.
   easy.
 Qed.  
 
-Lemma phase_adjoint : forall ϕ, (phase_shift ϕ)† = phase_shift (-ϕ). 
-Proof.
-  intros ϕ.
-  unfold phase_shift, adjoint.
-  prep_matrix_equality.
-  destruct_m_eq; try lca.
-  unfold Cexp, Cconj. 
-  rewrite cos_neg, sin_neg.
-  easy.
-Qed.
-
-(* x and y rotation adjoints aren't x and rotations? *)
-
-Lemma rotation_adjoint : forall θ ϕ λ, (rotation θ ϕ λ)† = rotation (-θ) (-λ) (-ϕ).
-Proof.
-  intros.
-  unfold rotation, adjoint.
-  prep_matrix_equality.
-  destruct_m_eq; try lca;
-  unfold Cexp, Cconj;
-  apply injective_projections; simpl;
-  try rewrite <- Ropp_plus_distr;
-  autorewrite with R_db;
-  autorewrite with trig_db;
-  try rewrite (Rplus_comm λ ϕ);
-  autorewrite with R_db;
-  reflexivity.
-Qed.
 
 Lemma braqubit0_sa : ∣0⟩⟨0∣† = ∣0⟩⟨0∣. Proof. lma. Qed.
 Lemma braqubit1_sa : ∣1⟩⟨1∣† = ∣1⟩⟨1∣. Proof. lma. Qed.
+
+*)
 
 #[global] Hint Rewrite hadamard_sa σx_sa σy_sa σz_sa cnot_sa swap_sa braqubit1_sa braqubit0_sa control_adjoint phase_adjoint rotation_adjoint : Q_db.
 
 (* Rather use control_adjoint :
 #[global] Hint Rewrite control_sa using (autorewrite with M_db; reflexivity) : M_db. *)
-
-Lemma cnot_decomposition : ∣1⟩⟨1∣ ⊗ σx .+ ∣0⟩⟨0∣ ⊗ I 2 = cnot.
-Proof. solve_matrix. Qed.                                               
-
-Lemma notc_decomposition : σx ⊗ ∣1⟩⟨1∣ .+ I 2 ⊗ ∣0⟩⟨0∣ = notc.
-Proof. solve_matrix. Qed.                                               
-
-
 
 
 
@@ -1544,9 +1663,9 @@ Lemma braket1_psd : positive_semidefinite ∣1⟩⟨1∣.
 Proof. apply pure_psd. auto with wf_db. Qed.
 
 Lemma H0_psd : positive_semidefinite (hadamard × ∣0⟩⟨0∣ × hadamard).
-Proof.
+Proof. 
   repeat rewrite Mmult_assoc.
-  rewrite <- hadamard_sa at 2.
+  rewrite <- hadamard_hermitian at 2.
   rewrite <- Mmult_adjoint.
   repeat rewrite <- Mmult_assoc.
   apply pure_psd.

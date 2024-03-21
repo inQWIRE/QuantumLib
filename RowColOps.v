@@ -21,6 +21,9 @@ Local Open Scope nat_scope.
 Definition get_col {m n} (T : Matrix m n) (i : nat) : Vector m :=
   fun x y => (if (y =? O) then T x i else C0).   
 
+#[deprecated(note="Use get_col instead")]
+Notation get_vec i S := (get_col S i).
+
 Definition get_row {m n} (T : Matrix m n) (i : nat) : Matrix 1 n :=
   fun x y => (if (x =? O) then T i y else C0).  
 
@@ -50,6 +53,10 @@ Definition get_minor {m n} (A : Matrix (S m) (S n)) (row col : nat) : Matrix m n
                     then A (1+x) y
                     else A (1+x) (1+y))).
 
+#[deprecated(note="Use get_minor instead")]
+Notation reduce := get_minor.
+
+
 (* more general than col_append *)
 Definition smash {m n1 n2} (T1 : Matrix m n1) (T2 : Matrix m n2) : Matrix m (n1 + n2) :=
   fun i j => if j <? n1 then T1 i j else T2 i (j - n1).
@@ -68,6 +75,18 @@ Definition row_wedge {m n} (T : Matrix m n) (v : Matrix 1 n) (spot : nat) : Matr
              else if i =? spot
                   then v 0 j
                   else T (i-1) j.
+
+Definition col_append' {n m} (T : Matrix n m) (v : Vector n) := col_wedge T v m.
+
+#[deprecated(note="Use col_wedge instead")]
+Notation col_append := col_append'.
+
+Definition row_append' {n m} (T : Matrix n m) (v : Vector n) := row_wedge T v n.
+
+#[deprecated(note="Use row_wedge instead")]
+Notation row_append := row_append'.
+
+
 
 Definition col_swap {m n} (T : Matrix m n) (x y : nat) : Matrix m n := 
   fun i j => if (j =? x) 
@@ -509,9 +528,6 @@ Qed.
 #[export] Hint Extern 1 (Nat.le _ _) => lia : wf_db.
 #[export] Hint Extern 1 (lt _ _) => lia : wf_db.
 #[export] Hint Extern 1 (le _ _) => lia : wf_db.
-
-
-
 
 Lemma WF_pad1 : forall {m n : nat} (A : Matrix m n) (c : C),
   WF_Matrix A -> WF_Matrix (pad1 A c).
@@ -3667,6 +3683,7 @@ Proof. intros.
          intros. 
          bdestruct_all; simpl; ring.
 Qed.
+
 
 
 

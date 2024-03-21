@@ -1917,17 +1917,16 @@ Qed.
    we get these matrices are unitary diagonalizable. Perhaps these already exist somewhere *)
 
 Corollary herm_implies_diagble : forall {n} (A : Square n),
-  WF_Hermitian A -> WF_Diagonalizable A.
+  WF_Matrix A -> hermitian A -> WF_Diagonalizable A.
 Proof. intros.
        split.
        apply H.
        destruct (Spectral_Theorem A).
        apply H.
-       destruct H.
        rewrite H0; easy.
        exists (x†), x, (x† × A × x).
-       destruct H0.
-       destruct H0.
+       destruct H1.
+       destruct H1.
        repeat (try split; auto with wf_db).
 Qed.
 
@@ -2001,11 +2000,11 @@ Qed.
 
 Lemma pos_semi_def_diag_implies_nonneg : forall {n} (A : Square n), 
   WF_Diagonal A -> 
-  WF_Hermitian A ->
+  hermitian A ->
   positive_semidefinite A ->
   WF_Nonnegative A.
 Proof. intros.
-       destruct H.
+       destruct H. 
        split; auto; intros.
        bdestruct (i =? j)%nat; subst. 
        split.
@@ -2015,11 +2014,10 @@ Proof. intros.
        rewrite H. simpl; lra.
        left; easy.
        apply Cconj_eq_implies_real.
-       destruct H0.
        replace ((A j j)^*) with ((A† j j)^* ).
        unfold adjoint.
        lca.
-       rewrite H3; easy.
+       rewrite H0; easy.
        rewrite H2; auto; split; simpl.
        lra.
        easy.
@@ -2046,7 +2044,7 @@ Qed.
 
 Lemma first_entry_nonzero_if_nonzero_spd : forall {n} (X U : Square n),
   WF_Matrix X -> WF_Unitary U ->
-  WF_Hermitian X ->  
+  hermitian X ->  
   positive_semidefinite X -> 
   WF_Diagonal (U† × X × U) -> 
   ordered_diag (U† × X × U) ->
@@ -2104,8 +2102,6 @@ Proof. intros.
        apply H4.
        rewrite <- (Mmult_assoc _ A).
        contradict H0. 
-
-       
        apply AAadjoint_zero_implies_A_zero; auto.
        apply (first_entry_nonzero_if_nonzero_spd _ (U × U')); auto with unit_db; auto with wf_db.
        apply AadjointA_hermitian; auto.
@@ -2338,6 +2334,8 @@ Proof. intros.
        all : simpl; try lra; try easy.
 Qed.
 
+
+(* NB: could easily add that the entries of L are ordered by norm with the above machinery *)
 Theorem SVD : forall {m n} (A : Matrix m n),
   WF_Matrix A ->
   exists (U : Square m) (L : Matrix m n) (V : Square n), 
@@ -2372,6 +2370,7 @@ Proof. intros.
        destruct H1.
        auto with wf_db.
 Qed.       
+
 
 Local Open Scope C_scope.
 
@@ -2410,19 +2409,19 @@ Proof. intros.
 Qed.
 
 Lemma hermitiam_real_eigenvalues : forall {n} (A : Square n) (v : Vector n) (λ : C),
-  WF_Hermitian A -> WF_Matrix v -> 
+  WF_Matrix A -> 
+  hermitian A -> WF_Matrix v -> 
   v <> Zero ->
   A × v = λ .* v ->
   snd λ = 0%R.
 Proof. intros.
        apply Cconj_eq_implies_real.
        apply (Cmult_cancel_r (inner_product v v)).
-       contradict H1.
+       contradict H2.
        apply inner_product_zero_iff_zero; auto.
-       rewrite <- inner_product_scale_l, <- inner_product_scale_r, <- H2, 
+       rewrite <- inner_product_scale_l, <- inner_product_scale_r, <- H3, 
          inner_product_adjoint_switch.
-       destruct H.
-       rewrite H3; easy.
+       rewrite H0; easy.
 Qed.       
 
 Lemma unitary_eigenvalues_norm_1 : forall {n} (U : Square n) (v : Vector n) (λ : C),
