@@ -22,7 +22,7 @@ Definition get_col {m n} (T : Matrix m n) (i : nat) : Vector m :=
   fun x y => (if (y =? O) then T x i else C0).   
 
 #[deprecated(note="Use get_col instead")]
-Notation get_vec i S := (get_col S i).
+Notation get_vec i S := (get_col S i) (only parsing).
 
 Definition get_row {m n} (T : Matrix m n) (i : nat) : Matrix 1 n :=
   fun x y => (if (x =? O) then T i y else C0).  
@@ -54,7 +54,7 @@ Definition get_minor {m n} (A : Matrix (S m) (S n)) (row col : nat) : Matrix m n
                     else A (1+x) (1+y))).
 
 #[deprecated(note="Use get_minor instead")]
-Notation reduce := get_minor.
+Notation reduce := get_minor (only parsing).
 
 
 (* more general than col_append *)
@@ -76,15 +76,18 @@ Definition row_wedge {m n} (T : Matrix m n) (v : Matrix 1 n) (spot : nat) : Matr
                   then v 0 j
                   else T (i-1) j.
 
-Definition col_append' {n m} (T : Matrix n m) (v : Vector n) := col_wedge T v m.
-
+(*
 #[deprecated(note="Use col_wedge instead")]
-Notation col_append := col_append'.
+*)
+Definition col_append {m n} (T : Matrix m n) (v : Vector m) : Matrix m (S n) :=
+  col_wedge T v n.
 
-Definition row_append' {n m} (T : Matrix n m) (v : Vector n) := row_wedge T v n.
 
+(*
 #[deprecated(note="Use row_wedge instead")]
-Notation row_append := row_append'.
+*)
+Definition row_append {m n} (T : Matrix m n) (v : Matrix 1 n) : Matrix (S m) n :=
+  row_wedge T v m. 
 
 
 
@@ -435,6 +438,14 @@ Proof. unfold WF_Matrix in *.
          bdestruct (x <? spot); bdestruct (x =? spot); easy. 
 Qed.
 
+#[deprecated(note="Use WF_col_wedge instead")]
+Notation WF_col_append := WF_col_wedge (only parsing).
+
+
+#[deprecated(note="Use WF_row_wedge instead")]
+Notation WF_row_append := WF_row_wedge (only parsing).
+
+
 Lemma WF_smash : forall {m n1 n2} (T1 : Matrix m n1) (T2 : Matrix m n2),
   WF_Matrix T1 -> WF_Matrix T2 -> WF_Matrix (smash T1 T2).
 Proof. unfold WF_Matrix, smash in *.
@@ -517,7 +528,7 @@ Qed.
 
 
 #[export] Hint Resolve WF_get_col WF_get_row WF_reduce_row WF_reduce_col WF_reduce_vecn WF_get_minor : wf_db.
-#[export] Hint Resolve WF_row_wedge WF_col_wedge WF_smash : wf_db.
+#[export] Hint Resolve WF_row_append WF_col_append WF_row_wedge WF_col_wedge WF_smash : wf_db.
 #[export] Hint Resolve WF_col_swap WF_row_swap WF_col_scale WF_row_scale WF_col_add WF_row_add : wf_db.
 #[export] Hint Resolve WF_gen_new_col WF_gen_new_row WF_col_add_many WF_row_add_many : wf_db.
 #[export] Hint Resolve WF_col_scale_many WF_row_scale_many WF_col_add_each WF_row_add_each  : wf_db.
@@ -593,7 +604,7 @@ Proof. intros. prep_matrix_equality.
        reflexivity.
 Qed.
 
-Lemma get_col_reduce_append_miss : forall {m n} (T : Matrix m (S n)) (v : Vector m) (i : nat),
+Lemma get_col_reduce_wedge_miss : forall {m n} (T : Matrix m (S n)) (v : Vector m) (i : nat),
   i < n -> get_col (col_wedge (reduce_col T n) v n) i = get_col T i.
 Proof. intros. 
        prep_matrix_equality. 
@@ -601,7 +612,10 @@ Proof. intros.
        bdestruct_all; easy. 
 Qed.
 
-Lemma get_col_reduce_append_hit : forall {m n} (T : Matrix m (S n)) (v : Vector m),
+#[deprecated(note="Use get_col_reduce_wedge_miss instead")]
+Notation get_col_reduce_append_miss := get_col_reduce_wedge_miss (only parsing).
+
+Lemma get_col_reduce_wedge_hit : forall {m n} (T : Matrix m (S n)) (v : Vector m),
   WF_Matrix v -> get_col (col_wedge (reduce_col T n) v n) n = v.
 Proof. intros.        
        unfold get_col, col_wedge, reduce_col.
@@ -610,6 +624,10 @@ Proof. intros.
        - bdestruct_all; subst; easy. 
        - rewrite H; try lia; easy.
 Qed.
+
+#[deprecated(note="Use get_col_reduce_wedge_hit instead")]
+Notation get_col_reduce_append_hit := get_col_reduce_wedge_hit (only parsing).
+
 
 Lemma get_col_over : forall {m n} (T : Matrix m (S n)) (i : nat),
   WF_Matrix T -> i > n -> 
@@ -978,6 +996,9 @@ Proof. intros.
        do 2 (rewrite H; try lia); easy. 
 Qed.
 
+#[deprecated(note="Use reduce_wedge_split_n instead")]
+ Notation reduce_append_split := reduce_wedge_split_n (only parsing).
+
 (* the dimensions don't match, so this is a bit weird *)
 Lemma smash_zero : forall {m n} (T : Matrix m n) (i : nat),
   WF_Matrix T -> smash T (@Zero m i) = T. 
@@ -1011,6 +1032,10 @@ Proof. intros.
        rewrite Nat.sub_diag; easy. 
        rewrite H0, H; try lia; try easy.
 Qed.
+
+#[deprecated(note="Use smash_wedge instead")]
+ Notation smash_append := smash_wedge (only parsing).
+
 
 Lemma smash_reduce : forall {m n1 n2} (T1 : Matrix m n1) (T2 : Matrix m (S n2)),
   reduce_col (smash T1 T2) (n1 + n2) = smash T1 (reduce_col T2 n2).
@@ -3684,8 +3709,7 @@ Proof. intros.
          bdestruct_all; simpl; ring.
 Qed.
 
-
-
+ 
 
 
 
