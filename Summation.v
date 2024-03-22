@@ -482,6 +482,30 @@ Proof.
     intros.
     apply Unique; try easy; lia.
 Qed.  
+
+Lemma big_sum_unique2 : forall {G} `{Monoid G} k (f : nat -> G) n, 
+  (exists x y, (x < y)%nat /\ (y < n)%nat /\ (f x) + (f y) = k /\
+                 (forall x', x' < n -> x <> x' -> y <> x' -> f x' = 0)) ->
+  big_sum f n = k.
+Proof.                    
+  intros G H k f n [x [y [L1 [L2 [Eq Unique]]]]].
+  induction n; try lia.
+  rewrite <- big_sum_extend_r.
+  destruct (Nat.eq_dec y n).
+  - subst. 
+    apply f_equal_gen; auto; apply f_equal.
+    apply big_sum_unique.
+    exists x; split; auto; split; auto.
+    intros. 
+    apply Unique;
+    lia.
+  - rewrite Unique; try easy; try lia. 
+    rewrite Gplus_0_r. 
+    apply IHn.
+    lia.
+    intros.
+    apply Unique; try easy; lia.
+Qed.  
  
 Lemma big_sum_sum : forall {G} `{Monoid G} m n f, 
   big_sum f (m + n) = big_sum f m + big_sum (fun x => f (m + x)%nat) n. 

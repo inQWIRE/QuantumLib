@@ -624,7 +624,6 @@ Proof.  intros.
         rewrite <- H' in H2. easy.
 Qed.
 
-
 Lemma Cinv_mult_distr : forall c1 c2 : C, c1 <> 0 -> c2 <> 0 -> / (c1 * c2) = / c1 * / c2.
 Proof.
   intros.
@@ -673,7 +672,17 @@ Proof. intros.
        apply nonzero_div_nonzero; auto.
 Qed.
 
-
+Lemma Cconj_eq_implies_real : forall c : C, c = Cconj c -> snd c = 0%R.
+Proof. intros. 
+       unfold Cconj in H.
+       apply (f_equal snd) in H.
+       simpl in H.
+       assert (H' : (2 * snd c = 0)%R).
+       replace (2 * snd c)%R with (snd c + (- snd c))%R by lra.
+       lra.
+       replace (snd c) with (/2 * (2 * snd c))%R by lra.
+       rewrite H'; lra.
+Qed.
 
 (** * some C big_sum specific lemmas *)
 
@@ -987,7 +996,19 @@ Lemma Cconj_involutive : forall c, (c^*)^* = c. Proof. intros; lca. Qed.
 Lemma Cconj_plus_distr : forall (x y : C), (x + y)^* = x^* + y^*. Proof. intros; lca. Qed.
 Lemma Cconj_mult_distr : forall (x y : C), (x * y)^* = x^* * y^*. Proof. intros; lca. Qed.
 Lemma Cconj_minus_distr :  forall (x y : C), (x - y)^* = x^* - y^*. Proof. intros; lca. Qed.
-
+                
+Lemma Cinv_Cconj : forall c : C, (/ (c ^*) = (/ c) ^*)%C.
+Proof. intros. 
+       unfold Cinv, Cconj; simpl.
+       apply c_proj_eq; simpl; try lra.
+       apply f_equal. lra.
+       (* this is just Ropp_div or Ropp_div_l, depending on Coq version *) 
+       assert (H' : forall x y : R, (- x / y)%R = (- (x / y))%R).
+       { intros. lra. }
+       rewrite <- H'.
+       apply f_equal. lra.
+Qed.
+                                    
 Lemma Cmult_conj_real : forall (c : C), snd (c * c^*) = 0.
 Proof.
   intros c.
