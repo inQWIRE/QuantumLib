@@ -444,7 +444,7 @@ Qed.
 
 #[export] Hint Resolve firstn_subset skipn_subset : sub_db.
 
-Lemma div_mod_inj {a b} (c : nat) : c > 0 ->
+Lemma div_mod_inj {a b} (c :nat) : c > 0 ->
   (a mod c) = (b mod c) /\ (a / c) = (b / c) -> a = b.
 Proof.
   intros Hc.
