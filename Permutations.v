@@ -748,6 +748,95 @@ Proof.
   + destruct (Hfinv'); auto.
 Qed.
 
+Fixpoint for_all_nat_lt (f : nat -> bool) (k : nat) := 
+  match k with
+  | 0 => true
+  | S k' => f k' && for_all_nat_lt f k'
+  end.
+
+Lemma forall_nat_lt_S (P : forall k : nat, Prop) (n : nat) : 
+  (forall k, k < S n -> P k) <-> P n /\ (forall k, k < n -> P k).
+Proof.
+  split.
+  - intros Hall.
+    split; intros; apply Hall; lia.
+  - intros [Hn Hall].
+    intros k Hk.
+    bdestruct (k=?n); [subst; easy | apply Hall; lia].
+Qed.
+
+Lemma for_all_nat_ltE {f : nat -> bool} {P : forall k : nat, Prop} 
+  (ref : forall k, reflect (P k) (f k)) : 
+  forall n, (forall k, k < n -> P k) <-> (for_all_nat_lt f n = true).
+Proof.
+  induction n.
+  - easy.
+  - rewrite forall_nat_lt_S.
+    simpl.
+    rewrite andb_true_iff.
+    rewrite IHn.
+    apply and_iff_compat_r.
+    apply reflect_iff; easy.
+Qed.
+
+Definition perm_inv_is_inv_pred (f : nat -> nat) (n : nat) : Prop :=
+  forall k, k < n ->
+    f k < n /\ perm_inv n f k < n /\ 
+    perm_inv n f (f k) = k /\ f (perm_inv n f k) = k.
+
+Definition is_permutation (f : nat -> nat) (n : nat) :=
+  for_all_nat_lt 
+    (fun k => 
+      (f k <? n) && (perm_inv n f k <? n)
+      && (perm_inv n f (f k) =? k)
+      && (f (perm_inv n f k) =? k)) n.
+
+Lemma permutation_iff_perm_inv_is_inv (f : nat -> nat) (n : nat) : 
+  permutation n f <-> perm_inv_is_inv_pred f n.
+Proof.
+  split.
+  - intros Hperm.
+    intros k Hk.
+    repeat split.
+    + destruct Hperm as [g Hg];
+      apply (Hg k Hk).
+    + apply perm_inv_bounded; easy.
+    + apply perm_inv_is_linv_of_permutation; easy.
+    + apply perm_inv_is_rinv_of_permutation; easy.
+  - intros Hperminv.
+    exists (perm_inv n f); easy.
+Qed.
+
+Lemma is_permutation_E (f : nat -> nat) (n : nat) : 
+  perm_inv_is_inv_pred f n <-> is_permutation f n = true.
+Proof.
+  unfold perm_inv_is_inv_pred, is_permutation.
+  apply for_all_nat_ltE.
+  intros k.
+  apply iff_reflect.
+  rewrite 3!andb_true_iff.
+  rewrite 2!Nat.ltb_lt, 2!Nat.eqb_eq, 2!and_assoc.
+  easy.
+Qed.
+
+Lemma permutation_iff_is_permutation (f : nat -> nat) (n : nat) : 
+  permutation n f <-> is_permutation f n = true.
+Proof.
+  rewrite permutation_iff_perm_inv_is_inv.
+  apply is_permutation_E.
+Qed.
+
+Lemma permutationP (f : nat -> nat) (n : nat) :
+  reflect (permutation n f) (is_permutation f n).
+Proof.
+  apply iff_reflect, permutation_iff_is_permutation.
+Qed.
+
+Definition permutation_dec (f : nat -> nat) (n : nat) :
+  {permutation n f} + {~ permutation n f} :=
+  reflect_dec _ _ (permutationP f n).
+
+
 (** vsum terms can be arbitrarily reordered *)
 Lemma vsum_reorder : forall {d} n (v : nat -> Vector d) f,
   permutation n f ->
@@ -2386,18 +2475,26 @@ Ltac perm_eq_by_WF_inv_inj f n :=
 
 Lemma rotr_eq_rotr_mod n k : rotr n k = rotr n (k mod n).
 Proof.
-    remember k as p; assert (Hle: p <= k) by lia; clear Heqp; revert p Hle; induction k.
-	(* strong induction k. *)
-	(* bdestruct (k <? n).
-	- rewrite Nat.mod_small; easy.
-	- specialize (H (k - 1 * n)).
-	  replace (rotr n k) with (rotr n (k - 1*n + n)) by (f_equal;lia).
-	  destruct n.
-    1: cleanup_perm; easy. (* rewrite rotr_0_l. symmetry. rewrite rotr_0_l. easy. *)
-	  rewrite <- rotr_rotr, rotr_n, H; [|lia].
-	  rewrite compose_idn_r.
-	  rewrite sub_mul_mod; [easy|lia]. *)
-Admitted.
+  perm_eq_by_WF_inv_inj (rotl n k) n. 
+  - unfold WF_Perm. 
+    apply rotl_WF.
+  - apply functional_extensionality.
+    intros a.
+    unfold Basics.compose, rotr.
+    bdestruct (n <=? a).
+    + rewrite (rotl_WF a) by easy.
+      bdestruct_all; easy.
+    + unfold rotl.
+      pose proof (Nat.mod_upper_bound (a + (n-k mod n)) n ltac:(lia)).
+      bdestruct_all; try lia.
+      rewrite <- Nat.add_mod by lia.
+      rewrite (Nat.div_mod k n) at 2 by lia.
+      replace ((a + (n - k mod n) + (n * (k / n) + k mod n)))
+      with ((a + ((n - k mod n) + k mod n + (n * (k / n))))) by lia.
+      rewrite Nat.sub_add by (pose proof (Nat.mod_upper_bound k n); lia).
+      rewrite Nat.add_assoc, Nat.mul_comm, Nat.mod_add by lia.
+      rewrite mod_add_n_r, Nat.mod_small; lia.
+Qed.
 
 Lemma rotl_n n : rotl n n = idn.
 Proof.
@@ -2417,14 +2514,16 @@ Lemma rotr_eq_rotl_sub n k :
 Proof.
 	rewrite rotr_eq_rotr_mod.
   perm_eq_by_WF_inv_inj (rotl n (k mod n)) n.
-  cleanup_perm.
-	destruct n; [rewrite rotl_0_l; easy|].
-  assert (H': S n <> 0) by easy.
-  pose proof (Nat.mod_upper_bound k _ H'). 
-  (* rewrite <- (rotl_n (S n)).
-  f_equal.
-  lia. *)
-Admitted.
+  - unfold WF_Perm.
+    apply rotr_WF.
+  - cleanup_perm.
+    destruct n; [rewrite rotl_0_l; easy|].
+    assert (H': S n <> 0) by easy.
+    pose proof (Nat.mod_upper_bound k _ H'). 
+    rewrite <- (rotl_n (S n)).
+    f_equal.
+    lia.
+Qed.
 
 Lemma rotl_eq_rotr_sub n k : 
 	rotl n k = rotr n (n - k mod n).
