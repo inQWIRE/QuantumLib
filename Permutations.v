@@ -807,7 +807,7 @@ Proof.
     exists (perm_inv n f); easy.
 Qed.
 
-Lemma is_permutation_E (f : nat -> nat) (n : nat) : 
+Lemma is_permutationE (f : nat -> nat) (n : nat) : 
   perm_inv_is_inv_pred f n <-> is_permutation f n = true.
 Proof.
   unfold perm_inv_is_inv_pred, is_permutation.
@@ -823,7 +823,7 @@ Lemma permutation_iff_is_permutation (f : nat -> nat) (n : nat) :
   permutation n f <-> is_permutation f n = true.
 Proof.
   rewrite permutation_iff_perm_inv_is_inv.
-  apply is_permutation_E.
+  apply is_permutationE.
 Qed.
 
 Lemma permutationP (f : nat -> nat) (n : nat) :
