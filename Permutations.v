@@ -86,7 +86,7 @@ Qed.
 Global Hint Resolve idn_permutation : perm_db.
 
 (** Notions of injectivity, boundedness, and surjectivity of f : nat -> nat 
-  (interpreted as a function from [n]_0 to [n]_0) and their equivalences *)
+  interpreted as a function from [n]_0 to [n]_0) and their equivalences *)
 Local Notation perm_surj n f := (forall k, k < n -> exists k', k' < n /\ f k' = k).
 Local Notation perm_bdd n f := (forall k, k < n -> f k < n).
 Local Notation perm_inj n f := (forall k l, k < n -> l < n -> f k = f l -> k = l).
@@ -550,11 +550,12 @@ Qed.
 
 Lemma id_permutation : forall n,
   permutation n Datatypes.id.
-Proof. intros.
-       exists Datatypes.id.
-       intros.
-       unfold Datatypes.id.
-       easy.
+Proof. 
+  intros.
+  exists Datatypes.id.
+  intros.
+  unfold Datatypes.id.
+  easy.
 Qed.
 
 Lemma fswap_permutation : forall n f x y,
@@ -562,15 +563,16 @@ Lemma fswap_permutation : forall n f x y,
   (x < n)%nat -> 
   (y < n)%nat -> 
   permutation n (fswap f x y).
-Proof. intros. 
-       replace (fswap f x y) with (f ∘ (fswap (fun i => i) x y))%prg.
-       apply permutation_compose; auto.
-       exists (fswap (fun i => i) x y).
-       intros. unfold fswap.
-       bdestruct_all; subst; auto.
-       apply functional_extensionality; intros.
-       unfold compose, fswap.
-       bdestruct_all; easy.
+Proof. 
+  intros. 
+  replace (fswap f x y) with (f ∘ (fswap (fun i => i) x y))%prg.
+  apply permutation_compose; auto.
+  exists (fswap (fun i => i) x y).
+  intros. unfold fswap.
+  bdestruct_all; subst; auto.
+  apply functional_extensionality; intros.
+  unfold compose, fswap.
+  bdestruct_all; easy.
 Qed.
 
 Lemma fswap_at_boundary_permutation : forall n f x,
@@ -595,7 +597,7 @@ Proof.
   apply HWF; lia.
 Qed.
 
-(* #[export] Hint Resolve monotonic_WF_perm : WF_perm_db. *)
+#[export] Hint Resolve monotonic_WF_Perm : WF_perm_db.
 
 Lemma compose_WF_Perm n f g : WF_Perm n f -> WF_Perm n g -> 
   WF_Perm n (f ∘ g)%prg.
@@ -605,7 +607,7 @@ Proof.
   rewrite Hg, Hf; easy.
 Qed.
 
-(* #[export] Hint Resolve compose_WF_perm : WF_perm_db. *)
+#[export] Hint Resolve compose_WF_Perm : WF_perm_db.
 
 Lemma linv_WF_of_WF {n} {f finv}
     (HfWF : WF_Perm n f) (Hinv : (finv ∘ f = idn)%prg) :
@@ -1023,7 +1025,6 @@ Proof. intros.
 Qed.
 
 (** * Permutation matrices *)
-
 Definition perm_mat n (p : nat -> nat) : Square n :=
   (fun x y => if (x =? p y) && (x <? n) && (y <? n) then C1 else C0).
 
@@ -1345,7 +1346,6 @@ Proof. intros. apply perm_mat_WF. Qed.
 #[export] Hint Resolve perm_to_matrix_WF : wf_db.
 
 (* Stack and swap perms definitions *)
-
 Definition stack_perms (n0 n1 : nat) (f g : nat -> nat) : nat -> nat :=
   fun n => 
   if (n <? n0) then f n else 
@@ -1364,10 +1364,10 @@ Definition swap_perm a b n :=
   if k =? b then a else k.
 
 Definition rotr n m : nat -> nat :=
-	fun k => if n <=? k then k else (k + m) mod n.
+    fun k => if n <=? k then k else (k + m) mod n.
 
 Definition rotl n m : nat -> nat :=
-	fun k => if n <=? k then k else (k + (n - (m mod n))) mod n.
+    fun k => if n <=? k then k else (k + (n - (m mod n))) mod n.
 
 Ltac bdestruct_one :=
   let fail_if_iffy H :=
@@ -1415,7 +1415,6 @@ Ltac perm_by_inverse finv :=
   only 1,2 : auto with perm_bdd_db; tryeasylia.
 
 (* Section on swap_perm, swaps two elements *)
-
 Lemma swap_perm_same a n :
   swap_perm a a n = idn.
 Proof.
@@ -1530,63 +1529,63 @@ Global Hint Resolve swap_2_perm_permutation : perm_db.
 
 (* Section for stack_perms *)
 Lemma mod_add_n_r : forall m n, 
-	(m + n) mod n = m mod n.
+    (m + n) mod n = m mod n.
 Proof.
-	intros m n.
-	replace (m + n)%nat with (m + 1 * n)%nat by lia.
-	destruct n.
-	- cbn; easy.
-	- rewrite Nat.mod_add;
-		lia.
+    intros m n.
+    replace (m + n)%nat with (m + 1 * n)%nat by lia.
+    destruct n.
+    - cbn; easy.
+    - rewrite Nat.mod_add;
+        lia.
 Qed.
 
 Lemma mod_eq_sub : forall m n,
-	m mod n = (m - n * (m / n))%nat.
+    m mod n = (m - n * (m / n))%nat.
 Proof.
-	intros m n.
-	destruct n.
-	- cbn; lia.
-	- assert (H: (S n <> 0)%nat) by easy.
-		pose proof (Nat.div_mod m (S n) H) as Heq.
-		lia.
+    intros m n.
+    destruct n.
+    - cbn; lia.
+    - assert (H: (S n <> 0)%nat) by easy.
+        pose proof (Nat.div_mod m (S n) H) as Heq.
+        lia.
 Qed.
 
 Lemma mod_of_scale : forall m n q, 
-	(n * q <= m < n * S q)%nat -> m mod n = (m - q * n)%nat.
+    (n * q <= m < n * S q)%nat -> m mod n = (m - q * n)%nat.
 Proof.
-	intros m n q [Hmq HmSq].
-	rewrite mod_eq_sub.
-	replace (m/n)%nat with q; [lia|].
-	apply Nat.le_antisymm.
-	- apply Nat.div_le_lower_bound; lia. 
-	- epose proof (Nat.div_lt_upper_bound m n (S q) _ _).
-		lia.
-		Unshelve.
-		all: lia.
+    intros m n q [Hmq HmSq].
+    rewrite mod_eq_sub.
+    replace (m/n)%nat with q; [lia|].
+    apply Nat.le_antisymm.
+    - apply Nat.div_le_lower_bound; lia. 
+    - epose proof (Nat.div_lt_upper_bound m n (S q) _ _).
+        lia.
+        Unshelve.
+        all: lia.
 Qed.
 
 Lemma mod_n_to_2n : forall m n, 
-	(n <= m < 2 * n)%nat -> m mod n = (m - n)%nat.
+    (n <= m < 2 * n)%nat -> m mod n = (m - n)%nat.
 Proof.
-	intros.
-	epose proof (mod_of_scale m n 1 _).
-	lia.
-	Unshelve.
-	lia.
+    intros.
+    epose proof (mod_of_scale m n 1 _).
+    lia.
+    Unshelve.
+    lia.
 Qed.
 
 Lemma mod_n_to_n_plus_n : forall m n, 
-	(n <= m < n + n)%nat -> m mod n = (m - n)%nat.
+    (n <= m < n + n)%nat -> m mod n = (m - n)%nat.
 Proof.
-	intros.
-	apply mod_n_to_2n; lia.
+    intros.
+    apply mod_n_to_2n; lia.
 Qed.
 
 Ltac simplify_mods_of a b :=
-	first [
-		rewrite (Nat.mod_small a b) in * by lia
-	| rewrite (mod_n_to_2n a b) in * by lia
-	].
+    first [
+        rewrite (Nat.mod_small a b) in * by lia
+    | rewrite (mod_n_to_2n a b) in * by lia
+    ].
 
 Ltac solve_simple_mod_eqns :=
   let __fail_if_has_mods a :=
@@ -1595,25 +1594,25 @@ Ltac solve_simple_mod_eqns :=
     | _ => idtac
     end
   in
-	match goal with
-	| |- context[if _ then _ else _] => fail 1 "Cannot solve equation with if"
-	| _ =>
-		repeat first [
+    match goal with
+    | |- context[if _ then _ else _] => fail 1 "Cannot solve equation with if"
+    | _ =>
+        repeat first [
       easy
-	  |	lia
-		|	match goal with 
-			| |- context[?a mod ?b] => __fail_if_has_mods a; __fail_if_has_mods b; 
-					simplify_mods_of a b
-			| H: context[?a mod ?b] |- _ => __fail_if_has_mods a; __fail_if_has_mods b; 
-					simplify_mods_of a b
-			end 
-		| match goal with
-			| |- context[?a mod ?b] => (* idtac a b; *) bdestruct (a <? b);
-					[rewrite (Nat.mod_small a b) by lia 
-					| try rewrite (mod_n_to_2n a b) by lia]
-			end
-		]
-	end.
+      |	lia
+        |	match goal with 
+            | |- context[?a mod ?b] => __fail_if_has_mods a; __fail_if_has_mods b; 
+                    simplify_mods_of a b
+            | H: context[?a mod ?b] |- _ => __fail_if_has_mods a; __fail_if_has_mods b; 
+                    simplify_mods_of a b
+            end 
+        | match goal with
+            | |- context[?a mod ?b] => (* idtac a b; *) bdestruct (a <? b);
+                    [rewrite (Nat.mod_small a b) by lia 
+                    | try rewrite (mod_n_to_2n a b) by lia]
+            end
+        ]
+    end.
 
 Ltac solve_modular_permutation_equalities :=
   first [cleanup_perm_of_zx | cleanup_perm_inv | cleanup_perm];
@@ -1624,11 +1623,11 @@ Ltac solve_modular_permutation_equalities :=
   solve_simple_mod_eqns.
 
 Lemma stack_perms_WF_idn {n0 n1} {f} 
-	(H : forall k, n0 <= k -> f k = k): 
-	stack_perms n0 n1 f idn = f.
+    (H : forall k, n0 <= k -> f k = k): 
+    stack_perms n0 n1 f idn = f.
 Proof.
-	solve_modular_permutation_equalities;
-	rewrite H; lia.
+    solve_modular_permutation_equalities;
+    rewrite H; lia.
 Qed.
 
 Lemma stack_perms_WF {n0 n1} {f g} k :
@@ -2245,44 +2244,44 @@ Proof.
 Qed.
 
 Lemma stack_perms_high {n0 n1} {f g} {k} :
-	n0 + n1 <= k -> (stack_perms n0 n1 f g) k = k.
+    n0 + n1 <= k -> (stack_perms n0 n1 f g) k = k.
 Proof.
-	intros H.
-	unfold stack_perms.
-	replace_bool_lia (k <? n0) false. 
-	replace_bool_lia (k <? n0 + n1) false.
-	easy.
+    intros H.
+    unfold stack_perms.
+    replace_bool_lia (k <? n0) false. 
+    replace_bool_lia (k <? n0 + n1) false.
+    easy.
 Qed.
 
 Lemma stack_perms_f_idn n0 n1 f :
-	stack_perms n0 n1 f idn = fun k => if k <? n0 then f k else k.
+    stack_perms n0 n1 f idn = fun k => if k <? n0 then f k else k.
 Proof. solve_modular_permutation_equalities. Qed. 
 
 Lemma stack_perms_idn_f n0 n1 f : 
-	stack_perms n0 n1 idn f = 
-	fun k => if (¬ k <? n0) && (k <? n0 + n1) then f (k - n0) + n0 else k.
+    stack_perms n0 n1 idn f = 
+    fun k => if (¬ k <? n0) && (k <? n0 + n1) then f (k - n0) + n0 else k.
 Proof. solve_modular_permutation_equalities. Qed. 
 
 Lemma stack_perms_idn_idn n0 n1 :
-	stack_perms n0 n1 idn idn = idn.
+    stack_perms n0 n1 idn idn = idn.
 Proof. solve_modular_permutation_equalities. Qed.
 
 #[export] Hint Rewrite stack_perms_idn_idn : perm_cleanup_db.
 
 Lemma stack_perms_compose {n0 n1} {f g} {f' g'} 
-	(Hf' : permutation n0 f') (Hg' : permutation n1 g') :
-	(stack_perms n0 n1 f g ∘ stack_perms n0 n1 f' g'
-	= stack_perms n0 n1 (f ∘ f') (g ∘ g'))%prg.
+    (Hf' : permutation n0 f') (Hg' : permutation n1 g') :
+    (stack_perms n0 n1 f g ∘ stack_perms n0 n1 f' g'
+    = stack_perms n0 n1 (f ∘ f') (g ∘ g'))%prg.
 Proof.
-	destruct Hf' as [Hf'inv Hf'].
-	destruct Hg' as [Hg'inv Hg'].
-	unfold compose.
-	(* bdestruct_one. *)
+    destruct Hf' as [Hf'inv Hf'].
+    destruct Hg' as [Hg'inv Hg'].
+    unfold compose.
+    (* bdestruct_one. *)
   solve_modular_permutation_equalities.
-	1,2: specialize (Hf' k H); lia.
-	- f_equal; f_equal. lia.
-	- assert (Hk: k - n0 < n1) by lia.
-	  specialize (Hg' _ Hk); lia.
+    1,2: specialize (Hf' k H); lia.
+    - f_equal; f_equal. lia.
+    - assert (Hk: k - n0 < n1) by lia.
+      specialize (Hg' _ Hk); lia.
 Qed.
 
 Lemma stack_perms_assoc {n0 n1 n2} {f g h} :
@@ -2308,159 +2307,158 @@ Qed.
 
 (* Section on rotr / rotl *)
 Lemma rotr_WF : 
-	forall n k, WF_Perm n (rotr n k).
+    forall n k, WF_Perm n (rotr n k).
 Proof. unfold WF_Perm. intros. unfold rotr. bdestruct_one; lia. Qed.
 
 Lemma rotl_WF {n m} : 
-	forall k, n <= k -> (rotl n m) k = k.
+    forall k, n <= k -> (rotl n m) k = k.
 Proof. intros. unfold rotl. bdestruct_one; lia. Qed.
 
 #[export] Hint Resolve rotr_WF rotl_WF : WF_perm_db.
 
 Lemma rotr_bdd {n m} : 
-	forall k, k < n -> (rotr n m) k < n.
+    forall k, k < n -> (rotr n m) k < n.
 Proof.
-	intros. unfold rotr. bdestruct_one; [lia|].
-	apply Nat.mod_upper_bound; lia.
+    intros. unfold rotr. bdestruct_one; [lia|].
+    apply Nat.mod_upper_bound; lia.
 Qed.
 
 Lemma rotl_bdd {n m} : 
-	forall k, k < n -> (rotl n m) k < n.
+    forall k, k < n -> (rotl n m) k < n.
 Proof.
-	intros. unfold rotl. bdestruct_one; [lia|].
-	apply Nat.mod_upper_bound; lia.
+    intros. unfold rotl. bdestruct_one; [lia|].
+    apply Nat.mod_upper_bound; lia.
 Qed.
 
 #[export] Hint Resolve rotr_bdd rotl_bdd : perm_bdd_db.
 
 Lemma rotr_rotl_inv n m :
-	((rotr n m) ∘ (rotl n m) = idn)%prg.
+    ((rotr n m) ∘ (rotl n m) = idn)%prg.
 Proof.
-	apply functional_extensionality; intros k.
-	unfold compose, rotl, rotr.
-	bdestruct (n <=? k); [bdestructΩ'|].
-	assert (Hn0 : n <> 0) by lia.
-	bdestruct_one.
-	- pose proof (Nat.mod_upper_bound (k + (n - m mod n)) n Hn0) as Hbad.
-	  lia. (* contradict Hbad *)
-	- rewrite Nat.add_mod_idemp_l; [|easy].
-	  rewrite <- Nat.add_assoc.
-	  replace (n - m mod n + m) with
-	    (n - m mod n + (n * (m / n) + m mod n)) by
-	    (rewrite <- (Nat.div_mod m n Hn0); easy).
-	  pose proof (Nat.mod_upper_bound m n Hn0).
-	  replace (n - m mod n + (n * (m / n) + m mod n)) with
-	    (n * (1 + m / n)) by lia.
-	  rewrite Nat.mul_comm, Nat.mod_add; [|easy].
-	  apply Nat.mod_small, H.
+    apply functional_extensionality; intros k.
+    unfold compose, rotl, rotr.
+    bdestruct (n <=? k); [bdestructΩ'|].
+    assert (Hn0 : n <> 0) by lia.
+    bdestruct_one.
+    - pose proof (Nat.mod_upper_bound (k + (n - m mod n)) n Hn0) as Hbad.
+      lia. (* contradict Hbad *)
+    - rewrite Nat.add_mod_idemp_l; [|easy].
+      rewrite <- Nat.add_assoc.
+      replace (n - m mod n + m) with
+        (n - m mod n + (n * (m / n) + m mod n)) by
+        (rewrite <- (Nat.div_mod m n Hn0); easy).
+      pose proof (Nat.mod_upper_bound m n Hn0).
+      replace (n - m mod n + (n * (m / n) + m mod n)) with
+        (n * (1 + m / n)) by lia.
+      rewrite Nat.mul_comm, Nat.mod_add; [|easy].
+      apply Nat.mod_small, H.
 Qed.
 
 Lemma rotl_rotr_inv n m : 
-	((rotl n m) ∘ (rotr n m) = idn)%prg.
+    ((rotl n m) ∘ (rotr n m) = idn)%prg.
 Proof.
-	apply functional_extensionality; intros k.
-	unfold compose, rotl, rotr.
-	bdestruct (n <=? k); [bdestructΩ'|].
-	assert (Hn0 : n <> 0) by lia.
-	bdestruct_one.
-	- pose proof (Nat.mod_upper_bound (k + m) n Hn0) as Hbad.
-	  lia. (* contradict Hbad *)
-	- rewrite Nat.add_mod_idemp_l; [|easy].
-	  rewrite <- Nat.add_assoc.
-	  replace (m + (n - m mod n)) with
-	    ((n * (m / n) + m mod n) + (n - m mod n)) by
-	    (rewrite <- (Nat.div_mod m n Hn0); easy).
-	  pose proof (Nat.mod_upper_bound m n Hn0).
-	  replace ((n * (m / n) + m mod n) + (n - m mod n)) with
-	    (n * (1 + m / n)) by lia.
-	  rewrite Nat.mul_comm, Nat.mod_add; [|easy].
-	  apply Nat.mod_small, H.
+    apply functional_extensionality; intros k.
+    unfold compose, rotl, rotr.
+    bdestruct (n <=? k); [bdestructΩ'|].
+    assert (Hn0 : n <> 0) by lia.
+    bdestruct_one.
+    - pose proof (Nat.mod_upper_bound (k + m) n Hn0) as Hbad.
+      lia. (* contradict Hbad *)
+    - rewrite Nat.add_mod_idemp_l; [|easy].
+      rewrite <- Nat.add_assoc.
+      replace (m + (n - m mod n)) with
+        ((n * (m / n) + m mod n) + (n - m mod n)) by
+        (rewrite <- (Nat.div_mod m n Hn0); easy).
+      pose proof (Nat.mod_upper_bound m n Hn0).
+      replace ((n * (m / n) + m mod n) + (n - m mod n)) with
+        (n * (1 + m / n)) by lia.
+      rewrite Nat.mul_comm, Nat.mod_add; [|easy].
+      apply Nat.mod_small, H.
 Qed.
 
 #[export] Hint Rewrite rotr_rotl_inv rotl_rotr_inv : perm_inv_db.
 
 Lemma rotr_perm {n m} : permutation n (rotr n m).
 Proof. 
-	perm_by_inverse (rotl n m).
+    perm_by_inverse (rotl n m).
 Qed.
 
 Lemma rotl_perm {n m} : permutation n (rotl n m).
 Proof. 
-	perm_by_inverse (rotr n m).
+    perm_by_inverse (rotr n m).
 Qed.
 
 #[export] Hint Resolve rotr_perm rotl_perm : perm_db.
 
-(* This is the start of the actual section *)
 Lemma rotr_0_r n : rotr n 0 = idn.
 Proof.
-	apply functional_extensionality; intros k.
-	unfold rotr.
-	bdestructΩ'.
-	rewrite Nat.mod_small; lia.
+    apply functional_extensionality; intros k.
+    unfold rotr.
+    bdestructΩ'.
+    rewrite Nat.mod_small; lia.
 Qed.
 
 Lemma rotl_0_r n : rotl n 0 = idn.
 Proof.
-	apply functional_extensionality; intros k.
-	unfold rotl.
-	bdestructΩ'.
-	rewrite Nat.mod_0_l, Nat.sub_0_r; [|lia].
-	replace (k + n) with (k + 1 * n) by lia.
-	rewrite Nat.mod_add, Nat.mod_small; lia.
+    apply functional_extensionality; intros k.
+    unfold rotl.
+    bdestructΩ'.
+    rewrite Nat.mod_0_l, Nat.sub_0_r; [|lia].
+    replace (k + n) with (k + 1 * n) by lia.
+    rewrite Nat.mod_add, Nat.mod_small; lia.
 Qed.
 
 Lemma rotr_0_l k : rotr 0 k = idn.
 Proof.
-	apply functional_extensionality; intros a.
-	unfold rotr.
-	bdestructΩ'.
+    apply functional_extensionality; intros a.
+    unfold rotr.
+    bdestructΩ'.
 Qed.
-	
+    
 Lemma rotl_0_l k : rotl 0 k = idn.
 Proof.
-	apply functional_extensionality; intros a.
-	unfold rotl.
-	bdestructΩ'.
+    apply functional_extensionality; intros a.
+    unfold rotl.
+    bdestructΩ'.
 Qed.
 
 #[export] Hint Rewrite rotr_0_r rotl_0_r rotr_0_l rotl_0_l : perm_cleanup_db.
 
 Lemma rotr_rotr n k l :
-	((rotr n k) ∘ (rotr n l) = rotr n (k + l))%prg.
+    ((rotr n k) ∘ (rotr n l) = rotr n (k + l))%prg.
 Proof.
-	apply functional_extensionality; intros a.
-	unfold compose, rotr.
-	symmetry.
-	bdestructΩ'; assert (Hn0 : n <> 0) by lia.
-	- pose proof (Nat.mod_upper_bound (a + l) n Hn0); lia.
-	- rewrite Nat.add_mod_idemp_l; [|easy].
-	  f_equal; lia.
+    apply functional_extensionality; intros a.
+    unfold compose, rotr.
+    symmetry.
+    bdestructΩ'; assert (Hn0 : n <> 0) by lia.
+    - pose proof (Nat.mod_upper_bound (a + l) n Hn0); lia.
+    - rewrite Nat.add_mod_idemp_l; [|easy].
+      f_equal; lia.
 Qed.
 
 Lemma rotl_rotl n k l :
-	((rotl n k) ∘ (rotl n l) = rotl n (k + l))%prg.
+    ((rotl n k) ∘ (rotl n l) = rotl n (k + l))%prg.
 Proof.
-	apply (WF_permutation_inverse_injective (rotr n (k + l)) n).
-	- apply rotr_perm.
-	- apply rotr_WF.
-	- rewrite Nat.add_comm, <- rotr_rotr, 
-		<- Combinators.compose_assoc, (Combinators.compose_assoc _ _ _ _ (rotr n l)).
-	  cleanup_perm; easy. (* rewrite rotl_rotr_inv, compose_idn_r, rotl_rotr_inv. *)
-	- rewrite rotl_rotr_inv; easy.
+    apply (WF_permutation_inverse_injective (rotr n (k + l)) n).
+    - apply rotr_perm.
+    - apply rotr_WF.
+    - rewrite Nat.add_comm, <- rotr_rotr, 
+        <- Combinators.compose_assoc, (Combinators.compose_assoc _ _ _ _ (rotr n l)).
+      cleanup_perm; easy. (* rewrite rotl_rotr_inv, compose_idn_r, rotl_rotr_inv. *)
+    - rewrite rotl_rotr_inv; easy.
 Qed.
 
 #[export] Hint Rewrite rotr_rotr rotl_rotl : perm_cleanup_db.
 
 Lemma rotr_n n : rotr n n = idn.
 Proof.
-	apply functional_extensionality; intros a.
-	unfold rotr.
-	bdestructΩ'.
-	replace (a + n) with (a + 1 * n) by lia.
-	destruct n; [lia|].
-	rewrite Nat.mod_add; [|easy].
-	rewrite Nat.mod_small; easy.
+    apply functional_extensionality; intros a.
+    unfold rotr.
+    bdestructΩ'.
+    replace (a + n) with (a + 1 * n) by lia.
+    destruct n; [lia|].
+    rewrite Nat.mod_add; [|easy].
+    rewrite Nat.mod_small; easy.
 Qed.
 
 #[export] Hint Rewrite rotr_n : perm_cleanup_db.
@@ -2510,9 +2508,9 @@ Proof.
 Qed.
 
 Lemma rotr_eq_rotl_sub n k : 
-	rotr n k = rotl n (n - k mod n).
+    rotr n k = rotl n (n - k mod n).
 Proof.
-	rewrite rotr_eq_rotr_mod.
+    rewrite rotr_eq_rotr_mod.
   perm_eq_by_WF_inv_inj (rotl n (k mod n)) n.
   - unfold WF_Perm.
     apply rotr_WF.
@@ -2526,14 +2524,13 @@ Proof.
 Qed.
 
 Lemma rotl_eq_rotr_sub n k : 
-	rotl n k = rotr n (n - k mod n).
+    rotl n k = rotr n (n - k mod n).
 Proof.
   perm_eq_by_WF_inv_inj (rotr n k) n.
-	destruct n; [cbn; rewrite 2!rotr_0_l, compose_idn_l; easy|].
+    destruct n; [cbn; rewrite 2!rotr_0_l, compose_idn_l; easy|].
   rewrite (rotr_eq_rotr_mod _ k), rotr_rotr, <- (rotr_n (S n)).
   f_equal.
   assert (H' : S n <> 0) by easy.
   pose proof (Nat.mod_upper_bound k (S n) H').
   lia.
 Qed.
-
