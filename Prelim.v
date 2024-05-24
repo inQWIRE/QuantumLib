@@ -454,10 +454,3 @@ Proof.
   rewrite Hmod, Hdiv.
   easy.
 Qed.
-
-Lemma eqb_iff {b c : bool} :
-  b = c <-> ((b = true) <-> (c = true)).
-Proof.
-  destruct b; destruct c; split;
-  intros; try split; auto; lia.
-Qed.
