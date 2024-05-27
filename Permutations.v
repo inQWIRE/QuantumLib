@@ -1,3 +1,4 @@
+Require Import Bits.
 Require Import VectorStates.
 Require Import Modulus.
 
