@@ -231,6 +231,21 @@ Proof.
   lia.
 Qed.
 
+Lemma nth_skipn {T : Type} {n0 n : nat} {k : list T} {d : T} : 
+  nth n (skipn n0 k) d = nth (n0 + n) k d.
+Proof.
+  bdestruct (n0 <? length k).
+  - replace (nth _ k d) with 
+      (nth (n0+n) (firstn n0 k ++ skipn n0 k) d) 
+      by (rewrite (firstn_skipn n0 k); easy).
+    replace (n0 + n) with (length (firstn n0 k) + n).
+    + rewrite app_nth2_plus.
+      easy. 
+    + rewrite firstn_length_le; lia.
+  - rewrite skipn_all2; [|easy].
+    rewrite 2!nth_overflow; cbn; try easy; try lia.
+Qed.
+
 (** Option type *)
 
 Definition maybe {A} (o : option A) (default : A) : A :=
