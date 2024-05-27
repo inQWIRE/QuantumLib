@@ -1,4 +1,4 @@
-Require Import VectorStates Measurement.
+Require Import Bits VectorStates Measurement.
 
 (** This file describes some theory of discrete probability distributions.
   Its main feature is 'apply_u', a function to describe the output distribution 
