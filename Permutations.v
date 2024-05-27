@@ -1,11 +1,13 @@
 Require Import VectorStates.
+Require Import Modulus.
 
 (** Facts about permutations and matrices that implement them. *)
-
+Declare Scope perm_scope.
+Local Open Scope perm_scope.
 Local Open Scope nat_scope.
 
 Create HintDb perm_db.
-Create HintDb perm_bdd_db.
+Create HintDb perm_bounded_db.
 Create HintDb perm_inv_db.
 Create HintDb WF_perm_db.
 
@@ -88,7 +90,7 @@ Global Hint Resolve idn_permutation : perm_db.
 (** Notions of injectivity, boundedness, and surjectivity of f : nat -> nat 
   interpreted as a function from [n]_0 to [n]_0) and their equivalences *)
 Local Notation perm_surj n f := (forall k, k < n -> exists k', k' < n /\ f k' = k).
-Local Notation perm_bdd n f := (forall k, k < n -> f k < n).
+Local Notation perm_bounded n f := (forall k, k < n -> f k < n).
 Local Notation perm_inj n f := (forall k l, k < n -> l < n -> f k = f l -> k = l).
 
 Lemma fswap_injective_if_injective : forall {A} n (f:nat -> A) x y,
@@ -155,23 +157,23 @@ Qed.
 
 Lemma fswap_bounded_if_bounded : forall n f x y,
   x < n -> y < n ->
-  perm_bdd n f -> perm_bdd n (fswap f x y).
+  perm_bounded n f -> perm_bounded n (fswap f x y).
 Proof.
-  intros n f x y Hx Hy Hbdd k Hk.
+  intros n f x y Hx Hy Hbounded k Hk.
   unfold fswap.
   bdestruct_all;
-  apply Hbdd; 
+  apply Hbounded; 
   easy.
 Qed.
 
 Lemma fswap_bounded_iff_bounded : forall n f x y,
   x < n -> y < n ->
-  perm_bdd n f <-> perm_bdd n (fswap f x y).
+  perm_bounded n f <-> perm_bounded n (fswap f x y).
 Proof.
   intros n f x y Hx Hy.
   split.
   - apply fswap_bounded_if_bounded; easy.
-  - intros Hbdd.
+  - intros Hbounded.
     rewrite <- (fswap_involutive f x y).
     apply fswap_bounded_if_bounded; easy.
 Qed.
@@ -230,33 +232,33 @@ Proof.
 Qed.
 
 Lemma injective_and_bounded_grow_of_boundary : forall n f,
-  perm_inj n f /\ perm_bdd n f -> f n = n ->
-  perm_inj (S n) f /\ perm_bdd (S n) f.
+  perm_inj n f /\ perm_bounded n f -> f n = n ->
+  perm_inj (S n) f /\ perm_bounded (S n) f.
 Proof.
-  intros n f [Hinj Hbdd] Hfn.
+  intros n f [Hinj Hbounded] Hfn.
   split.
   - intros k l Hk Hl Hfkl.
     bdestruct (k =? n).
     + subst.
       bdestruct (l =? n); [easy|].
       assert (H'l : l < n) by lia.
-      specialize (Hbdd _ H'l).
+      specialize (Hbounded _ H'l).
       lia.
     + assert (H'k : k < n) by lia.
       bdestruct (l =? n).
-      * specialize (Hbdd _ H'k). 
+      * specialize (Hbounded _ H'k). 
         subst. lia.
       * assert (H'l : l < n) by lia.
         apply Hinj; easy.
   - intros k Hk.
     bdestruct (k <? n).
-    + specialize (Hbdd _ H). lia.
+    + specialize (Hbounded _ H). lia.
     + replace k with n by lia.
       lia.
 Qed.
 
 Lemma injective_and_bounded_of_surjective : forall n f,
-  perm_surj n f -> perm_inj n f /\ perm_bdd n f.
+  perm_surj n f -> perm_inj n f /\ perm_bounded n f.
 Proof.
   intros n.
   induction n; [easy|].
@@ -273,15 +275,15 @@ Proof.
 Qed.
 
 Lemma injective_and_bounded_shrink_of_boundary : forall n f,
-  perm_inj (S n) f /\ perm_bdd (S n) f -> f n = n -> 
-  perm_inj n f /\ perm_bdd n f.
+  perm_inj (S n) f /\ perm_bounded (S n) f -> f n = n -> 
+  perm_inj n f /\ perm_bounded n f.
 Proof.
-  intros n f [Hinj Hbdd] Hfn.
+  intros n f [Hinj Hbounded] Hfn.
   split.
   - eapply injective_monotone, Hinj; lia.
   - intros k Hk.
     assert (H'k : k < S n) by lia.
-    specialize (Hbdd k H'k).
+    specialize (Hbounded k H'k).
     bdestruct (f k =? n).
     + rewrite <- Hfn in H.
       assert (HnS : n < S n) by lia.
@@ -332,16 +334,16 @@ Lemma pigeonhole_S : forall n f,
 Proof.
   intros n.
   destruct n;
-    [intros f Hbdd; specialize (Hbdd 0); lia|].
-  induction n; intros f Hbdd.
+    [intros f Hbounded; specialize (Hbounded 0); lia|].
+  induction n; intros f Hbounded.
   1: {
     exists 1, 0.
-    pose (Hbdd 0).
-    pose (Hbdd 1). 
+    pose (Hbounded 0).
+    pose (Hbounded 1). 
     lia.
   }
   destruct (has_preimage_decidable (S (S n)) f (f (S (S n)))) as [Hex | Hnex].
-  - apply Hbdd; lia.
+  - apply Hbounded; lia.
   - destruct Hex as [j [Hj Hfj]].
     exists (S (S n)), j.
     repeat split; lia.
@@ -349,9 +351,9 @@ Proof.
       [i [j [Hi [Hj Hgij]]]].
     + intros i Hi.
       bdestruct (f i <? f (S (S n))).
-      * specialize (Hbdd (S (S n))).
+      * specialize (Hbounded (S (S n))).
         lia.
-      * specialize (Hbdd i).
+      * specialize (Hbounded i).
         lia.
     + exists i, j.
       repeat (split; [lia|]).
@@ -372,35 +374,35 @@ Proof.
 Qed.
 
 Lemma n_has_preimage_of_injective_and_bounded : forall n f,
-  perm_inj (S n) f /\ perm_bdd (S n) f -> exists k, k < S n /\ f k = n.
+  perm_inj (S n) f /\ perm_bounded (S n) f -> exists k, k < S n /\ f k = n.
 Proof. 
-  intros n f [Hinj Hbdd].
+  intros n f [Hinj Hbounded].
   destruct (has_preimage_decidable (S n) f n) as [Hex | Hnex]; 
     [lia | assumption |].
   (* Now, contradict injectivity using pigeonhole principle *)
   exfalso.
-  assert (Hbdd': forall j, j < S n -> f j < n). 1:{
+  assert (Hbounded': forall j, j < S n -> f j < n). 1:{
     intros j Hj.
-    specialize (Hbdd j Hj).
+    specialize (Hbounded j Hj).
     bdestruct (f j =? n).
     - exfalso; apply Hnex; exists j; easy.
     - lia.
   }
-  destruct (pigeonhole_S n f Hbdd') as [i [j [Hi [Hj Heq]]]].
+  destruct (pigeonhole_S n f Hbounded') as [i [j [Hi [Hj Heq]]]].
   absurd (i = j).
   - lia.
   - apply Hinj; lia.
 Qed.
 
 Lemma surjective_of_injective_and_bounded : forall n f,
-  perm_inj n f /\ perm_bdd n f -> perm_surj n f.
+  perm_inj n f /\ perm_bounded n f -> perm_surj n f.
 Proof. 
   induction n; [easy|].
-  intros f Hinj_bdd.
-  destruct (n_has_preimage_of_injective_and_bounded n f Hinj_bdd) as [n' [Hn' Hfn']].
-  rewrite (fswap_injective_iff_injective _ _ n n') in Hinj_bdd;
+  intros f Hinj_bounded.
+  destruct (n_has_preimage_of_injective_and_bounded n f Hinj_bounded) as [n' [Hn' Hfn']].
+  rewrite (fswap_injective_iff_injective _ _ n n') in Hinj_bounded;
     [|lia|lia].
-  rewrite (fswap_bounded_iff_bounded _ _ n n') in Hinj_bdd;
+  rewrite (fswap_bounded_iff_bounded _ _ n n') in Hinj_bounded;
     [|lia|lia].
   rewrite (fswap_surjective_iff_surjective _ _ n n');
     [|lia|easy].
@@ -409,10 +411,10 @@ Proof.
   - exists n.
     split; [lia|].
     rewrite fswap_simpl1; subst; easy.
-  - pose proof (injective_and_bounded_shrink_of_boundary n _ Hinj_bdd) as Hinj_bdd'.
-    rewrite fswap_simpl1 in Hinj_bdd'.
-    specialize (Hinj_bdd' Hfn').
-    destruct (IHn (fswap f n n') Hinj_bdd' k) as [k' [Hk' Hfk']]; [lia|].
+  - pose proof (injective_and_bounded_shrink_of_boundary n _ Hinj_bounded) as Hinj_bounded'.
+    rewrite fswap_simpl1 in Hinj_bounded'.
+    specialize (Hinj_bounded' Hfn').
+    destruct (IHn (fswap f n n') Hinj_bounded' k) as [k' [Hk' Hfk']]; [lia|].
     exists k'.
     split; [lia|assumption].
 Qed.
@@ -435,7 +437,7 @@ Proof.
 Qed.
 
 Lemma perm_inv_bounded : forall n f,
-  perm_bdd n (perm_inv n f).
+  perm_bounded n (perm_inv n f).
 Proof.
   induction n.
   - easy.
@@ -443,7 +445,7 @@ Proof.
     apply perm_inv_bounded_S.
 Qed.
 
-#[export] Hint Resolve perm_inv_bounded_S perm_inv_bounded : perm_bdd_db.
+#[export] Hint Resolve perm_inv_bounded_S perm_inv_bounded : perm_bounded_db.
 
 Lemma perm_inv_is_linv_of_injective : forall n f, 
   perm_inj n f ->
@@ -503,13 +505,13 @@ Proof.
 Qed.
 
 Lemma perm_inv_is_inv_of_surjective_injective_bounded : forall n f,
-  perm_surj n f -> perm_inj n f -> perm_bdd n f ->
+  perm_surj n f -> perm_inj n f -> perm_bounded n f ->
   (forall k, k < n -> 
     f k < n /\ perm_inv n f k < n /\ perm_inv n f (f k) = k /\ f (perm_inv n f k) = k).
 Proof.
-  intros n f Hsurj Hinj Hbdd.
+  intros n f Hsurj Hinj Hbounded.
   intros k Hk; repeat split.
-  - apply Hbdd, Hk.
+  - apply Hbounded, Hk.
   - apply perm_inv_bounded, Hk.
   - rewrite perm_inv_is_linv_of_injective; easy.
   - rewrite perm_inv_is_rinv_of_surjective'; [easy|].
@@ -542,7 +544,7 @@ Qed.
 #[export] Hint Resolve perm_inv_permutation : perm_db.
 
 Lemma permutation_is_bounded n f : permutation n f ->
-  perm_bdd n f.
+  perm_bounded n f.
 Proof.
   intros [finv Hfinv] k Hk.
   destruct (Hfinv k Hk); easy.
@@ -621,9 +623,9 @@ Proof.
   easy.
 Qed.
 
-Lemma bdd_of_WF_linv {n} {f finv}  
+Lemma bounded_of_WF_linv {n} {f finv}  
   (HWF: WF_Perm n f) (Hinv : (finv ∘ f = idn)%prg) : 
-  perm_bdd n f.
+  perm_bounded n f.
 Proof.
   intros k Hk.
   pose proof (linv_WF_of_WF HWF Hinv) as HWFinv.
@@ -634,9 +636,9 @@ Proof.
   lia.
 Qed.
 
-Lemma rinv_bdd_of_WF {n} {f finv} (Hinv : (f ∘ finv = idn)%prg)
+Lemma rinv_bounded_of_WF {n} {f finv} (Hinv : (f ∘ finv = idn)%prg)
   (HWF : WF_Perm n f) :
-  perm_bdd n finv.
+  perm_bounded n finv.
 Proof.
   intros k Hk.
   unfold compose in Hinv.
@@ -693,15 +695,15 @@ Proof.
 Qed.
 
 Lemma permutation_linv_iff_rinv_of_bounded n f finv :
-  permutation n f -> perm_bdd n finv -> 
+  permutation n f -> perm_bounded n finv -> 
   perm_eq n (f ∘ finv)%prg idn <-> perm_eq n (finv ∘ f)%prg idn.
 Proof.
-  intros Hperm Hbdd.
+  intros Hperm Hbounded.
   split; unfold compose.
   - intros Hrinv.
     intros k Hk.
     apply (permutation_is_injective n f Hperm); try easy.
-    + apply Hbdd, permutation_is_bounded, Hk.
+    + apply Hbounded, permutation_is_bounded, Hk.
       apply Hperm.
     + rewrite Hrinv; [easy|].
       apply (permutation_is_bounded n f Hperm _ Hk).
@@ -729,11 +731,11 @@ Proof.
 Qed.
 
 Lemma perm_bounded_rinv_injective_of_injective n f finv finv' : 
-  perm_inj n f -> perm_bdd n finv -> perm_bdd n finv' ->
+  perm_inj n f -> perm_bounded n finv -> perm_bounded n finv' ->
   is_perm_rinv n f finv -> is_perm_rinv n f finv' ->
   perm_eq n finv finv'.
 Proof.
-  intros Hinj Hbdd Hbdd' Hfinv Hfinv' k Hk.
+  intros Hinj Hbounded Hbounded' Hfinv Hfinv' k Hk.
   apply Hinj; auto.
   unfold compose in *.
   rewrite Hfinv, Hfinv'; easy.
@@ -1412,7 +1414,7 @@ Ltac perm_by_inverse finv :=
   intros k Hk; repeat split;
   only 3,4 : (try apply compose_id_of_compose_idn; cleanup_perm; tryeasylia) 
             || cleanup_perm; tryeasylia;
-  only 1,2 : auto with perm_bdd_db; tryeasylia.
+  only 1,2 : auto with perm_bounded_db; tryeasylia.
 
 (* Section on swap_perm, swaps two elements *)
 Lemma swap_perm_same a n :
@@ -1442,7 +1444,7 @@ Qed.
 
 #[export] Hint Resolve swap_WF_perm : WF_perm_db.
 
-Lemma swap_perm_bdd a b n : a < n -> b < n ->
+Lemma swap_perm_bounded a b n : a < n -> b < n ->
   forall k, k < n -> swap_perm a b n k < n.
 Proof.
   intros Ha Hb k Hk.
@@ -1450,7 +1452,7 @@ Proof.
   bdestructΩ'.
 Qed.
 
-#[export] Hint Resolve swap_perm_bdd : perm_bdd_db.
+#[export] Hint Resolve swap_perm_bounded : perm_bounded_db.
 
 Lemma swap_perm_inv a b n : a < n -> b < n -> 
   ((swap_perm a b n) ∘ (swap_perm a b n))%prg = idn.
@@ -1503,14 +1505,14 @@ Qed.
 
 #[export] Hint Rewrite swap_2_perm_inv : perm_inv_db.
 
-Lemma swap_2_perm_bdd k :
+Lemma swap_2_perm_bounded k :
   k < 2 -> swap_2_perm k < 2.
 Proof.
   intros Hk.
   repeat first [easy | destruct k | cbn; lia].
 Qed.
 
-#[export] Hint Resolve swap_2_perm_bdd : perm_bdd_db.
+#[export] Hint Resolve swap_2_perm_bounded : perm_bounded_db.
 
 Lemma swap_2_WF_perm k : 1 < k -> swap_2_perm k = k.
 Proof.
@@ -1528,92 +1530,6 @@ Qed.
 Global Hint Resolve swap_2_perm_permutation : perm_db.
 
 (* Section for stack_perms *)
-Lemma mod_add_n_r : forall m n, 
-    (m + n) mod n = m mod n.
-Proof.
-    intros m n.
-    replace (m + n)%nat with (m + 1 * n)%nat by lia.
-    destruct n.
-    - cbn; easy.
-    - rewrite Nat.mod_add;
-        lia.
-Qed.
-
-Lemma mod_eq_sub : forall m n,
-    m mod n = (m - n * (m / n))%nat.
-Proof.
-    intros m n.
-    destruct n.
-    - cbn; lia.
-    - assert (H: (S n <> 0)%nat) by easy.
-        pose proof (Nat.div_mod m (S n) H) as Heq.
-        lia.
-Qed.
-
-Lemma mod_of_scale : forall m n q, 
-    (n * q <= m < n * S q)%nat -> m mod n = (m - q * n)%nat.
-Proof.
-    intros m n q [Hmq HmSq].
-    rewrite mod_eq_sub.
-    replace (m/n)%nat with q; [lia|].
-    apply Nat.le_antisymm.
-    - apply Nat.div_le_lower_bound; lia. 
-    - epose proof (Nat.div_lt_upper_bound m n (S q) _ _).
-        lia.
-        Unshelve.
-        all: lia.
-Qed.
-
-Lemma mod_n_to_2n : forall m n, 
-    (n <= m < 2 * n)%nat -> m mod n = (m - n)%nat.
-Proof.
-    intros.
-    epose proof (mod_of_scale m n 1 _).
-    lia.
-    Unshelve.
-    lia.
-Qed.
-
-Lemma mod_n_to_n_plus_n : forall m n, 
-    (n <= m < n + n)%nat -> m mod n = (m - n)%nat.
-Proof.
-    intros.
-    apply mod_n_to_2n; lia.
-Qed.
-
-Ltac simplify_mods_of a b :=
-    first [
-        rewrite (Nat.mod_small a b) in * by lia
-    | rewrite (mod_n_to_2n a b) in * by lia
-    ].
-
-Ltac solve_simple_mod_eqns :=
-  let __fail_if_has_mods a :=
-    match a with
-    | context[_ mod _] => fail 1
-    | _ => idtac
-    end
-  in
-    match goal with
-    | |- context[if _ then _ else _] => fail 1 "Cannot solve equation with if"
-    | _ =>
-        repeat first [
-      easy
-      |	lia
-        |	match goal with 
-            | |- context[?a mod ?b] => __fail_if_has_mods a; __fail_if_has_mods b; 
-                    simplify_mods_of a b
-            | H: context[?a mod ?b] |- _ => __fail_if_has_mods a; __fail_if_has_mods b; 
-                    simplify_mods_of a b
-            end 
-        | match goal with
-            | |- context[?a mod ?b] => (* idtac a b; *) bdestruct (a <? b);
-                    [rewrite (Nat.mod_small a b) by lia 
-                    | try rewrite (mod_n_to_2n a b) by lia]
-            end
-        ]
-    end.
-
 Ltac solve_modular_permutation_equalities :=
   first [cleanup_perm_of_zx | cleanup_perm_inv | cleanup_perm];
   unfold Basics.compose, rotr, rotl, stack_perms, swap_perm,
@@ -1640,7 +1556,7 @@ Qed.
 
 Global Hint Resolve stack_perms_WF : WF_perm_db.
 
-Lemma stack_perms_bdd {n0 n1} {f g}
+Lemma stack_perms_bounded {n0 n1} {f g}
   (Hf : forall k, k < n0 -> f k < n0) (Hg : forall k, k < n1 -> g k < n1) :
   forall k, k < n0 + n1 -> stack_perms n0 n1 f g k < n0 + n1.
 Proof.
@@ -1653,7 +1569,7 @@ Proof.
     specialize (Hg _ Hkn0). lia.
 Qed. 
 
-Global Hint Resolve stack_perms_bdd : perm_bdd_db.
+Global Hint Resolve stack_perms_bounded : perm_bounded_db.
 
 Lemma stack_perms_rinv {n0 n1} {f g} {finv ginv}
   (Hf: forall k, k < n0 -> (f k < n0 /\ finv k < n0 /\ finv (f k) = k /\ f (finv k) = k))
@@ -1699,7 +1615,7 @@ Proof.
   destruct Hf as [f' Hf'].
   destruct Hg as [g' Hg'].
   perm_by_inverse (stack_perms n0 n1 f' g').
-  1,2: apply stack_perms_bdd; try easy; intros k' Hk'; 
+  1,2: apply stack_perms_bounded; try easy; intros k' Hk'; 
        try specialize (Hf' _ Hk'); try specialize (Hg' _ Hk'); easy.
   1,2: rewrite is_inv_iff_inv_is; easy.
 Qed.
@@ -1784,7 +1700,7 @@ Qed.
 #[export] Hint Resolve perm_of_swap_list_WF invperm_of_swap_list_WF : WF_perm_db.
 
 Lemma perm_of_swap_list_bounded l : swap_list_spec l = true ->
-  perm_bdd (length l) (perm_of_swap_list l).
+  perm_bounded (length l) (perm_of_swap_list l).
 Proof. 
   induction l; [easy|].
   simpl.
@@ -1793,7 +1709,7 @@ Proof.
   intros k Hk.
   unfold compose.
   rewrite Nat.ltb_lt in Ha.
-  apply swap_perm_bdd; try lia.
+  apply swap_perm_bounded; try lia.
   bdestruct (k =? length l).
   - subst; rewrite perm_of_swap_list_WF; try easy; lia.
   - transitivity (length l); [|lia].
@@ -1801,7 +1717,7 @@ Proof.
 Qed.
 
 Lemma invperm_of_swap_list_bounded l : swap_list_spec l = true ->
-  perm_bdd (length l) (invperm_of_swap_list l).
+  perm_bounded (length l) (invperm_of_swap_list l).
 Proof.
   induction l; [easy|].
   simpl.
@@ -1814,11 +1730,11 @@ Proof.
   - rewrite H, invperm_of_swap_list_WF; [lia|easy|easy].
   - transitivity (length l); [|lia]. 
     apply IHl; [easy|].
-    pose proof (swap_perm_bdd a (length l) (S (length l)) Ha (ltac:(lia)) k Hk).
+    pose proof (swap_perm_bounded a (length l) (S (length l)) Ha (ltac:(lia)) k Hk).
     lia.
 Qed.
 
-#[export] Hint Resolve perm_of_swap_list_bounded invperm_of_swap_list_bounded : perm_bdd_db.
+#[export] Hint Resolve perm_of_swap_list_bounded invperm_of_swap_list_bounded : perm_bounded_db.
 
 Lemma invperm_linv_perm_of_swap_list l : swap_list_spec l = true ->
   (invperm_of_swap_list l ∘ perm_of_swap_list l)%prg = idn.
@@ -1943,7 +1859,7 @@ Proof.
       (insertion_sort_list_is_swap_list n f)) as H.
     rewrite (length_insertion_sort_list n f) in H.
     exact H.
-  - auto with perm_bdd_db.
+  - auto with perm_bounded_db.
   - apply perm_of_insertion_sort_list_is_rinv, Hperm.
   - apply perm_inv_is_rinv_of_permutation, Hperm.
 Qed.
@@ -2316,21 +2232,21 @@ Proof. intros. unfold rotl. bdestruct_one; lia. Qed.
 
 #[export] Hint Resolve rotr_WF rotl_WF : WF_perm_db.
 
-Lemma rotr_bdd {n m} : 
+Lemma rotr_bounded {n m} : 
     forall k, k < n -> (rotr n m) k < n.
 Proof.
     intros. unfold rotr. bdestruct_one; [lia|].
     apply Nat.mod_upper_bound; lia.
 Qed.
 
-Lemma rotl_bdd {n m} : 
+Lemma rotl_bounded {n m} : 
     forall k, k < n -> (rotl n m) k < n.
 Proof.
     intros. unfold rotl. bdestruct_one; [lia|].
     apply Nat.mod_upper_bound; lia.
 Qed.
 
-#[export] Hint Resolve rotr_bdd rotl_bdd : perm_bdd_db.
+#[export] Hint Resolve rotr_bounded rotl_bounded : perm_bounded_db.
 
 Lemma rotr_rotl_inv n m :
     ((rotr n m) ∘ (rotl n m) = idn)%prg.

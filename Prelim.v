@@ -443,14 +443,3 @@ Proof. induction n as [| n'].
 Qed.
 
 #[export] Hint Resolve firstn_subset skipn_subset : sub_db.
-
-Lemma div_mod_inj {a b} (c :nat) : c > 0 ->
-  (a mod c) = (b mod c) /\ (a / c) = (b / c) -> a = b.
-Proof.
-  intros Hc.
-  intros [Hmod Hdiv].
-  rewrite (Nat.div_mod_eq a c).
-  rewrite (Nat.div_mod_eq b c).
-  rewrite Hmod, Hdiv.
-  easy.
-Qed.
