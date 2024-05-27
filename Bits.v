@@ -136,7 +136,6 @@ Proof.
   reflexivity.
 Qed.
 
-
 Lemma fswap_involutive : forall {A} (f : nat -> A) x y,
   fswap (fswap f x y) x y = f.
 Proof.
@@ -741,4 +740,64 @@ Proof.
   rewrite Nat.div_pow2_bits.
   f_equal.
   lia.
+Qed.
+
+Fixpoint product (x y : nat -> bool) n :=
+  match n with
+  | O => false
+  | S n' => xorb ((x n') && (y n')) (product x y n')
+  end.
+
+Lemma product_comm : forall f1 f2 n, product f1 f2 n = product f2 f1 n.
+Proof.
+  intros f1 f2 n.
+  induction n; simpl; auto.
+  rewrite IHn, andb_comm.
+  reflexivity.
+Qed.
+
+Lemma product_update_oob : forall f1 f2 n b dim, (dim <= n)%nat ->
+  product f1 (update f2 n b) dim = product f1 f2 dim.
+Proof.
+  intros.
+  induction dim; trivial.
+  simpl.
+  rewrite IHdim by lia.
+  unfold update.
+  bdestruct (dim =? n); try lia.
+  reflexivity.
+Qed.
+
+Lemma product_0 : forall f n, product (fun _ : nat => false) f n = false.
+Proof.
+  intros f n.
+  induction n; simpl.
+  reflexivity.
+  rewrite IHn; reflexivity.
+Qed.
+
+Lemma nat_to_funbool_0 : forall n, nat_to_funbool n 0 = (fun _ => false).
+Proof.
+  intro n.
+  unfold nat_to_funbool, nat_to_binlist.
+  simpl.
+  replace (n - 0)%nat with n by lia.
+  induction n; simpl.
+  reflexivity.
+  replace (n - 0)%nat with n by lia.
+  rewrite update_same; rewrite IHn; reflexivity.
+Qed.
+
+Lemma nat_to_funbool_1 : forall n, nat_to_funbool n 1 = (fun x => x =? n - 1).
+Proof.
+  intro n.
+  unfold nat_to_funbool, nat_to_binlist.
+  simpl.
+  apply functional_extensionality.
+  intro x.
+  bdestruct (x =? n - 1).
+  subst. rewrite update_index_eq. reflexivity.
+  rewrite update_index_neq by lia.
+  rewrite list_to_funbool_repeat_false.
+  reflexivity.
 Qed.
