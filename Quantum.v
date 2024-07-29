@@ -1375,12 +1375,37 @@ Qed.
 Lemma braket0_hermitian : hermitian ∣0⟩⟨0∣. Proof. lma. Qed.
 Lemma braket1_hermitian : hermitian ∣1⟩⟨1∣. Proof. lma. Qed.
 
+(* Rewrite hangs on trying to rewrite hermitian, so we need to manually 
+   expose the underlying equality. This was the cause of a bad bug 
+   causing Qsimpl to hang. *)
+(* #[global] Hint Rewrite hadamard_hermitian σx_hermitian σy_hermitian σz_hermitian cnot_hermitian swap_hermitian braket1_hermitian braket0_hermitian control_adjoint phase_adjoint rotation_adjoint : Q_db. *)
 
-#[global] Hint Rewrite hadamard_hermitian σx_hermitian σy_hermitian σz_hermitian cnot_hermitian swap_hermitian braket1_hermitian braket0_hermitian control_adjoint phase_adjoint rotation_adjoint : Q_db.
+Local Ltac make_herm H :=
+  let T := type of H in 
+  let T' := eval unfold hermitian in T in 
+  exact (H : T').
+
+Definition hadamard_hermitian_rw := ltac:(make_herm hadamard_hermitian).
+Definition σx_hermitian_rw := ltac:(make_herm σx_hermitian).
+Definition σy_hermitian_rw := ltac:(make_herm σy_hermitian).
+Definition σz_hermitian_rw := ltac:(make_herm σz_hermitian).
+Definition cnot_hermitian_rw := ltac:(make_herm cnot_hermitian).
+Definition swap_hermitian_rw := ltac:(make_herm swap_hermitian).
+Definition braket1_hermitian_rw := ltac:(make_herm braket1_hermitian).
+Definition braket0_hermitian_rw := ltac:(make_herm braket0_hermitian).
+Definition control_adjoint_rw := ltac:(make_herm control_adjoint).
+Definition phase_adjoint_rw := ltac:(make_herm phase_adjoint).
+Definition rotation_adjoint_rw := ltac:(make_herm rotation_adjoint).
 
 
+#[global] Hint Rewrite hadamard_hermitian_rw 
+  σx_hermitian_rw σy_hermitian_rw σz_hermitian_rw cnot_hermitian_rw 
+  swap_hermitian_rw braket1_hermitian_rw braket0_hermitian_rw 
+  control_adjoint_rw phase_adjoint_rw rotation_adjoint_rw : Q_db.
 
 (* THESE ARE TO BE PHASED OUT *) 
+(* TODO: Is this true now that rewriting with 
+  hermitian is known to be impossible? *)
 
 
 
@@ -1475,7 +1500,6 @@ Lemma braqubit1_sa : ∣1⟩⟨1∣† = ∣1⟩⟨1∣. Proof. lma. Qed.
 
 *)
 
-#[global] Hint Rewrite hadamard_sa σx_sa σy_sa σz_sa cnot_sa swap_sa braqubit1_sa braqubit0_sa control_adjoint phase_adjoint rotation_adjoint : Q_db.
 
 (* Rather use control_adjoint :
 #[global] Hint Rewrite control_sa using (autorewrite with M_db; reflexivity) : M_db. *)
