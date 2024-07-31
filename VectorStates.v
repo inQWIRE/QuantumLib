@@ -1,6 +1,6 @@
 Require Export Pad.
 Require Export CauchySchwarz.
-Require Import Bits.
+Require Export Bits.
 
 (* This file provides abstractions for describing quantum states as vectors.
    - f_to_vec describes classical states as boolean functions

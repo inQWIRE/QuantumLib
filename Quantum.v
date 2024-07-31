@@ -609,7 +609,7 @@ Lemma WF_ybasis_plus : WF_Matrix ∣R⟩. Proof. show_wf. Qed.
 Lemma WF_ybasis_minus : WF_Matrix ∣L⟩. Proof. show_wf. Qed.
 
 
-#[export] Hint Resolve WF_bra0 WF_bra1 WF_qubit0 WF_qubit1 WF_braket0 WF_braket1 WF_braqubit0 WF_braqubit1 : wf_db.
+#[export] Hint Resolve WF_bra0 WF_bra1 WF_qubit0 WF_qubit1 WF_braket0 WF_braket1 : wf_db.
 #[export] Hint Resolve WF_bool_to_ket WF_bool_to_matrix WF_bool_to_matrix' : wf_db.
 #[export] Hint Resolve WF_ket WF_bra WF_bools_to_matrix : wf_db.
 #[export] Hint Resolve WF_xbasis_plus WF_xbasis_minus WF_ybasis_plus WF_ybasis_minus : wf_db. 
@@ -686,17 +686,10 @@ Proof.
     try (rewrite H, H0, H0; try lca);
     try (left; lia); try (right; lia).
     bdestruct (x - S m <? S m); bdestruct (y - S n <? S n).
+    rewrite 2!Modulus.mod_n_to_2n by lia.
     replace (x / S m)%nat with 1%nat.
     replace (y / S n)%nat with 1%nat.
-    replace (x mod S m) with (x - S m)%nat.
-    replace (y mod S n) with (y - S n)%nat.
     lca. 
-    replace y with ((y - S n) + 1*(S n))%nat by lia. 
-    rewrite Nat.mod_add; try lia.
-    rewrite Nat.mod_small; lia.
-    replace x with ((x - S m) + 1*(S m))%nat by lia. 
-    rewrite Nat.mod_add; try lia.
-    rewrite Nat.mod_small; lia.
     replace y with ((y - S n) + 1*(S n))%nat by lia. 
     rewrite Nat.div_add; try lia.
     rewrite Nat.div_small; lia.

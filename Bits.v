@@ -399,6 +399,15 @@ Proof.
   assumption.
 Qed.
 
+Lemma nat_lt_pow2_funbool_to_nat_ind (P : nat -> Prop) n
+  (H : forall f, P (funbool_to_nat n f)) : 
+  forall i, i < 2 ^ n -> P i.
+Proof.
+  intros i Hi.
+  rewrite <- (nat_to_funbool_inverse n i Hi).
+  apply H.
+Qed.
+
 Local Opaque Nat.mul.
 Lemma nat_to_binlist'_even : forall n, (n > 0)%nat -> 
   nat_to_binlist' (2 * n) = false :: nat_to_binlist' n.

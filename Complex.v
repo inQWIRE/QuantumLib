@@ -371,6 +371,34 @@ rewrite Cmult_comm.
 now apply Cinv_r.
 Qed.
 
+Lemma Cdiv_mult_r (c d : C) : d <> 0%R ->
+  c / d * d = c.
+Proof.
+  intros.
+  unfold Cdiv.
+  rewrite <- Cmult_assoc, Cinv_l by easy.
+  apply Cmult_1_r.
+Qed.
+
+Lemma Cdiv_mult_l (c d : C) : d <> 0%R ->
+  d * c / d = c.
+Proof.
+  intros.
+  unfold Cdiv.
+  rewrite (Cmult_comm d c), <- Cmult_assoc, (Cmult_comm d), Cmult_assoc.
+  apply Cdiv_mult_r.
+  easy.
+Qed.
+
+Lemma Cdiv_mult_l' (c d : C) : d <> 0%R ->
+  d * (c / d) = c.
+Proof.
+  intros.
+  rewrite Cmult_comm.
+  apply Cdiv_mult_r.
+  easy.
+Qed.
+
 Lemma Cdiv_1_r : forall c, c / C1 = c.
 Proof. intros. lca. Qed.
 
@@ -554,6 +582,55 @@ Proof. intros. apply C0_fst_neq. easy. Qed.
 
 (** Other useful facts *)
 
+Lemma Cmult_if_l (b : bool) (c d : C) : 
+  (if b then c else 0%R) * d = 
+  if b then c * d else 0%R.
+Proof.
+  destruct b; lca.
+Qed.
+
+Lemma Cmult_if_r (b : bool) (c d : C) : 
+  d * (if b then c else 0%R) = 
+  if b then d * c else 0%R.
+Proof.
+  destruct b; lca.
+Qed.
+
+Lemma Cmult_if_andb (b c : bool) (x y : C) : 
+  (if b then x else 0%R) * (if c then y else 0%R) = 
+  if b && c then x * y else 0%R.
+Proof.
+  destruct b,c; lca.
+Qed.
+
+Lemma Cmult_if_1_l (b : bool) (d : C) : 
+  (if b then C1 else 0%R) * d = 
+  if b then d else 0%R.
+Proof.
+  destruct b; lca.
+Qed.
+
+Lemma Cmult_if_1_r (b : bool) (d : C) : 
+  d * (if b then C1 else 0%R) = 
+  if b then d else 0%R.
+Proof.
+  destruct b; lca.
+Qed.
+
+Lemma Cmult_if_if_1_l (b c : bool) (x : C) : 
+  (if b then C1 else 0%R) * (if c then x else 0%R) = 
+  if b && c then x else 0%R.
+Proof.
+  destruct b; lca.
+Qed.
+
+Lemma Cmult_if_if_1_r (b c : bool) (x : C) : 
+  (if b then x else 0%R) * (if c then C1 else 0%R) = 
+  if b && c then x else 0%R.
+Proof.
+  destruct b,c; lca.
+Qed.
+
 Lemma Copp_neq_0_compat: forall c : C, c <> 0 -> (- c)%C <> 0.
 Proof.
  intros c H.
@@ -570,6 +647,18 @@ Lemma C1_neq_C0 : C1 <> C0.
 Proof. apply C0_fst_neq.
        simpl. 
        apply R1_neq_R0.
+Qed.
+
+Lemma C1_nonzero : C1 <> 0.
+Proof.
+  apply RtoC_neq.
+  lra.
+Qed.
+
+Lemma C2_nonzero : C2 <> 0.
+Proof.
+  apply RtoC_neq.
+  lra.
 Qed.
 
 Lemma Cconj_neq_0 : forall c : C, c <> 0 -> c^* <> 0.
@@ -595,6 +684,16 @@ Proof. intros.
         rewrite Cinv_r in H'; try easy.
         rewrite Cmult_0_r in H'.
         apply C1_neq_C0; easy.
+Qed.
+
+Lemma Cdiv_nonzero (c d : C) : c <> 0%R -> d <> 0%R ->
+  c / d <> 0%R.
+Proof.
+  intros Hc Hd Hf; apply Hc.
+  apply (f_equal (Cmult d)) in Hf.
+  rewrite Cdiv_mult_l' in Hf; [|easy].
+  rewrite Hf.
+  lca.
 Qed.
 
 Lemma div_real : forall (c : C),
@@ -826,7 +925,27 @@ Proof. induction n as [| n'].
          easy. 
 Qed. 
 
+Lemma big_sum_if_eq_C (f : nat -> C) n k :
+  big_sum (fun x => if (x =? k)%nat then f x else 0%R) n =
+  (if (k <? n)%nat then f k else 0%R).
+Proof. 
+  apply (@big_sum_if_eq C).
+Qed.
 
+Lemma big_sum_if_eq_C' (f : nat -> C) n k :
+  big_sum (fun x => if (k =? x)%nat then f x else 0%R) n =
+  (if (k <? n)%nat then f k else 0%R).
+Proof. 
+  apply (@big_sum_if_eq' C).
+Qed.
+
+Lemma add_if_exclusive_join_C (b c : bool) (v : C) : 
+  (b = true -> c = false) -> (c = true -> b = false) -> 
+  ((if b then v else 0%R) + (if c then v else 0%R) = 
+  if b || c then v else 0%R)%C.
+Proof.
+  destruct b, c; simpl; intros; lca.
+Qed.
 
 
 

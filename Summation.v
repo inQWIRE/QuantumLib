@@ -151,6 +151,13 @@ Proof. intros.
        easy.
 Qed.
 
+Lemma Gopp_0 : forall {R} `{Group R}, - 0 = 0.
+Proof.
+  symmetry.
+  apply Gopp_unique_r.
+  apply Gplus_0_l.
+Qed.
+
 Lemma Gopp_involutive : forall {G} `{Group G} (g : G),
   - (- g) = g.
 Proof. intros. 
@@ -188,6 +195,13 @@ Proof. intros.
        rewrite Gplus_0_r, <- Gmult_plus_distr_l, Gplus_0_r; easy. 
 Qed. 
 
+Lemma Gmult_if : forall {R} `{Ring R} (b c : bool) (r s : R),
+  (if b then r else 0) * (if c then s else 0) =
+  if b && c then r * s else 0.
+Proof.
+  intros.
+  destruct b, c; now rewrite ?Gmult_0_l, ?Gmult_0_r.
+Qed.
 
 Lemma Gopp_neg_1 : forall {R} `{Ring R} (r : R), -1%G * r = -r.
 Proof. intros.
@@ -196,7 +210,6 @@ Proof. intros.
        replace (Gplus r) with (Gplus (1 * r)) by (rewrite Gmult_1_l; easy).
        rewrite <- Gmult_plus_distr_r, Gopp_r, Gmult_0_l; easy.
 Qed.       
-
 
 Lemma Ginv_l : forall {F} `{Field F} (f : F), f <> 0 -> (Ginv f) * f = 1.
 Proof. intros; rewrite Gmult_comm; apply Ginv_r; easy. Qed.
@@ -372,6 +385,14 @@ Proof. induction n; try easy.
        lia.
 Qed.
 
+Lemma big_sum_opp : forall {G} `{Comm_Group G} (f : nat -> G) n,
+  - big_sum f n = big_sum (fun k => - f k) n.
+Proof.
+  induction n; simpl.
+  - apply Gopp_0.
+  - rewrite Gopp_plus_distr.
+    now rewrite Gplus_comm, IHn.
+Qed.
 
 Lemma big_sum_plus : forall {G} `{Comm_Group G} f g n, 
     big_sum (fun x => f x + g x) n = big_sum f n + big_sum g n.
@@ -386,6 +407,61 @@ Proof.
     repeat rewrite <- Gplus_assoc.
     apply f_equal_gen; try easy.
     rewrite Gplus_comm; easy.
+Qed.
+
+Lemma big_sum_if_or : forall {G} `{Comm_Group G}
+  (ifl ifr : nat -> bool)
+  (f : nat -> G) (n : nat),
+  big_sum (fun k => if ifl k || ifr k then f k else 0) n =
+  big_sum (fun k => if ifl k then f k else 0) n + 
+  big_sum (fun k => if ifr k then f k else 0) n - 
+  big_sum (fun k => if ifl k && ifr k then f k else 0) n.
+Proof.
+  intros.
+  unfold Gminus.
+  rewrite big_sum_opp.
+  rewrite <- 2!big_sum_plus.
+  apply big_sum_eq_bounded.
+  intros k Hk.
+  destruct (ifl k), (ifr k); simpl; 
+    rewrite <- Gplus_assoc, ?Gopp_r, 
+    ?Gopp_0, ?Gplus_0_r, ?Gplus_0_l; easy.
+Qed.
+
+Lemma big_sum_if_eq : forall {G} `{Monoid G} (f : nat -> G) n k,
+  big_sum (fun x => if x =? k then f x else 0) n =
+  if k <? n then f k else 0.
+Proof.
+  intros.
+  induction n; [easy|]. 
+  simpl.
+  rewrite IHn.
+  bdestruct_all; subst; now rewrite ?Gplus_0_l, ?Gplus_0_r.
+Qed.
+
+Lemma big_sum_if_eq' : forall {G} `{Monoid G} (f : nat -> G) n k,
+  big_sum (fun x => if k =? x then f x else 0) n =
+  if k <? n then f k else 0.
+Proof.
+  intros.
+  rewrite <- big_sum_if_eq.
+  apply big_sum_eq_bounded.
+  intros.
+  now rewrite Nat.eqb_sym.
+Qed.
+
+Lemma big_sum_if_or_eq_ne : forall {G} `{Comm_Group G} 
+  (f : nat -> G) n k l, k <> l ->
+  big_sum (fun x => if (x =? k) || (x =? l) then f x else 0) n =
+  (if k <? n then f k else 0) +
+  (if l <? n then f l else 0).
+Proof.
+  intros * ? f n k l Hkl.
+  induction n; [symmetry; apply Gplus_0_l|]. 
+  simpl.
+  rewrite IHn.
+  bdestruct_all; subst; simpl;
+   rewrite 2?Gplus_0_l, 2?Gplus_0_r; easy + apply Gplus_comm.
 Qed.
 
 Lemma big_sum_scale_l : forall {G} {V} `{Module_Space G V} c f n, 
@@ -459,6 +535,27 @@ Proof.
   + rewrite Gplus_0_l, Gplus_0_r; easy. 
   + rewrite Gplus_assoc, IHn.
     simpl; reflexivity.
+Qed.
+
+Lemma big_sum_split : forall {G} `{Monoid G} n i (v : nat -> G) (Hi : (i < n)),
+  big_sum v n = (big_sum v i) + v i 
+  + (big_sum (fun k => v (k + i + 1)%nat) (n - 1 - i)).
+Proof.
+  intros.
+  induction n; [lia|].
+  bdestruct (i =? n).
+  - subst.
+    replace (S n - 1 - n)%nat with O by lia.
+    rewrite <- big_sum_extend_r. 
+    simpl. 
+    symmetry.
+    apply Gplus_0_r.
+  - specialize (IHn ltac:(lia)).
+    replace (S n - 1 - i)%nat with (S (n - 1 - i))%nat by lia.
+    rewrite <- !big_sum_extend_r.
+    rewrite IHn.
+    replace (n - 1 - i + i + 1)%nat with n by lia.
+    now rewrite Gplus_assoc.
 Qed.
  
 Lemma big_sum_unique : forall {G} `{Monoid G} k (f : nat -> G) n, 
@@ -585,6 +682,19 @@ Proof. induction m as [| m'].
          rewrite HD, HA; try lia.
          rewrite Nat.add_0_r.
          easy.
+Qed.
+
+Lemma big_sum_product_div_mod_split : forall {G} `{Monoid G} n m (f : nat -> G), 
+  big_sum f (n * m) = 
+  big_sum (fun i => big_sum (fun j => f (j + i * n)%nat) n) m.
+Proof.
+  intros.
+  rewrite big_sum_double_sum.
+  apply big_sum_eq_bounded.
+  intros k Hk.
+  f_equal.
+  rewrite (Nat.div_mod_eq k n) at 1.
+  lia.
 Qed.
 
 Local Close Scope nat_scope.

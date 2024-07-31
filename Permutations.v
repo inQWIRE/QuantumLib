@@ -102,12 +102,9 @@ Proof.
   unfold fswap.
   bdestruct (k =? x); bdestruct (k =? y);
   bdestruct (l =? x); bdestruct (l =? y);
-  subst; auto using Hinj.
-  all: intros Heq;
-    epose proof (Hinj _ _ _ _ Heq); 
-    exfalso; lia.
-  Unshelve.
-  all: assumption.
+  subst;
+  intros Heq; 
+  apply Hinj in Heq; lia. 
 Qed.
 
 Lemma fswap_injective_iff_injective : forall {A} n (f:nat -> A) x y,
@@ -683,7 +680,27 @@ Proof.
 Qed.
 
 
-Notation perm_eq n f g := (forall k, k < n -> f k = g k).
+Definition perm_eq (n : nat) (f g : nat -> nat) := 
+  forall k, k < n -> f k = g k.
+
+Lemma perm_eq_refl (n : nat) (f : nat -> nat) : 
+  perm_eq n f f.
+Proof.
+  easy.
+Qed.
+
+Lemma perm_eq_sym {n} {f g : nat -> nat} : 
+  perm_eq n f g -> perm_eq n g f.
+Proof.
+  intros H k Hk; symmetry; auto.
+Qed.
+
+Lemma perm_eq_trans {n} {f g h : nat -> nat} : 
+  perm_eq n f g -> perm_eq n g h -> perm_eq n f h.
+Proof.
+  intros Hfg Hgh k Hk; 
+  rewrite Hfg; auto.
+Qed.
 
 Lemma eq_of_WF_perm_eq n f g : WF_Perm n f -> WF_Perm n g ->
   perm_eq n f g -> f = g.
@@ -751,6 +768,16 @@ Proof.
   + apply permutation_is_surjective, Hperm.
   + destruct (Hfinv); auto.
   + destruct (Hfinv'); auto.
+Qed.
+
+Lemma perm_inv_perm_eq_injective (f : nat -> nat) (n : nat) 
+  {finv finv' : nat -> nat} (Hf : permutation n f) : 
+  perm_eq n (finv ∘ f)%prg idn -> 
+  perm_eq n (finv' ∘ f)%prg idn -> 
+  perm_eq n finv finv'.
+Proof.
+  apply perm_linv_injective_of_surjective.
+  now apply permutation_is_surjective.
 Qed.
 
 Fixpoint for_all_nat_lt (f : nat -> bool) (k : nat) := 
@@ -933,14 +960,21 @@ Proof. intros.
        rewrite compose_id_right.
        easy.
 Qed.
- 
+
+Lemma fswap_comm {A} (f : nat -> A) a b : 
+  fswap f a b = fswap f b a.
+Proof.
+  apply functional_extensionality; intros k.
+  unfold fswap.
+  bdestruct_all; now subst.
+Qed.
+
 (*
 Theorem all_perms_are_fswap_stacks : forall {n} f,
   permutation n f -> 
-  exists l, WF_fswap_stack n l /\ f = (stack_fswaps Datatypes.id l) /\ length l = n.
-Proof. induction n. 
-       - intros. 
-         exists []; simpl.
+  exists l, WF_fswap_stack n l /\ 
+    perm_eq n f (stack_fswaps Datatypes.id l) /\ length l = n.
+Proof. 
 *)     
 
 Definition ordered_real_function n (f : nat -> R) :=
