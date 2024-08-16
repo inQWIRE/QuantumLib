@@ -584,10 +584,6 @@ Ltac show_le_upper_bound term :=
 
 Create HintDb show_moddy_lt_db.
 
-(* #[export] Hint Extern 0 (funbool_to_nat ?n ?f < ?b) =>
-  apply (Nat.lt_le_trans (Bits.funbool_to_nat n f) (2^n) b);
-  [apply (Bits.funbool_to_nat_bound n f) | show_pow2_le] : show_moddy_lt_db. *)
-
 Ltac show_moddy_lt :=
   try trivial with show_moddy_lt_db;
   lazymatch goal with

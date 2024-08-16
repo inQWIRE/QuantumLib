@@ -362,6 +362,40 @@ Qed.
 
 Local Close Scope nat_scope.
 
+Lemma subnormal_matrix_le_1 {n m : nat} (A : Matrix n m) {i j} 
+  (Hi : (i < n)%nat) (Hj : (j < m)%nat) 
+  (Hnorm : forall i, (i < m)%nat -> norm (get_col A i) <= 1) :
+  Cmod (A i j) <= 1.
+Proof.
+  apply Rle_pow_le_nonneg with 1%nat; try lra; [apply Cmod_ge_0|].
+  rewrite pow1.
+  specialize (Hnorm j Hj).
+  revert Hnorm.
+  unfold get_col, norm, inner_product. 
+  autounfold with U_db.
+  rewrite Nat.eqb_refl. 
+  rewrite (big_sum_eq_bounded _ (fun k => RtoC (Cmod (A k j) ^ 2)))
+  by (intros; rewrite <- Cmod_sqr, RtoC_pow; easy).
+  rewrite Rsum_big_sum.
+  intros H.
+  rewrite <- sqrt_1 in H.
+  apply sqrt_le_0 in H; 
+  [|apply Rsum_ge_0_on;intros;apply pow2_ge_0|lra].
+  refine (Rle_trans _ _ _ _ H).
+  apply (Rsum_nonneg_ge_any n (fun k => Cmod (A k j) ^ 2)%R i); [easy|].
+  intros; apply pow2_ge_0.
+Qed.
+
+Lemma normal_matrix_le_1 {n m : nat} (A : Matrix n m) {i j} 
+  (Hi : (i < n)%nat) (Hj : (j < m)%nat) 
+  (Hnorm : forall i, (i < m)%nat -> norm (get_col A i) = 1) :
+  Cmod (A i j) <= 1.
+Proof.
+  apply subnormal_matrix_le_1; [easy..|].
+  intros.
+  rewrite Hnorm; easy + lra.
+Qed.
+
 (* We can now prove Cauchy-Schwartz for vectors with inner_product *)
 Lemma CS_key_lemma : forall {n} (u v : Vector n),
   fst ⟨ (⟨v,v⟩ .* u .+ -1 * ⟨v,u⟩ .* v), (⟨v,v⟩ .* u .+ -1 * ⟨v,u⟩ .* v) ⟩ =

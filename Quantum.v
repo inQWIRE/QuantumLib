@@ -5,6 +5,7 @@ Require Import Psatz.
 Require Import Reals.
 Require Export VecSet.
 Require Export CauchySchwarz.
+Require Import Kronecker.
 
 (* Using our (complex, unbounded) matrices, their complex numbers *)
 
@@ -96,11 +97,20 @@ Definition xbasis_plus : Vector 2 := / (√ 2) .* (∣0⟩ .+ ∣1⟩).
 Definition xbasis_minus : Vector 2 := / (√ 2) .* (∣0⟩ .+ ((-1) .* ∣1⟩)).
 Definition ybasis_plus : Vector 2 := / (√ 2) .* (∣0⟩ .+ Ci .* ∣1⟩).
 Definition ybasis_minus : Vector 2 := / (√ 2) .* (∣0⟩ .+ ((-Ci) .* ∣1⟩)).
+Definition braminus :=  / √ 2 .* (⟨0∣ .+ (-1 .* ⟨1∣)).
+Definition braplus  :=  / √ 2 .* (⟨0∣ .+ ⟨1∣).
 
 Notation "∣+⟩" := xbasis_plus.
 Notation "∣-⟩" := xbasis_minus.
+Notation "⟨+∣" := braplus.
+Notation "⟨-∣" := braminus.
 Notation "∣R⟩" := ybasis_plus.
 Notation "∣L⟩" := ybasis_minus.
+
+Lemma xbasis_plus_spec : ∣+⟩ = / √ 2 .* (∣0⟩ .+ ∣1⟩).
+Proof. reflexivity. Qed.
+Lemma xbasis_minus_spec : ∣-⟩ = / √ 2 .* (∣0⟩ .+  (- 1) .* (∣1⟩)).
+Proof. reflexivity. Qed.
 
 (* defining the EPR pair *)
 Definition EPRpair : Vector 4 := / (√ 2) .* (∣0,0⟩ .+ ∣1,1⟩).
@@ -487,20 +497,6 @@ Qed.
 #[global] Hint Rewrite σx_on_right0 σx_on_right1 σx_on_left0 σx_on_left1 : Q_db.
 #[global] Hint Rewrite cancel00 cancel01 cancel10 cancel11 using (auto with wf_db) : Q_db.
 
-Lemma swap_swap : swap × swap = I (2*2). Proof. solve_matrix. Qed.
-
-Lemma swap_swap_r : forall (A : Matrix (2*2) (2*2)), 
-  WF_Matrix A ->
-  A × swap × swap = A.
-Proof.
-  intros.
-  rewrite Mmult_assoc.
-  rewrite swap_swap.
-  Msimpl.
-  reflexivity.
-Qed.
-
-#[global] Hint Rewrite swap_swap swap_swap_r using (auto 100 with wf_db): Q_db.
 
 (* TODO: move these swap lemmas to Permutation.v? *)
 
@@ -605,6 +601,8 @@ Qed.
 
 Lemma WF_xbasis_plus : WF_Matrix ∣+⟩. Proof. show_wf. Qed.
 Lemma WF_xbasis_minus : WF_Matrix ∣-⟩. Proof. show_wf. Qed.
+Lemma WF_braplus : WF_Matrix (⟨+∣). Proof. show_wf. Qed.
+Lemma WF_braminus : WF_Matrix (⟨-∣). Proof. show_wf. Qed.
 Lemma WF_ybasis_plus : WF_Matrix ∣R⟩. Proof. show_wf. Qed.
 Lemma WF_ybasis_minus : WF_Matrix ∣L⟩. Proof. show_wf. Qed.
 
@@ -612,7 +610,8 @@ Lemma WF_ybasis_minus : WF_Matrix ∣L⟩. Proof. show_wf. Qed.
 #[export] Hint Resolve WF_bra0 WF_bra1 WF_qubit0 WF_qubit1 WF_braket0 WF_braket1 : wf_db.
 #[export] Hint Resolve WF_bool_to_ket WF_bool_to_matrix WF_bool_to_matrix' : wf_db.
 #[export] Hint Resolve WF_ket WF_bra WF_bools_to_matrix : wf_db.
-#[export] Hint Resolve WF_xbasis_plus WF_xbasis_minus WF_ybasis_plus WF_ybasis_minus : wf_db. 
+#[export] Hint Resolve WF_xbasis_plus WF_xbasis_minus WF_braplus WF_braminus
+  WF_ybasis_plus WF_ybasis_minus : wf_db. 
 
 Lemma WF_EPRpair : WF_Matrix ∣Φ+⟩. Proof. unfold EPRpair. auto with wf_db. Qed.
 
@@ -650,7 +649,293 @@ Qed.
 #[export] Hint Extern 2 (WF_Matrix (phase_shift _)) => apply WF_phase : wf_db.
 #[export] Hint Extern 2 (WF_Matrix (control _)) => apply WF_control : wf_db.
 
+Lemma swap_eq_kron_comm : swap = kron_comm 2 2.
+Proof.
+  apply mat_equiv_eq; auto with wf_db.
+  by_cell; reflexivity.
+Qed.
 
+Lemma swap_swap : swap × swap = I (2*2). 
+Proof. rewrite swap_eq_kron_comm. apply kron_comm_mul_inv. Qed.
+
+Lemma swap_swap_r : forall (A : Matrix (2*2) (2*2)), 
+  WF_Matrix A ->
+  A × swap × swap = A.
+Proof.
+  intros.
+  rewrite Mmult_assoc.
+  rewrite swap_swap.
+  now apply Mmult_1_r.
+Qed.
+
+#[global] Hint Rewrite swap_swap swap_swap_r using (auto 100 with wf_db): Q_db.
+
+Lemma braplus_transpose_ketplus :
+⟨+∣⊤ = ∣+⟩.
+Proof. unfold braplus; lma. Qed.
+
+Lemma braminus_transpose_ketminus :
+⟨-∣⊤ = ∣-⟩.
+Proof. unfold braminus; lma. Qed.
+
+Lemma Mmultplus0 : 
+	⟨+∣ × ∣0⟩ = / (√2)%R .* I 1.
+Proof.
+	unfold braplus.
+	rewrite Mscale_mult_dist_l.
+	rewrite Mmult_plus_distr_r.
+	rewrite Mmult00.
+	rewrite Mmult10.
+	lma.
+Qed.
+
+Lemma Mmult0plus : 
+	⟨0∣ × ∣+⟩ = / (√2)%R .* I 1.
+Proof.
+	unfold xbasis_plus.
+	rewrite Mscale_mult_dist_r.
+	rewrite Mmult_plus_distr_l.
+	rewrite Mmult00.
+	rewrite Mmult01.
+	lma.
+Qed.
+
+Lemma Mmultplus1 : 
+	⟨+∣ × ∣1⟩ = / (√2)%R .* I 1.
+Proof.
+	unfold braplus.
+	rewrite Mscale_mult_dist_l.
+	rewrite Mmult_plus_distr_r.
+	rewrite Mmult01.
+	rewrite Mmult11.
+	lma.
+Qed.
+
+Lemma Mmult1plus : 
+	⟨1∣ × ∣+⟩ = / (√2)%R .* I 1.
+Proof.
+	unfold xbasis_plus.
+	rewrite Mscale_mult_dist_r.
+	rewrite Mmult_plus_distr_l.
+	rewrite Mmult10.
+	rewrite Mmult11.
+	lma.
+Qed.
+
+Lemma Mmultminus0 : 
+	⟨-∣ × ∣0⟩ = / (√2)%R .* I 1.
+Proof.
+	unfold braminus.
+	rewrite Mscale_mult_dist_l.
+	rewrite Mmult_plus_distr_r.
+	rewrite Mmult00.
+	rewrite Mscale_mult_dist_l.
+	rewrite Mmult10.
+	lma.
+Qed.
+
+Lemma Mmult0minus : 
+	⟨0∣ × ∣-⟩ = / (√2)%R .* I 1.
+Proof.
+	unfold xbasis_minus.
+	rewrite Mscale_mult_dist_r.
+	rewrite Mmult_plus_distr_l.
+	rewrite Mmult00.
+	rewrite Mscale_mult_dist_r.
+	rewrite Mmult01.
+	lma.
+Qed.
+
+Lemma Mmultminus1 : 
+	⟨-∣ × ∣1⟩ = - / (√2)%R .* I 1.
+Proof.
+	unfold braminus.
+	rewrite Mscale_mult_dist_l.
+	rewrite Mmult_plus_distr_r.
+	rewrite Mmult01.
+	rewrite Mscale_mult_dist_l.
+	rewrite Mmult11.
+	lma.
+Qed.
+
+Lemma Mmult1minus : 
+	⟨1∣ × ∣-⟩ = - / (√2)%R .* I 1.
+Proof.
+	unfold xbasis_minus.
+	rewrite Mscale_mult_dist_r.
+	rewrite Mmult_plus_distr_l.
+	rewrite Mmult10.
+	rewrite Mscale_mult_dist_r.
+	rewrite Mmult11.
+	lma.
+Qed.
+
+Lemma Mmultminusminus : 
+	⟨-∣ × ∣-⟩ = I 1.
+Proof.
+	unfold braminus.
+	unfold xbasis_minus.
+	repeat rewrite Mscale_mult_dist_l.
+	repeat rewrite Mscale_mult_dist_r.
+	repeat rewrite Mmult_plus_distr_r.
+	repeat rewrite Mmult_plus_distr_l.
+	autorewrite with scalar_move_db.
+	rewrite Mmult00.
+	rewrite Mmult01.
+	rewrite Mmult10.
+	rewrite Mmult11.
+	Msimpl.
+	autorewrite with scalar_move_db.
+	solve_matrix.
+Qed.
+
+Lemma Mmultplusminus : 
+	⟨+∣ × ∣-⟩ = Zero.
+Proof.
+	unfold xbasis_minus.
+	unfold braplus.
+	repeat rewrite Mscale_mult_dist_l.
+	repeat rewrite Mscale_mult_dist_r.
+	repeat rewrite Mmult_plus_distr_r.
+	repeat rewrite Mmult_plus_distr_l.
+	autorewrite with scalar_move_db.
+	rewrite Mmult00.
+	rewrite Mmult01.
+	rewrite Mmult10.
+	rewrite Mmult11.
+	lma.
+Qed.
+
+Lemma Mmultminusplus : 
+	⟨-∣ × ∣+⟩ = Zero.
+Proof.
+	unfold xbasis_plus.
+	unfold braminus.
+	repeat rewrite Mscale_mult_dist_l.
+	repeat rewrite Mscale_mult_dist_r.
+	repeat rewrite Mmult_plus_distr_r.
+	repeat rewrite Mmult_plus_distr_l.
+	autorewrite with scalar_move_db.
+	rewrite Mmult00.
+	rewrite Mmult01.
+	rewrite Mmult10.
+	rewrite Mmult11.
+	Msimpl.
+	lma.
+Qed.
+
+Lemma Mmultplusplus : 
+	⟨+∣ × ∣+⟩ = I 1.
+Proof.
+	unfold xbasis_plus.
+	unfold braplus.
+	repeat rewrite Mscale_mult_dist_l.
+	repeat rewrite Mscale_mult_dist_r.
+	repeat rewrite Mmult_plus_distr_r.
+	repeat rewrite Mmult_plus_distr_l.
+	autorewrite with scalar_move_db.
+	rewrite Mmult00.
+	rewrite Mmult01.
+	rewrite Mmult10.
+	rewrite Mmult11.
+	solve_matrix.
+Qed.
+
+#[export] Hint Rewrite 
+	Mmult00 Mmult01 Mmult10 Mmult11 
+	Mmultplus0 Mmultplus1 Mmultminus0 Mmultminus1
+	Mmult0plus Mmult0minus Mmult1plus Mmult1minus
+	Mmultplusplus Mmultplusminus Mmultminusplus Mmultminusminus
+	: ketbra_mult_db.
+
+Lemma bra0transpose :
+	⟨0∣⊤ = ∣0⟩.
+Proof. solve_matrix. Qed.
+
+Lemma bra1transpose :
+	⟨1∣⊤ = ∣1⟩.
+Proof. solve_matrix. Qed.
+
+Lemma ket0transpose :
+	∣0⟩⊤ = ⟨0∣.
+Proof. solve_matrix. Qed.
+
+Lemma ket1transpose :
+	∣1⟩⊤ = ⟨1∣.
+Proof. solve_matrix. Qed.
+
+Lemma Mplus_plus_minus : ∣+⟩ .+ ∣-⟩ = (√2)%R .* ∣0⟩.
+Proof. 
+	unfold xbasis_plus.
+	unfold xbasis_minus.
+	solve_matrix.
+	C_field.
+Qed.
+
+Lemma Mplus_plus_minus_opp : ∣+⟩ .+ -1 .* ∣-⟩ = (√2)%R .* ∣1⟩.
+Proof. 
+	unfold xbasis_plus.
+	unfold xbasis_minus.
+	solve_matrix.
+	C_field_simplify.
+	lca.
+	C_field.
+Qed.
+
+Lemma Mplus_minus_plus : ∣-⟩ .+ ∣+⟩ = (√2)%R .* ∣0⟩.
+Proof. 
+	unfold xbasis_plus.
+	unfold xbasis_minus.
+	solve_matrix.
+	C_field.
+Qed.
+
+Lemma Mplus_minus_opp_plus : -1 .* ∣-⟩ .+ ∣+⟩ = (√2)%R .* ∣1⟩.
+Proof.
+	unfold xbasis_plus.
+	unfold xbasis_minus.
+	solve_matrix.
+	C_field_simplify.
+	lca.
+	C_field.
+Qed.
+
+Lemma Mplus_0_1 : ∣0⟩ .+ ∣1⟩ = (√2)%R .* ∣+⟩.
+Proof. 
+	unfold xbasis_plus.
+	unfold xbasis_minus.
+	solve_matrix.
+Qed.
+
+Lemma Mplus_0_1_opp : ∣0⟩ .+ -1 .* ∣1⟩ = (√2)%R .* ∣-⟩.
+Proof. 
+	unfold xbasis_plus.
+	unfold xbasis_minus.
+	solve_matrix.
+	C_field_simplify.
+	lca.
+	C_field.
+Qed.
+
+Lemma Mplus_1_0 : ∣1⟩ .+ ∣0⟩ = (√2)%R .* ∣+⟩.
+Proof. 
+	unfold xbasis_plus.
+	unfold xbasis_minus.
+	solve_matrix.
+Qed.
+
+Lemma Mplus_1_opp_0 : -1 .* ∣1⟩ .+ ∣0⟩ = (√2)%R .* ∣-⟩.
+Proof.
+	unfold xbasis_plus.
+	unfold xbasis_minus.
+	solve_matrix.
+	C_field_simplify.
+	lca.
+	C_field.
+Qed.
+
+Lemma σz_decomposition : σz = ∣0⟩⟨0∣ .+ -1 .* ∣1⟩⟨1∣.
+Proof. solve_matrix. Qed.
 
 (* how to make this proof shorter? *)
 Lemma direct_sum_decomp : forall (m n o p : nat) (A B : Matrix m n), 
@@ -1017,7 +1302,7 @@ Qed.
 #[export] Hint Resolve H_unitary S_unitary T_unitary σx_unitary σy_unitary σz_unitary : unit_db.
 #[export] Hint Resolve phase_unitary rotation_unitary x_rotation_unitary y_rotation_unitary control_unitary : unit_db.
 
-          
+
 Lemma transpose_unitary : forall n (A : Matrix n n), WF_Unitary A -> WF_Unitary (A⊤).
 Proof.
   intros. 
@@ -1087,12 +1372,8 @@ Lemma swap_unitary : WF_Unitary swap.
 Proof. 
   split.
   apply WF_swap.
-  unfold WF_Unitary, Mmult, I.
-  prep_matrix_equality.
-  do 4 (try destruct x; try destruct y; try lca).
-  replace ((S (S (S (S x))) <? 4)) with (false) by reflexivity.
-  rewrite andb_false_r.
-  lca.
+  rewrite swap_eq_kron_comm.
+  now rewrite kron_comm_adjoint, kron_comm_mul_inv.
 Qed.
 
 Lemma zero_not_unitary : forall n, ~ (WF_Unitary (@Zero (2^n) (2^n))).
@@ -1141,15 +1422,9 @@ Qed.
 (* alternate version for more general length application *)
 Lemma big_kron_unitary' : forall (n m : nat) (ls : list (Square n)), 
   length ls = m -> (forall a, In a ls -> WF_Unitary a) -> @WF_Unitary (n^m) (⨂ ls).
-Proof. intros; subst. induction ls as [| h].
-       - simpl. apply id_unitary.
-       - simpl.
-         apply kron_unitary.
-         apply (H0 h).
-         left. easy.
-         apply IHls.
-         intros. 
-         apply H0. right. easy.
+Proof. 
+  intros; subst. 
+  now apply big_kron_unitary.
 Qed.
 
 Lemma Mmult_unitary : forall (n : nat) (A : Square n) (B : Square n),
@@ -1198,6 +1473,25 @@ Qed.
 
 #[export] Hint Resolve transpose_unitary adjoint_unitary cnot_unitary notc_unitary id_unitary : unit_db.
 #[export] Hint Resolve swap_unitary zero_not_unitary kron_unitary big_kron_unitary big_kron_unitary' Mmult_unitary scale_unitary pad1_unitary : unit_db.
+
+Lemma unitary_conj_trans_real {n} {A : Matrix n n} (HA : WF_Unitary A) i j :
+  snd ((A †%M × A) i j) = 0.
+Proof.
+  destruct HA as [_ Heq].
+  apply (f_equal_inv i) in Heq.
+  apply (f_equal_inv j) in Heq.
+  rewrite Heq.
+  unfold I.
+  Modulus.bdestructΩ'.
+Qed.
+
+Lemma unitary_conj_trans_nonneg {n} {A : Matrix n n} 
+  (HA : WF_Unitary A) i j :
+  0 <= fst ((A †%M × A) i j).
+Proof.
+  rewrite (proj2 HA).
+  unfold I; Modulus.bdestructΩ'; simpl; lra.
+Qed.
 
 
 
@@ -1256,8 +1550,8 @@ Qed.
 
 Lemma swap_hermitian : hermitian swap.
 Proof.
-  prep_matrix_equality. 
-  repeat (try destruct x; try destruct y; try lca; trivial).
+  unfold hermitian.
+  now rewrite swap_eq_kron_comm, kron_comm_adjoint.
 Qed.
 
 
@@ -2063,26 +2357,24 @@ Lemma swap_spec : forall (q q' : Vector 2), WF_Matrix q ->
                                        swap × (q ⊗ q') = q' ⊗ q.
 Proof.
   intros q q' WF WF'.
-  solve_matrix.
-  - destruct y. lca. 
-    rewrite WF by lia. 
-    rewrite (WF' O (S y)) by lia.
-    lca.
-  - destruct y. lca. 
-    rewrite WF by lia. 
-    rewrite (WF' O (S y)) by lia.
-    lca.
-  - destruct y. lca. 
-    rewrite WF by lia. 
-    rewrite (WF' 1%nat (S y)) by lia.
-    lca.
-  - destruct y. lca. 
-    rewrite WF by lia. 
-    rewrite (WF' 1%nat (S y)) by lia.
-    lca.
+  rewrite swap_eq_kron_comm.
+  rewrite kron_comm_commutes_l by easy.
+  rewrite kron_comm_1_l.
+  apply Mmult_1_r; auto with wf_db.
 Qed.  
 
 #[global] Hint Rewrite swap_spec using (auto 100 with wf_db) : Q_db.
+
+Lemma swap_transpose : swap ⊤%M = swap.
+Proof. now rewrite swap_eq_kron_comm, kron_comm_transpose. Qed.
+
+Lemma swap_spec' : 
+  swap = ((ket 0 × bra 0)  ⊗ (ket 0 × bra 0) .+ (ket 0 × bra 1)  ⊗ (ket 1 × bra 0)
+  .+ (ket 1 × bra 0)  ⊗ (ket 0 × bra 1) .+ (ket 1 × bra 1)  ⊗ (ket 1 × bra 1)).
+Proof.
+  apply mat_equiv_eq; [auto 100 with wf_db..|].
+  by_cell; cbv; lca.
+Qed.
 
 Example swap_to_0_test_24 : forall (q0 q1 q2 q3 : Vector 2), 
   WF_Matrix q0 -> WF_Matrix q1 -> WF_Matrix q2 -> WF_Matrix q3 ->
@@ -2119,7 +2411,7 @@ Lemma swap_0_2 : swap_two 3 0 2 = (I 2 ⊗ swap) × (swap ⊗ I 2) × (I 2 ⊗ s
 Proof.
   unfold swap_two.
   simpl.
-  Qsimpl.
+  Msimpl.
   reflexivity.
 Qed.
 

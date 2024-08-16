@@ -394,7 +394,7 @@ Proof.
   easy.
 Qed.
 
-Add Parametric Relation {n m} : (Matrix n m) mat_equiv
+#[global] Add Parametric Relation {n m} : (Matrix n m) mat_equiv
   reflexivity proved by (mat_equiv_refl _ _)
   symmetry proved by (mat_equiv_sym)
   transitivity proved by (mat_equiv_trans)
@@ -509,7 +509,6 @@ Add Parametric Morphism {n} : (@dot n)
   as dot_mat_equiv_morph.
 Proof. intros; apply dot_simplify_mat_equiv; easy. Qed.
 
-(* Search (Matrix ?n ?m -> ?Matrix ?n ?m). *)
 Lemma transpose_simplify_mat_equiv {n m} : forall (A B : Matrix n m),
   A ≡ B -> A ⊤ ≡ B ⊤.
 Proof.
@@ -594,6 +593,14 @@ Lemma WF_Matrix_dim_change : forall (m n m' n' : nat) (A : Matrix m n),
   @WF_Matrix m n A ->
   @WF_Matrix m' n' A.
 Proof. intros. subst. easy. Qed.
+
+Lemma WF_Matrix_dim_change_iff m n m' n' (A : Matrix m n) :
+  m = m' -> n = n' ->
+  @WF_Matrix m' n' A <-> WF_Matrix A.
+Proof.
+  intros.
+  now subst.
+Qed.
 
 Lemma WF_make_WF : forall {m n} (A : Matrix m n), WF_Matrix (make_WF A).
 Proof. intros. 
@@ -841,6 +848,14 @@ Ltac solve_wf := collate_wf; easy.
 
 (** * Basic matrix lemmas *)
 
+Lemma make_WF_equiv n m (A : Matrix n m) : 
+  make_WF A ≡ A.
+Proof.
+  unfold make_WF.
+  intros i j Hi Hj.
+  bdestructΩ'.
+Qed.
+
 Lemma mat_equiv_make_WF : forall {m n} (T : Matrix m n),
   T == make_WF T.
 Proof. unfold make_WF, mat_equiv; intros. 
@@ -919,6 +934,67 @@ Proof.
   unfold trace, scale.
   rewrite (@big_sum_mult_l C _ _ _ C_is_ring). 
   easy.
+Qed.
+
+Lemma trace_0_l : forall (A : Square 0), 
+  trace A = 0.
+Proof.
+  intros A.
+  unfold trace. 
+  easy.
+Qed.
+
+Lemma trace_0_r : forall n, 
+  trace (@Zero n n) = 0.
+Proof.
+  intros A.
+  unfold trace.
+  rewrite big_sum_0; easy.
+Qed.
+
+Lemma trace_mmult_eq_ptwise : forall {n m} (A : Matrix n m) (B : Matrix m n),
+  trace (A×B) = Σ (fun i => Σ (fun j => A i j * B j i) m) n.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma trace_mmult_comm : forall {n m} (A : Matrix n m) (B : Matrix m n),
+  trace (A×B) = trace (B×A).
+Proof.
+  intros n m A B.
+  rewrite 2!trace_mmult_eq_ptwise.
+  rewrite big_sum_swap_order.
+  do 2 (apply big_sum_eq_bounded; intros).
+  apply Cmult_comm.
+Qed.
+
+Lemma trace_transpose : forall {n} (A : Square n),
+  trace (A ⊤) = trace A.
+Proof.
+  reflexivity.
+Qed.
+
+Lemma trace_kron : forall {n p} (A : Square n) (B : Square p),
+  trace (A ⊗ B) = trace A * trace B.
+Proof.
+  intros n p A B.
+  destruct p;
+  [rewrite Nat.mul_0_r, 2!trace_0_l; lca|].
+  unfold trace.
+  simpl_rewrite big_sum_product; [|easy].
+  reflexivity.
+Qed.
+
+Lemma trace_big_sum : forall n k f,
+  trace (big_sum (G:=Square n) f k) = Σ (fun x => trace (f x)) k.
+Proof.
+  intros n k f.
+  induction k.
+  - rewrite trace_0_r; easy.
+  - rewrite <- 2!big_sum_extend_r, <-IHk.
+    simpl. 
+    rewrite trace_plus_dist.
+    easy.
 Qed.
 
 Lemma Mplus_0_l : forall (m n : nat) (A : Matrix m n), Zero .+ A = A.
@@ -1040,6 +1116,12 @@ Proof.
   apply Mmult_1_r_mat_eq.
 Qed.
 
+Lemma Mmult_1_comm {n m} (A : Matrix n m) (HA : WF_Matrix A) : 
+  I n × A = A × I m.
+Proof.
+  now rewrite Mmult_1_r, Mmult_1_l.
+Qed.
+
 (* Cool facts about I∞, not used in the development *) 
 Lemma Mmult_inf_l : forall(m n : nat) (A : Matrix m n),
   WF_Matrix A -> I∞ × A = A.
@@ -1117,45 +1199,78 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma kron_1_r_mat_equiv : forall {n m} (A : Matrix n m),
+  A ⊗ Matrix.I 1 ≡ A.
+Proof.
+  intros; now rewrite kron_1_r.
+Qed.
+
+Lemma kron_1_l_mat_equiv : forall {n m} (A : Matrix n m),
+  Matrix.I 1 ⊗ A ≡ A.
+Proof.
+  intros n m A.
+  intros i j Hi Hj.
+  unfold kron, I.
+  rewrite 2!Nat.div_small, 2!Nat.mod_small by lia.
+  rewrite Cmult_1_l.
+  easy.
+Qed.
+
 (* This side is more limited *)
 Lemma kron_1_l : forall (m n : nat) (A : Matrix m n), 
   WF_Matrix A -> I 1 ⊗ A = A.
 Proof.
   intros m n A WF.
-  prep_matrix_equality.
-  unfold kron.
-  unfold I, kron.
-  bdestruct (m =? 0). rewrite 2 WF by lia. lca. 
-  bdestruct (n =? 0). rewrite 2 WF by lia. lca.
-  bdestruct (x / m <? 1); rename H1 into Eq1.
-  bdestruct (x / m =? y / n); rename H1 into Eq2; simpl.
-  + assert (x / m = 0)%nat by lia. clear Eq1. rename H1 into Eq1.
-    rewrite Eq1 in Eq2.     
-    symmetry in Eq2.
-    rewrite Nat.div_small_iff in Eq2 by lia.
-    rewrite Nat.div_small_iff in Eq1 by lia.
-    rewrite 2 Nat.mod_small; trivial.
-    lca.
-  + assert (x / m = 0)%nat by lia. clear Eq1.
-    rewrite H1 in Eq2. clear H1.
-    assert (y / n <> 0)%nat by lia. clear Eq2.
-    rewrite Nat.div_small_iff in H1 by lia.
-    rewrite Cmult_0_l.
-    destruct WF with (x := x) (y := y). lia.
-    reflexivity.
-  + rewrite andb_false_r.
-    assert (x / m <> 0)%nat by lia. clear Eq1.
-    rewrite Nat.div_small_iff in H1 by lia.
-    rewrite Cmult_0_l.
-    destruct WF with (x := x) (y := y). lia.
-    reflexivity.
+  apply mat_equiv_eq; 
+    [auto using WF_Matrix_dim_change with wf_db..|].
+  apply kron_1_l_mat_equiv.
 Qed.
+
+Lemma kron_1_1_mid_comm {n m} (A : Matrix n 1) (B : Matrix 1 m) 
+  (HA : WF_Matrix A) (HB : WF_Matrix B) : 
+  A ⊗ B = B ⊗ A.
+Proof.
+  apply mat_equiv_eq; [auto with wf_db..|].
+  intros i j.
+  unfold kron.
+  intros Hi Hj.
+  rewrite !Nat.mod_1_r, !Nat.div_1_r, 
+    !Nat.mod_small, !Nat.div_small by lia.
+  lca.
+Qed.
+
+Lemma kron_2_0_mid_comm {n m} (A : Matrix n (2 ^ 0)) (B : Matrix (2 ^ 0) m) 
+  (HA : WF_Matrix A) (HB : WF_Matrix B) : 
+  A ⊗ B = B ⊗ A.
+Proof.
+  now apply kron_1_1_mid_comm.
+Qed.  
 
 Theorem transpose_involutive : forall (m n : nat) (A : Matrix m n), (A⊤)⊤ = A.
 Proof. reflexivity. Qed.
 
 Theorem adjoint_involutive : forall (m n : nat) (A : Matrix m n), A†† = A.
 Proof. intros. lma. Qed.  
+
+Lemma transpose_matrices : forall {n m} (A B : Matrix n m),
+	A ⊤ = B ⊤ -> A = B.
+Proof.
+	intros.
+	rewrite <- transpose_involutive.
+	rewrite <- H.
+	rewrite transpose_involutive.
+	easy.
+Qed.
+
+Lemma adjoint_matrices : forall {n m} (A B : Matrix n m),
+	A † = B † -> A = B.
+Proof.
+	intros.
+	rewrite <- adjoint_involutive.
+	rewrite <- H.
+	rewrite adjoint_involutive.
+	easy.
+Qed.
 
 Lemma id_transpose_eq : forall n, (I n)⊤ = (I n).
 Proof.
@@ -1321,6 +1436,16 @@ Proof. intros.
        rewrite H0. 
        lma.
        apply H.
+Qed.
+
+Lemma Mscale_inv : forall {n m} (A B : Matrix n m) c, 
+  c <> C0 -> c .* A = B <-> A = (/ c) .* B.
+Proof.
+  intros.
+  split; intro H0; [rewrite <- H0 | rewrite H0];
+  rewrite Mscale_assoc.
+  - rewrite Cinv_l; [ lma | assumption].  
+  - rewrite Cinv_r; [ lma | assumption].  
 Qed.
 
 Lemma Mscale_plus_distr_l : forall (m n : nat) (x y : C) (A : Matrix m n),
@@ -1558,6 +1683,33 @@ Lemma kron_mixed_product' : forall (m n n' o p q q' r mp nq or: nat)
   (@kron m o p r (@Mmult m n o A C) (@Mmult p q r B D)).
 Proof. intros. subst. apply kron_mixed_product. Qed.
 
+Lemma kron_id_dist_r : forall {n m o} p (A : Matrix n m) (B : Matrix m o),
+  WF_Matrix A -> WF_Matrix B -> (A × B) ⊗ (I p) = (A ⊗ (I p)) × (B ⊗ (I p)).
+Proof.
+	intros.
+  now rewrite kron_mixed_product, Mmult_1_r by auto with wf_db.
+Qed.
+
+Lemma kron_id_dist_l : forall {n m o} p (A : Matrix n m) (B : Matrix m o),
+  WF_Matrix A -> WF_Matrix B -> (I p) ⊗ (A × B) = ((I p) ⊗ A) × ((I p) ⊗ B).
+Proof.
+	intros.
+  now rewrite kron_mixed_product, Mmult_1_r by auto with wf_db.
+Qed.
+  
+Lemma kron_split_diag {n m p q} (A : Matrix n m) (B : Matrix p q) 
+  (HA : WF_Matrix A) (HB : WF_Matrix B) : 
+  A ⊗ B = (A ⊗ I p) × (I m ⊗ B).
+Proof.
+  now rewrite kron_mixed_product, Mmult_1_l, Mmult_1_r.
+Qed.
+
+Lemma kron_split_antidiag {n m p q} (A : Matrix n m) (B : Matrix p q) 
+  (HA : WF_Matrix A) (HB : WF_Matrix B) : 
+  A ⊗ B = (I n ⊗ B) × (A ⊗ I q).
+Proof.
+  now rewrite kron_mixed_product, Mmult_1_l, Mmult_1_r.
+Qed.
 
 Lemma direct_sum_assoc : forall {m n p q r s : nat}
   (A : Matrix m n) (B : Matrix p q) (C : Matrix r s),
@@ -1600,6 +1752,18 @@ Proof. induction l1.
          all : try apply (WF_big_kron _ _ _ (@Zero n m)); try easy. 
          all : intros. 
          all : assert (H' := H (S i)); simpl in H'; easy.
+Qed.
+
+Lemma kron_n_1 {n m} (A : Matrix n m) (HA : WF_Matrix A) : 
+  1 ⨂ A = A.
+Proof.
+  now apply kron_1_l.
+Qed.
+
+Lemma kron_n_S {n m} (A : Matrix n m) k : 
+  (S k) ⨂ A = (k ⨂ A) ⊗ A.
+Proof.
+  easy.
 Qed.
 
 Lemma kron_n_assoc :
@@ -1903,8 +2067,8 @@ Ltac is_nat_equality :=
 
 Ltac unify_matrix_dims tac := 
   try reflexivity; 
-  repeat (apply f_equal_gen; try reflexivity; 
-          try (is_nat_equality; tac)).
+  repeat (apply f_equal_gen; 
+    try reflexivity; try (is_nat_equality; tac)).
 
 Ltac restore_dims_rec A :=
    match A with
@@ -1946,6 +2110,12 @@ Ltac restore_dims_rec A :=
                 let B' := restore_dims_rec B in 
                 match type of A' with 
                 | Matrix ?m' ?n' => constr:(@eq (Matrix m' n') A' B')
+                  end
+  | mat_equiv ?A ?B => 
+                let A' := restore_dims_rec A in 
+                let B' := restore_dims_rec B in 
+                match type of A' with 
+                | Matrix ?m' ?n' => constr:(@mat_equiv m' n' A' B')
                   end
   | ?A × ?B   => let A' := restore_dims_rec A in 
                 let B' := restore_dims_rec B in 
@@ -2006,19 +2176,96 @@ Ltac restore_dims_rec A :=
   | ?A       => A
    end.
 
-Ltac restore_dims tac := 
+Ltac restore_dims_using tac := 
   match goal with
   | |- ?A      => let A' := restore_dims_rec A in 
                 replace A with A' by unify_matrix_dims tac
   end.
 
-Tactic Notation "restore_dims" tactic(tac) := restore_dims tac.
+Ltac restore_dims_by_exact tac := 
+  match goal with
+  | |- ?A      => let A' := restore_dims_rec A in 
+                replace A with A' by tac
+  end.
 
-Tactic Notation "restore_dims" := restore_dims (repeat rewrite Nat.pow_1_l; try ring; unify_pows_two; simpl; lia).
+Ltac restore_dims_tac :=
+  (* Can redefine with:
+  Ltac restore_dims_tac ::= (tactic). 
+  to extend functionality. *)
+  (repeat rewrite Nat.pow_1_l; try ring; 
+  unify_pows_two; simpl; lia).
 
+Ltac restore_dims :=
+  restore_dims_using restore_dims_tac.
+
+Tactic Notation "restore_dims" "by" tactic(tac) := 
+  restore_dims_using tac.
+
+Tactic Notation "restore_dims" "in" hyp(H) "by" tactic3(tac) :=
+  match type of H with 
+  | ?A => let A' := restore_dims_rec A in 
+      replace A with A' in H by unify_matrix_dims tac
+  end.
+
+Tactic Notation "restore_dims" "in" hyp(H) :=
+  restore_dims in H by restore_dims_tac.
+
+Tactic Notation "restore_dims" "in" "*" "|-" "by" tactic3(tac) :=
+  multimatch goal with
+  | H : _ |- _ => try restore_dims in H by tac
+  end.
+
+Tactic Notation "restore_dims" "in" "*" "|-" :=
+  restore_dims in * |- by restore_dims_tac.
+
+Tactic Notation "restore_dims" "in" "*" "by" tactic3(tac) :=
+  restore_dims in * |- by tac; restore_dims by tac.
+
+Tactic Notation "restore_dims" "in" "*" :=
+  restore_dims in * by restore_dims_tac.
 
 (* Proofs depending on restore_dims *)
 
+Lemma kron_n_assoc_mat_equiv :
+  forall n {m1 m2} (A : Matrix m1 m2), (S n) ⨂ A ≡ A ⊗ (n ⨂ A).
+Proof.
+  intros. induction n.
+  - simpl. 
+    rewrite kron_1_r.
+    restore_dims. 
+    now rewrite kron_1_l_mat_equiv.
+  - cbn [kron_n] in *.
+    restore_dims in *.
+    rewrite IHn at 1.
+    restore_dims.
+    now rewrite kron_assoc_mat_equiv.
+Qed.
+
+Lemma kron_n_m_split_mat_equiv {o p} : forall n m (A : Matrix o p), 
+  (n + m) ⨂ A ≡ n ⨂ A ⊗ m ⨂ A.
+Proof.
+  induction n.
+  - simpl. 
+    intros.
+    symmetry. 
+    restore_dims.
+    now rewrite kron_1_l_mat_equiv.
+  - intros.
+    simpl.
+    restore_dims.
+    rewrite IHn.
+    restore_dims by (rewrite ?Nat.pow_add_r; lia).
+    rewrite kron_assoc_mat_equiv.
+    symmetry.
+    restore_dims.
+    rewrite kron_assoc_mat_equiv.
+    pose proof (kron_n_assoc_mat_equiv m A) as H.
+    symmetry in H.
+    restore_dims in *.
+    rewrite H.
+    simpl.
+    now restore_dims.
+Qed.
 
 Lemma kron_n_m_split {o p} : forall n m (A : Matrix o p), 
   WF_Matrix A -> (n + m) ⨂ A = n ⨂ A ⊗ m ⨂ A.
@@ -2281,6 +2528,18 @@ Ltac solve_matrix := assoc_least;
                      unfold Nat.ltb; simpl; try rewrite andb_false_r; 
                      (* try to solve complex equalities *)
                      autorewrite with C_db; try lca.
+
+Create HintDb scalar_move_db.
+
+#[export] Hint Rewrite 
+  Mscale_kron_dist_l 
+  Mscale_kron_dist_r 
+  Mscale_mult_dist_l 
+  Mscale_mult_dist_r 
+  Mscale_assoc : scalar_move_db.
+
+#[export] Hint Rewrite <- Mscale_plus_distr_l : scalar_move_db.
+#[export] Hint Rewrite <- Mscale_plus_distr_r : scalar_move_db.
 
 (** Gridify **)
 

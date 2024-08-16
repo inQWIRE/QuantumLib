@@ -255,6 +255,9 @@ Ltac apply_with_obligations H :=
     [replace g with g'; [apply H|]|]|]|]|]|]|]; trivial end 
   end.
 
+Ltac gen a :=
+  generalize dependent a.
+
 (** From SF - up to five arguments *)
 Tactic Notation "gen" ident(X1) :=
   generalize dependent X1.

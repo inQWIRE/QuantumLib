@@ -259,6 +259,58 @@ Proof.
   apply Rsqr_le_abs_1 in H0 ; unfold pow; rewrite !Rmult_1_r; auto.
 Qed.
 
+Lemma Cmod_ge_fst z : 
+  fst z <= Cmod z.
+Proof.
+  unfold Cmod.
+  apply sqrt_ge.
+  pose proof (pow2_ge_0 (snd z)).
+  lra.
+Qed.
+
+Lemma Cmod_ge_snd z : 
+  snd z <= Cmod z.
+Proof.
+  unfold Cmod.
+  apply sqrt_ge.
+  pose proof (pow2_ge_0 (fst z)).
+  lra.
+Qed.
+
+Lemma Cmod_ge_abs_fst z : 
+  Rabs (fst z) <= Cmod z.
+Proof.
+  unfold Cmod.
+  apply sqrt_ge_abs.
+  pose proof (pow2_ge_0 (snd z)).
+  lra.
+Qed.
+
+Lemma Cmod_ge_abs_snd z : 
+  Rabs (snd z) <= Cmod z.
+Proof.
+  unfold Cmod.
+  apply sqrt_ge_abs.
+  pose proof (pow2_ge_0 (fst z)).
+  lra.
+Qed.
+
+Lemma Cmod_plus_fst_ge_0 z : 
+  0 <= Cmod z + fst z.
+Proof.
+  rewrite Rplus_comm.
+  apply Rplus_ge_0_of_ge_Rabs.
+  apply Cmod_ge_abs_fst.
+Qed.
+
+Lemma Cmod_plus_snd_ge_0 z : 
+  0 <= Cmod z + snd z.
+Proof.
+  rewrite Rplus_comm.
+  apply Rplus_ge_0_of_ge_Rabs.
+  apply Cmod_ge_abs_snd.
+Qed.
+
 Lemma C_neq_0 : forall c : C, c <> 0 -> (fst c) <> 0 \/ (snd c) <> 0.
 Proof.
   intros.
@@ -270,6 +322,10 @@ Proof.
   assumption.
 Qed.
 
+Lemma Cdiv_0_r z : z / 0 = 0.
+Proof.
+  lca.
+Qed.
 
 (* some lemmas to help simplify addition/multiplication scenarios *)
 Lemma Cplus_simplify : forall (a b c d : C),
@@ -310,8 +366,11 @@ Qed.
 Lemma RtoC_inv (x : R) : (x <> 0)%R -> RtoC (/ x) = / RtoC x.
 Proof. intros Hx. apply injective_projections ; simpl ; field ; auto. Qed.
 
-Lemma RtoC_div (x y : R) : (y <> 0)%R -> RtoC (x / y) = RtoC x / RtoC y.
-Proof. intros Hy. apply injective_projections ; simpl ; field ; auto. Qed.
+Lemma RtoC_div (x y : R) : RtoC (x / y) = RtoC x / RtoC y.
+Proof. destruct (Req_dec y 0).
+  - subst; now rewrite Cdiv_0_r, Rdiv_0_r. 
+  - apply injective_projections ; simpl ; field ; auto. 
+Qed.
 
 Lemma Cplus_comm (x y : C) : x + y = y + x.
 Proof. apply injective_projections ; simpl ; apply Rplus_comm. Qed.
@@ -489,6 +548,29 @@ Proof. intros.
        autorewrite with R_db.
        apply sqrt_square.
        lra. 
+Qed.
+
+Lemma Cmod_eq_0_iff x : Cmod x = 0 <-> x = 0.
+Proof.
+  split; [apply Cmod_eq_0|intros ->; apply Cmod_0].
+Qed.
+
+Lemma Cmod_eq_C0_iff x : @eq C (Cmod x) 0 <-> x = 0.
+Proof.
+  split; [intros H; apply Cmod_eq_0
+  |intros ->; now rewrite Cmod_0].
+  apply (f_equal fst) in H.
+  apply H.
+Qed.
+
+Lemma Cmod_real_abs z : snd z = 0 -> Cmod z = Rabs (fst z).
+Proof.
+  intros Hreal.
+  unfold Cmod.
+  rewrite Hreal.
+  rewrite Rpow_0_l, Rplus_0_r by easy.
+  rewrite <- pow2_abs.
+  now rewrite sqrt_pow2 by (apply Rabs_pos).
 Qed.
 
 Lemma Cmult_neq_0 (z1 z2 : C) : z1 <> 0 -> z2 <> 0 -> z1 * z2 <> 0.
@@ -787,6 +869,45 @@ Qed.
 
 Local Open Scope nat_scope. 
 
+Lemma Rsum_big_sum : forall n (f : nat -> R),
+  fst (big_sum (fun i => RtoC (f i)) n) = big_sum f n.
+Proof.
+  intros. induction n.
+  - easy.
+  - simpl. rewrite IHn.
+    easy. 
+Qed.
+
+Lemma Re_big_sum (n : nat) (f : nat -> C) : 
+  fst (big_sum (fun i => f i) n) = big_sum (fun i => fst (f i)) n.
+Proof.
+  induction n; [easy|].
+  simpl; f_equal; easy.
+Qed. 
+
+Lemma Im_big_sum (n : nat) (f : nat -> C) : 
+  snd (big_sum (fun i => f i) n) = big_sum (fun i => snd (f i)) n.
+Proof.
+  induction n; [easy|].
+  simpl; f_equal; easy.
+Qed.
+
+Lemma big_sum_real n (f : nat -> C)
+  (Hf : forall i, (i < n)%nat -> snd (f i) = 0%R) :
+  big_sum f n = big_sum (fun i => fst (f i)) n.
+Proof.
+  rewrite (big_sum_eq_bounded _ (fun i => RtoC (fst (f i)))).
+  - apply c_proj_eq.
+    + rewrite Rsum_big_sum; easy.
+    + rewrite Im_big_sum.
+      simpl.
+      clear Hf.
+      induction n; [easy|].
+      simpl; lra.
+  - intros i Hi.
+    apply c_proj_eq; [easy|]. 
+    apply Hf; easy.
+Qed.
 
 (* TODO: these should all probably have better names *)
 Lemma big_sum_rearrange : forall (n : nat) (f g : nat -> nat -> C),
@@ -890,14 +1011,6 @@ Proof. intros. induction n.
          simpl; lra.
 Qed.
 
-Lemma Rsum_big_sum : forall n (f : nat -> R),
-  fst (big_sum (fun i => RtoC (f i)) n) = big_sum f n.
-Proof.
-  intros. induction n.
-  - easy.
-  - simpl. rewrite IHn.
-    easy. 
-Qed.
 
 Lemma big_sum_Cmod_0_all_0 : forall (f : nat -> C) (n : nat),
   big_sum (fun i => Cmod (f i)) n = 0 -> 
@@ -925,6 +1038,21 @@ Proof. induction n as [| n'].
          easy. 
 Qed. 
 
+Lemma Cmod_real_nonneg_sum_ge_any n (f : nat -> C) k (Hk : (k < n)%nat) 
+  (Hf_re : forall i, (i < n)%nat -> snd (f i) = 0) 
+  (Hf_nonneg : forall i, (i < n)%nat -> 0 <= fst (f i)):
+  Cmod (f k) <= Cmod (big_sum (fun i => f i) n).
+Proof.
+  rewrite big_sum_real by easy.
+  rewrite 2!Cmod_real; try apply Hf_re; 
+  try apply Rle_ge;
+  try apply (Hf_nonneg k Hk); try easy.
+  - simpl.
+    apply (Rsum_nonneg_ge_any n (fun i => fst (f i))); easy.
+  - apply Rsum_ge_0_on.
+    easy.
+Qed.
+
 Lemma big_sum_if_eq_C (f : nat -> C) n k :
   big_sum (fun x => if (x =? k)%nat then f x else 0%R) n =
   (if (k <? n)%nat then f k else 0%R).
@@ -948,7 +1076,6 @@ Proof.
 Qed.
 
 
-
 (** * Lemmas about Cpow *)
 
 
@@ -961,6 +1088,15 @@ Proof.
     rewrite IHn.
     rewrite RtoC_mult.
     reflexivity.
+Qed.
+
+Lemma Re_Cpow (c : C) (Hc : snd c = 0) n : 
+  fst (Cpow c n) = pow (fst c) n.
+Proof.
+  induction n; [easy|].
+  simpl.
+  rewrite Hc, IHn.
+  lra.
 Qed.
 
 Lemma Cpow_nonzero_real : forall (r : R) (n : nat), (r <> 0 -> r ^ n <> C0)%C. 
@@ -1140,6 +1276,14 @@ Proof.
   reflexivity.
 Qed.
 
+Lemma Cmult_conj_nonneg (c : C) : 
+  0 <= fst (c ^* * c)%C.
+Proof.
+  rewrite <- Cmod_sqr, RtoC_pow.
+  apply pow2_ge_0.
+Qed.
+
+
 Lemma Cconj_simplify : forall (c1 c2 : C), c1^* = c2^* -> c1 = c2.
 Proof. intros. 
        assert (H1 : c1 ^* ^* = c2 ^* ^*). { rewrite H; easy. }
@@ -1235,11 +1379,92 @@ Proof. intros.
        easy.
 Qed.
 
+Definition Csqrt (z : C) : C :=
+	match z with
+	| (a, b) => sqrt ((Cmod z + a) / 2) + Ci * (b / Rabs b) * sqrt((Cmod z - a) / 2)
+	end.
+
+Definition Csqrt_alt z :=
+  if Req_dec_T (snd z) 0 then 
+    if Rcase_abs (fst z) 
+    then Ci * (√ (- fst z)) 
+    else √ (fst z)
+  else 
+    √ Cmod z * (z + Cmod z) / (Cmod (z + Cmod z)).
+
+Lemma Csqrt_Csqrt_alt (z : C) : 
+  Csqrt_alt z * Csqrt_alt z = z.
+Proof.
+  unfold Csqrt_alt.
+  destruct z as [a b].
+  cbn [fst snd].
+  destruct (Req_dec_T b 0).
+  - destruct (Rcase_abs a).
+    + field_simplify.
+      rewrite Ci2.
+      rewrite <- Cmult_assoc.
+      rewrite <- RtoC_mult.
+      rewrite sqrt_sqrt by lra.
+      lca.
+    + rewrite <- RtoC_mult, sqrt_sqrt by lra.
+      lca.
+  - assert (Hnz: RtoC (Cmod ((a,b) + Cmod (a,b))) <> 0). 1: {
+      rewrite Cmod_eq_C0_iff.
+      intros Heq.
+      apply (f_equal snd) in Heq.
+      simpl in Heq.
+      lra.
+    }
+    field_simplify.
+    2: { easy. }
+    rewrite <- !RtoC_mult, sqrt_sqrt by apply Cmod_ge_0.
+    field_simplify.
+    2: { intros Heq; apply (f_equal fst) in Heq; simpl in Heq; apply Hnz.
+      apply Rmult_integral in Heq.
+      now destruct Heq as [-> | ->].
+    }
+    rewrite <- 2!Cmult_assoc, <- RtoC_mult, sqrt_sqrt by apply Cmod_ge_0.
+    field_simplify.
+    2: { intros Heq; apply (f_equal fst) in Heq; simpl in Heq; apply Hnz.
+      apply Rmult_integral in Heq.
+      now destruct Heq as [-> | ->].
+    }
+    generalize Hnz; intros Hnz'.
+    rewrite Cmod_eq_C0_iff in Hnz'.
+    unfold Cmod in *.
+    pose proof (pow2_ge_0 a).
+    pose proof (pow2_ge_0 b).
+    cbn [fst snd] in *.
+    rewrite <- RtoC_mult, !sqrt_sqrt in * by lra.
+    cbn [fst snd RtoC Cplus] in *.
+    rewrite sqrt_sqrt by (pose proof (pow2_ge_0 (a+√(a^2+b^2))); 
+      pose proof (pow2_ge_0 (b+0)); lra).
+    
+    field_simplify_eq.
+    2: {intros Hrw. apply (f_equal fst) in Hrw. cbn [fst RtoC] in Hrw. 
+      rewrite Hrw in *. now rewrite sqrt_0 in *. }
+    apply c_proj_eq.
+    + simpl in *. 
+      field_simplify.
+      simpl.
+      rewrite !Rmult_1_r.
+      rewrite sqrt_sqrt by lra.
+      lra.
+    + simpl.
+      field_simplify.
+      simpl.
+      rewrite !Rmult_1_r.
+      rewrite sqrt_sqrt by lra.
+      lra.
+Qed.
 (** * Complex exponentiation **)
 
 
 (** Compute e^(iθ) *)
 Definition Cexp (θ : R) : C := (cos θ, sin θ).
+
+Lemma Cexp_spec : forall α, Cexp α = cos α + Ci * sin α.
+Proof. intros; lca. Qed.
 
 Lemma Cexp_0 : Cexp 0 = 1.
 Proof. unfold Cexp. autorewrite with trig_db; easy. Qed.
@@ -1271,6 +1496,16 @@ Proof.
     rewrite Rplus_comm.
     rewrite sin2_cos2.
     field.
+Qed.
+
+Lemma Cexp_minus : forall θ,
+	Cexp θ + Cexp (-θ) = 2 * cos θ.
+Proof.
+	intros.
+	unfold Cexp.
+	rewrite cos_neg.
+	rewrite sin_neg.
+	lca.
 Qed.
 
 Lemma Cexp_plus_PI : forall x,
@@ -1541,6 +1776,43 @@ Qed.
 #[global] Hint Rewrite Cexp_0 Cexp_PI Cexp_PI2 Cexp_2PI Cexp_3PI2 Cexp_PI4 Cexp_PIm4
   Cexp_1PI4 Cexp_2PI4 Cexp_3PI4 Cexp_4PI4 Cexp_5PI4 Cexp_6PI4 Cexp_7PI4 Cexp_8PI4
   Cexp_add Cexp_neg Cexp_plus_PI Cexp_minus_PI : Cexp_db.
+
+Lemma INR_pi_exp : forall (r : nat),
+	Cexp (INR r * PI) = 1 \/ Cexp (INR r * PI) = -1.
+Proof.
+	intros.
+	dependent induction r.
+	- simpl.
+		rewrite Rmult_0_l.
+		left.
+		apply Cexp_0.
+	-	rewrite S_O_plus_INR.
+		rewrite Rmult_plus_distr_r.
+		rewrite Rmult_1_l.
+		rewrite Rplus_comm.
+		rewrite Cexp_plus_PI.
+		destruct IHr.
+		+ rewrite H; right; lca.
+		+ rewrite H; left; lca.
+Qed.
+
+Lemma Cexp_2_PI : forall a, Cexp (INR a * 2 * PI) = 1.
+Proof.
+	intros.
+	induction a.
+	- simpl.
+		rewrite 2 Rmult_0_l.
+		rewrite Cexp_0.
+		easy.
+	- rewrite S_INR.
+		rewrite 2 Rmult_plus_distr_r.
+		rewrite Rmult_1_l.
+		rewrite double.
+		rewrite <- Rplus_assoc.
+		rewrite 2 Cexp_plus_PI.
+		rewrite IHa.
+		lca.
+Qed.
 
 Opaque C.
 

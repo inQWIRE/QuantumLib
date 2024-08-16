@@ -4,7 +4,7 @@ Require Export Bits.
 
 (* This file provides abstractions for describing quantum states as vectors.
    - f_to_vec describes classical states as boolean functions
-   - basis_vector describes classiacal states as natural numbers
+   - basis_vector describes classical states as natural numbers
    - vsum describes superposition states
    - vkron describes states as the tensor product of qubit states
 
@@ -32,6 +32,12 @@ Proof. reflexivity. Qed.
 
 Lemma ket1_equiv : ∣1⟩ = ket 1.
 Proof. reflexivity. Qed.
+
+Lemma plus_equiv : ∣+⟩ = ∣ + ⟩.
+Proof. lma'. Qed.
+
+Lemma minus_equiv : ∣-⟩ = ∣ - ⟩.
+Proof. lma'. Qed.
 
 Lemma bra0ket0 : bra 0 × ket 0 = I 1.
 Proof. lma'. Qed.
@@ -65,16 +71,10 @@ Local Open Scope nat_scope.
 Lemma H0_kron_n_spec : forall n,
   n ⨂ hadamard × n ⨂ ∣0⟩ = n ⨂ ∣+⟩.
 Proof.
-  intros.
-  induction n; simpl.
-  - Msimpl_light. reflexivity.
-  - replace (2^n + (2^n + 0)) with (2^n * 2) by lia.
-    replace (1^n + 0) with (1*1) by (rewrite Nat.pow_1_l, Nat.add_0_r; lia). 
-    rewrite Nat.pow_1_l.
-    rewrite kron_mixed_product.
-    rewrite <- IHn.
-    apply f_equal_gen; try reflexivity.
-    lma'.    
+  intros n.
+  rewrite kron_n_mult.
+  rewrite ket0_equiv, plus_equiv.
+  now rewrite H0_spec.
 Qed.
 
 Local Close Scope nat_scope. 
@@ -634,6 +634,145 @@ Local Close Scope R_scope.
 #[global] Hint Rewrite f_to_vec_cnot f_to_vec_σx f_to_vec_phase_shift using lia : f_to_vec_db.
 #[global] Hint Rewrite (@update_index_eq bool) (@update_index_neq bool) (@update_twice_eq bool) (@update_same bool) using lia : f_to_vec_db.
 
+Import Modulus.
+
+Lemma kron_f_to_vec {n m p q} (A : Matrix (2^n) (2^m)) 
+  (B : Matrix (2^p) (2^q)) f : 
+  @mat_equiv _ 1 (A ⊗ B × f_to_vec (m + q) f)
+  ((A × f_to_vec m f (* : Matrix _ 1 *)) ⊗ 
+  (B × f_to_vec q (fun k => f (m + k)) (* : Matrix _ 1) *))).
+Proof.
+  rewrite <- kron_mixed_product.
+  rewrite f_to_vec_merge.
+  Morphisms.f_equiv.
+  apply f_to_vec_eq.
+  intros; bdestructΩ'; f_equal; lia.
+Qed.
+
+Lemma f_to_vec_split' n m f : 
+  mat_equiv (f_to_vec (n + m) f)
+  (f_to_vec n f ⊗ f_to_vec m (fun k => f (n + k))).
+Proof.
+  intros i j Hi Hj.
+  rewrite f_to_vec_merge.
+  erewrite f_to_vec_eq; [reflexivity|].
+  intros; simpl; bdestructΩ'; f_equal; lia.
+Qed.
+
+Lemma f_to_vec_split'_eq n m f : 
+  (f_to_vec (n + m) f) =
+  (f_to_vec n f ⊗ f_to_vec m (fun k => f (n + k))).
+Proof.
+  apply mat_equiv_eq; [..|apply f_to_vec_split']; auto with wf_db.
+Qed.
+
+Lemma f_to_vec_1_eq f : 
+  f_to_vec 1 f = if f 0 then ∣1⟩ else ∣0⟩.
+Proof.
+  cbn.
+  unfold ket.
+  rewrite kron_1_l by (destruct (f 0); auto with wf_db).
+  now destruct (f 0).
+Qed.
+
+Lemma f_to_vec_1_mult_r f (A : Matrix (2^1) (2^1)) : 
+  A × f_to_vec 1 f = (fun x j => if j =? 0 then A x (Nat.b2n (f 0)) else 0%R).
+Proof.
+  cbn.
+  rewrite kron_1_l by auto with wf_db.
+  apply functional_extensionality; intros i.
+  apply functional_extensionality; intros j.
+  unfold Mmult.
+  simpl.
+  destruct (f 0);
+  unfold ket;
+  simpl;
+  now destruct j; simpl; Csimpl.
+Qed.
+
+Lemma f_to_vec_1_mult_r_decomp f (A : Matrix (2^1) (2^1))  : 
+  A × f_to_vec 1 f ≡
+  A 0 (Nat.b2n (f 0)) .* ∣0⟩ .+ 
+  A 1 (Nat.b2n (f 0)) .* ∣1⟩.
+Proof.
+  rewrite f_to_vec_1_mult_r.
+  intros i j Hi Hj.
+  replace j with 0 by lia.
+  simpl.
+  autounfold with U_db.
+  do 2 (try destruct i); [..| simpl in *; lia]; 
+  now Csimpl.
+Qed.
+
+Lemma f_to_vec_1_mult_r_decomp_eq f (A : Matrix (2^1) (2^1))  : 
+  WF_Matrix A -> 
+  A × f_to_vec 1 f =
+  A 0 (Nat.b2n (f 0)) .* ∣0⟩ .+ 
+  A 1 (Nat.b2n (f 0)) .* ∣1⟩.
+Proof.
+  intros.
+  apply mat_equiv_eq; auto with wf_db.
+  apply f_to_vec_1_mult_r_decomp.
+Qed.
+
+Lemma qubit0_f_to_vec : ∣0⟩ = f_to_vec 1 (fun x => false).
+Proof. now rewrite f_to_vec_1_eq. Qed.
+
+Lemma qubit1_f_to_vec : ∣1⟩ = f_to_vec 1 (fun x => x =? 0).
+Proof. now rewrite f_to_vec_1_eq. Qed.
+
+Lemma ket_f_to_vec b : ∣ Nat.b2n b ⟩ = f_to_vec 1 (fun x => b).
+Proof.
+  destruct b; [apply qubit1_f_to_vec | apply qubit0_f_to_vec].
+Qed.
+
+Lemma f_to_vec_1_mult_r_decomp_eq' f (A : Matrix (2^1) (2^1))  : 
+  WF_Matrix A -> 
+  A × f_to_vec 1 f =
+  A 0 (Nat.b2n (f 0)) .* f_to_vec 1 (fun x => false) .+ 
+  A 1 (Nat.b2n (f 0)) .* f_to_vec 1 (fun x => x=?0).
+Proof.
+  intros.
+  apply mat_equiv_eq; auto with wf_db.
+  rewrite f_to_vec_1_mult_r_decomp.
+  rewrite 2!f_to_vec_1_eq.
+  easy.
+Qed.
+
+Lemma f_to_vec_1_mult_l_decomp f (A : Matrix (2^1) (2^1))  : 
+  (f_to_vec 1 f) ⊤ × A ≡
+  A (Nat.b2n (f 0)) 0 .* (∣0⟩ ⊤) .+ 
+  A (Nat.b2n (f 0)) 1 .* (∣1⟩ ⊤).
+Proof.
+  rewrite <- (transpose_involutive _ _ A).
+  rewrite <- Mmult_transpose, <- Mscale_trans.
+  intros i j Hi Hj.
+  apply (f_to_vec_1_mult_r_decomp f (A ⊤)); easy.
+Qed.
+
+Lemma f_to_vec_1_mult_l_decomp_eq f (A : Matrix (2^1) (2^1))  : 
+  WF_Matrix A -> 
+  (f_to_vec 1 f) ⊤ × A =
+  A (Nat.b2n (f 0)) 0 .* (∣0⟩ ⊤) .+ 
+  A (Nat.b2n (f 0)) 1 .* (∣1⟩ ⊤).
+Proof.
+  intros.
+  apply mat_equiv_eq; auto with wf_db.
+  apply f_to_vec_1_mult_l_decomp.
+Qed.
+
+Lemma f_to_vec_1_mult_l_decomp_eq' f (A : Matrix (2^1) (2^1))  : 
+  WF_Matrix A -> 
+  (f_to_vec 1 f) ⊤ × A =
+  A (Nat.b2n (f 0)) 0 .* ((f_to_vec 1 (fun x => false)) ⊤) .+ 
+  A (Nat.b2n (f 0)) 1 .* ((f_to_vec 1 (fun x => x =? 0)) ⊤).
+Proof.
+  intros.
+  apply mat_equiv_eq; auto with wf_db.
+  rewrite f_to_vec_1_mult_l_decomp_eq by easy.
+  now rewrite qubit0_f_to_vec, qubit1_f_to_vec.
+Qed.
+
 
 (*******************************)
 (**   Indexed Vector Sum      **)
@@ -701,52 +840,6 @@ Proof.
       unfold shift; simpl.
       replace (n - 1 - i + (i + 1))%nat with n by lia.
       lma. 
-Qed.
-
-Lemma vsum_eq_up_to_fswap : forall {d} n f (v : nat -> Vector d) x y,
-  (x < n)%nat -> (y < n)%nat ->
-  big_sum (fun i => v (f i)) n = big_sum (fun i => v (fswap f x y i)) n.
-Proof.
-  intros d n f v x y Hx Hy.
-  bdestruct (x =? y).
-  subst.
-  apply big_sum_eq.
-  apply functional_extensionality; intros. 
-  unfold fswap.
-  bdestruct_all; subst; reflexivity.
-  bdestruct (x <? y).
-  - rewrite 2 (vsum_split n y) by auto.
-    rewrite 2 (vsum_split y x) by auto.
-    rewrite fswap_simpl1, fswap_simpl2.
-    apply f_equal_gen; try apply f_equal.
-    repeat (rewrite Mplus_assoc).
-    apply f_equal_gen; try apply f_equal.
-    apply big_sum_eq_bounded; intros. 
-    unfold fswap; bdestruct_all; try lia; auto. 
-    rewrite Mplus_comm, (Mplus_comm _ _ (v (f y))).
-    repeat rewrite Mplus_assoc.
-    apply f_equal_gen; try apply f_equal.
-    apply big_sum_eq_bounded; intros. 
-    unfold shift, fswap; bdestruct_all; try lia; auto. 
-    lma. 
-    apply big_sum_eq_bounded; intros. 
-    unfold shift, fswap; bdestruct_all; try lia; auto. 
-  - rewrite 2 (vsum_split n x) by auto.
-    rewrite 2 (vsum_split x y) by lia.
-    rewrite fswap_simpl1, fswap_simpl2.
-    apply f_equal_gen; try apply f_equal.
-    repeat (rewrite Mplus_assoc).
-    apply f_equal_gen; try apply f_equal.
-    apply big_sum_eq_bounded; intros. 
-    unfold fswap; bdestruct_all; try lia; auto. 
-    rewrite Mplus_comm, (Mplus_comm _ _ (v (f x))).
-    repeat rewrite Mplus_assoc.
-    apply f_equal_gen; try apply f_equal.
-    apply big_sum_eq_bounded; intros. 
-    unfold shift, fswap; bdestruct_all; try lia; auto. 
-    lma. 
-    apply big_sum_eq_bounded; intros. 
-    unfold shift, fswap; bdestruct_all; try lia; auto. 
 Qed.
 
 (*******************************)

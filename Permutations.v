@@ -1,8 +1,7 @@
 Require Import Bits.
-Require Import VectorStates.
 Require Import Modulus.
 
-(** Facts about permutations and matrices that implement them. *)
+(** Facts about permutations *)
 Declare Scope perm_scope.
 Local Open Scope perm_scope.
 Local Open Scope nat_scope.
@@ -10,7 +9,7 @@ Local Open Scope nat_scope.
 Create HintDb perm_db.
 Create HintDb perm_bounded_db.
 Create HintDb perm_inv_db.
-Create HintDb WF_perm_db.
+Create HintDb WF_Perm_db.
 
 (** Permutations on (0, ..., n-1) *)
 Definition permutation (n : nat) (f : nat -> nat) :=
@@ -597,8 +596,6 @@ Proof.
   apply HWF; lia.
 Qed.
 
-#[export] Hint Resolve monotonic_WF_Perm : WF_perm_db.
-
 Lemma compose_WF_Perm n f g : WF_Perm n f -> WF_Perm n g -> 
   WF_Perm n (f ∘ g)%prg.
 Proof.
@@ -607,7 +604,7 @@ Proof.
   rewrite Hg, Hf; easy.
 Qed.
 
-#[export] Hint Resolve compose_WF_Perm : WF_perm_db.
+#[export] Hint Resolve compose_WF_Perm : WF_Perm_db.
 
 Lemma linv_WF_of_WF {n} {f finv}
     (HfWF : WF_Perm n f) (Hinv : (finv ∘ f = idn)%prg) :
@@ -732,10 +729,10 @@ Proof.
     rewrite Hlinv; easy.
 Qed.
 
-Notation is_perm_rinv n f finv := (perm_eq n (f ∘ finv)%prg idn).
-Notation is_perm_linv n f finv := (perm_eq n (finv ∘ f)%prg idn).
+Notation is_perm_rinv n f finv := (perm_eq n (f ∘ finv)%prg idn) (only parsing).
+Notation is_perm_linv n f finv := (perm_eq n (finv ∘ f)%prg idn) (only parsing).
 Notation is_perm_inv n f finv := 
-  (perm_eq n (f ∘ finv)%prg idn /\ perm_eq n (finv ∘ f)%prg idn).
+  (perm_eq n (f ∘ finv)%prg idn /\ perm_eq n (finv ∘ f)%prg idn) (only parsing).
 
 Lemma perm_linv_injective_of_surjective n f finv finv' : 
   perm_surj n f -> is_perm_linv n f finv -> is_perm_linv n f finv' ->
@@ -869,9 +866,48 @@ Definition permutation_dec (f : nat -> nat) (n : nat) :
   reflect_dec _ _ (permutationP f n).
 
 
-(** vsum terms can be arbitrarily reordered *)
-Lemma vsum_reorder : forall {d} n (v : nat -> Vector d) f,
-  permutation n f ->
+Lemma big_sum_eq_up_to_fswap {G} `{Comm_Group G} 
+  n (v : nat -> G) f x y (Hx : x < n) (Hy : y < n) :
+  big_sum (fun i => v (f i)) n = 
+  big_sum (fun i => v (fswap f x y i)) n.
+Proof.
+  bdestruct (x =? y);
+  [apply big_sum_eq_bounded; unfold fswap; intros;
+    bdestructΩ'|].
+  bdestruct (x <? y).
+  - rewrite 2 (big_sum_split n y) by auto.
+    rewrite 2 (big_sum_split y x) by auto.
+    rewrite fswap_simpl1, fswap_simpl2.
+    apply f_equal_gen; try apply f_equal;
+    [|apply big_sum_eq_bounded; unfold fswap, shift; intros;
+      bdestructΩ'].
+    rewrite <- !Gplus_assoc.
+    apply f_equal_gen; try apply f_equal;
+    [apply big_sum_eq_bounded; unfold fswap; intros;
+      bdestructΩ'|].
+    rewrite Gplus_comm, (Gplus_comm _ (v (f y))), Gplus_assoc.
+    do 2 f_equal.
+    apply big_sum_eq_bounded; unfold fswap, shift; intros;
+    bdestructΩ'.
+  - rewrite 2 (big_sum_split n x) by auto.
+    rewrite 2 (big_sum_split x y) by lia.
+    rewrite fswap_simpl1, fswap_simpl2.
+    apply f_equal_gen; try apply f_equal;
+    [|apply big_sum_eq_bounded; unfold fswap, shift; intros;
+      bdestructΩ'].
+    rewrite <- !Gplus_assoc.
+    apply f_equal_gen; try apply f_equal;
+    [apply big_sum_eq_bounded; unfold fswap; intros;
+      bdestructΩ'|].
+    rewrite Gplus_comm, (Gplus_comm _ (v (f x))), Gplus_assoc.
+    do 2 f_equal.
+    apply big_sum_eq_bounded; unfold fswap, shift; intros;
+    bdestructΩ'.
+Qed.
+
+
+Lemma big_sum_reorder {G} `{Comm_Group G} 
+  n (v : nat -> G) f (Hf : permutation n f) :
   big_sum v n = big_sum (fun i => v (f i)) n.
 Proof.
   intros.
@@ -879,16 +915,25 @@ Proof.
   induction n.
   reflexivity.
   intros f [g Hg].
-  destruct (Hg n) as [_ [H1 [_ H2]]]; try lia.
-  rewrite (vsum_eq_up_to_fswap _ f _ (g n) n) by auto.
+  destruct (Hg n) as [_ [H1' [_ H2']]]; try lia.
+  symmetry.
+  rewrite (big_sum_eq_up_to_fswap _ v _ (g n) n) by auto.
   repeat rewrite <- big_sum_extend_r.
   rewrite fswap_simpl2.
-  rewrite H2.
+  rewrite H2'.
   specialize (IHn (fswap f (g n) n)).
-  rewrite <- IHn.
-  reflexivity.
+  rewrite <- IHn; [easy|].
   apply fswap_at_boundary_permutation; auto.
   exists g. auto.
+Qed.
+
+(** vsum terms can be arbitrarily reordered *)
+Lemma vsum_reorder : forall {d} n (v : nat -> Vector d) f,
+  permutation n f ->
+  big_sum v n = big_sum (fun i => v (f i)) n.
+Proof.
+  intros d n v f Hf.
+  now apply big_sum_reorder.
 Qed.
 
 (** showing every permutation is a sequence of fswaps *)
@@ -951,6 +996,8 @@ Proof. induction l.
          3 : apply WF_fswap_stack_pop in H; auto.
          all : apply H; left; easy.
 Qed.
+
+#[export] Hint Resolve stack_fswaps_permutation : perm_db.
 
 Lemma stack_fswaps_cons : forall (p : nat * nat) (l : list (nat * nat)),
   ((stack_fswaps Datatypes.id [p]) ∘ (stack_fswaps Datatypes.id l))%prg = 
@@ -1061,323 +1108,84 @@ Proof. intros.
          apply H2; auto. 
 Qed.
 
-(** * Permutation matrices *)
-Definition perm_mat n (p : nat -> nat) : Square n :=
-  (fun x y => if (x =? p y) && (x <? n) && (y <? n) then C1 else C0).
-
-Lemma perm_mat_WF : forall n p, WF_Matrix (perm_mat n p).
-Proof.
-  intros n p.
-  unfold WF_Matrix, perm_mat. 
-  intros x y [H | H].
-  bdestruct (x =? p y); bdestruct (x <? n); bdestruct (y <? n); trivial; lia.
-  bdestruct (x =? p y); bdestruct (x <? n); bdestruct (y <? n); trivial; lia.
-Qed. 
-#[export] Hint Resolve perm_mat_WF : wf_db.
-
-Lemma perm_mat_id : forall n,
-  perm_mat n (Datatypes.id) = (I n).
-Proof. intros. 
-       unfold Datatypes.id, I, perm_mat.
-       prep_matrix_equality.
-       bdestruct_all; easy.
+Lemma get_real_function_min_constructive : forall {n} (f : nat -> R),
+  {n0 : nat | (n0 < (S n))%nat /\ (forall i, (i < (S n))%nat -> (f n0 <= f i)%R)}.
+Proof. induction n.
+       - intros.
+         exists O; intros.
+         split; auto.
+         intros. 
+         destruct i; try lia.
+         lra.
+       - intros.  
+         destruct (IHn f) as [n0 [H H0] ]. 
+         destruct (Rlt_le_dec (f n0) (f (S n))). 
+         + exists n0; intros. 
+           split; try lia. 
+           intros.
+           bdestruct (i =? (S n))%nat; subst.
+           lra.
+           apply H0.
+           bdestruct (n0 <? S n)%nat; bdestruct (i <? S n)%nat; try lia.
+         + exists (S n).
+           split.
+           lia.
+           intros.
+           specialize (H0 i).
+           unfold get_minor in H0.
+           bdestruct (n0 <? S n)%nat; bdestruct (i <? S n)%nat; try lia.
+           apply H0 in H3.
+           lra.
+           bdestruct (i =? S n)%nat; try lia; subst.
+           lra.
 Qed.
 
-Lemma perm_mat_unitary : forall n p, 
-  permutation n p -> WF_Unitary (perm_mat n p).
-Proof.
-  intros n p [pinv Hp].
-  split.
-  apply perm_mat_WF.
-  unfold Mmult, adjoint, perm_mat, I.
-  prep_matrix_equality.
-  destruct ((x =? y) && (x <? n)) eqn:H.
-  apply andb_prop in H as [H1 H2].
-  apply Nat.eqb_eq in H1.
-  apply Nat.ltb_lt in H2.
-  subst.
-  apply big_sum_unique.
-  exists (p y).
-  destruct (Hp y) as [? _]; auto.
-  split; auto.
-  split.
-  bdestruct_all; simpl; lca.
-  intros.  
-  bdestruct_all; simpl; lca.
-  apply (@big_sum_0 C C_is_monoid).
-  intros z.
-  bdestruct_all; simpl; try lca.
-  subst.
-  rewrite andb_true_r in H.
-  apply Nat.eqb_neq in H.
-  assert (pinv (p x) = pinv (p y)) by auto.
-  destruct (Hp x) as [_ [_ [H5 _]]]; auto.
-  destruct (Hp y) as [_ [_ [H6 _]]]; auto.
-  contradict H.
-  rewrite <- H5, <- H6.
-  assumption.
+Lemma order_real_function_constructive : forall n (f : nat -> R), 
+  {l : list (nat * nat) | WF_fswap_stack n l /\ 
+         ordered_real_function n (f ∘ (stack_fswaps Datatypes.id l))%prg}.
+Proof. intros.
+       generalize dependent f.
+       induction n.
+       - intros; exists [].
+         split; auto.
+         unfold WF_fswap_stack; intros.
+         destruct H.
+         simpl.
+         unfold ordered_real_function; intros; lia.
+       - intros. 
+         destruct (@get_real_function_min_constructive n f) as [n0 [H H0]].
+         destruct (IHn (f ∘ (stack_fswaps Datatypes.id [(n0, n)]))%prg) as [l [H1 H2]].
+         exists ((n0, n) :: l).
+         split. 
+         apply WF_fswap_stack_cons; simpl; auto. 
+         unfold WF_fswap_stack in *; intros. 
+         apply H1 in H3.
+         lia.
+         rewrite compose_assoc, stack_fswaps_cons in H2.
+         unfold ordered_real_function in *.
+         intros.  
+         bdestruct (j =? n); subst.
+         simpl.
+         rewrite <- compose_assoc.
+         assert (H' : permutation (S n) 
+                                  (fswap Datatypes.id n0 n ∘ stack_fswaps Datatypes.id l)%prg).
+         { apply permutation_compose.
+           apply fswap_permutation; auto.
+           apply id_permutation.
+           apply stack_fswaps_permutation.
+           unfold WF_fswap_stack in *; intros. 
+           apply H1 in H6.
+           lia.
+           apply id_permutation. }
+         unfold compose in *.
+         destruct H' as [g H6].  
+         destruct (H6 i); auto.
+         rewrite (WF_fswap_miss n); auto.
+         replace (fswap Datatypes.id n0 n n) with n0.
+         apply H0; easy. 
+         unfold fswap, Datatypes.id.
+         bdestruct_all; simpl; easy.
+         bdestruct (j <? n); bdestruct (i <? n); try lia.
+         apply H2; auto. 
 Qed.
 
-Lemma perm_mat_Mmult : forall n f g,
-  permutation n g ->
-  perm_mat n f × perm_mat n g = perm_mat n (f ∘ g)%prg.
-Proof.
-  intros n f g [ginv Hgbij].
-  unfold perm_mat, Mmult, compose.
-  prep_matrix_equality.
-  destruct ((x =? f (g y)) && (x <? n) && (y <? n)) eqn:H.
-  apply andb_prop in H as [H H3].
-  apply andb_prop in H as [H1 H2].
-  apply Nat.eqb_eq in H1.
-  apply Nat.ltb_lt in H2.
-  apply Nat.ltb_lt in H3.
-  subst.
-  apply big_sum_unique.
-  exists (g y).
-  destruct (Hgbij y) as [? _]; auto.
-  split; auto.
-  split.
-  bdestruct_all; simpl; lca.
-  intros.
-  bdestruct_all; simpl; lca.
-  apply (@big_sum_0 C C_is_monoid).
-  intros z.
-  bdestruct_all; simpl; try lca.
-  subst.
-  rewrite 2 andb_true_r in H.
-  apply Nat.eqb_neq in H.
-  contradiction.
-Qed.
-
-Lemma perm_mat_I : forall n f,
-  (forall x, x < n -> f x = x) ->
-  perm_mat n f = I n.
-Proof.
-  intros n f Hinv.
-  unfold perm_mat, I.
-  prep_matrix_equality.
-  bdestruct_all; simpl; try lca.
-  rewrite Hinv in H1 by assumption.
-  contradiction.
-  rewrite Hinv in H1 by assumption.
-  contradiction.
-Qed.
-
-Lemma perm_mat_col_swap_I : forall n f i j,
-  (forall x, x < n -> f x = x) ->
-  i < n -> j < n -> 
-  perm_mat n (fswap f i j) = col_swap (I n) i j.
-Proof. intros. 
-       unfold perm_mat, fswap, col_swap, I.
-       prep_matrix_equality.
-       rewrite 2 H; auto.
-       bdestruct_all; simpl; try lia; auto.
-       rewrite H in H4; auto; lia.
-       rewrite H in H4; auto; lia.
-Qed.
-
-Lemma perm_mat_col_swap : forall n f i j,
-  i < n -> j < n -> 
-  perm_mat n (fswap f i j) = col_swap (perm_mat n f) i j.
-Proof. intros. 
-       unfold perm_mat, fswap, col_swap, I.
-       prep_matrix_equality.
-       bdestruct_all; simpl; try lia; auto.
-Qed. 
-
-Lemma perm_mat_row_swap : forall n f i j,
-  i < n -> j < n -> 
-  perm_mat n (fswap f i j) = (row_swap (perm_mat n f)† i j)†.
-Proof. intros. 
-       unfold perm_mat, fswap, row_swap, I, adjoint.
-       prep_matrix_equality.
-       bdestruct_all; simpl; try lia; auto; lca.
-Qed. 
-
-Lemma perm_mat_e_i : forall n f i, 
-  i < n ->
-  permutation n f ->
-  (perm_mat n f) × e_i i = e_i (f i).
-Proof. intros. 
-       apply mat_equiv_eq; auto with wf_db.
-       unfold mat_equiv; intros.
-       destruct j; try lia.
-       unfold Mmult.
-       apply big_sum_unique.
-       exists i.
-       split; auto.
-       split. 
-       unfold e_i, perm_mat. 
-       bdestruct_all; simpl; lca.
-       intros. 
-       unfold e_i.
-       bdestruct_all; simpl; lca.
-Qed.
-
-(* with get_entry_with_e_i this became soo much easier *)
-Lemma perm_mat_conjugate : forall {n} (A : Square n) f (i j : nat), 
-  WF_Matrix A -> 
-  i < n -> j < n ->
-  permutation n f ->
-  ((perm_mat n f)† × A × ((perm_mat n f))) i j = A (f i) (f j). 
-Proof. intros. 
-       rewrite get_entry_with_e_i, (get_entry_with_e_i A); auto.
-       rewrite <- 2 Mmult_assoc, <- Mmult_adjoint.
-       rewrite perm_mat_e_i; auto.
-       rewrite 3 Mmult_assoc.
-       rewrite perm_mat_e_i; auto.
-       all : destruct H2; apply H2; auto.
-Qed.       
-
-Lemma perm_mat_conjugate_nonsquare : forall {m n} (A : Matrix m n) f (i j : nat), 
-  WF_Matrix A -> 
-  i < m -> j < n ->
-  permutation m f -> permutation n f ->
-  ((perm_mat m f)† × A × ((perm_mat n f))) i j = A (f i) (f j). 
-Proof. intros. 
-       rewrite get_entry_with_e_i, (get_entry_with_e_i A); auto.
-       rewrite <- 2 Mmult_assoc, <- Mmult_adjoint.
-       rewrite perm_mat_e_i; auto.
-       rewrite 3 Mmult_assoc.
-       rewrite perm_mat_e_i; auto.
-       all : destruct H2; destruct H3; try apply H2; try apply H3; auto.
-Qed.      
-
-(** Given a permutation p over n qubits, construct a permutation over 2^n indices. *)
-Definition qubit_perm_to_nat_perm n (p : nat -> nat) :=
-  fun x:nat => funbool_to_nat n ((nat_to_funbool n x) ∘ p)%prg.
-
-Lemma qubit_perm_to_nat_perm_bij : forall n p,
-  permutation n p -> permutation (2^n) (qubit_perm_to_nat_perm n p).
-Proof.
-  intros n p [pinv Hp].
-  unfold qubit_perm_to_nat_perm.
-  exists (fun x => funbool_to_nat n ((nat_to_funbool n x) ∘ pinv)%prg).
-  intros x Hx.
-  repeat split.
-  apply funbool_to_nat_bound.
-  apply funbool_to_nat_bound.
-  unfold compose.
-  erewrite funbool_to_nat_eq.
-  2: { intros y Hy. 
-       rewrite funbool_to_nat_inverse. 
-       destruct (Hp y) as [_ [_ [_ H]]].
-       assumption.
-       rewrite H.
-       reflexivity.
-       destruct (Hp y) as [_ [? _]]; auto. }
-  rewrite nat_to_funbool_inverse; auto.
-  unfold compose.
-  erewrite funbool_to_nat_eq.
-  2: { intros y Hy. 
-       rewrite funbool_to_nat_inverse. 
-       destruct (Hp y) as [_ [_ [H _]]].
-       assumption.
-       rewrite H.
-       reflexivity.
-       destruct (Hp y) as [? _]; auto. }
-  rewrite nat_to_funbool_inverse; auto.
-Qed.  
-
-(** Transform a (0,...,n-1) permutation into a 2^n by 2^n matrix. *)
-Definition perm_to_matrix n p :=
-  perm_mat (2 ^ n) (qubit_perm_to_nat_perm n p).
- 
-Lemma perm_to_matrix_permutes_qubits : forall n p f, 
-  permutation n p ->
-  perm_to_matrix n p × f_to_vec n f = f_to_vec n (fun x => f (p x)).
-Proof.
-  intros n p f [pinv Hp].
-  rewrite 2 basis_f_to_vec.
-  unfold perm_to_matrix, perm_mat, qubit_perm_to_nat_perm.
-  unfold basis_vector, Mmult, compose.
-  prep_matrix_equality.
-  destruct ((x =? funbool_to_nat n (fun x0 : nat => f (p x0))) && (y =? 0)) eqn:H.
-  apply andb_prop in H as [H1 H2].
-  rewrite Nat.eqb_eq in H1.
-  rewrite Nat.eqb_eq in H2.
-  apply big_sum_unique.
-  exists (funbool_to_nat n f).
-  split.
-  apply funbool_to_nat_bound.
-  split.
-  erewrite funbool_to_nat_eq.
-  2: { intros. rewrite funbool_to_nat_inverse. reflexivity.
-  destruct (Hp x0) as [? _]; auto. }
-  specialize (funbool_to_nat_bound n f) as ?.
-  specialize (funbool_to_nat_bound n (fun x0 : nat => f (p x0))) as ?.
-  bdestruct_all; lca.
-  intros z Hz H3.
-  bdestructΩ (z =? funbool_to_nat n f).
-  lca.
-  apply (@big_sum_0 C C_is_monoid).
-  intros z.
-  bdestruct_all; simpl; try lca.
-  rewrite andb_true_r in H.
-  apply Nat.eqb_neq in H.
-  subst z.
-  erewrite funbool_to_nat_eq in H2.
-  2: { intros. rewrite funbool_to_nat_inverse. reflexivity.
-  destruct (Hp x0) as [? _]; auto. }
-  contradiction.
-Qed.
-
-Lemma perm_to_matrix_unitary : forall n p, 
-  permutation n p ->
-  WF_Unitary (perm_to_matrix n p).
-Proof.
-  intros.
-  apply perm_mat_unitary.
-  apply qubit_perm_to_nat_perm_bij.
-  assumption.
-Qed.
-
-Lemma qubit_perm_to_nat_perm_compose : forall n f g,
-  permutation n f ->
-  (qubit_perm_to_nat_perm n f ∘ qubit_perm_to_nat_perm n g = 
-    qubit_perm_to_nat_perm n (g ∘ f))%prg.
-Proof.
-  intros n f g [finv Hbij].
-  unfold qubit_perm_to_nat_perm, compose.
-  apply functional_extensionality.
-  intro x.
-  apply funbool_to_nat_eq.
-  intros y Hy.
-  rewrite funbool_to_nat_inverse.
-  reflexivity.
-  destruct (Hbij y) as [? _]; auto.
-Qed.
-
-Lemma perm_to_matrix_Mmult : forall n f g,
-  permutation n f ->
-  permutation n g ->
-  perm_to_matrix n f × perm_to_matrix n g = perm_to_matrix n (g ∘ f)%prg.
-Proof.
-  intros. 
-  unfold perm_to_matrix.
-  rewrite perm_mat_Mmult.
-  rewrite qubit_perm_to_nat_perm_compose by assumption.
-  reflexivity.
-  apply qubit_perm_to_nat_perm_bij.
-  assumption.
-Qed.
-
-Lemma perm_to_matrix_I : forall n f,
-  permutation n f ->
-  (forall x, x < n -> f x = x) ->
-  perm_to_matrix n f = I (2 ^ n).
-Proof.
-  intros n f g Hbij. 
-  unfold perm_to_matrix.
-  apply perm_mat_I.
-  intros x Hx.
-  unfold qubit_perm_to_nat_perm, compose. 
-  erewrite funbool_to_nat_eq.
-  2: { intros y Hy. rewrite Hbij by assumption. reflexivity. }
-  apply nat_to_funbool_inverse.
-  assumption.
-Qed.
-
-Lemma perm_to_matrix_WF : forall n p, WF_Matrix (perm_to_matrix n p).
-Proof. intros. apply perm_mat_WF. Qed. 
-#[export] Hint Resolve perm_to_matrix_WF : wf_db.
