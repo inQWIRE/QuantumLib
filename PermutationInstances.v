@@ -1,5 +1,5 @@
 Require Import Modulus.
-Require Export Permutations.
+Require Export PermutationsBase.
 Require Import PermutationAutomation.
 Require Export Bits.
 Require Export Prelim.

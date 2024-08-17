@@ -1,6 +1,6 @@
 Require Import Bits.
 Require Import Modulus.
-Require Import Permutations.
+Require Export PermutationsBase.
 
 Local Open Scope perm_scope.
 Local Open Scope nat_scope.

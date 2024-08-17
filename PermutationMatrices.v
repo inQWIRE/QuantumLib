@@ -1,9 +1,9 @@
 Require Import VectorStates.
 Require Import Kronecker.
-Require Export Permutations.
+Require Export PermutationsBase.
 Require Import PermutationAutomation.
-Require Import Modulus.
 Require Import PermutationInstances.
+Require Import Modulus.
 Require Import Pad.
 Require Import Complex.
 Import Setoid.

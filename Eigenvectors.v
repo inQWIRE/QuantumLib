@@ -1,14 +1,12 @@
 
 (** This file contains more concepts relevent to quantum computing, as well as some more general linear algebra concepts such as Gram-Schmidt and eigenvectors/eigenvalues. *)
  
+Require Import Permutations.
 Require Import List.        
-Require Import PermutationInstances PermutationAutomation PermutationMatrices.
 Require Export Complex.
 Require Export CauchySchwarz.
 Require Export Quantum. 
 Require Import FTA.
-Require Import Permutations.
-
 
 (****************************)
 (** * Proving some indentities *)
