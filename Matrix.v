@@ -86,6 +86,19 @@ Proof.
   + rewrite WFA, WFB; trivial; left; try lia.
 Qed.
 
+Lemma WF_Matrix_dim_change : forall (m n m' n' : nat) (A : Matrix m n),
+  m = m' ->
+  n = n' ->
+  @WF_Matrix m n A ->
+  @WF_Matrix m' n' A.
+Proof. intros. subst. easy. Qed.
+
+(** Equality via bounded equality for WF matrices **)
+Ltac prep_matrix_equivalence :=
+  apply mat_equiv_eq;
+  [solve [auto 100 with wf_db | 
+  auto 100 using WF_Matrix_dim_change with wf_db zarith]..|].
+
 (** Printing *)
 
 Parameter print_C : C -> string.
@@ -312,9 +325,8 @@ Ltac solve_end :=
   match goal with
   | H : lt _ O |- _ => apply Nat.nlt_0_r in H; contradict H
   end.
-                
-Ltac by_cell := 
-  intros;
+
+Ltac by_cell_no_intros :=
   let i := fresh "i" in 
   let j := fresh "j" in 
   let Hi := fresh "Hi" in 
@@ -322,6 +334,10 @@ Ltac by_cell :=
   intros i j Hi Hj; try solve_end;
   repeat (destruct i as [|i]; simpl; [|apply <- Nat.succ_lt_mono in Hi]; try solve_end); clear Hi;
   repeat (destruct j as [|j]; simpl; [|apply <- Nat.succ_lt_mono in Hj]; try solve_end); clear Hj.
+
+Ltac by_cell := 
+  intros;
+  by_cell_no_intros.
 
 Ltac lma' :=
   apply mat_equiv_eq;
@@ -587,13 +603,6 @@ Proof. intros f g Eq_on k. apply big_sum_mat_equiv; easy. Qed.
 
 
 
-Lemma WF_Matrix_dim_change : forall (m n m' n' : nat) (A : Matrix m n),
-  m = m' ->
-  n = n' ->
-  @WF_Matrix m n A ->
-  @WF_Matrix m' n' A.
-Proof. intros. subst. easy. Qed.
-
 Lemma WF_Matrix_dim_change_iff m n m' n' (A : Matrix m n) :
   m = m' -> n = n' ->
   @WF_Matrix m' n' A <-> WF_Matrix A.
@@ -794,7 +803,8 @@ Ltac show_wf :=
 (* Create HintDb wf_db. *)
 #[export] Hint Resolve WF_Zero WF_I WF_I1 WF_e_i WF_mult WF_plus WF_scale WF_transpose
      WF_adjoint WF_outer_product WF_big_kron WF_kron_n WF_kron 
-     WF_Mmult_n WF_make_WF WF_Msum : wf_db.
+     WF_Mmult_n WF_make_WF WF_Msum 
+     WF_direct_sum WF_direct_sum_n : wf_db.
 #[export] Hint Extern 2 (_ = _) => unify_pows_two : wf_db.
 
 (* Utility tactics *)
@@ -1572,6 +1582,103 @@ Proof.
   rewrite Cmult_comm.
   reflexivity.
   intros; lca. 
+Qed.
+
+Lemma direct_sum_adjoint : forall {m n o p : nat} 
+  (A : Matrix m n) (B : Matrix o p),
+  (A .⊕ B) † = A † .⊕ B †.
+Proof.
+  intros m n o p A B.
+  prep_matrix_equality.
+  unfold adjoint, direct_sum.
+  bdestructΩ'.
+Qed.
+
+Lemma direct_sum_Mmult {m n o p q r} (A : Matrix m n) (B : Matrix n o)
+  (C : Matrix p q) (D : Matrix q r) : WF_Matrix A -> WF_Matrix B ->
+  WF_Matrix C -> WF_Matrix D ->
+  (A × B) .⊕ (C × D) = (A .⊕ C) × (B .⊕ D).
+Proof.
+  intros HA HB HC HD.
+  assert (HAB : WF_Matrix (A × B)) by auto_wf.
+  assert (HCD : WF_Matrix (C × D)) by auto_wf.
+  prep_matrix_equivalence.
+  intros i j Hi Hj.
+  unfold direct_sum.
+  bdestruct (i <? m); bdestruct (j <? o).
+  - simpl.
+    symmetry.
+    unfold Mmult.
+    do 2 simplify_bools_lia_one_kernel.
+    erewrite big_sum_eq_bounded.
+    2:{
+      intros k Hk.
+      simpl_bools.
+      instantiate (1 := fun k => if k <? n then A i k * B k j else C0).
+      simpl.
+      bdestructΩ'.
+      rewrite HA by lia.
+      lca.
+    }
+    rewrite big_sum_sum.
+    simpl.
+    rewrite Cplus_comm.
+    rewrite big_sum_0_bounded by (intros; bdestructΩ').
+    Csimpl.
+    apply big_sum_eq_bounded; intros; bdestructΩ'.
+  - simpl.
+    rewrite HAB by lia.
+    symmetry; unfold Mmult.
+    rewrite big_sum_0_bounded; [easy|].
+    intros k Hk.
+    rewrite HB by lia.
+    simplify_bools_lia_one_kernel.
+    simplify_bools_lia_one_kernel.
+    bdestructΩ'; [lca|].
+    rewrite HA by lia; lca.
+  - simpl.
+    rewrite HAB by lia.
+    symmetry; unfold Mmult.
+    rewrite big_sum_0_bounded; [easy|].
+    intros k Hk.
+    rewrite HA by lia.
+    simplify_bools_lia_one_kernel.
+    simplify_bools_lia_one_kernel.
+    bdestructΩ'; [lca|].
+    rewrite HB by lia; lca.
+  - simpl.
+    symmetry.
+    unfold Mmult.
+    do 2 simplify_bools_lia_one_kernel.
+    erewrite big_sum_eq_bounded.
+    2:{
+      intros k Hk.
+      simpl_bools.
+      instantiate (1 := fun k => if k <? n then C0 else 
+      (C (i - m)%nat (k - n)%nat * D (k - n)%nat (j - o)%nat)).
+      bdestructΩ'.
+      rewrite HA by lia.
+      lca.
+    }
+    rewrite big_sum_sum.
+    rewrite big_sum_0_bounded by (intros; bdestructΩ').
+    simpl.
+    Csimpl.
+    apply big_sum_eq_bounded.
+    intros k Hk.
+    simplify_bools_lia_one_kernel.
+    now rewrite add_sub'.
+Qed.
+
+Lemma direct_sum_id : forall n m,
+  I n .⊕ I m = I (n + m).
+Proof.
+  intros n m.
+  prep_matrix_equivalence.
+  unfold I, direct_sum.
+  intros i j Hi Hj.
+  simplify_bools_lia_one_kernel.
+  bdestructΩ'.
 Qed.
 
 Lemma kron_adjoint : forall {m n o p : nat} (A : Matrix m n) (B : Matrix o p),
@@ -2528,6 +2635,16 @@ Ltac solve_matrix := assoc_least;
                      unfold Nat.ltb; simpl; try rewrite andb_false_r; 
                      (* try to solve complex equalities *)
                      autorewrite with C_db; try lca.
+
+Ltac solve_matrix_fast_with_tacs pretac posttac :=
+  prep_matrix_equivalence; pretac; by_cell_no_intros; posttac.
+
+Tactic Notation "solve_matrix_fast_with" tactic0(pretac) tactic(posttac) :=
+  solve_matrix_fast_with_tacs pretac posttac.
+
+Ltac solve_matrix_fast :=
+  solve_matrix_fast_with idtac lca.
+
 
 Create HintDb scalar_move_db.
 

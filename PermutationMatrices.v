@@ -842,8 +842,9 @@ Proof.
   auto with perm_db.
 Qed.
 
+#[deprecated(note="Use perm_to_matrix_compose instead")]
 Lemma perm_to_matrix_Mmult : forall n f g,
-  perm_bounded n f -> perm_bounded n g ->
+  permutation n f -> permutation n g ->
   perm_to_matrix n f × perm_to_matrix n g = perm_to_matrix n (g ∘ f)%prg.
 Proof.
   intros n f g Hf Hg. 
@@ -972,7 +973,11 @@ Lemma perm_to_matrix_compose n f g :
   perm_to_matrix n g × perm_to_matrix n f.
 Proof.
   intros Hf Hg.
-  now rewrite perm_to_matrix_Mmult.
+  symmetry.
+  unfold perm_to_matrix.
+  rewrite <- qubit_perm_to_nat_perm_compose by easy.
+  apply perm_mat_Mmult.
+  auto with perm_bounded_db.
 Qed.
 
 #[export] Hint Rewrite perm_to_matrix_compose : perm_cleanup_db.

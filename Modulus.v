@@ -825,6 +825,16 @@ Proof.
   lia.
 Qed.
 
+Lemma eqb_comb_iff_div_mod_eqb a i x y (Hy : y < a) :
+  i =? x * a + y =
+  (i mod a =? y) && (i / a =? x).
+Proof.
+  rewrite (eqb_iff_div_mod_eqb a). 
+  rewrite mod_add_l, Nat.div_add_l, 
+    (Nat.mod_small y), (Nat.div_small y) by lia.
+  now rewrite Nat.add_0_r.
+Qed.
+
 Lemma eqb_div_mod_pow_2_iff a i j k l : 
   i mod 2 ^ a + 2 ^ a * j =? k mod 2 ^ a + 2 ^ a * l  =
   ((i mod 2 ^ a =? k mod 2 ^ a) && 

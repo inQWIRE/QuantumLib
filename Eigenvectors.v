@@ -2432,7 +2432,7 @@ Proof. intros.
        easy.
 Qed.
 
-Lemma hermitiam_real_eigenvalues : forall {n} (A : Square n) (v : Vector n) (λ : C),
+Lemma hermitian_real_eigenvalues : forall {n} (A : Square n) (v : Vector n) (λ : C),
   WF_Matrix A -> 
   hermitian A -> WF_Matrix v -> 
   v <> Zero ->
@@ -2446,7 +2446,10 @@ Proof. intros.
        rewrite <- inner_product_scale_l, <- inner_product_scale_r, <- H3, 
          inner_product_adjoint_switch.
        rewrite H0; easy.
-Qed.       
+Qed.
+
+#[deprecated(note="Use hermitian_real_eigenvalues instead")]
+Notation hermitiam_real_eigenvalues := hermitian_real_eigenvalues.
 
 Lemma unitary_eigenvalues_norm_1 : forall {n} (U : Square n) (v : Vector n) (λ : C),
   WF_Unitary U -> WF_Matrix v -> 
@@ -2701,22 +2704,22 @@ Local Close Scope nat_scope.
 
 
 Lemma EigenXp : Eigenpair σx (∣+⟩, C1).
-Proof. unfold Eigenpair. solve_matrix. Qed.
+Proof. unfold Eigenpair. simpl. lma'. Qed.
 
 Lemma EigenXm : Eigenpair σx (∣-⟩, -C1).
-Proof. unfold Eigenpair. solve_matrix. Qed.
+Proof. unfold Eigenpair. simpl. lma'. Qed.
 
 Lemma EigenYp : Eigenpair σy (∣R⟩, C1).
-Proof. unfold Eigenpair. solve_matrix. Qed.
+Proof. unfold Eigenpair. simpl. lma'. Qed.
 
 Lemma EigenYm : Eigenpair σy (∣L⟩, -C1).
-Proof. unfold Eigenpair. solve_matrix. Qed.
+Proof. unfold Eigenpair. simpl. lma'. Qed.
 
 Lemma EigenZp : Eigenpair σz (∣0⟩, C1).
-Proof. unfold Eigenpair. solve_matrix. Qed.
+Proof. unfold Eigenpair. simpl. lma'. Qed.
 
 Lemma EigenZm : Eigenpair σz (∣1⟩, -C1).
-Proof. unfold Eigenpair. solve_matrix. Qed.
+Proof. unfold Eigenpair. simpl. lma'. Qed.
 
 Lemma EigenXXB : Eigenpair (σx ⊗ σx) (∣Φ+⟩, C1).
 Proof. unfold Eigenpair. lma'. Qed.

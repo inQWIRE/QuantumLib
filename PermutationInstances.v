@@ -186,7 +186,6 @@ Proof.
   bdestructΩ'.
 Qed.
 
-(* TODO: Move somewhere else *)
 Lemma perm_eq_iff_forall n (f g : nat -> nat) : 
 	perm_eq n f g <-> forallb (fun k => f k =? g k) (seq 0 n) = true.
 Proof.
@@ -255,6 +254,23 @@ Qed.
 #[export] Hint Resolve compose_perm_bounded : perm_bounded_db.
 
 (* Section on perm_inv *)
+Lemma perm_inv_linv_of_permutation n f (Hf : permutation n f) : 
+  perm_eq n (perm_inv n f ∘ f) idn.
+Proof.
+  exact (perm_inv_is_linv_of_permutation n f Hf).
+Qed.
+
+Lemma perm_inv_rinv_of_permutation n f (Hf : permutation n f) : 
+  perm_eq n (f ∘ perm_inv n f) idn.
+Proof.
+  exact (perm_inv_is_rinv_of_permutation n f Hf).
+Qed.
+
+#[export] Hint Rewrite 
+  perm_inv_linv_of_permutation
+  perm_inv_rinv_of_permutation
+  using (solve [auto with perm_db]) : perm_inv_db. 
+
 Lemma perm_inv'_eq n f : 
   perm_eq n (perm_inv' n f) (perm_inv n f).
 Proof.

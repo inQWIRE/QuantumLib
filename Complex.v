@@ -1890,7 +1890,7 @@ Ltac Csimpl :=
   end.
 
 Ltac C_field_simplify := repeat field_simplify_eq [ Csqrt2_sqrt Csqrt2_inv Ci2].
-Ltac C_field := C_field_simplify; nonzero; trivial.
+Ltac C_field := C_field_simplify; nonzero || trivial; try trivial.
 
 Ltac has_term t exp  := 
   match exp with

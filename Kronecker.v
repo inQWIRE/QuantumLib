@@ -1,15 +1,31 @@
 Require Export Matrix.
 Require Import RowColOps.
-(* Require Export Permutations.
-Require Import PermutationAutomation.
-Require Import PermutationInstances.
-Require Import PermutationMatrices. *)
 Import Complex.
-(* Import VectorStates. *)
 Require Import Modulus.
 
 Local Open Scope nat_scope.
 Local Open Scope C_scope.
+
+Lemma kron_I_r {n m p} (A : Matrix n m) :
+  mat_equiv (A ⊗ I p)
+  (fun i j => if i mod p =? j mod p then A (i / p)%nat (j / p)%nat else C0).
+Proof.
+  intros i j Hi Hj.
+  unfold kron, I.
+  pose proof (Nat.mod_upper_bound i p ltac:(lia)).
+  bdestructΩ'; lca.
+Qed.
+
+Lemma kron_I_l {n m p} (A : Matrix n m) :
+  mat_equiv (I p ⊗ A)
+  (fun i j => if i / n =? j / m then A (i mod n) (j mod m) else C0).
+Proof.
+  intros i j Hi Hj.
+  unfold kron, I.
+  rewrite Nat.mul_comm in Hi.
+  pose proof (Nat.Div0.div_lt_upper_bound _ _ _ Hi).
+  bdestructΩ'; lca.
+Qed.
 
 Ltac bdestructΩ'simp := 
   bdestructΩ'_with 
@@ -1494,19 +1510,6 @@ Qed.
 
 
 
-(* #[export] Instance big_sum_mat_equiv_morphism {n m : nat} :
-  Proper (pointwise_relation nat (@mat_equiv n m) 
-  ==> pointwise_relation nat (@mat_equiv n m))
-  (@big_sum (Matrix n m) (M_is_monoid n m)) := big_sum_mat_equiv. *)
-
-(* Instance forall_mat_equiv_morphism {A: Type} {n m : nat} {f g : A -> Matrix m n}:
-  pointwise_relation A mat_equiv (fun x => f x) (fun x => f x).
-
-Instance forall_mat_equiv_morphism `{Equivalence A eqA, Equivalence B eqB} :
-         Proper ((eqA ==> eqB) ==> list_equiv eqA ==> list_equiv eqB) (@map A B).
-
-Goal (forall_relation (fun n:nat => @mat_equiv m m)) (fun n => Matrix.I m × direct_sum' (@Zero 0 0) (Matrix.I m)) (fun n => Matrix.I m).
-setoid_rewrite Mmult_1_l_mat_eq. *)
 
   
 Lemma id_eq_sum_kron_e_is_mat_equiv : forall n, 
