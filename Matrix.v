@@ -2232,25 +2232,18 @@ Proof.
 Qed.
 
 Lemma matrix_eq_list2D_to_matrix {m n} (A : Matrix m n) (HA : WF_Matrix A) :
-  A = list2D_to_matrix (
+  A = @make_WF m n (list2D_to_matrix (
     map vec_to_list (map (B:=Vector n) 
-      (fun k => fun i j => if j =? 0 then A k i else C0) (seq 0 m))).
+      (fun k => fun i j => if j =? 0 then A k i else C0) (seq 0 m)))).
 Proof.
-  apply mat_equiv_eq.
-  - auto_wf.
-  - apply WF_list2D_to_matrix.
-    + now rewrite 2!map_length, seq_length.
-    + intros li. 
-      rewrite in_map_iff.
-      intros (l & Hl & Hlin).
-      rewrite <- Hl.
-      apply vec_to_list_length.
-  - intros i j Hi Hj.
-    unfold list2D_to_matrix.
-    rewrite (map_nth_small Zero) by now rewrite map_length, seq_length.
-    rewrite (map_nth_small 0) by now rewrite seq_length.
-    rewrite nth_vec_to_list by easy.
-    now rewrite seq_nth by easy.
+  prep_matrix_equivalence.
+  rewrite make_WF_equiv.
+  intros i j Hi Hj.
+  unfold list2D_to_matrix.
+  rewrite (map_nth_small Zero) by now rewrite map_length, seq_length.
+  rewrite (map_nth_small 0) by now rewrite seq_length.
+  rewrite nth_vec_to_list by easy.
+  now rewrite seq_nth by easy.
 Qed.
 
 Lemma list2D_to_matrix_cons l li : 
@@ -2572,76 +2565,6 @@ Ltac distribute_adjoint :=
 
 (** Tactics for solving computational matrix equalities **)
 
-Ltac compute_matrix_getval M := 
-  let lem := constr:(matrix_eq_list2D_to_matrix M
-  ltac:(auto using WF_Matrix_dim_change with wf_db)) in 
-  lazymatch type of lem with
-  | _ = @make_WF ?n ?m (list2D_to_matrix ?l) =>
-    let l' := fresh "l'" in let Hl' := fresh "Hl'" in 
-    let _ := match goal with |- _ =>
-      set (l' := l);
-      autounfold with U_db in l';
-      cbn in l'; unfold Cdiv in l';
-      let lval := eval unfold l' in l' in
-      pose proof (lem : _ = @make_WF n m (list2D_to_matrix lval)) as Hl';
-      Csimpl_in Hl';
-      rewrite Hl'
-    end in
-    lazymatch type of Hl' with
-    | _ = ?B =>
-      let _ := match goal with |- _ => clear l' Hl' end in 
-      constr:(B)
-    end 
-  end.
-
-Ltac compute_matrix M :=
-  let rec comp_mat_val M :=
-  match M with
-  | @Mplus ?n ?m ?A .+ ?B => 
-    let A' := match goal with 
-      | |- _ => let _ := match goal with |- _ => compound A end in
-        let r := comp_mat_val A in constr:(r)
-      | |- _ => constr:(A)
-      end in 
-    let B' := match goal with 
-      | |- _ => let _ := match goal with |- _ => compound B end in
-        let r := comp_mat_val B in constr:(r)
-      | |- _ => constr:(B)
-      end in 
-    let r := compute_matrix_getval (@Mplus n m A' B') in 
-    constr:(r)
-  | @kron ?a ?b ?c ?d ?A ?B => 
-    let A' := match goal with 
-      | |- _ => let _ := match goal with |- _ => compound A end in
-        let r := comp_mat_val A in constr:(r)
-      | |- _ => constr:(A)
-      end in 
-    let B' := match goal with 
-      | |- _ => let _ := match goal with |- _ => compound B end in
-        let r := comp_mat_val B in constr:(r)
-      | |- _ => constr:(B)
-      end in  
-    let r := compute_matrix_getval (@kron a b c d A' B') in
-    constr:(r)
-  | @Mmult ?a ?b ?c ?A ?B => 
-    let A' := match goal with 
-      | |- _ => let _ := match goal with |- _ => compound A end in
-        let r := comp_mat_val A in constr:(r)
-      | |- _ => constr:(A)
-      end in 
-    let B' := match goal with 
-      | |- _ => let _ := match goal with |- _ => compound B end in
-        let r := comp_mat_val B in constr:(r)
-      | |- _ => constr:(B)
-      end in 
-    let r := compute_matrix_getval (@Mmult a b c A' B') in 
-    constr:(r)
-  | ?A => 
-    let r := compute_matrix_getval A in 
-    constr:(r)
-  end
-  in let _ := comp_mat_val M in idtac.
-
 (* Construct matrices full of evars *)
 Ltac mk_evar t T := match goal with _ => evar (t : T) end.
 
@@ -2781,9 +2704,12 @@ Ltac crunch_matrix :=
 
 Ltac compound M := 
   match M with
-  | ?A × ?B  => idtac
-  | ?A .+ ?B => idtac 
-  | ?A †     => compound A
+  | ?A × ?B   => idtac
+  | ?A .+ ?B  => idtac 
+  | ?A .⊕ ?B => idtac
+  | ?A †      => compound A
+  | ?A ⊤      => compound A
+  | _ .* ?A   => compound A
   end.
 
 (* Reduce inner matrices first *)
@@ -2825,6 +2751,76 @@ Ltac solve_matrix := assoc_least;
                      unfold Nat.ltb; simpl; try rewrite andb_false_r; 
                      (* try to solve complex equalities *)
                      autorewrite with C_db; try lca.
+
+Ltac compute_matrix_getval M := 
+  let lem := constr:(matrix_eq_list2D_to_matrix M
+  ltac:(auto using WF_Matrix_dim_change with wf_db)) in 
+  lazymatch type of lem with
+  | _ = @make_WF ?n ?m (list2D_to_matrix ?l) =>
+    let l' := fresh "l'" in let Hl' := fresh "Hl'" in 
+    let _ := match goal with |- _ =>
+      set (l' := l);
+      autounfold with U_db in l';
+      cbn in l'; unfold Cdiv in l';
+      let lval := eval unfold l' in l' in
+      pose proof (lem : _ = @make_WF n m (list2D_to_matrix lval)) as Hl';
+      Csimpl_in Hl';
+      rewrite Hl'
+    end in
+    lazymatch type of Hl' with
+    | _ = ?B =>
+      let _ := match goal with |- _ => clear l' Hl' end in 
+      constr:(B)
+    end 
+  end.
+
+Ltac compute_matrix M :=
+  let rec comp_mat_val M :=
+  match M with
+  | @Mplus ?n ?m ?A .+ ?B => 
+    let A' := match goal with 
+      | |- _ => let _ := match goal with |- _ => compound A end in
+        let r := comp_mat_val A in constr:(r)
+      | |- _ => constr:(A)
+      end in 
+    let B' := match goal with 
+      | |- _ => let _ := match goal with |- _ => compound B end in
+        let r := comp_mat_val B in constr:(r)
+      | |- _ => constr:(B)
+      end in 
+    let r := compute_matrix_getval (@Mplus n m A' B') in 
+    constr:(r)
+  | @kron ?a ?b ?c ?d ?A ?B => 
+    let A' := match goal with 
+      | |- _ => let _ := match goal with |- _ => compound A end in
+        let r := comp_mat_val A in constr:(r)
+      | |- _ => constr:(A)
+      end in 
+    let B' := match goal with 
+      | |- _ => let _ := match goal with |- _ => compound B end in
+        let r := comp_mat_val B in constr:(r)
+      | |- _ => constr:(B)
+      end in  
+    let r := compute_matrix_getval (@kron a b c d A' B') in
+    constr:(r)
+  | @Mmult ?a ?b ?c ?A ?B => 
+    let A' := match goal with 
+      | |- _ => let _ := match goal with |- _ => compound A end in
+        let r := comp_mat_val A in constr:(r)
+      | |- _ => constr:(A)
+      end in 
+    let B' := match goal with 
+      | |- _ => let _ := match goal with |- _ => compound B end in
+        let r := comp_mat_val B in constr:(r)
+      | |- _ => constr:(B)
+      end in 
+    let r := compute_matrix_getval (@Mmult a b c A' B') in 
+    constr:(r)
+  | ?A => 
+    let r := compute_matrix_getval A in 
+    constr:(r)
+  end
+  in let _ := comp_mat_val M in idtac.
 
 Ltac solve_matrix_fast_with_tacs pretac posttac :=
   prep_matrix_equivalence; pretac; by_cell_no_intros; posttac.
