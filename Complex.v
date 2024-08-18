@@ -1900,6 +1900,18 @@ Ltac Csimpl :=
   | _ => rewrite Cconj_R
   end.
 
+Ltac Csimpl_in H := 
+  repeat
+  match goal with
+  | _ => rewrite Cmult_0_l in H
+  | _ => rewrite Cmult_0_r in H
+  | _ => rewrite Cplus_0_l in H
+  | _ => rewrite Cplus_0_r in H
+  | _ => rewrite Cmult_1_l in H
+  | _ => rewrite Cmult_1_r in H
+  | _ => rewrite Cconj_R in H
+  end.
+
 Ltac C_field_simplify := repeat field_simplify_eq [ Csqrt2_sqrt Csqrt2_inv Ci2].
 Ltac C_field := C_field_simplify; nonzero || trivial; try trivial.
 
