@@ -27,6 +27,47 @@ Proof.
   bdestructΩ'; lca.
 Qed.
 
+Lemma kron_I_l_eq {n m} (A : Matrix n m) p : WF_Matrix A ->
+  I p ⊗ A = 
+  (fun i j : nat =>
+   if ((i / n =? j / m) && (i <? p * n))%nat
+   then A (i mod n) (j mod m)
+   else C0).
+Proof.
+  intros HA.
+  apply mat_equiv_eq.
+  - auto_wf.
+  - intros i j []; bdestructΩ'.
+    bdestruct (m =? 0); [subst; now rewrite Nat.mod_0_r, HA by lia|].
+    pose proof (Nat.div_le_lower_bound j m p).
+    pose proof (Nat.Div0.div_lt_upper_bound i n p).
+    lia.
+  - autounfold with U_db.
+    intros i j Hi Hj.
+    simplify_bools_lia_one_kernel.
+    simplify_bools_moddy_lia_one_kernel.
+    bdestructΩ'; lca.
+Qed.
+
+Lemma kron_I_r_eq {n m} (A : Matrix n m) p : WF_Matrix A ->
+  A ⊗ I p = 
+  (fun i j : nat =>
+	 if (i mod p =? j mod p) && (i <? n * p) then 
+   A (i / p)%nat (j / p)%nat else C0).
+Proof.
+  intros HA.
+  apply mat_equiv_eq.
+  - auto_wf.
+  - bdestruct (p =? 0); [subst; intros i j _; bdestructΩ'|].
+    intros i j []; (rewrite HA; [bdestructΩ'|]); [left | right];
+    apply Nat.div_le_lower_bound; lia.
+  - autounfold with U_db.
+    intros i j Hi Hj.
+    simplify_bools_lia_one_kernel.
+    simplify_bools_moddy_lia_one_kernel.
+    bdestructΩ'; lca.
+Qed.
+
 Ltac bdestructΩ'simp := 
   bdestructΩ'_with 
     ltac:(subst; simpl_bools; simpl; try easy; try lca; try lia).

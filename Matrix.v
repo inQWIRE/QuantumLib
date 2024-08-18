@@ -141,6 +141,22 @@ Proof.
     simpl; lia.
 Qed.
 
+Lemma show_WF_list2D_to_matrix m n li : 
+  length li = m ->
+  forallb (fun x => length x =? n) li = true ->
+  @WF_Matrix m n (list2D_to_matrix li).
+Proof.
+  intros Hlen.
+  rewrite forallb_forall.
+  intros Hin.
+  setoid_rewrite Nat.eqb_eq in Hin.
+  apply WF_list2D_to_matrix.
+  easy.
+  intros l Hl.
+  rewrite Hin by easy.
+  easy.
+Qed.
+
 (** Example *)
 Definition M23 : Matrix 2 3 :=
   fun x y => 
@@ -176,6 +192,8 @@ Definition Zero {m n : nat} : Matrix m n := fun x y => 0%R.
 Definition I (n : nat) : Square n := 
   (fun x y => if (x =? y) && (x <? n) then C1 else C0).
 
+Definition const_matrix {m n} (c : C) : Matrix m n :=
+  make_WF (fun _ _ => c).
 
 (* in many cases, n needs to be made explicit, but not always, hence it is made implicit here *)
 Definition e_i {n : nat} (i : nat) : Vector n :=
@@ -304,7 +322,7 @@ Notation "⨂ A" := (big_kron A) (at level 60): matrix_scope.
 Notation "n ⨉ A" := (Mmult_n n A) (at level 30, no associativity) : matrix_scope.
 Notation "⟨ u , v ⟩" := (inner_product u v) (at level 0) : matrix_scope. 
 #[export] Hint Unfold Zero I e_i trace dot Mplus scale Mmult kron mat_equiv transpose
-            adjoint : U_db.
+            adjoint const_matrix make_WF : U_db.
   
 Ltac destruct_m_1 :=
   match goal with
@@ -619,6 +637,12 @@ Proof. intros.
        bdestruct (y <? n); bdestruct (x <? m); try lia; easy.
 Qed.
 
+Lemma WF_const_matrix m n c : 
+  WF_Matrix (@const_matrix m n c).
+Proof.
+  apply WF_make_WF.
+Qed.
+
 Lemma WF_Zero : forall m n : nat, WF_Matrix (@Zero m n).
 Proof. intros m n. unfold WF_Matrix. reflexivity. Qed.
 
@@ -801,10 +825,9 @@ Ltac show_wf :=
   try lca.
 
 (* Create HintDb wf_db. *)
-#[export] Hint Resolve WF_Zero WF_I WF_I1 WF_e_i WF_mult WF_plus WF_scale WF_transpose
-     WF_adjoint WF_outer_product WF_big_kron WF_kron_n WF_kron 
-     WF_Mmult_n WF_make_WF WF_Msum 
-     WF_direct_sum WF_direct_sum_n : wf_db.
+#[export] Hint Resolve WF_Zero WF_const_matrix WF_I WF_I1 WF_e_i WF_mult WF_plus 
+  WF_scale WF_transpose WF_adjoint WF_outer_product WF_big_kron WF_kron_n 
+  WF_kron WF_Mmult_n WF_make_WF WF_Msum WF_direct_sum WF_direct_sum_n : wf_db.
 #[export] Hint Extern 2 (_ = _) => unify_pows_two : wf_db.
 
 (* Utility tactics *)
@@ -1175,6 +1198,37 @@ Proof.
   assumption.
   apply functional_extensionality. intros z. 
   bdestruct (z =? y); bdestruct (z <? n); simpl; try lca; try lia. 
+Qed.
+
+Lemma Mplus_const {m n} c d : 
+  @const_matrix m n c .+ const_matrix d = const_matrix (c + d).
+Proof.
+  prep_matrix_equivalence.
+  unfold const_matrix.
+  rewrite !make_WF_equiv.
+  by_cell; reflexivity.
+Qed.
+
+Lemma kron_const {m n o p} c d : 
+  @const_matrix m n c ⊗ @const_matrix o p d = 
+  const_matrix (c * d).
+Proof.
+  prep_matrix_equivalence.
+  unfold const_matrix.
+  rewrite !make_WF_equiv.
+  by_cell; reflexivity.
+Qed.
+
+Lemma Mmult_const {m n o} c d :
+  @const_matrix m n c × @const_matrix n o d =
+  const_matrix (c * d * INR n).
+Proof.
+  prep_matrix_equivalence.
+  unfold const_matrix.
+  rewrite !make_WF_equiv.
+  intros i j Hi Hj.
+  unfold Mmult.
+  now rewrite big_sum_constant, times_n_C.
 Qed.
 
 Lemma kron_0_l : forall (m n o p : nat) (A : Matrix o p), 
@@ -2159,6 +2213,73 @@ Proof.
   replace (n - n + x)%nat with x by lia.
   reflexivity.
 Qed.
+
+Lemma vec_to_list2D_eq {n} (v : Vector n) : WF_Matrix v ->
+  v = (list2D_to_matrix [vec_to_list v]) ⊤.
+Proof.
+  intros HWF.
+  pose proof (vec_to_list_length n v) as Hlen.
+  apply mat_equiv_eq.
+  - auto_wf.
+  - cbn. rewrite Hlen. 
+    apply WF_transpose.
+    apply show_WF_list2D_to_matrix; cbn; rewrite ?Hlen; try easy.
+    now rewrite Nat.eqb_refl.
+  - intros i j Hi Hj.
+    replace j with 0 by lia.
+    cbn.
+    now rewrite nth_vec_to_list.
+Qed.
+
+Lemma matrix_eq_list2D_to_matrix {m n} (A : Matrix m n) (HA : WF_Matrix A) :
+  A = list2D_to_matrix (
+    map vec_to_list (map (B:=Vector n) 
+      (fun k => fun i j => if j =? 0 then A k i else C0) (seq 0 m))).
+Proof.
+  apply mat_equiv_eq.
+  - auto_wf.
+  - apply WF_list2D_to_matrix.
+    + now rewrite 2!map_length, seq_length.
+    + intros li. 
+      rewrite in_map_iff.
+      intros (l & Hl & Hlin).
+      rewrite <- Hl.
+      apply vec_to_list_length.
+  - intros i j Hi Hj.
+    unfold list2D_to_matrix.
+    rewrite (map_nth_small Zero) by now rewrite map_length, seq_length.
+    rewrite (map_nth_small 0) by now rewrite seq_length.
+    rewrite nth_vec_to_list by easy.
+    now rewrite seq_nth by easy.
+Qed.
+
+Lemma list2D_to_matrix_cons l li : 
+  list2D_to_matrix (l :: li) = 
+  list2D_to_matrix [l] .+ 
+  (fun x y => if x =? 0 then C0 else list2D_to_matrix li (x - 1) y).
+Proof.
+  prep_matrix_equality.
+  autounfold with U_db.
+  cbn.
+  destruct x; [lca|].
+  replace (S x - 1)%nat with x by lia.
+  destruct x, y; cbn; now Csimpl.
+Qed.
+
+Lemma Mscale_list2D_to_matrix c li : 
+  c .* list2D_to_matrix li = 
+  list2D_to_matrix (map (map (Cmult c)) li).
+Proof.
+  prep_matrix_equality.
+  autounfold with U_db.
+  unfold list2D_to_matrix.
+  change [] with (map (Cmult c) []).
+  rewrite map_nth.
+  replace C0 with (c * C0)%C by lca.
+  rewrite map_nth.
+  now Csimpl.
+Qed.
+
 
 
 (** Restoring Matrix Dimensions *)

@@ -867,6 +867,17 @@ Qed.
 
 (** * some C big_sum specific lemmas *)
 
+Lemma times_n_C : forall n (c : C), 
+  times_n c n = c * INR n.
+Proof.
+  intros n c.
+  induction n; [lca|].
+  cbn [times_n].
+  rewrite S_INR, IHn.
+  lca.
+Qed.
+
+
 Local Open Scope nat_scope. 
 
 Lemma Rsum_big_sum : forall n (f : nat -> R),

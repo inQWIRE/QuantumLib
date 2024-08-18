@@ -102,6 +102,29 @@ Proof. intros. subst. reflexivity. Qed.
 
 (** Lists *)
 
+Lemma map_nth_eq [A B] (dnew : A) (f : A -> B) (l : list A) (d : B) i : 
+  f dnew = d ->
+  nth i (map f l) d = f (nth i l dnew).
+Proof.
+  intros <-.
+  apply map_nth.
+Qed.
+
+Lemma map_map_nth {A B} (f : A -> B) (l : list (list A)) i : 
+  nth i (map (map f) l) [] = map f (nth i l []).
+Proof.
+  now apply map_nth_eq.
+Qed.
+
+Lemma map_nth_small [A B] (dnew : A) (f : A -> B) (l : list A) (d : B) i : 
+  i < length l ->
+  nth i (map f l) d = f (nth i l dnew).
+Proof.
+  intros Hi.
+  rewrite (nth_indep _ d (f dnew)) by (now rewrite map_length).
+  apply map_nth.
+Qed.
+
 Notation "l !! i" := (nth_error l i) (at level 20).
 
 Fixpoint remove_at {A} (i : nat) (ls : list A) :=
