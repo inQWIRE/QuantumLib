@@ -1,8 +1,9 @@
 Require Import Modulus.
 Require Export PermutationsBase.
 Require Import PermutationAutomation.
-Require Export Bits.
 Require Export Prelim.
+Require Export Bits.
+
 Import Setoid.
 
 (* Definitions of particular permutations, operations on permutations,
