@@ -161,6 +161,26 @@ Proof.
     now rewrite Mscale_1_l.
 Qed.
 
+Lemma Z_bspec (b : bool) : 
+  bra b × σz = (-1)^b .* bra b.
+Proof.
+  destruct b.
+  - simpl. lma'.
+  - simpl. lma'.
+Qed.
+
+Lemma MmultZ1 : σz × ∣1⟩ = - C1 .* ∣1⟩.
+Proof. rewrite ket1_equiv, Z1_spec. f_equal; lca. Qed.
+
+Lemma MmultZ0 : σz × ∣0⟩ = ∣0⟩.
+Proof. rewrite ket0_equiv, Z0_spec. reflexivity. Qed.
+
+Lemma Mmult1Z : ⟨1∣ × σz = - C1 .* ⟨1∣.
+Proof. lma'. Qed.
+
+Lemma Mmult0Z : ⟨0∣ × σz = ⟨0∣.
+Proof. lma'. Qed.
+
 (* phase shift properties *)
 Lemma phase0_spec : forall ϕ, phase_shift ϕ × ket 0 = ket 0.
 Proof. intros. lma'. Qed.
@@ -574,6 +594,43 @@ Proof.
   rewrite update_index_eq. 
   replace (i + 1 + x - 1 - i) with x by lia.
   destruct (f i); simpl; autorewrite with ket_db; reflexivity.
+Qed.
+
+Lemma f_to_vec_σy : forall (n i : nat) (f : nat -> bool),
+  i < n ->
+  (pad_u n i σy) × (f_to_vec n f) = 
+  (-1)%R^(f i) * Ci .* f_to_vec n (update f i (¬ f i)).
+Proof.
+  intros n i f Hi.
+  unfold pad_u, pad.
+  rewrite (f_to_vec_split 0 n i f Hi).
+  repad. 
+  replace (i + 1 + x - 1 - i) with x by lia.
+  Msimpl.
+  rewrite Y_specb.
+  distribute_scale.
+  rewrite (f_to_vec_split 0 (i + 1 + x) i) by lia.
+  rewrite f_to_vec_update_oob by lia.
+  rewrite f_to_vec_shift_update_oob by lia.
+  rewrite update_index_eq. 
+  replace (i + 1 + x - 1 - i) with x by lia.
+  easy.
+Qed.
+
+Lemma f_to_vec_σz : forall (n i : nat) (f : nat -> bool),
+  i < n ->
+  (pad_u n i σz) × (f_to_vec n f) = 
+  (-1)%R^(f i) .* f_to_vec n f.
+Proof.
+  intros n i f Hi.
+  unfold pad_u, pad.
+  rewrite (f_to_vec_split 0 n i f Hi).
+  repad. 
+  replace (i + 1 + x - 1 - i) with x by lia.
+  Msimpl.
+  rewrite Z_specb.
+  distribute_scale.
+  reflexivity.
 Qed.
 
 Lemma f_to_vec_cnot : forall (n i j : nat) (f : nat -> bool),

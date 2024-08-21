@@ -1834,6 +1834,15 @@ Proof.
 		lca.
 Qed.
 
+Lemma sin_sin_PI8 : 
+  sin (PI / 8) * sin (PI / 8) = 
+  cos (PI / 8) * cos (PI / 8) - cos (PI / 4).
+Proof.
+  replace (PI / 4)%R with (2 * (PI / 8))%R by lra.
+  rewrite cos_2a.
+  lca.
+Qed.
+
 Opaque C.
 
 
@@ -1891,12 +1900,18 @@ Ltac nonzero :=
              Cconj_R Cmult_1_l Cmult_1_r : C_db_light.
 
 (* Distributing db *)
-#[global] Hint Rewrite Cmult_plus_distr_l Cmult_plus_distr_r Copp_plus_distr Copp_mult_distr_l 
-              Copp_involutive : Cdist_db.
+#[global] Hint Rewrite Cmult_plus_distr_l Cmult_plus_distr_r 
+  Copp_plus_distr Copp_mult_distr_l Copp_involutive : Cdist_db.
 
 #[global] Hint Rewrite RtoC_opp RtoC_mult RtoC_minus RtoC_plus : RtoC_db.
 #[global] Hint Rewrite RtoC_inv using nonzero : RtoC_db.
 #[global] Hint Rewrite RtoC_pow : RtoC_db.
+
+Lemma Copp_Ci : / Ci = - Ci.
+Proof. field_simplify_eq; lca + nonzero. Qed.
+
+#[global] Hint Rewrite Copp_Ci : C_db.
+
 
 Ltac Csimpl := 
   repeat match goal with

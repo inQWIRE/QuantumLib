@@ -351,7 +351,7 @@ Proof.
   trivial.
   all : simpl; NoDupity; auto with wf_db.
   all : rewrite perm_swap; apply perm_skip; apply perm_swap.
-  Qed.
+Qed.
 
 (** Unitarity *)
 
@@ -363,10 +363,12 @@ Proof.
   intros n u start dim B [WF U].
   split. apply WF_pad; auto.
   unfold pad.
-  gridify.
+  Modulus.bdestructΩ'.
   Msimpl.
   rewrite U.
-  reflexivity.
+  rewrite 2!id_kron.
+  f_equal.
+  unify_pows_two.
 Qed.
 
 Lemma pad_u_unitary : forall dim n u,
@@ -418,6 +420,15 @@ Proof.
   repeat apply Mmult_unitary;
     apply pad_ctrl_unitary; auto; apply σx_unitary. 
 Qed.
+
+Lemma pad_u_mmult : forall dim b A B, WF_Matrix A -> WF_Matrix B ->
+  pad_u dim b (A × B) = pad_u dim b A × pad_u dim b B.
+Proof.
+  intros.
+  unfold pad_u, pad.
+  bdestruct_all; now Msimpl.
+Qed.
+
 
 (** Lemmas about commutation *)
 

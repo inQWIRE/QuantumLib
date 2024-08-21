@@ -511,8 +511,32 @@ Lemma MmultXX : σx × σx = I 2. Proof. solve_matrix_fast. Qed.
 Lemma MmultYY : σy × σy = I 2. Proof. solve_matrix_fast. Qed.
 Lemma MmultZZ : σz × σz = I 2. Proof. solve_matrix_fast. Qed.
 Lemma MmultHH : hadamard × hadamard = I 2. Proof. 
-  solve_matrix_fast_with idtac (cbn; now autorewrite with C_db).
+  solve_matrix_fast_with idtac (cbn; C_field).
 Qed.
+
+Lemma MmultHX : hadamard × σx = σz × hadamard. Proof. now rewrite MmultZH. Qed.
+Lemma MmultXH : σx × hadamard = hadamard × σz. Proof. lma'. Qed.
+Lemma MmultHY : hadamard × σy = (- C1) .* (σy × hadamard). Proof. lma'. Qed.
+Lemma MmultYH : σy × hadamard = (- C1) .* (hadamard × σy).
+Proof. 
+  rewrite MmultHY, Mscale_assoc.
+  replace (- C1 * - C1)%C with (C1) by lca.
+  now rewrite Mscale_1_l.
+Qed.
+Lemma MmultZH : σz × hadamard = hadamard × σx. Proof. lma'. Qed.
+Lemma MmultHZ : hadamard × σz = σx × hadamard. Proof. now rewrite MmultXH. Qed.
+
+Lemma Mmult_phase_11 a : ∣1⟩⟨1∣ × phase_shift a = phase_shift a × ∣1⟩⟨1∣.
+Proof. lma'. Qed.
+
+Lemma Mmult_phase_00 a : ∣0⟩⟨0∣ × phase_shift a = phase_shift a × ∣0⟩⟨0∣.
+Proof. lma'. Qed.
+
+Lemma Mmult_phase_X_phase_X a a' : 
+  σx × phase_shift a × σx × phase_shift a' = 
+  phase_shift a' × σx × phase_shift a × σx.
+Proof. lma'. Qed.
+
 Lemma Mplus01 : ∣0⟩⟨0∣ .+ ∣1⟩⟨1∣ = I 2. Proof. solve_matrix_fast. Qed.
 Lemma Mplus10 : ∣1⟩⟨1∣ .+ ∣0⟩⟨0∣ = I 2. Proof. solve_matrix_fast. Qed.
 
