@@ -646,6 +646,10 @@ Qed.
 Lemma WF_Zero : forall m n : nat, WF_Matrix (@Zero m n).
 Proof. intros m n. unfold WF_Matrix. reflexivity. Qed.
 
+Lemma WF_Zero_alt : forall m n o p : nat, 
+  @WF_Matrix m n (@Zero o p).
+Proof. intros m n. unfold WF_Matrix. reflexivity. Qed.
+
 Lemma WF_I : forall n : nat, WF_Matrix (I n). 
 Proof. 
   unfold WF_Matrix, I. intros n x y H. simpl.
@@ -825,9 +829,10 @@ Ltac show_wf :=
   try lca.
 
 (* Create HintDb wf_db. *)
-#[export] Hint Resolve WF_Zero WF_const_matrix WF_I WF_I1 WF_e_i WF_mult WF_plus 
-  WF_scale WF_transpose WF_adjoint WF_outer_product WF_big_kron WF_kron_n 
-  WF_kron WF_Mmult_n WF_make_WF WF_Msum WF_direct_sum WF_direct_sum_n : wf_db.
+#[export] Hint Resolve WF_Zero WF_Zero_alt WF_const_matrix WF_I WF_I1 WF_e_i 
+  WF_mult WF_plus  WF_scale WF_transpose WF_adjoint WF_outer_product 
+  WF_big_kron WF_kron_n WF_kron WF_Mmult_n WF_make_WF WF_Msum 
+  WF_direct_sum WF_direct_sum_n : wf_db.
 #[export] Hint Extern 2 (_ = _) => unify_pows_two : wf_db.
 
 (* Utility tactics *)
@@ -2259,9 +2264,9 @@ Proof.
   destruct x, y; cbn; now Csimpl.
 Qed.
 
-Lemma Mscale_list2D_to_matrix c li : 
-  c .* list2D_to_matrix li = 
-  list2D_to_matrix (map (map (Cmult c)) li).
+Lemma Mscale_list2D_to_matrix {n m} c li : 
+  @eq (Matrix n m) (@scale n m c (list2D_to_matrix li)) 
+  (list2D_to_matrix (map (map (Cmult c)) li)).
 Proof.
   prep_matrix_equality.
   autounfold with U_db.
@@ -2754,7 +2759,7 @@ Ltac solve_matrix := assoc_least;
 
 Ltac compute_matrix_getval M := 
   let lem := constr:(matrix_eq_list2D_to_matrix M
-  ltac:(auto using WF_Matrix_dim_change with wf_db)) in 
+  ltac:(auto 100 using WF_Matrix_dim_change with wf_db)) in 
   lazymatch type of lem with
   | _ = @make_WF ?n ?m (list2D_to_matrix ?l) =>
     let l' := fresh "l'" in let Hl' := fresh "Hl'" in 
@@ -2815,6 +2820,11 @@ Ltac compute_matrix M :=
       | |- _ => constr:(B)
       end in 
     let r := compute_matrix_getval (@Mmult a b c A' B') in 
+    constr:(r)
+  | @scale ?a ?b ?A => 
+    let _ := match goal with |- _ => compound A end in
+    let A' := comp_mat_val A in 
+    let r := compute_matrix_getval (@scale a b A') in 
     constr:(r)
   | ?A => 
     let r := compute_matrix_getval A in 

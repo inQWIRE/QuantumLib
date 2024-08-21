@@ -44,6 +44,21 @@ Proof. intros. unfold Rdiv. rewrite Rinv_mult; trivial. lra. Qed.
 Lemma Rdiv_cancel :  forall r r1 r2 : R, r1 = r2 -> r / r1 = r / r2.
 Proof. intros. rewrite H. reflexivity. Qed.
 
+(* FIXME: TODO: Remove; included in later versions of stdlib *)
+Lemma Rdiv_0_r : forall r, r / 0 = 0.
+Proof. intros. rewrite Rdiv_unfold, Rinv_0, Rmult_0_r. reflexivity. Qed.
+
+Lemma Rdiv_0_l : forall r, 0 / r = 0.
+Proof. intros. rewrite Rdiv_unfold, Rmult_0_l. reflexivity. Qed.
+
+Lemma Rdiv_opp_l : forall r1 r2, - r1 / r2 = - (r1 / r2).
+Proof. intros. lra. Qed.
+
+Lemma Rsqr_def : forall r, r² = r * r.
+Proof. intros r. easy. Qed.
+
+(* END FIXME *)
+
 Lemma Rsum_nonzero : forall r1 r2 : R, r1 <> 0 \/ r2 <> 0 -> r1 * r1 + r2 * r2 <> 0. 
 Proof.
   intros.
@@ -868,7 +883,7 @@ Proof.
     apply Rmult_integral in H.
     destruct H; [|apply IHn]; apply H.
   - intros [-> Hn].
-    now apply Rpow_0_l.
+    apply Rpow_0_l; lia.
 Qed.
 
 Lemma derivable_Rpow n : derivable (fun x => x ^ n).

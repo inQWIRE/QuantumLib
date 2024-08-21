@@ -154,10 +154,19 @@ Qed.
 
 Lemma repeat_combine : forall A n1 n2 (a : A), 
   List.repeat a n1 ++ List.repeat a n2 = List.repeat a (n1 + n2).
-Proof.
+Proof.  
   intros.
   now rewrite repeat_app.
 Qed.
+
+Lemma rev_repeat : forall A (a : A) n, rev (repeat a n) = repeat a n.
+Proof.
+  induction n; simpl; trivial.
+  rewrite IHn.
+  rewrite (repeat_combine A n 1).
+  rewrite Nat.add_1_r.
+  reflexivity.
+Qed. 
 
 Lemma firstn_repeat_le : forall A (a : A) m n, (m <= n)%nat -> 
   firstn m (repeat a n) = repeat a m.  

@@ -368,7 +368,7 @@ Proof. intros Hx. apply injective_projections ; simpl ; field ; auto. Qed.
 
 Lemma RtoC_div (x y : R) : RtoC (x / y) = RtoC x / RtoC y.
 Proof. destruct (Req_dec y 0).
-  - subst; now rewrite Cdiv_0_r, Rdiv_0_r. 
+  - subst; unfold Rdiv; now rewrite Cdiv_0_r, Rinv_0, Rmult_0_r.
   - apply injective_projections ; simpl ; field ; auto. 
 Qed.
 
@@ -1394,6 +1394,15 @@ Definition Csqrt (z : C) : C :=
 	match z with
 	| (a, b) => sqrt ((Cmod z + a) / 2) + Ci * (b / Rabs b) * sqrt((Cmod z - a) / 2)
 	end.
+
+(* TODO: Remove; this is in Reals past coq 8.16 *)
+Lemma Req_dec_T : forall r1 r2:R, {r1 = r2} + {r1 <> r2}.
+Proof.
+  intros r1 r2; destruct (total_order_T r1 r2) as [[H | ] | H].
+  - now right; intros ->; apply (Rlt_irrefl r2).
+  - now left.
+  - now right; intros ->; apply (Rlt_irrefl r2 H).
+Qed.
 
 Definition Csqrt_alt z :=
   if Req_dec_T (snd z) 0 then 

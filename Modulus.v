@@ -481,6 +481,95 @@ Lemma le_sub_1_of_lt a b :
   a < b -> a <= b - 1.
 Proof. lia. Qed.
 
+(* FIXME: TODO: Remove in favor of Nat.Div0.div_le_mono when we upgrade past Coq ~8.16*)
+Lemma div0_div_le_mono : forall a b c : nat, a <= b -> a / c <= b / c.
+Proof.
+  intros a b []; [easy|].
+  apply Nat.div_le_mono; easy.
+Qed.
+
+Lemma div0_div_lt_upper_bound : forall a b c : nat, a < b * c -> 
+  a / b < c.
+Proof.
+  intros a b c H; apply Nat.div_lt_upper_bound; lia.
+Qed.
+
+Lemma div0_div_div : forall a b c, a / b / c = a / (b * c).
+Proof.
+  intros a [] []; [rewrite ?Nat.mul_0_r; easy..|].
+  now apply Nat.div_div.
+Qed.
+
+Lemma nat_mod_0_r : forall a, a mod 0 = a.
+Proof. easy. Qed.
+
+Lemma div0_mod_0_l : forall a, 0 mod a = 0.
+Proof.
+  intros []; [easy|];
+  now apply Nat.mod_0_l.
+Qed.
+
+Lemma div0_mod_add : forall a b c, (a + b * c) mod c = a mod c.
+Proof.
+  intros a b []; [f_equal; lia|];
+  now apply Nat.mod_add.
+Qed.
+
+Lemma div0_mod_mul_r : forall a b c, 
+  a mod (b * c) = a mod b + b * ((a / b) mod c).
+Proof. 
+  intros a [] []; rewrite ?Nat.mul_0_r, ?Nat.mul_0_l, 
+    ?nat_mod_0_r; [lia..| pose proof (Nat.div_mod_eq a (S n)); lia |].
+  now apply Nat.mod_mul_r.
+Qed.
+
+Lemma div0_mod_mod : forall a n, (a mod n) mod n = a mod n.
+Proof.
+  intros a []; [easy|]; now apply Nat.mod_mod.
+Qed.
+
+Lemma div0_mod_mul : forall a b, (a * b) mod b = 0.
+Proof.
+  intros a []; [cbn;lia|];
+  now apply Nat.mod_mul.
+Qed.
+
+Lemma div0_add_mod_idemp_l : forall a b n : nat, 
+  (a mod n + b) mod n = (a + b) mod n.
+Proof.
+  intros a b []; [easy|]; now apply Nat.add_mod_idemp_l.
+Qed.
+
+Lemma div0_add_mod : forall a b n, 
+  (a + b) mod n = (a mod n + b mod n) mod n.
+Proof.
+  intros a b []; [easy|];
+  now apply Nat.add_mod.
+Qed.
+
+Lemma div0_mod_same : forall n, 
+  n mod n = 0.
+Proof.
+  intros []; [easy|]; now apply Nat.mod_same.
+Qed.
+
+Lemma div0_div_0_l : forall n, 0 / n = 0.
+Proof. intros []; easy. Qed.
+
+Notation "Nat.Div0.div_le_mono" := div0_div_le_mono.
+Notation "Nat.Div0.div_lt_upper_bound" := div0_div_lt_upper_bound.
+Notation "Nat.Div0.div_div" := div0_div_div.
+Notation "Nat.mod_0_r" := nat_mod_0_r.
+Notation "Nat.Div0.div_0_l" := div0_div_0_l.
+Notation "Nat.Div0.mod_0_l" := div0_mod_0_l.
+Notation "Nat.Div0.mod_add" := div0_mod_add.
+Notation "Nat.Div0.mod_same" := div0_mod_same.
+Notation "Nat.Div0.mod_mul_r" := div0_mod_mul_r.
+Notation "Nat.Div0.mod_mod" := div0_mod_mod.
+Notation "Nat.Div0.mod_mul" := div0_mod_mul.
+Notation "Nat.Div0.add_mod" := div0_add_mod.
+Notation "Nat.Div0.add_mod_idemp_l" := div0_add_mod_idemp_l.
+
 
 Ltac show_le_upper_bound term :=
   lazymatch term with
@@ -563,7 +652,7 @@ Ltac show_le_upper_bound term :=
   | ?a / ?b =>
     let ra := get_upper_bound a in
     apply (Nat.le_trans (a / b) (ra / b) _);
-    [apply Nat.Div0.div_le_mono;
+    [apply Nat.div_le_mono;
      show_le_upper_bound a | 
      tryif show_div_by_ge ra b then idtac 
      else 
@@ -1306,7 +1395,7 @@ Proof.
   - bdestruct (i =? k). 
     + subst. 
       now rewrite Hn. 
-    + easy.
+    + now destruct (testbit n i).
   - intros s.
     rewrite pow2_bits_eqb.
     bdestructΩ'.

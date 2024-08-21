@@ -1,4 +1,5 @@
 Require Import VectorStates.
+Require Import Modulus.
 
 (** This file contains predicates for describing the outcomes of measurement. *)
 
@@ -36,7 +37,7 @@ Lemma rewrite_I_as_sum : forall m n,
   I m = big_sum (fun i => (basis_vector n i) × (basis_vector n i)†) m.
 Proof.
   intros.
-  induction m; [lma'|].
+  induction m; [simpl; lma'|].
   simpl.
   rewrite <- IHm by lia.
   change (Matrix (S m) (S m)) with (Matrix n n).

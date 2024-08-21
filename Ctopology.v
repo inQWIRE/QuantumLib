@@ -297,7 +297,7 @@ Proof. unfold subset, ϵ_disk, open_square; intros.
          rewrite <- sqrt_Rsqr; try lra. 
          apply sqrt_lt_1_alt. split. 
          apply Rplus_le_le_0_compat; apply pow2_ge_0.
-         rewrite <- Rplus_half_diag.
+         rewrite double_var.
          apply Rplus_lt_compat;
          unfold Rsqr in *; simpl; lra. 
 Qed.
@@ -328,7 +328,7 @@ Lemma square_contains_center : forall (cen : C) (s : R),
   s > 0 -> open_square cen s cen.
 Proof. intros. 
        unfold open_square.
-       do 2 rewrite Rminus_diag, Rabs_R0; easy.
+       do 2 rewrite Rminus_eq_0, Rabs_R0; easy.
 Qed.
 
 (** some lemmas about open/closed sets *)
@@ -1547,7 +1547,7 @@ Proof. intros.
          unfold subset, open_rect; intros. 
          destruct H4; destruct c; subst; simpl in *. 
          split.
-         rewrite Rminus_diag, Rabs_R0; auto.  
+         rewrite Rminus_eq_0, Rabs_R0; auto.  
          apply Rabs_def1; lra.
          unfold subset; intros. 
          destruct H4; simpl.
