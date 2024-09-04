@@ -115,16 +115,16 @@ Import Setoid Morphisms.
 Definition true_rel {A} : relation A := 
 	fun _ _ => True.
 
-Add Parametric Relation A : A true_rel 
+(* Add Parametric Relation A : A true_rel 
 	reflexivity proved by ltac:(easy)
 	symmetry proved by ltac:(easy)
 	transitivity proved by ltac:(easy) 
-	as true_rel_equivalence.
+	as true_rel_equivalence. *)
 
 #[export] Hint Unfold true_rel : typeclass_instances.
 
-Instance true_rel_superrel {A} (R : relation A) : 
-  subrelation R true_rel.
+#[export] Instance true_rel_superrel {A} (R : relation A) : 
+  subrelation R true_rel | 10.
 Proof.
   intros x y H.
   constructor.
