@@ -936,6 +936,77 @@ Proof.
   now apply big_sum_reorder.
 Qed.
 
+(** Some special cases for @big_sum nat nat_is_monoid, to which the 
+  above cannot apply because addition is commutative but does not
+  form a group. A class Comm_Monoid would generalize this. *)
+Lemma Nsum_eq_up_to_fswap
+  n (v : nat -> nat) f x y (Hx : x < n) (Hy : y < n) :
+  big_sum (fun i => v (f i)) n = 
+  big_sum (fun i => v (fswap f x y i)) n.
+Proof.
+  bdestruct (x =? y);
+  [apply big_sum_eq_bounded; unfold fswap; intros;
+    bdestructΩ'|].
+  bdestruct (x <? y).
+  - rewrite 2 (big_sum_split n y) by auto.
+    rewrite 2 (big_sum_split y x) by auto.
+    rewrite fswap_simpl1, fswap_simpl2.
+    apply f_equal_gen; try apply f_equal;
+    [|apply big_sum_eq_bounded; unfold fswap, shift; intros;
+      bdestructΩ'].
+    rewrite <- !Gplus_assoc.
+    apply f_equal_gen; try apply f_equal;
+    [apply big_sum_eq_bounded; unfold fswap; intros;
+      bdestructΩ'|].
+    cbn. 
+    rewrite Nat.add_comm, (Nat.add_comm _ (v (f y))), Nat.add_assoc.
+    do 2 f_equal.
+    apply big_sum_eq_bounded; unfold fswap, shift; intros;
+    bdestructΩ'.
+  - rewrite 2 (big_sum_split n x) by auto.
+    rewrite 2 (big_sum_split x y) by lia.
+    rewrite fswap_simpl1, fswap_simpl2.
+    apply f_equal_gen; try apply f_equal;
+    [|apply big_sum_eq_bounded; unfold fswap, shift; intros;
+      bdestructΩ'].
+    rewrite <- !Gplus_assoc.
+    apply f_equal_gen; try apply f_equal;
+    [apply big_sum_eq_bounded; unfold fswap; intros;
+      bdestructΩ'|].
+    rewrite Nat.add_comm, (Nat.add_comm _ (v (f x))), Nat.add_assoc.
+    do 2 f_equal.
+    apply big_sum_eq_bounded; unfold fswap, shift; intros;
+    bdestructΩ'.
+Qed.
+
+Lemma Nsum_reorder n (v : nat -> nat) f (Hf : permutation n f) :
+  big_sum v n = big_sum (v ∘ f)%prg n.
+Proof.
+  intros.
+  generalize dependent f.
+  induction n.
+  reflexivity.
+  intros f Hf. 
+  pose proof Hf as [g Hg].
+  destruct (Hg n) as [_ [H1' [_ H2']]]; try lia.
+  symmetry.
+  rewrite (Nsum_eq_up_to_fswap _ _ _ (g n) n) by auto.
+  repeat rewrite <- big_sum_extend_r.
+  rewrite fswap_simpl2.
+  unfold compose.
+
+  rewrite H2'.
+  specialize (IHn (fswap f (g n) n)).
+  rewrite IHn by
+    (apply fswap_at_boundary_permutation; auto).
+  simpl.
+  f_equal.
+  apply big_sum_eq_bounded.
+  intros k Hk.
+  unfold compose, fswap.
+  bdestructΩ'.
+Qed.
+
 (** showing every permutation is a sequence of fswaps *)
 
 (* note the list acts on the left, for example, [s1,s2,...,sk] ⋅ f = s1 ⋅ ( ... ⋅ (sk ⋅ f)) *)

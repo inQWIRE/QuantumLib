@@ -1,5 +1,6 @@
 Require Export Pad.
 Require Export CauchySchwarz.
+Require Import PermutationInstances.
 Require Export Bits.
 
 (* This file provides abstractions for describing quantum states as vectors.
@@ -492,16 +493,33 @@ Qed.
 
 (* allows us to prove equivalence of unitary programs using 
    vector state reasoning *)
-Lemma equal_on_basis_states_implies_equal : forall {dim} (A B : Square (2 ^ dim)),
+Lemma equal_on_basis_states_implies_equal : forall {n dim} (A B : Matrix n (2 ^ dim)),
   WF_Matrix A -> 
   WF_Matrix B ->
   (forall f, A × (f_to_vec dim f) = B × (f_to_vec dim f)) ->
   A = B.
 Proof.
-  intros dim A B WFA WFB H.
+  intros n dim A B WFA WFB H.
   apply equal_on_basis_vectors_implies_equal; trivial.
   intros k Lk.
   rewrite basis_f_to_vec_alt; auto.
+Qed.
+
+Lemma equal_on_conj_basis_states_implies_equal {n m} 
+  (A B : Matrix (2 ^ n) (2 ^ m)) : WF_Matrix A -> WF_Matrix B -> 
+  (forall f g, (f_to_vec n g) ⊤ × (A × f_to_vec m f) = 
+    (f_to_vec n g) ⊤ × (B × f_to_vec m f)) -> A = B.
+Proof.
+  intros HA HB HAB.
+  apply equal_on_basis_states_implies_equal; [auto..|].
+  intros f.
+  apply transpose_matrices.
+  apply equal_on_basis_states_implies_equal; [auto_wf..|].
+  intros g.
+  apply transpose_matrices.
+  rewrite Mmult_transpose, transpose_involutive, HAB.
+  rewrite Mmult_transpose, transpose_involutive.
+  reflexivity.
 Qed.
 
 Lemma f_to_vec_update_oob : forall (n : nat) (f : nat -> bool) (i : nat) (b : bool),
@@ -798,6 +816,16 @@ Proof.
   intros; bdestructΩ'; f_equal; lia.
 Qed.
 
+Lemma kron_f_to_vec_eq {n m p q : nat} (A : Matrix (2^n) (2^m))
+  (B : Matrix (2^p) (2^q)) (f : nat -> bool) : WF_Matrix A -> WF_Matrix B -> 
+  A ⊗ B × f_to_vec (m + q) f
+  = A × f_to_vec m f ⊗ (B × f_to_vec q (fun k : nat => f (m + k))).
+Proof.
+  intros.
+  prep_matrix_equivalence.
+  apply kron_f_to_vec.
+Qed.
+
 Lemma f_to_vec_split' n m f : 
   mat_equiv (f_to_vec (n + m) f)
   (f_to_vec n f ⊗ f_to_vec m (fun k => f (n + k))).
@@ -922,6 +950,74 @@ Proof.
   now rewrite qubit0_f_to_vec, qubit1_f_to_vec.
 Qed.
 
+Lemma basis_trans_basis {n} i j : 
+  ((basis_vector n i) ⊤ × basis_vector n j) 0 0 =
+  if (i =? j) && (i <? n) then C1 else 0%R.
+Proof.
+  unfold Mmult, basis_vector, Matrix.transpose.
+  bdestructΩ'.
+  - erewrite big_sum_eq_bounded.
+    2: {
+      intros k Hk.
+      simpl_bools.
+      rewrite Cmult_if_if_1_l.
+      replace_bool_lia ((k =? j) && (k =? j)) (k =? j).
+      reflexivity.
+    }
+    rewrite big_sum_if_eq_C.
+    bdestructΩ'.
+  - rewrite big_sum_0_bounded; [easy|].
+    intros; bdestructΩ'; lca.
+  - rewrite big_sum_0_bounded; [easy|].
+    intros; bdestructΩ'; lca.
+  - rewrite big_sum_0_bounded; [easy|].
+    intros; bdestructΩ'; lca.
+Qed.
+
+Lemma f_to_vec_transpose_f_to_vec n f g :
+  transpose (f_to_vec n f) × f_to_vec n g = 
+  b2R (forallb (fun k => eqb (f k) (g k)) (seq 0 n)) .* I 1.
+Proof.
+  prep_matrix_equivalence.
+  intros [] []; [|lia..]; intros _ _.
+  rewrite 2!basis_f_to_vec.
+  rewrite basis_trans_basis.
+  pose proof (funbool_to_nat_bound n f).
+  simplify_bools_lia_one_kernel.
+  unfold scale.
+  cbn.
+  rewrite Cmult_1_r.
+  unfold b2R.
+  rewrite (if_dist _ _ _ RtoC).
+  apply f_equal_if; [|easy..].
+  apply eq_iff_eq_true.
+  rewrite Nat.eqb_eq, forallb_seq0, <- funbool_to_nat_eq_iff.
+  now setoid_rewrite eqb_true_iff.
+Qed.
+
+Lemma f_to_vec_transpose_f_to_vec' n f g :
+  transpose (f_to_vec n f) × f_to_vec n g = 
+  (if funbool_to_nat n f =? funbool_to_nat n g then  
+    C1 else C0) .* I 1.
+Proof.
+  rewrite f_to_vec_transpose_f_to_vec.
+  f_equal.
+  unfold b2R.
+  rewrite (if_dist R C).
+  apply f_equal_if; [|easy..].
+  apply eq_iff_eq_true.
+  rewrite forallb_seq0, Nat.eqb_eq.
+  setoid_rewrite eqb_true_iff.
+  apply funbool_to_nat_eq_iff.
+Qed.
+
+Lemma f_to_vec_transpose_self n f :
+  transpose (f_to_vec n f) × f_to_vec n f = 
+  I 1.
+Proof.
+  rewrite f_to_vec_transpose_f_to_vec', Nat.eqb_refl.
+  now Msimpl_light.
+Qed.
 
 (*******************************)
 (**   Indexed Vector Sum      **)
@@ -1346,4 +1442,284 @@ Proof.
   clear.
   induction n; try reflexivity.
   simpl. rewrite IHn. reflexivity.
+Qed.
+
+
+(* Generalizing vkron to larger matrices *)
+Fixpoint big_kron' (ns ms : nat -> nat)
+  (As : forall i, Matrix (2 ^ ns i) (2 ^ ms i)) (n : nat) : 
+  Matrix (2 ^ big_sum ns n) (2 ^ (big_sum ms n)) :=
+  match n with 
+  | O => I (2 ^ 0)
+  | S n' => 
+    big_kron' ns ms As n' ⊗ As n'
+  end.
+
+Lemma WF_big_kron' ns ms As n 
+  (HAs : forall k, (k < n)%nat -> WF_Matrix (As k)) : 
+  WF_Matrix (big_kron' ns ms As n).
+Proof. induction n; cbn; auto_wf. Qed.
+
+#[export] Hint Resolve WF_big_kron' : wf_db.
+
+Lemma big_kron'_eq_bounded ns ms As Bs n 
+  (HAB : forall k, (k < n)%nat -> As k = Bs k) : 
+  big_kron' ns ms As n = big_kron' ns ms Bs n.
+Proof.
+  induction n; [easy|].
+  cbn; f_equal; auto.
+Qed.
+
+Lemma big_kron'_Mmult ns ms os As Bs n
+  (HAs : forall k, (k < n)%nat -> WF_Matrix (As k)) 
+  (HBs : forall k, (k < n)%nat -> WF_Matrix (Bs k)) : 
+  big_kron' ns ms As n × big_kron' ms os Bs n = 
+  big_kron' ns os (fun i => As i × Bs i) n.
+Proof.
+  induction n; [apply Mmult_1_l; auto_wf|].
+  cbn.
+  restore_dims.
+  rewrite kron_mixed_product.
+  f_equal.
+  apply IHn; auto.
+Qed.
+
+Lemma big_kron'_transpose ns ms As n : 
+  (big_kron' ns ms As n) ⊤%M = 
+  big_kron' ms ns (fun k => (As k) ⊤%M) n.
+Proof.
+  induction n; cbn.
+  - apply id_transpose_eq.
+  - change ((?A ⊗ ?B) ⊤%M) with 
+      (transpose A ⊗ transpose B).
+    f_equal.
+    auto.
+Qed.
+
+Lemma big_kron'_transpose' ns ms As n n' m' : 
+  @transpose n' m' (big_kron' ns ms As n) = 
+  big_kron' ms ns (fun k => (As k) ⊤%M) n.
+Proof. apply big_kron'_transpose. Qed.
+
+Lemma big_kron'_adjoint ns ms As n : 
+  (big_kron' ns ms As n) † = 
+  big_kron' ms ns (fun k => (As k) †) n.
+Proof.
+  induction n; cbn.
+  - apply id_adjoint_eq.
+  - restore_dims. 
+    rewrite kron_adjoint.
+    f_equal.
+    auto.
+Qed.
+
+Lemma big_kron'_id ns As n 
+  (HAs : forall k, (k < n)%nat -> (As k) = I (2 ^ (ns k))) : 
+  big_kron' ns ns As n = I (2 ^ (big_sum ns n)).
+Proof.
+  induction n; [easy|].
+  simpl.
+  rewrite IHn by auto.
+  rewrite HAs by auto.
+  rewrite id_kron.
+  now unify_pows_two.
+Qed.
+
+Lemma big_kron'_unitary ns As n 
+  (HAs : forall k, (k < n)%nat -> WF_Unitary (As k)) : 
+  WF_Unitary (big_kron' ns ns As n).
+Proof.
+  pose proof (fun k Hk => proj1 (HAs k Hk)) as HAs'.
+  split; [auto_wf|].
+  rewrite big_kron'_adjoint.
+  rewrite big_kron'_Mmult by (intros; auto_wf).
+  apply big_kron'_id.
+  intros k Hk.
+  now apply HAs.
+Qed.
+
+Lemma f_to_vec_big_split n ns f : 
+  f_to_vec (big_sum ns n) f = 
+  big_kron' ns (fun _ => O) 
+    (fun i => f_to_vec (ns i) (fun k => f (big_sum ns i + k)%nat)) n.
+Proof.
+  induction n; [easy|].
+  cbn.
+  rewrite <- IHn.
+  rewrite f_to_vec_split'_eq.
+  f_equal.
+  now rewrite big_sum_0.
+Qed.
+
+Lemma big_kron'_f_to_vec ns ms As n f 
+  (HAs : forall k, (k < n)%nat -> WF_Matrix (As k)): 
+  big_kron' ns ms As n × f_to_vec (big_sum ms n) f =
+  big_kron' ns (fun _ => O) 
+  (fun i => As i × f_to_vec (ms i) (fun k => f (big_sum ms i + k)%nat)) n.
+Proof.
+  rewrite f_to_vec_big_split.
+  restore_dims.
+  rewrite big_kron'_Mmult by (intros; auto_wf).
+  easy.
+Qed.
+
+Lemma big_kron'_split_add ns ms As n n' 
+  (HAs : forall k, (k < n + n')%nat -> WF_Matrix (As k)) :
+  big_kron' ns ms As (n + n') = 
+  big_kron' ns ms As n ⊗
+  big_kron' (fun k => ns (n + k)%nat) (fun k => ms (n + k)%nat)
+    (fun k => As (n + k)%nat) n'.
+Proof.
+  induction n'.
+  - simpl.
+    now rewrite Nat.add_0_r, kron_1_r.
+  - rewrite Nat.add_succ_r. simpl.
+    rewrite IHn' by auto with zarith.
+    restore_dims.
+    apply kron_assoc; auto_wf.
+Qed.
+
+Lemma big_kron'_split_add' ns ms As n n' 
+  (HAs : forall k, (k < n + n')%nat -> WF_Matrix (As k)) :
+  big_kron' ns ms As (n + n') = 
+  big_kron' ns ms As n ⊗
+  big_kron' (fun k => ns (k + n)%nat) (fun k => ms (k + n)%nat)
+    (fun k => As (k + n)%nat) n'.
+Proof.
+  rewrite big_kron'_split_add by auto.
+  f_equal; 
+  [f_equal; apply big_sum_eq_bounded; intros ? ?; f_equal; lia..|].
+  induction n'; [easy|].
+  simpl.
+  rewrite IHn' by auto with zarith.
+  rewrite (Nat.add_comm n n').
+  f_equal; 
+  f_equal; apply big_sum_eq_bounded; 
+  intros ? ?; f_equal; lia.
+Qed.
+
+Lemma big_kron'_split n i (Hk : (i < n)%nat) ns ms As 
+  (HAs : forall k, (k < n)%nat -> WF_Matrix (As k))  :
+  big_kron' ns ms As n = 
+  big_kron' ns ms As i ⊗ As i ⊗
+  big_kron' (fun k => ns (k + 1 + i)%nat) (fun k => ms (k + 1 + i)%nat)
+    (fun k => As (k + 1 + i)%nat) (n - 1 - i).
+Proof. 
+  fill_differences.
+  replace (i + 1 + x - 1 - i)%nat with x by lia.
+  rewrite 2!big_kron'_split_add' by auto with zarith.
+  f_equal.
+  1, 2: rewrite Nat.add_comm, <- Nat.pow_add_r; simpl; f_equal; lia.
+  1, 2: f_equal; apply big_sum_eq_bounded; intros ? ?; f_equal; lia.
+  - f_equal.
+    cbn.
+    apply kron_1_l, HAs; lia.
+  - induction x; [easy|].
+    simpl.
+    rewrite IHx, (Nat.add_comm i 1), Nat.add_assoc by auto with zarith.
+    f_equal.
+    1, 2: f_equal; apply big_sum_eq_bounded; intros ? ?; f_equal; lia.
+Qed.
+
+Lemma big_kron'_0_0_eq_up_to_fswap
+  As n x y (Hx : (x < n)%nat) (Hy : (y < n)%nat) 
+  (HAs : forall k, (k < n)%nat -> WF_Matrix (As k))
+  f (Hf : perm_bounded n f) :
+  big_kron' (fun _ => O) (fun _ => O) (As ∘ f)%prg n = 
+  big_kron' (fun _ => O) (fun _ => O) (As ∘ fswap f x y)%prg n.
+Proof.
+  bdestruct (x =? y);
+  [apply big_kron'_eq_bounded; unfold fswap, compose; intros;
+    bdestructΩ'|].
+  assert (Hfs : perm_bounded n (fswap f x y))
+    by (intros k Hk; unfold fswap; bdestructΩ'; auto).
+  bdestruct (x <? y).
+  - rewrite 2 (big_kron'_split n y) by (unfold compose; auto).
+    rewrite 2 (big_kron'_split y x) by (unfold compose; auto with zarith).
+    unfold compose.
+    rewrite fswap_simpl1, fswap_simpl2.
+    apply f_equal_gen; try apply f_equal;
+    [|apply big_kron'_eq_bounded; unfold fswap, shift; intros;
+      bdestructΩ'].
+    rewrite !kron_assoc by auto_wf.
+    restore_dims.
+    rewrite !kron_assoc by auto_wf.
+    f_equal;
+    [apply big_kron'_eq_bounded; unfold fswap; intros;
+      bdestructΩ'|].
+    cbn. 
+    rewrite big_sum_0 by easy.
+    cbn. 
+    rewrite kron_1_1_mid_comm by 
+      first [apply WF_kron; [easy..| | auto_wf]; 
+        apply WF_Matrix_dim_change;
+        [now rewrite big_sum_0 by easy..|auto_wf] | auto_wf].
+    symmetry.
+    rewrite kron_1_1_mid_comm by 
+      first [apply WF_kron; [easy..| | auto_wf]; 
+        apply WF_Matrix_dim_change;
+        [now rewrite big_sum_0 by easy..|auto_wf] | auto_wf].
+    restore_dims.
+    rewrite 2!kron_assoc by auto_wf.
+    f_equal;
+    [apply big_kron'_eq_bounded; unfold fswap; intros;
+      bdestructΩ'|].
+    apply kron_1_1_mid_comm; auto.
+  - rewrite 2 (big_kron'_split n x) by (unfold compose; auto).
+    rewrite 2 (big_kron'_split x y) by (unfold compose; auto with zarith).
+    unfold compose.
+    rewrite fswap_simpl1, fswap_simpl2.
+    apply f_equal_gen; try apply f_equal;
+    [|apply big_kron'_eq_bounded; unfold fswap, shift; intros;
+      bdestructΩ'].
+    rewrite !kron_assoc by auto_wf.
+    restore_dims.
+    rewrite !kron_assoc by auto_wf.
+    f_equal;
+    [apply big_kron'_eq_bounded; unfold fswap; intros;
+      bdestructΩ'|].
+    cbn. 
+    rewrite big_sum_0 by easy.
+    cbn. 
+    rewrite kron_1_1_mid_comm by 
+      first [apply WF_kron; [easy..| | auto_wf]; 
+        apply WF_Matrix_dim_change;
+        [now rewrite big_sum_0 by easy..|auto_wf] | auto_wf].
+    symmetry.
+    rewrite kron_1_1_mid_comm by 
+      first [apply WF_kron; [easy..| | auto_wf]; 
+        apply WF_Matrix_dim_change;
+        [now rewrite big_sum_0 by easy..|auto_wf] | auto_wf].
+    restore_dims.
+    rewrite 2!kron_assoc by auto_wf.
+    f_equal;
+    [apply big_kron'_eq_bounded; unfold fswap; intros;
+      bdestructΩ'|].
+    apply kron_1_1_mid_comm; auto.
+Qed.
+
+Lemma big_kron'_0_0_reorder As n f (Hf : permutation n f) 
+  (HAs : forall k, (k < n)%nat -> WF_Matrix (As k)) : 
+  big_kron' (fun _ => O) (fun _ => O) As n = 
+  big_kron' (fun _ => O) (fun _ => O) (As ∘ f)%prg n.
+Proof.
+  intros.
+  generalize dependent f.
+  induction n;
+  [reflexivity|].
+  intros f Hf. 
+  pose proof Hf as [g Hg].
+  destruct (Hg n) as [_ [H1' [_ H2']]]; try lia.
+  symmetry.
+  rewrite (big_kron'_0_0_eq_up_to_fswap _ _ (g n) n) 
+    by auto with perm_bounded_db.
+  simpl.
+  unfold compose.
+  rewrite fswap_simpl2.
+  unfold compose.
+  rewrite H2'.
+  specialize (IHn ltac:(auto) (fswap f (g n) n)).
+  rewrite IHn by
+    (apply fswap_at_boundary_permutation; auto).
+  reflexivity.
 Qed.

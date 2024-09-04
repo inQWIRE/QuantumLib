@@ -134,6 +134,31 @@ Proof.
   now subst.
 Qed.
 
+Lemma perm_eq_dim_change_if_nonzero n m f g :  
+  perm_eq m f g -> (n <> 0 -> n = m) -> perm_eq n f g.
+Proof.
+  intros Hfg H k Hk.
+  rewrite H in Hk by lia.
+  now apply Hfg.
+Qed.
+
+Lemma perm_eq_dim_change n m f g :  
+  perm_eq m f g -> n = m -> perm_eq n f g.
+Proof.
+  intros.
+  now apply (perm_eq_dim_change_if_nonzero n m f g).
+Qed.
+
+Lemma permutation_defn n f : 
+  permutation n f <-> exists g, 
+    (perm_bounded n f) /\ (perm_bounded n g) /\ 
+    (perm_eq n (f ∘ g) idn) /\ (perm_eq n (g ∘ f) idn).
+Proof.
+  split; intros [g Hg]; exists g.
+  - repeat split; hnf; intros; now apply Hg.
+  - intros; repeat split; now apply Hg.
+Qed.
+
 Lemma permutation_of_le_permutation_idn_above n m f :
   permutation n f -> m <= n -> (forall k, m <= k < n -> f k = k) -> 
   permutation m f.
@@ -420,6 +445,27 @@ Proof.
 Qed.
 
 #[export] Hint Resolve perm_inv'_is_rinv_of_permutation_compose : perm_inv_db.
+
+Lemma permutation_iff_perm_inv'_inv n f : 
+  permutation n f <-> 
+  perm_eq n (f ∘ perm_inv' n f) idn /\ 
+  perm_eq n (perm_inv' n f ∘ f) idn.
+Proof.
+  split; [auto_perm|].
+  intros [Hrinv Hlinv].
+  assert (Hfbdd : perm_bounded n f). {
+    intros k Hk.
+    generalize (Hlinv k Hk).
+    unfold compose, perm_inv'.
+    bdestructΩ'.
+  }
+  exists (perm_inv' n f).
+  intros k Hk.
+  repeat split; [auto_perm.. | |].
+  - now apply Hlinv.
+  - now apply Hrinv.
+Qed.
+
 
 Lemma idn_WF_Perm n : WF_Perm n idn.
 Proof. easy. Qed.
@@ -776,6 +822,60 @@ Qed.
 #[export] Hint Rewrite @perm_inv'_compose 
   using solve [auto with perm_db] : perm_inv_db.
 
+Lemma perm_inv_inj n f g : 
+  permutation n f -> permutation n g -> 
+  perm_eq n (perm_inv n f) (perm_inv n g) -> 
+  perm_eq n f g.
+Proof.
+  intros Hf Hg Hfg.
+  rewrite <- (perm_inv_perm_inv n f Hf).
+  rewrite Hfg.
+  rewrite perm_inv_perm_inv by easy.
+  easy.
+Qed.
+
+(* Permute bounded predicates *)
+Lemma forall_lt_iff n (P Q : nat -> Prop) 
+  (HPQ : forall k, k < n -> P k <-> Q k) :
+  (forall k, k < n -> P k) <-> (forall k, k < n -> Q k).
+Proof.
+  apply forall_iff; intros k.
+  apply impl_iff; intros Hk.
+  auto.
+Qed.
+
+Lemma forall_lt_iff_permute n f (Hf : permutation n f) 
+  (P : nat -> Prop) : 
+  (forall k, k < n -> P k) <-> (forall k, k < n -> P (f k)).
+Proof.
+  split; intros HP.
+  - intros k Hk.
+    apply HP.
+    auto with perm_db.
+  - intros k Hk.
+    generalize (HP (perm_inv n f k) (perm_inv_bounded n f k Hk)).
+    now rewrite perm_inv_is_rinv_of_permutation by easy.
+Qed.
+
+Lemma forall_lt_iff_of_permute_l n f (Hf : permutation n f) 
+  (P Q : nat -> Prop) (HPQ : forall k, k < n -> P (f k) <-> Q k) :
+  (forall k, k < n -> P k) <-> (forall k, k < n -> Q k).
+Proof.
+  rewrite (forall_lt_iff_permute n f Hf).
+  apply forall_iff; intros k.
+  apply impl_iff; intros Hk.
+  now apply HPQ.
+Qed.
+
+Lemma forall_lt_iff_of_permute_r n f (Hf : permutation n f) 
+  (P Q : nat -> Prop) (HPQ : forall k, k < n -> P k <-> Q (f k)) :
+  (forall k, k < n -> P k) <-> (forall k, k < n -> Q k).
+Proof.
+  symmetry.
+  apply (forall_lt_iff_of_permute_l n f Hf).
+  intros k Hk.
+  now rewrite HPQ.
+Qed.
 
 
 Lemma idn_inv n :
@@ -1511,21 +1611,13 @@ Proof.
 Qed.
 
 Add Parametric Morphism n0 n1 : (stack_perms n0 n1) with signature
-  perm_eq n0 ==> perm_eq n1 ==> perm_eq (n0 + n1) 
-  as stack_perms_perm_eq_to_perm_eq_proper.
-Proof.
-  intros f f' Hf g g' Hg.
-  rewrite 2!stack_perms_defn.
-  intros k Hk.
-  bdestructΩ'; f_equal; auto with zarith.
-Qed.
-
-Add Parametric Morphism n0 n1 : (stack_perms n0 n1) with signature
   perm_eq n0 ==> perm_eq n1 ==> eq as stack_perms_perm_eq_to_eq_proper.
 Proof.
   intros f f' Hf g g' Hg.
   eq_by_WF_perm_eq (n0 + n1).
-  now apply stack_perms_perm_eq_to_perm_eq_proper.
+  rewrite 2!stack_perms_defn.
+  intros k Hk.
+  bdestructΩ'; f_equal; auto with zarith.
 Qed.
 
 Lemma stack_perms_compose {n0 n1} {f g} {f' g'} 
@@ -2222,6 +2314,22 @@ Qed.
 
 
 
+Lemma big_swap_perm_defn n m : 
+  perm_eq (n + m) (big_swap_perm n m) 
+  (fun k => if k <? n then k + m else k - n).
+Proof.
+  intros k Hk.
+  unfold big_swap_perm.
+  now simplify_bools_lia_one_kernel.
+Qed.
+
+Lemma big_swap_perm_defn_alt n m : 
+  perm_eq (m + n) (big_swap_perm n m) 
+  (fun k => if k <? n then k + m else k - n).
+Proof.
+  rewrite Nat.add_comm.
+  apply big_swap_perm_defn.
+Qed.
 
 Lemma big_swap_perm_bounded p q : 
   perm_bounded (p + q) (big_swap_perm p q).
@@ -2339,6 +2447,13 @@ Qed.
 
 #[export] Hint Rewrite big_swap_perm_0_l big_swap_perm_0_r : perm_cleanup_db.
 
+Lemma big_swap_perm_ltb_r n m k : 
+  big_swap_perm n m k <? m = ((¬ k <? n) && (k <? n + m)).
+Proof.
+  unfold big_swap_perm.
+  bdestructΩ'.
+Qed.
+
 
 Lemma rotr_eq_big_swap n m : 
   rotr n m = big_swap_perm (n - m mod n) (m mod n).
@@ -2359,16 +2474,6 @@ Proof.
   cleanup_perm_inv.
 Qed.
 
-Lemma sub_mod_le n m : m <= n ->
-  (n - m mod n) mod n = (n - m) mod n.
-Proof.
-  intros Hm.
-  bdestruct (m =? n).
-  - subst.
-    now rewrite Nat.Div0.mod_same, Nat.sub_0_r, Nat.sub_diag,
-      Nat.Div0.mod_same, Nat.Div0.mod_0_l.
-  - now rewrite (Nat.mod_small m) by lia.
-Qed.
 
 Lemma big_swap_perm_eq_rotr p q : 
   big_swap_perm p q = rotr (p + q) q.
@@ -3510,3 +3615,478 @@ Proof.
     rewrite stack_perms_right by lia.
     bdestructΩ'.
 Qed.
+
+
+
+(** Analogous to Nat.divmod for inhomogeneous division *)
+
+Fixpoint Nsum_index (n : nat) (g : nat -> nat) (i : nat) : nat :=
+  match n with 
+  | 0 => 0
+  | S n' => if big_sum g n' <=? i then n' else 
+    Nsum_index n' g i
+  end.
+
+Definition Nsum_offset (n : nat) (g : nat -> nat) (i : nat) : nat :=
+  i - big_sum g (Nsum_index n g i).
+
+Add Parametric Morphism n : (Nsum_index n) with signature 
+  perm_eq n ==> eq as Nsum_index_perm_eq_to_eq.
+Proof.
+  intros g g' Hg.
+  apply functional_extensionality; intros k.
+  induction n; [easy|].
+  - cbn -[big_sum].
+    assert (Hg' : perm_eq n g g') by (hnf in *; auto).
+    rewrite IHn by auto.
+    now rewrite (big_sum_eq_bounded _ _ _ Hg').
+Qed.
+
+Lemma Nsum_index_total_bounded n g i : 
+  Nsum_index n g i <= n.
+Proof.
+  induction n; [cbn; lia|].
+  simpl.
+  bdestructΩ'.
+Qed.
+
+Lemma Nsum_index_bounded n g i : n <> 0 -> 
+  Nsum_index n g i < n.
+Proof.
+  induction n; [cbn; lia|].
+  simpl.
+  destruct n; bdestructΩ'.
+Qed.
+
+Lemma Nsum_index_spec n g i (Hi : i < big_sum g n) : 
+  big_sum g (Nsum_index n g i) <= i < big_sum g (S (Nsum_index n g i)).
+Proof.
+  induction n; [cbn in *; lia|].
+  cbn.
+  bdestruct_one.
+  - cbn in *; lia.
+  - apply IHn; easy.
+Qed.
+
+Lemma Nsum_index_spec_inv n g i k (Hk : k < n) : 
+  big_sum g k <= i < big_sum g (S k) -> 
+  Nsum_index n g i = k.
+Proof.
+  fill_differences.
+  intros H.
+  induction x.
+  - rewrite Nat.add_0_r, Nat.add_comm.
+    simpl.
+    bdestructΩ'.
+  - rewrite Nat.add_succ_r.
+    simpl.
+    rewrite (big_sum_split _ k) by lia.
+    cbn in *.
+    bdestructΩ'.
+Qed.
+
+Lemma Nsum_index_offset_spec n g i (Hi : i < big_sum g n) : 
+  i = big_sum g (Nsum_index n g i) + Nsum_offset n g i
+  /\ Nsum_offset n g i < g (Nsum_index n g i).
+Proof.
+  pose proof (Nsum_index_spec n g i Hi) as Hsum.
+  simpl in Hsum.
+  unfold Nsum_offset.
+  split;
+  lia.
+Qed.
+
+Lemma Nsum_index_add_big_sum_l n dims i k
+  (Hi : i < dims k) (Hk : k < n) :
+  Nsum_index n dims (big_sum dims k + i) = 
+  k.
+Proof.
+  fill_differences.
+  induction x; [
+    rewrite <- Nat.add_assoc, Nat.add_comm;
+    cbn; bdestructΩ'|].
+  rewrite Nat.add_succ_r.
+  cbn.
+  rewrite (big_sum_split _ k _) by lia.
+  cbn.
+  simplify_bools_lia_one_kernel.
+  easy.
+Qed.
+
+Lemma Nsum_offset_add_big_sum_l n dims i k
+  (Hi : i < dims k) (Hk : k < n) :
+  Nsum_offset n dims (big_sum dims k + i) = 
+  i.
+Proof.
+  unfold Nsum_offset.
+  rewrite Nsum_index_add_big_sum_l by auto.
+  lia.
+Qed.
+
+Definition enlarge_permutation (n : nat) (f dims : nat -> nat)  :=
+  fun k => if big_sum dims n <=? k then k else
+  big_sum (dims ∘ f) 
+    (perm_inv' n f (Nsum_index n dims k)) + 
+    Nsum_offset n dims k.
+
+
+Add Parametric Morphism n : (enlarge_permutation n) with signature
+  on_predicate_relation_l 
+    (fun f => perm_bounded n f)
+    (perm_eq n) ==> perm_eq n ==> eq
+    as enlarge_permutation_perm_eq_to_eq.
+Proof.
+  intros f f' [Hbdd Hf] dims dims' Hdims.
+  apply functional_extensionality; intros k.
+  unfold enlarge_permutation.
+  rewrite (big_sum_eq_bounded _ _ n Hdims).
+  bdestructΩ'.
+  bdestruct (n =? 0); [subst; cbn in *; lia|].
+  f_equal.
+  - rewrite <- (perm_inv'_eq_of_perm_eq n f f' Hf).
+    assert (Hrw : perm_eq n (dims ∘ f) (dims' ∘ f')) by 
+      now rewrite Hdims, Hf.
+    rewrite (Nsum_index_perm_eq_to_eq n _ _ Hdims).
+    apply big_sum_eq_bounded.
+    intros i Hi.
+    apply Hrw.
+    eapply Nat.lt_trans; [eassumption|].
+    pose proof (Nsum_index_bounded n dims' k ltac:(auto)) as Hlt.
+    auto with perm_bounded_db.
+  - unfold Nsum_offset.
+    rewrite (Nsum_index_perm_eq_to_eq n _ _ Hdims).
+    f_equal.
+    apply big_sum_eq_bounded.
+    intros i Hi.
+    apply Hdims.
+    pose proof (Nsum_index_bounded n dims' k ltac:(auto)) as Hlt.
+    lia.
+Qed.
+
+
+Add Parametric Morphism n : (enlarge_permutation n) with signature
+  perm_eq n ==> eq ==> eq as enlarge_permutation_perm_eq_to_eq_to_eq.
+Proof.
+  intros f f' Hf dims.
+  apply functional_extensionality; intros k.
+  unfold enlarge_permutation.
+  bdestructΩ'.
+  bdestruct (n =? 0); [subst; cbn in *; lia|].
+  f_equal.
+  rewrite <- (perm_inv'_eq_of_perm_eq n f f' Hf).
+  apply big_sum_eq_bounded.
+  intros i Hi.
+  unfold compose.
+  f_equal.
+  apply Hf.
+  eapply Nat.lt_trans; [eassumption|].
+  pose proof (Nsum_index_bounded n dims k ltac:(auto)) as Hlt.
+  auto with perm_bounded_db.
+Qed.
+
+Lemma enlarge_permutation_add_big_sum_l n f dims i k
+  (Hi : i < dims k) (Hk : k < n) :
+  enlarge_permutation n f dims
+    (big_sum dims k + i) = 
+  big_sum (dims ∘ f) (perm_inv' n f k) + i.
+Proof.
+  unfold enlarge_permutation.
+  rewrite (big_sum_split n k dims Hk).
+  cbn.
+  simplify_bools_lia_one_kernel.
+  now rewrite Nsum_index_add_big_sum_l,
+    Nsum_offset_add_big_sum_l by auto.
+Qed.
+
+Lemma enlarge_permutation_WF n f dims : 
+  WF_Perm (big_sum dims n) (enlarge_permutation n f dims).
+Proof.
+  intros k Hk.
+  unfold enlarge_permutation.
+  bdestructΩ'.
+Qed.
+
+#[export] Hint Resolve enlarge_permutation_WF : WF_Perm_db.
+
+Lemma enlarge_permutation_compose' n f g dims dims'
+  (Hdims : perm_eq n (dims ∘ f) dims') 
+  (Hf : permutation n f) (Hg : permutation n g) : 
+  perm_eq (big_sum dims n) 
+  (enlarge_permutation n g dims' ∘ enlarge_permutation n f dims)
+  (enlarge_permutation n (f ∘ g) dims).
+Proof.
+  intros k Hk.
+  rewrite <- Hdims.
+  unfold compose at 1.
+  unfold enlarge_permutation at 2.
+  simplify_bools_lia_one_kernel.
+  assert (Hn : n <> 0) by (intros ->; cbn in *; lia).
+  pose proof (Nsum_index_bounded n dims k Hn).
+  rewrite enlarge_permutation_add_big_sum_l.
+  3: auto with perm_bounded_db.
+  2: {
+    pose proof (Nsum_index_offset_spec n dims k Hk).
+    unfold compose.
+    rewrite perm_inv'_eq by auto with perm_bounded_db.
+    rewrite perm_inv_is_rinv_of_permutation by auto.
+    lia.
+  } 
+  rewrite Combinators.compose_assoc.
+  unfold enlarge_permutation.
+  simplify_bools_lia_one_kernel.
+  rewrite perm_inv'_compose by auto.
+  easy.
+Qed.
+
+Lemma enlarge_permutation_bounded n f dims (Hf : permutation n f) : 
+  perm_bounded (big_sum dims n) (enlarge_permutation n f dims).
+Proof.
+  intros k Hk.
+  unfold enlarge_permutation.
+  simplify_bools_lia_one_kernel.
+  rewrite (Nsum_reorder n dims (f)) by auto with perm_db.
+  pose proof (Nsum_index_offset_spec n dims k Hk).
+  assert (Hn : n <> 0) by (intros ->; cbn in *; lia).
+  pose proof (Nsum_index_bounded n dims k Hn) as Hidx.
+  rewrite (big_sum_split n (perm_inv' n f (Nsum_index n dims k))) 
+    by auto with perm_bounded_db.
+  unfold compose at 3.
+  rewrite perm_inv'_eq, perm_inv_is_rinv_of_permutation 
+    by auto with perm_bounded_db.
+  cbn. 
+  lia.
+Qed.
+
+#[export] Hint Resolve enlarge_permutation_bounded : perm_bounded_db.
+
+Lemma enlarge_permutation_defn n f dims : 
+  perm_eq (big_sum dims n) 
+    (enlarge_permutation n f dims) 
+    (fun k => big_sum (dims ∘ f)
+    (perm_inv' n f (Nsum_index n dims k)) +
+    Nsum_offset n dims k).
+Proof.
+  intros k Hk.
+  unfold enlarge_permutation.
+  bdestructΩ'.
+Qed.
+
+Lemma enlarge_permutation_idn n dims : 
+  enlarge_permutation n idn dims = idn.
+Proof.
+  eq_by_WF_perm_eq (big_sum dims n).
+  rewrite enlarge_permutation_defn.
+  intros k Hk.
+  rewrite idn_inv', compose_idn_r.
+  symmetry.
+  now apply Nsum_index_offset_spec.
+Qed.
+
+
+Lemma enlarge_permutation_permutation n f dims (Hf : permutation n f) : 
+  permutation (big_sum dims n) (enlarge_permutation n f dims).
+Proof.
+  rewrite permutation_defn.
+  assert (Hfinv : permutation n (perm_inv' n f)) by auto with perm_db.
+  exists (enlarge_permutation n (perm_inv' n f) (dims ∘ f)).
+  repeat split.
+  - auto with perm_bounded_db.
+  - rewrite (Nsum_reorder n dims _ Hf).
+    auto with perm_bounded_db perm_db.
+  - rewrite (Nsum_reorder n dims _ Hf).
+    rewrite enlarge_permutation_compose' by cleanup_perm_inv.
+    rewrite perm_inv'_eq, perm_inv_linv_of_permutation by assumption.
+    now rewrite enlarge_permutation_idn.
+  - rewrite enlarge_permutation_compose' by cleanup_perm_inv.
+    rewrite perm_inv'_eq, perm_inv_rinv_of_permutation by assumption.
+    now rewrite enlarge_permutation_idn.
+Qed.
+
+#[export] Hint Resolve enlarge_permutation_permutation : perm_db.
+
+Lemma enlarge_permutation_inv n f dims (Hf : permutation n f) : 
+  perm_eq (big_sum dims n) 
+    (perm_inv (big_sum dims n) (enlarge_permutation n f dims))
+    (enlarge_permutation n (perm_inv n f) (dims ∘ f)).
+Proof.
+  perm_eq_by_inv_inj (enlarge_permutation n f dims) (big_sum dims n).
+  rewrite enlarge_permutation_compose' by auto_perm.
+  rewrite perm_inv_rinv_of_permutation by auto.
+  now rewrite enlarge_permutation_idn.
+Qed.
+
+Lemma enlarge_permutation_inv' n f dims (Hf : permutation n f) : 
+  perm_inv' (big_sum dims n) (enlarge_permutation n f dims) =
+  enlarge_permutation n (perm_inv' n f) (dims ∘ f).
+Proof.
+  eq_by_WF_perm_eq (big_sum dims n);
+  [rewrite (Nsum_reorder n dims f Hf); auto_perm..|].
+  rewrite 2!perm_inv'_eq.
+  now apply enlarge_permutation_inv.
+Qed.
+
+
+Definition swap_2_to_2_perm a b c d n := 
+  fun k =>
+  if n <=? k then k else
+  if b =? c then (
+    if k =? a then b else
+    if k =? b then d else
+    if k =? d then a else k
+  ) else if a =? d then (
+    if k =? a then c else
+    if k =? c then b else
+    if k =? b then a else k
+  ) else (
+    if k =? a then c else 
+    if k =? b then d else
+    if k =? c then a else
+    if k =? d then b else k).
+
+Lemma swap_2_to_2_perm_WF a b c d n :
+  WF_Perm n (swap_2_to_2_perm a b c d n).
+Proof.
+  intros k Hk.
+  unfold swap_2_to_2_perm; bdestructΩ'.
+Qed.
+
+#[export] Hint Resolve swap_2_to_2_perm_WF : WF_Perm_db.
+
+Lemma swap_2_to_2_perm_invol a b c d n 
+  (Ha : a < n) (Hb : b < n) (Hc : c < n) (Hd : d < n) 
+  (Hab : a <> b) (Hbc : b <> c) (Hcd : c <> d) 
+  (Had : a <> d) :
+  swap_2_to_2_perm a b c d n ∘ swap_2_to_2_perm a b c d n = idn.
+Proof.
+  eq_by_WF_perm_eq n.
+  intros k Hk.
+  unfold swap_2_to_2_perm, compose.
+  do 2 simplify_bools_lia_one_kernel.
+  bdestructΩ'.
+Qed.
+
+#[export] Hint Resolve swap_2_to_2_perm_invol : perm_inv_db.
+
+Lemma swap_2_to_2_perm_bounded a b c d n 
+  (Ha : a < n) (Hb : b < n) (Hc : c < n) (Hd : d < n) : 
+  perm_bounded n (swap_2_to_2_perm a b c d n).
+Proof.
+  intros k Hk.
+  unfold swap_2_to_2_perm.
+  simplify_bools_lia_one_kernel.
+  bdestructΩ'.
+Qed.
+
+#[export] Hint Resolve swap_2_to_2_perm_bounded : perm_bounded_db.
+
+Lemma swap_2_to_2_perm_permutation a b c d n 
+  (Ha : a < n) (Hb : b < n) (Hc : c < n) (Hd : d < n) 
+  (Hab : a <> b) (Hcd : c <> d) : 
+  permutation n (swap_2_to_2_perm a b c d n).
+Proof.
+  bdestruct (b =? c);
+  [|bdestruct (a =? d)].
+  - exists (swap_2_to_2_perm d b b a n).
+    intros k Hk; repeat split;
+    unfold swap_2_to_2_perm;
+    do 2 simplify_bools_lia_one_kernel;
+    bdestructΩ'.
+  - exists (swap_2_to_2_perm a c b a n).
+    intros k Hk; repeat split;
+    unfold swap_2_to_2_perm;
+    do 2 simplify_bools_lia_one_kernel;
+    bdestructΩ'.
+  - perm_by_inverse (swap_2_to_2_perm a b c d n).
+Qed.
+
+#[export] Hint Resolve swap_2_to_2_perm_permutation : perm_db.
+
+Lemma swap_2_to_2_perm_first a b c d n (Ha : a < n) : 
+  swap_2_to_2_perm a b c d n a = c.
+Proof.
+  unfold swap_2_to_2_perm; bdestructΩ'.
+Qed.
+
+Lemma swap_2_to_2_perm_second a b c d n (Ha : b < n) (Hab : a <> b) : 
+  swap_2_to_2_perm a b c d n b = d.
+Proof.
+  unfold swap_2_to_2_perm.
+  bdestructΩ'.
+Qed.
+
+
+
+Lemma perm_eq_of_small_eq_idn n m f (Hm : n <= m) 
+  (Hf : permutation m f) (Hfeq : perm_eq n f idn) : 
+  perm_eq m f (stack_perms n (m - n) idn (fun k => f (k + n) - n)).
+Proof.
+  assert (Hfeqinv : forall k, k < m -> f k < n -> k < n). 1:{
+    intros k Hk Hfk.
+    enough (f k = k) by lia.
+    apply (permutation_is_injective m f Hf); [lia..|].
+    now apply Hfeq.
+  }
+  assert (Hfbig : forall k, n <= k < m -> n <= f k). 1: {
+    intros k [].
+    bdestructΩ (n <=? f k).
+    specialize (Hfeqinv k); lia.
+  }
+  intros k Hk.
+  bdestruct (k <? n).
+  - rewrite stack_perms_left by lia.
+    now apply Hfeq.
+  - rewrite stack_perms_right by lia.
+    rewrite (Nat.sub_add n k) by lia.
+    specialize (Hfbig k).
+    lia.
+Qed.
+
+Lemma perm_big_of_small_eq_idn n m f (Hm : n <= m) 
+  (Hf : permutation m f) (Hfeq : perm_eq n f idn) : 
+  forall k, n <= k < m -> n <= f k.
+Proof.
+  assert (Hfeqinv : forall k, k < m -> f k < n -> k < n). 1:{
+    intros k Hk Hfk.
+    enough (f k = k) by lia.
+    apply (permutation_is_injective m f Hf); [lia..|].
+    now apply Hfeq.
+  }
+  intros k [].
+  bdestructΩ (n <=? f k).
+  specialize (Hfeqinv k); lia.
+Qed.
+
+Lemma perm_inv_perm_eq_idn_of_perm_eq_idn_up_to n m f (Hm : n <= m) 
+  (Hf : permutation m f) (Hfeq : perm_eq n f idn) :
+  perm_eq n (perm_inv m f) idn.
+Proof.
+  intros k Hk.
+  apply (permutation_is_injective m f Hf); [auto with perm_bounded_db..|].
+  cleanup_perm.
+  symmetry.
+  now apply Hfeq.
+Qed.
+
+Lemma perm_shift_permutation_of_small_eq_idn n m f (Hm : n <= m) 
+  (Hf : permutation m f) (Hfeq : perm_eq n f idn) : 
+  permutation (m - n) (fun k => f (k + n) - n).
+Proof.
+  pose proof (perm_big_of_small_eq_idn n m f Hm Hf Hfeq) as Hfbig.
+  pose proof (perm_big_of_small_eq_idn n m _ Hm (perm_inv_permutation m f Hf) 
+    (perm_inv_perm_eq_idn_of_perm_eq_idn_up_to n m f Hm Hf Hfeq))
+    as Hfinvbig.
+  exists (fun k => (perm_inv m f (k + n) - n)).
+  intros k Hk; repeat split.
+  - pose proof (permutation_is_bounded m f Hf (k + n)).
+    lia.
+  - pose proof (perm_inv_bounded m f (k + n)).
+    lia.
+  - rewrite Nat.sub_add by (apply Hfbig; lia).
+    cleanup_perm;
+    lia.
+  - rewrite Nat.sub_add by (apply Hfinvbig; lia).
+    cleanup_perm;
+    lia.
+Qed.
+  
+#[export] Hint Resolve perm_shift_permutation_of_small_eq_idn : perm_db.

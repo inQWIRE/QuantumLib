@@ -784,3 +784,37 @@ Proof.
   rewrite list_to_funbool_repeat_false.
   reflexivity.
 Qed.
+
+Lemma nat_to_funbool_add_pow2_split i j n m 
+  (Hi : i < 2 ^ n) (Hj : j < 2 ^ m) : 
+  nat_to_funbool (n + m) (i * 2 ^ m + j) =
+  (fun s => 
+    if s <? n then nat_to_funbool n i s
+    else nat_to_funbool m j (s - n)).
+Proof.
+  apply functional_extensionality; intros s.
+  rewrite !nat_to_funbool_eq.
+  rewrite testbit_add_pow2_split by easy.
+  bdestructΩ'; try (f_equal; lia).
+  - replace n with 0 in * by lia.
+    replace m with 0 in * by lia.
+    destruct i, j; [|cbn in Hi, Hj; lia..].
+    easy.
+  - replace m with 0 in * by lia.
+    destruct j; [|cbn in Hj; lia].
+    easy.
+Qed.
+
+Lemma nat_to_funbool_inj_upto_small i j n (Hi : i < 2^n) (Hj : j < 2^n) :
+  (forall s, s < n -> nat_to_funbool n i s = nat_to_funbool n j s) <->
+  i = j.
+Proof.
+  split; [|now intros ->].
+  intros Hij.
+  rewrite <- (bits_inj_upto_small i j n) by assumption.
+  intros s Hs.
+  generalize (Hij (n - S s) ltac:(lia)).
+  rewrite 2!nat_to_funbool_eq.
+  simplify_bools_lia_one_kernel.
+  now rewrite sub_S_sub_S.
+Qed.

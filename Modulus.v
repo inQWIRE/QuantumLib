@@ -652,7 +652,7 @@ Ltac show_le_upper_bound term :=
   | ?a / ?b =>
     let ra := get_upper_bound a in
     apply (Nat.le_trans (a / b) (ra / b) _);
-    [apply Nat.div_le_mono;
+    [apply Nat.Div0.div_le_mono;
      show_le_upper_bound a | 
      tryif show_div_by_ge ra b then idtac 
      else 
@@ -861,6 +861,15 @@ Proof.
   easy.
 Qed.
 
+Lemma diff_divs_lower_bound a b k n : 
+  (a < n -> b < n -> a / k <> b / k -> k < n)%nat.
+Proof.
+  intros Ha Hb Hne.
+  bdestructΩ (k <? n).
+  exfalso; apply Hne.
+  now rewrite 2!Nat.div_small by lia.
+Qed.
+
 Lemma mod_div a b : a mod b / b = 0.
 Proof.
   destruct b; [easy|].
@@ -992,6 +1001,27 @@ Lemma odd_succ_false n :
 Proof.
   rewrite Nat.odd_succ, <- Nat.negb_odd. 
   now destruct (Nat.odd n).
+Qed.
+
+Lemma even_le_even_of_le_succ m n 
+  (Hm : Nat.even m = true) (Hn : Nat.even n = true) : 
+  (n <= S m -> n <= m)%nat.
+Proof.
+  intros Hnm.
+  bdestructΩ (n =? S m).
+  replace -> n in Hn.
+  rewrite Nat.even_succ, <- Nat.negb_even in Hn.
+  now rewrite Hm in Hn.
+Qed.
+
+Lemma even_eqb n : Nat.even n = (n mod 2 =? 0).
+Proof.
+  rewrite (Nat.div_mod_eq n 2) at 1.
+  rewrite Nat.even_add, Nat.even_mul.
+  cbn [Nat.even orb].
+  pose proof (Nat.mod_upper_bound n 2 ltac:(lia)).
+  now destruct ((ltac:(lia) : n mod 2 = O \/ n mod 2 = 1%nat)) as
+    [-> | ->].
 Qed.
 
 Lemma double_add n m : n + m + (n + m) = n + n + (m + m).
@@ -1442,6 +1472,74 @@ Proof.
   bdestructΩ'; rewrite ?andb_true_r; f_equal; lia.
 Qed.
 
+Lemma div_eq a b : a / b = (a - a mod b) / b.
+Proof.
+  rewrite (Nat.div_mod_eq a b) at 2.
+  rewrite Nat.add_sub.
+  bdestruct (b =? 0).
+  - now subst.
+  - now rewrite Nat.mul_comm, Nat.div_mul by easy.
+Qed.
+
+Lemma mod_mul_sub_le a b c : c <> 0 -> a <= b * c -> 
+  (b * c - a) mod c = 
+  c * Nat.b2n (¬ a mod c =? 0) - a mod c.
+Proof.
+  intros Hc Ha.
+  bdestruct (a =? b * c).
+  - subst.
+    rewrite Nat.sub_diag, Nat.Div0.mod_mul, Nat.Div0.mod_0_l.
+    cbn; lia.
+  - rewrite (Nat.div_mod_eq a c) at 1.
+    assert (a < b * c) by lia.
+    assert (a / c < b) by (apply Nat.Div0.div_lt_upper_bound; lia).
+    assert (a mod c < c) by show_moddy_lt.
+    replace (b * c - (c * (a / c) + a mod c)) with 
+      ((b - a / c - 1) * c + (c - a mod c)) by nia.
+    rewrite mod_add_l.
+    bdestruct (a mod c =? 0).
+    + replace -> (a mod c).
+      rewrite Nat.sub_0_r, Nat.Div0.mod_same.
+      cbn; lia.
+    + rewrite Nat.mod_small by lia.
+      cbn; lia.
+Qed. 
+
+Lemma div_sub a b c : c <> 0 -> 
+  (b * c - a) / c = b - a / c - Nat.b2n (¬ a mod c =? 0).
+Proof.
+  intros Hc.
+  bdestruct (a <? b * c); cycle 1.
+  - replace (b * c - a) with 0 by lia.
+    rewrite Nat.Div0.div_0_l.
+    pose proof (Nat.div_le_lower_bound a c b); lia.
+  - assert (a / c < b) by show_moddy_lt.
+    apply (Nat.mul_cancel_r _ _ c Hc).
+    rewrite div_mul_not_exact by easy.
+    rewrite 2!Nat.mul_sub_distr_r.
+    rewrite div_mul_not_exact by easy.
+    pose proof (Nat.mod_le (b * c - a) c Hc).
+    pose proof (Nat.mod_le a c Hc).
+    enough (a + (b * c - a) mod c = 
+      (a + c * Nat.b2n (¬ a mod c =? 0) - a mod c))
+      by lia.
+    rewrite <- Nat.add_sub_assoc by 
+      (pose proof (Nat.mod_upper_bound a c Hc);
+      bdestructΩ'; cbn; lia).
+    f_equal.
+    apply mod_mul_sub_le; lia.
+Qed.
+
+Lemma mod_2_succ n : (S n) mod 2 = 1 - (n mod 2).
+Proof.
+  pose proof (Nat.mod_upper_bound (S n) 2 ltac:(lia)).
+  pose proof (Nat.mod_upper_bound n 2 ltac:(lia)).
+  enough (~ (S n mod 2 = 0) <-> n mod 2 = 0) by lia.
+  rewrite <- Nat.eqb_neq, <- Nat.eqb_eq.
+  rewrite <- 2!even_eqb.
+  apply even_succ_false.
+Qed.
+
 End nat_lemmas.
 
 Ltac simplify_mods_of a b :=
@@ -1588,6 +1686,12 @@ Proof.
   destruct b, c ; easy.
 Qed.
 
+Lemma eqb_true_l b : eqb true b = b.
+Proof. now destruct b. Qed.
+
+Lemma eqb_true_r b : eqb b true = b.
+Proof. now destruct b. Qed.
+
 Lemma Forall_seq {start len : nat} f : 
   Forall f (seq start len) <-> forall k, k < len -> f (start + k).
 Proof.
@@ -1668,5 +1772,18 @@ Proof.
   easy.
 Qed.
 
+Lemma and_True_l P : True /\ P <-> P.
+Proof. tauto. Qed.
+
+Lemma and_True_r P : P /\ True <-> P.
+Proof. tauto. Qed.
+
+Lemma and_iff_distr_l P Q R : 
+  (P -> (Q <-> R)) <-> (P /\ Q <-> P /\ R).
+Proof. tauto. Qed.
+
+Lemma and_iff_distr_r P Q R : 
+  (P -> (Q <-> R)) <-> (Q /\ P <-> R /\ P).
+Proof. rewrite and_iff_distr_l. now rewrite 2!(and_comm P). Qed.
 
 End Assorted_lemmas.

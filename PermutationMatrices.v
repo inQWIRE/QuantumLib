@@ -302,28 +302,6 @@ Proof.
   now rewrite 2!matrix_conj_basis_eq_lt in H by easy.
 Qed.
 
-Lemma basis_trans_basis {n} i j : 
-  ((basis_vector n i) ⊤ × basis_vector n j) 0 0 =
-  if (i =? j) && (i <? n) then C1 else 0%R.
-Proof.
-  unfold Mmult, basis_vector, Matrix.transpose.
-  bdestructΩ'simp.
-  - erewrite big_sum_eq_bounded.
-    2: {
-      intros k Hk.
-      simpl_bools.
-      rewrite Cmult_if_if_1_l.
-      replace_bool_lia ((k =? j) && (k =? j)) (k =? j).
-      reflexivity.
-    }
-    rewrite big_sum_if_eq_C.
-    bdestructΩ'.
-  - rewrite big_sum_0_bounded; [easy|].
-    intros; bdestructΩ'simp.
-  - rewrite big_sum_0_bounded; [easy|].
-    intros; bdestructΩ'simp.
-Qed.
-
 Local Open Scope nat_scope.
 
 (** * Permutation matrices *)
@@ -799,6 +777,41 @@ Proof.
   now apply perm_mat_perm_eq_of_proportional.
 Qed.
 
+Lemma Mmult_perm_mat_l n m (A B : Matrix n m) 
+  (HA : WF_Matrix A) (HB : WF_Matrix B) f (Hf : permutation n f) : 
+  perm_mat n f × A = B <-> A = perm_mat n (perm_inv n f) × B.
+Proof.
+  rewrite <- perm_mat_transpose_eq by auto.
+  split; [intros <- | intros ->]; 
+  now rewrite <- Mmult_assoc, 1?perm_mat_transpose_rinv, 
+    1?perm_mat_transpose_linv, Mmult_1_l by auto.
+Qed.
+
+Lemma Mmult_perm_mat_l' n m (A B : Matrix n m) 
+  (HA : WF_Matrix A) (HB : WF_Matrix B) f (Hf : permutation n f) : 
+  B = perm_mat n f × A <-> perm_mat n (perm_inv n f) × B = A.
+Proof.
+  split; intros H; symmetry;
+  apply Mmult_perm_mat_l; auto.
+Qed.
+
+Lemma Mmult_perm_mat_r n m (A B : Matrix n m) 
+  (HA : WF_Matrix A) (HB : WF_Matrix B) f (Hf : permutation m f) : 
+  A × perm_mat m f = B <-> A = B × perm_mat m (perm_inv m f).
+Proof.
+  rewrite <- perm_mat_transpose_eq by auto.
+  split; [intros <- | intros ->]; 
+  now rewrite Mmult_assoc, 1?perm_mat_transpose_rinv, 
+    1?perm_mat_transpose_linv, Mmult_1_r by auto.
+Qed.
+
+Lemma Mmult_perm_mat_r' n m (A B : Matrix n m) 
+  (HA : WF_Matrix A) (HB : WF_Matrix B) f (Hf : permutation m f) : 
+  B = A × perm_mat m f <-> B × perm_mat m (perm_inv m f) = A.
+Proof.
+  split; intros H; symmetry;
+  apply Mmult_perm_mat_r; auto.
+Qed.
 
 (** Transform a (0,...,n-1) permutation into a 2^n by 2^n matrix. *)
 Definition perm_to_matrix n p :=
@@ -921,6 +934,56 @@ Lemma perm_to_matrix_transpose_eq' {n f} (Hf : permutation n f) :
 Proof.
   apply mat_equiv_eq; auto with wf_db.
   now apply perm_to_matrix_transpose'.
+Qed.
+
+Lemma perm_to_matrix_transpose_linv {n f} (Hf : permutation n f) :
+  (perm_to_matrix n f) ⊤ × perm_to_matrix n f = I (2 ^ n).
+Proof.
+  apply perm_mat_transpose_linv; auto with perm_db.
+Qed.
+
+Lemma perm_to_matrix_transpose_rinv {n f} (Hf : permutation n f) :
+  perm_to_matrix n f × (perm_to_matrix n f) ⊤ = I (2 ^ n).
+Proof.
+  apply perm_mat_transpose_rinv; auto with perm_db.
+Qed.
+
+Lemma Mmult_perm_to_matrix_l n m (A B : Matrix (2 ^ n) m) 
+  (HA : WF_Matrix A) (HB : WF_Matrix B) f (Hf : permutation n f) : 
+  perm_to_matrix n f × A = B <-> A = perm_to_matrix n (perm_inv n f) × B.
+Proof.
+  rewrite <- perm_to_matrix_transpose_eq by auto.
+  unfold perm_to_matrix.
+  split; [intros <- | intros ->]; 
+  now rewrite <- Mmult_assoc, 1?perm_mat_transpose_rinv, 
+    1?perm_mat_transpose_linv, Mmult_1_l by auto with perm_db.
+Qed.
+
+Lemma Mmult_perm_to_matrix_l' n m (A B : Matrix (2 ^ n) m) 
+  (HA : WF_Matrix A) (HB : WF_Matrix B) f (Hf : permutation n f) : 
+  B = perm_to_matrix n f × A <-> perm_to_matrix n (perm_inv n f) × B = A.
+Proof.
+  split; intros H; symmetry; apply Mmult_perm_to_matrix_l;
+  auto.
+Qed.
+
+Lemma Mmult_perm_to_matrix_r n m (A B : Matrix n (2 ^ m)) 
+  (HA : WF_Matrix A) (HB : WF_Matrix B) f (Hf : permutation m f) : 
+  A × perm_to_matrix m f = B <-> A = B × perm_to_matrix m (perm_inv m f).
+Proof.
+  rewrite <- perm_to_matrix_transpose_eq by auto.
+  unfold perm_to_matrix.
+  split; [intros <- | intros ->]; 
+  now rewrite Mmult_assoc, 1?perm_mat_transpose_rinv, 
+    1?perm_mat_transpose_linv, Mmult_1_r by auto with perm_db.
+Qed.
+
+Lemma Mmult_perm_to_matrix_r' n m (A B : Matrix n (2 ^ m)) 
+  (HA : WF_Matrix A) (HB : WF_Matrix B) f (Hf : permutation m f) : 
+  B = A × perm_to_matrix m f <-> B × perm_to_matrix m (perm_inv m f) = A.
+Proof.
+  split; intros H; symmetry; apply Mmult_perm_to_matrix_r;
+  auto.
 Qed.
 
 Lemma perm_to_matrix_permutes_qubits_l n p f 
@@ -1391,4 +1454,81 @@ Proof.
     intros k Hk.
     rewrite stack_perms_idn_f.
     bdestructΩ'.
+Qed.
+
+
+Lemma enlarge_permutation_big_kron'_natural (ns ms : nat -> nat) 
+  As (n : nat) (HAs : forall k, k < n -> WF_Matrix (As k)) 
+  f (Hf : permutation n f) : 
+  big_kron' ns ms As n × perm_to_matrix (big_sum ms n) 
+    (enlarge_permutation n f ms) = 
+  perm_to_matrix (big_sum ns n) 
+    (enlarge_permutation n f ns) ×
+    big_kron' (ns ∘ f) (ms ∘ f) 
+    (fun i => As (f i)) n.
+Proof.
+  symmetry.
+  assert (HAs' : forall k, k < n -> WF_Matrix (As (f k))) by 
+    (intros k Hk; apply HAs; auto with perm_bounded_db).
+  rewrite Mmult_perm_to_matrix_l; 
+    [ | | auto_wf | auto with perm_db].
+  2: {
+    apply WF_Matrix_dim_change;
+    [now rewrite <- Nsum_reorder by auto with perm_db..|].
+    auto_wf.
+  }
+  apply equal_on_conj_basis_states_implies_equal.
+  - apply WF_Matrix_dim_change;
+    [now rewrite <- Nsum_reorder by auto with perm_db..|].
+    auto_wf.
+  - auto_wf.
+  - intros g h.
+    symmetry.
+    rewrite !Mmult_assoc.
+    rewrite perm_to_matrix_permutes_qubits by auto with perm_db.
+    rewrite <- !Mmult_assoc.
+    rewrite perm_to_matrix_permutes_qubits_l by auto with perm_db.
+    rewrite 2!f_to_vec_big_split.
+    rewrite (Nsum_reorder n ns f Hf). 
+    rewrite (Nsum_reorder n ms f Hf). 
+    rewrite 2!f_to_vec_big_split.
+    rewrite 2!(big_kron'_transpose' _ (fun _ => 0) _ n _ 1).
+    restore_dims_using shelve.
+    rewrite big_kron'_Mmult by (intros; auto_wf).
+    rewrite big_kron'_Mmult by (intros; auto_wf).
+    rewrite big_kron'_Mmult by (unfold compose; intros; auto_wf).
+    rewrite big_kron'_Mmult by (unfold compose; intros; auto_wf).
+    rewrite (big_kron'_0_0_reorder _ n f (* (perm_inv' n f) *)
+      ltac:(auto with perm_db)) by (intros; auto_wf).
+    apply big_kron'_eq_bounded.
+    intros k Hk.
+    unfold compose at 1.
+    f_equal; [f_equal|].
+    + f_equal.
+      apply f_to_vec_eq.
+      intros i Hi.
+      rewrite perm_inv_perm_inv.
+      * rewrite enlarge_permutation_add_big_sum_l 
+        by auto with perm_bounded_db.
+        do 2 f_equal.
+        rewrite perm_inv'_eq by auto_perm.
+        rewrite perm_inv_is_linv_of_permutation by auto.
+        easy.
+      * rewrite <- Nsum_reorder by auto.
+        auto_perm.
+      * rewrite <- Nsum_reorder by auto.
+        rewrite (big_sum_split n (f k)) by auto_perm.
+        unfold compose in *.
+        cbn; lia.
+    + apply f_to_vec_eq.
+      intros i Hi.
+      unfold compose in Hi.
+      rewrite enlarge_permutation_add_big_sum_l by auto_perm.
+      do 2 f_equal.
+      rewrite perm_inv'_eq by auto with perm_db.
+      rewrite perm_inv_is_linv_of_permutation by auto.
+      easy.
+  Unshelve.
+  1: now rewrite big_sum_0.
+  all: now rewrite <- Nsum_reorder by auto.
 Qed.

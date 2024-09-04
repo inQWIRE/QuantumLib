@@ -2162,6 +2162,17 @@ Proof.
   rewrite IHn. lma.
 Qed.
 
+Lemma Mmult_vec_comm {n} (v u : Vector n) : WF_Matrix u -> WF_Matrix v ->
+  v ⊤%M × u = u ⊤%M × v.
+Proof.
+  intros Hu Hv.
+  prep_matrix_equivalence.
+  by_cell.
+  apply big_sum_eq_bounded.
+  intros k Hk.
+  unfold transpose.
+  lca.
+Qed.
 
 
 (** * Tactics **)

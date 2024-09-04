@@ -9,6 +9,18 @@ Create HintDb perm_unfold_db.
 Create HintDb perm_cleanup_db.
 Create HintDb proper_side_conditions_db.
 
+Ltac auto_perm_to n := 
+  auto n with perm_db perm_bounded_db WF_Perm_db perm_inv_db.
+
+Ltac auto_perm := 
+  auto 6 with perm_db perm_bounded_db WF_Perm_db perm_inv_db.
+
+Tactic Notation "auto_perm" int_or_var(n) :=
+  auto_perm_to n.
+
+Tactic Notation "auto_perm" :=
+  auto_perm 6.
+
 #[export] Hint Resolve 
   permutation_is_bounded
   permutation_is_injective
@@ -98,6 +110,25 @@ Ltac eq_by_WF_perm_eq n :=
 
 (* Extending setoid rewriting to work with side conditions *)
 Import Setoid Morphisms.
+
+(* Placeholder for irrelevant arguments *)
+Definition true_rel {A} : relation A := 
+	fun _ _ => True.
+
+Add Parametric Relation A : A true_rel 
+	reflexivity proved by ltac:(easy)
+	symmetry proved by ltac:(easy)
+	transitivity proved by ltac:(easy) 
+	as true_rel_equivalence.
+
+#[export] Hint Unfold true_rel : typeclass_instances.
+
+Instance true_rel_superrel {A} (R : relation A) : 
+  subrelation R true_rel.
+Proof.
+  intros x y H.
+  constructor.
+Qed.
 
 Definition on_predicate_relation_l {A} (P : A -> Prop) (R : relation A) 
   : relation A :=
