@@ -272,7 +272,7 @@ Definition matrix_column_choose {n m} (indices_list : list nat) (M : GenMatrix n
 Definition vector_row_choose {n} (indices_list : list nat) (v : GenVector n) : GenVector (length indices_list) := (fun r c : nat => v (nth r indices_list n) c).
 
 
-Lemma   WF_Matrix_matrix_column_choose_indices_list_I_n: forall (n : nat) (indices_list : list nat),
+Lemma   WF_GenMatrix_matrix_column_choose_indices_list_I_n: forall (n : nat) (indices_list : list nat),
     WF_GenMatrix (matrix_column_choose indices_list (@I n)).
 Proof. intros.
   unfold WF_GenMatrix.
@@ -293,7 +293,7 @@ Proof. intros.
   rewrite nth_overflow in H2; lia.
 Qed.
 
-Lemma WF_Matrix_matrix_column_choose_indices_list : forall {n m : nat} (indices_list : list nat) (M : GenMatrix n m), WF_GenMatrix M -> WF_GenMatrix (matrix_column_choose indices_list M).
+Lemma WF_GenMatrix_matrix_column_choose_indices_list : forall {n m : nat} (indices_list : list nat) (M : GenMatrix n m), WF_GenMatrix M -> WF_GenMatrix (matrix_column_choose indices_list M).
 Proof. intros.
   unfold WF_GenMatrix.
   intros.
@@ -325,7 +325,7 @@ Proof. intros.
     assumption.
 Qed.
 
-Lemma  WF_Matrix_vector_row_choose_indices_list : forall {n : nat} (indices_list : list nat) (v : GenVector n), WF_GenMatrix v -> WF_GenMatrix (vector_row_choose indices_list v).
+Lemma  WF_GenMatrix_vector_row_choose_indices_list : forall {n : nat} (indices_list : list nat) (v : GenVector n), WF_GenMatrix v -> WF_GenMatrix (vector_row_choose indices_list v).
 Proof. intros.
   unfold WF_GenMatrix.
   intros.
@@ -343,7 +343,7 @@ Proof. intros.
     apply H.
 Qed.
 
-Hint Resolve WF_Matrix_matrix_column_choose_indices_list_I_n WF_Matrix_matrix_column_choose_indices_list WF_Matrix_vector_row_choose_indices_list : wf_db.
+Hint Resolve WF_GenMatrix_matrix_column_choose_indices_list_I_n WF_GenMatrix_matrix_column_choose_indices_list WF_GenMatrix_vector_row_choose_indices_list : wf_db.
 
 
 
@@ -461,7 +461,7 @@ Proof. intros n m P M a H0 H1 H2.
       apply Psum.
     + rewrite ! seq_length.
       apply IHm. 
-      * pose (WF_Matrix_vector_row_choose_indices_list (List.seq 0 m) a).
+      * pose (WF_GenMatrix_vector_row_choose_indices_list (List.seq 0 m) a).
         rewrite ! seq_length in w; auto.
       * intros i0 H1.
         assert (get_col (matrix_column_choose (List.seq 0 m) M) i0 = get_col M i0).
@@ -737,7 +737,7 @@ Qed.
 Definition col_insert_front {n m : nat} (M : GenMatrix n m) (v : GenVector n) : GenMatrix n (S m) :=
   fun r c => if (c =? 0)%nat then v r 0%nat else M r (c - 1)%nat.
 
-Lemma WF_Matrix_col_insert_front : forall {n m : nat} (M : GenMatrix n m) (v : GenVector n),
+Lemma WF_GenMatrix_col_insert_front : forall {n m : nat} (M : GenMatrix n m) (v : GenVector n),
     WF_GenMatrix M -> WF_GenMatrix v -> WF_GenMatrix (col_insert_front M v).
 Proof. intros n m M v H0 H1.
   unfold col_insert_front.
@@ -750,7 +750,7 @@ Proof. intros n m M v H0 H1.
     lia.
 Qed.
 
-Hint Resolve WF_Matrix_col_insert_front : wf_db.
+Hint Resolve WF_GenMatrix_col_insert_front : wf_db.
  
 
 (* # ~12 *)
@@ -1709,7 +1709,7 @@ Proof. intros.
     + rewrite seq_length; trivial.
 Qed.
 
-Lemma WF_Matrix_submatrix_column : forall {n m} (k : nat) (M : GenMatrix n m),
+Lemma WF_GenMatrix_submatrix_column : forall {n m} (k : nat) (M : GenMatrix n m),
     WF_GenMatrix M -> WF_GenMatrix (submatrix_column k M).
 Proof. intros.
   unfold WF_GenMatrix in *.
@@ -1720,7 +1720,7 @@ Proof. intros.
   destruct H0; lia.
 Qed.
 
-Hint Resolve WF_Matrix_submatrix_column : wf_db.
+Hint Resolve WF_GenMatrix_submatrix_column : wf_db.
 
 
 
@@ -1754,7 +1754,7 @@ Proof. intros n m M H H0 H1.
     destruct (Classical_Prop.classic (linearly_dependent M')).
     + destruct (IHm M') as [k H'].
       * subst.
-        apply WF_Matrix_submatrix_column.
+        apply WF_GenMatrix_submatrix_column.
         assumption.
       * intros.
         rewrite HeqM'.
@@ -4245,8 +4245,20 @@ Proof. intros n m P1 P2 M H0.
   - rewrite H0; apply H2; auto.
   - apply H3; rewrite <- H0; auto.
 Qed.
-    
-Lemma span_WF_Matrix : forall {n m : nat} {M : GenMatrix n m} {v : GenVector n},
+
+Lemma swap_equivalent_subspace_in_dimension : 
+  forall {n d : nat} {P1 P2 : GenVector n -> Prop},
+    (forall v : GenVector n, P1 v <-> P2 v) -> (dimension P1 d <-> dimension P2 d).
+Proof. intros. unfold dimension. split; intros.
+  - destruct H0 as [B [H0 H1]].
+    exists B. split; auto.
+    rewrite <- @swap_equivalent_subspace_in_basis with (P1 := P1); auto.
+  - destruct H0 as [B [H0 H1]].
+    exists B. split; auto.
+    rewrite @swap_equivalent_subspace_in_basis with (P2 := P2); auto.
+Qed.
+
+Lemma span_WF_GenMatrix : forall {n m : nat} {M : GenMatrix n m} {v : GenVector n},
     WF_GenMatrix M -> span M v -> WF_GenMatrix v.
 Proof. intros n m M v H0 H1.
   unfold span in H1.
@@ -4425,12 +4437,15 @@ Proof. intros n m d M WFM H.
         apply G1_neq_0.
       * apply Binspan; lia.
     + assert (WF_GenMatrix (matrix_column_choose indices_list M)).
-      { apply WF_Matrix_matrix_column_choose_indices_list; auto. }
+      { apply WF_GenMatrix_matrix_column_choose_indices_list; auto. }
       pose (basis_equal_number WFB H1 basisB' basis_subset) as e.
       rewrite e.
       pose (NoDup_incl_length NoDup_indices incl_indices) as l.
       rewrite seq_length in l. auto.
 Qed.
+
+Lemma zerospace_is_subspace : forall {n : nat}, subspace (fun v : GenVector n => v = Zero).
+Proof. repeat split; intros; subst; auto with wf_db; lgma. Qed.
 
 Lemma totalspace_is_subspace : forall (n : nat), subspace (fun v : GenVector n => WF_GenMatrix v).
 Proof. intros n. repeat split; intros; auto with wf_db. Qed. 
@@ -5049,7 +5064,7 @@ Proof. intros n m A b WFA WFb H.
   { apply @equal_dimension_subspace_basis with (P1 := span B) (d := n); auto.
     - apply span_is_subspace; auto.
     - apply totalspace_is_subspace.
-    - intro. apply span_WF_Matrix. auto.
+    - intro. apply span_WF_GenMatrix. auto.
     - unfold dimension.
       setoid_rewrite <- (swap_equivalent_subspace_in_basis H1).
       apply dimspanAn.
@@ -5208,7 +5223,396 @@ Proof. intros. unfold dimension.
     split; auto with wf_db.
 Qed.
 
+(** internal_direct_sum **)
+Definition no_subspace_overlap {n : nat} (P1 P2 : GenVector n -> Prop) :=
+  (forall v : GenVector n, P1 v -> P2 v -> v = Zero).
+
+Definition subspace_sum {n : nat} (P1 P2 : GenVector n -> Prop) (v : GenVector n) : Prop :=
+  (exists v1 v2 : GenVector n, P1 v1 /\ P2 v2 /\ v = v1 .+ v2).
+
+Lemma no_subspace_overlap_sym : forall {n : nat} (P1 P2 : GenVector n -> Prop),
+    no_subspace_overlap P1 P2 -> no_subspace_overlap P2 P1.
+Proof. intros n P1 P2 H.
+  unfold no_subspace_overlap in *.
+  intros v H0 H1.
+  auto.
+Qed.
+
+Lemma subspace_sum_sym : forall {n : nat} (P1 P2 : GenVector n -> Prop),
+    (forall v : GenVector n, subspace_sum P1 P2 v <-> subspace_sum P2 P1 v). 
+Proof. intros n P1 P2 v.
+  unfold subspace_sum.
+  split; intros.
+  - destruct H as [v1 [v2 [H [H1 H2]]]].
+    exists v2. exists v1. repeat split; auto. rewrite H2. lgma.
+  - destruct H as [v1 [v2 [H [H1 H2]]]].
+    exists v2. exists v1. repeat split; auto. rewrite H2. lgma.
+Qed.
+
+Lemma subspace_sum_is_subspace : forall {n : nat} {P1 P2 : GenVector n -> Prop},
+    subspace P1 -> subspace P2 -> subspace (subspace_sum P1 P2).
+Proof. intros n P1 P2 H H0.
+  unfold subspace in *.
+  destruct H as [H [H1 [H2 H3]]].
+  destruct H0 as [H0 [H4 [H5 H6]]].
+  unfold subspace_sum.
+  repeat split.
+  - intros v H7.
+    destruct H7 as [v1 [v2 [H7 [H8 H9]]]].
+    rewrite H9.
+    auto with wf_db.
+  - exists Zero. exists Zero.
+    repeat split; auto.
+    lgma.
+  - intros v w H7 H8.
+    destruct H7 as [v1 [v2 [H7 [H9 H10]]]].
+    destruct H8 as [u1 [u2 [H11 [H12 H13]]]].
+    exists (v1 .+ u1). exists (v2 .+ u2).
+    repeat split; auto.
+    rewrite H10, H13.
+    lgma.
+  - intros v c H7.
+    destruct H7 as [v1 [v2 [H7 [H9 H10]]]].
+    exists (c .* v1). exists (c .* v2).
+    repeat split; auto.
+    rewrite H10.
+    lgma.
+Qed.
+
+(* basis of internal_direct_sum subspaces is union of each basis *)
+Lemma subspace_sum_basis_smash : forall {m n1 n2 : nat} (P1 P2 : GenVector m -> Prop) (M1 : GenMatrix m n1) (M2 : GenMatrix m n2),
+    basis P1 M1 -> basis P2 M2 -> no_subspace_overlap P1 P2 ->
+    basis (subspace_sum P1 P2) (smash M1 M2).
+Proof. intros m n1 n2 P1 P2 M1 M2 H H0 H1.
+  unfold basis in *.
+  destruct H as [H [H2 [H3 H4]]].
+  destruct H0 as [H0 [H5 [H6 H7]]].
+  split; [idtac | split; [idtac | split]].
+  apply subspace_sum_is_subspace; auto.
+  - intros i H8.
+    unfold subspace_sum.
+    bdestruct (i <? n1).
+    + exists (get_col M1 i). exists Zero.
+      repeat split; auto. 
+      unfold subspace in H0. 
+      destruct H0 as [H0 [H0' [H0'' H0''']]]; auto.
+      rewrite get_col_smash_left; auto.
+      lgma.
+    + exists Zero. exists (get_col M2 (i - n1)%nat).
+      repeat split.
+      unfold subspace in H. 
+      destruct H as [H [H' [H'' H''']]]; auto.
+      apply H5; lia.
+      rewrite get_col_smash_right; auto.
+      lgma.
+  - intros v H8.
+    unfold subspace_sum in H8.
+    destruct H8 as [v1 [v2 [H8 [H9 H10]]]].
+    rewrite H10.
+    specialize (H3 v1 H8).
+    specialize (H6 v2 H9).
+    unfold span.
+    unfold span in H3, H6.
+    destruct H3 as [a [WFa H3]].
+    destruct H6 as [b [WFb H6]].
+    exists (fun r c => if r <? n1 then a r c else b (r - n1)%nat c).
+    split.
+    + unfold WF_GenMatrix.
+      intros x y H11.
+      bdestruct_all.
+      * rewrite WFa; auto; lia.
+      * rewrite WFb; auto; lia.
+    + rewrite H3, H6.
+      unfold smash, GMmult, GMplus.
+      prep_genmatrix_equality.
+      rewrite big_sum_sum.
+      f_equal.
+      * apply big_sum_eq_bounded.
+        intros x0 H11.
+        bdestruct_all; auto.
+      * apply big_sum_eq_bounded.
+        intros x0 H11.
+        bdestruct_all.
+        repeat f_equal; lia.
+  - unfold no_subspace_overlap in *.
+    unfold linearly_independent in *.
+    intros a H8 H9.
+    assert (@WF_GenMatrix n1 1 (fun r c => if r <? n1 then a r c else 0)).
+    { unfold WF_GenMatrix. intros x y H10.
+      bdestruct_all; auto. rewrite H8; auto; lia. }
+    specialize (H4 (fun r c => if r <? n1 then a r c else 0) H10).
+    assert (@WF_GenMatrix n2 1 (fun r c => if r <? n2 then a (n1 + r)%nat c else 0)).
+    { unfold WF_GenMatrix. intros x y H11.
+      bdestruct_all; auto. rewrite H8; auto; lia. }
+    specialize (H7 (fun r c => if r <? n2 then a (n1 + r)%nat c else 0) H11).
+    pose (span_in_subspace H H2) as H12.
+    pose (span_in_subspace H0 H5) as H13.
+    assert (forall v : GenVector m, P1 v <-> span M1 v) by (split; auto).
+    assert (forall v : GenVector m, P2 v <-> span M2 v) by (split; auto).
+    assert (@GMmult m n1 1 M1 (fun r c : nat => if r <? n1 then a r c else 0) 
+            =  (GMopp (@GMmult m n2 1 M2 (fun r c : nat => if r <? n2 then a (n1 + r)%nat c else 0)))).
+    { unfold GMopp, GMmult, scale.
+      prep_genmatrix_equality.
+      unfold smash, GMmult, Zero in H9.
+      apply f_equal_inv with (x := x) in H9.
+      apply f_equal_inv with (x := y) in H9.
+      rewrite big_sum_sum in H9.
+      apply Gplus_cancel_r 
+        with (a := Σ (fun y0 : nat => M2 x y0 * (if y0 <? n2 then a (n1 + y0)%nat y else 0)) n2).
+      assert (- (1) * Σ (fun y0 : nat => M2 x y0 * (if y0 <? n2 then a (n1 + y0)%nat y else 0)) n2 +
+                Σ (fun y0 : nat => M2 x y0 * (if y0 <? n2 then a (n1 + y0)%nat y else 0)) n2 = 0) by ring.
+      rewrite H16.
+      setoid_rewrite <- H9 at 3.
+      f_equal.
+      - apply big_sum_eq_bounded. intros x0 H17. bdestruct_all. auto.
+      - apply big_sum_eq_bounded. intros x0 H17. bdestruct_all. repeat f_equal; lia. }
+    unfold GMopp in H16.
+    setoid_rewrite <- Mscale_mult_dist_r in H16.
+    assert (P1 (M1 × (fun r c : nat => if r <? n1 then a r c else 0))).
+    { rewrite H14. unfold span. exists (fun r c : nat => if r <? n1 then a r c else 0). split; auto. }
+    assert (P2 (M2 × (- (1) .* (fun r c : nat => if r <? n2 then a (n1 + r)%nat c else 0)))).
+    { rewrite H15. unfold span. exists (- (1) .* (fun r c : nat => if r <? n2 then a (n1 + r)%nat c else 0)).
+      split; auto with wf_db. }
+    rewrite <- H16 in H18.
+    specialize (H1 (M1 × (fun r c : nat => if r <? n1 then a r c else 0)) H17 H18).
+    specialize (H4 H1).
+    rewrite H4 in H16.
+    rewrite GMmult_0_r in H16. symmetry in H16.
+    rewrite Mscale_mult_dist_r in H16.
+    apply Mscale_inj with (c := - 1%F) in H16.
+    rewrite Mscale_assoc in H16.
+    replace ((- 1%F) * (- 1%F))%G with 1%F in H16 by ring.
+    rewrite Mscale_1_l in H16.
+    replace ((- 1%F) .* @Zero m 1) with (@Zero m 1) in H16 by lgma.
+    specialize (H7 H16).
+    prep_genmatrix_equality.
+    unfold Zero in *.
+    bdestruct (y =? 0).
+    + subst.
+      bdestruct (x <? n1).
+      * apply f_equal_inv with (x := x) in H4.
+        apply f_equal_inv with (x := 0) in H4.
+        bdestruct (x <? n1); try lia.
+        auto.
+      * bdestruct (x <? n1 + n2).
+        -- apply f_equal_inv with (x := (x - n1)%nat) in H7.
+           apply f_equal_inv with (x := 0) in H7.
+           bdestruct (x - n1 <? n2); try lia.
+           replace (n1 + (x - n1)%nat)%nat with x in H7 by lia.
+           auto.
+        -- rewrite H8; auto; lia.
+    + rewrite H8; auto; lia.
+Qed.
+
+(* dim of internal_direct_sum subspaces is sum of each dim *)
+Lemma subspace_sum_dimension : forall {m : nat} (P1 P2 : GenVector m -> Prop) (d1 d2 : nat),
+    dimension P1 d1 -> dimension P2 d2 -> no_subspace_overlap P1 P2 ->
+    dimension (subspace_sum P1 P2) (d1 + d2)%nat.
+Proof. intros m P1 P2 d1 d2 H H0 H1.
+  unfold dimension in *.
+  destruct H as [B1 [WFB1 basis1]].
+  destruct H0 as [B2 [WFB2 basis2]].
+  pose (subspace_sum_basis_smash P1 P2 B1 B2 basis1 basis2 H1).
+  exists (smash B1 B2).
+  split; auto with wf_db.
+Qed.
+
+
+(** multi_internal_direct_sum **)
+Fixpoint multi_subspace_sum {n : nat} (Ps : list (GenVector n -> Prop)) (v : GenVector n) : Prop := 
+  match Ps with 
+  | [] => v = Zero
+  | Ph :: Pt => (exists vh vt : GenVector n, 
+      Ph vh /\ multi_subspace_sum Pt vt /\ v = vh .+ vt)
+  end.
+
+Lemma multi_subspace_sum_cons : 
+  forall {n : nat} (P : GenVector n -> Prop) (Ps : list (GenVector n -> Prop)),
+    (forall v : GenVector n, multi_subspace_sum (P :: Ps) v <-> 
+                          subspace_sum P (multi_subspace_sum Ps) v).
+Proof. intros. unfold subspace_sum. simpl; split; auto. Qed.
+
+Lemma multi_subspace_sum_app : 
+  forall {n : nat} (Ps1 Ps2 : list (GenVector n -> Prop)),
+    (forall v : GenVector n, multi_subspace_sum (Ps1 ++ Ps2) v <-> 
+                        subspace_sum
+                        (multi_subspace_sum Ps1) (multi_subspace_sum Ps2) v).
+Proof. intros. 
+gen v. induction Ps1; intros.
+- simpl. unfold subspace_sum. split; intros.
+  + exists Zero. exists v. repeat split; auto. lgma.
+  + destruct H as [v1 [v2 [v1zero [multv2 vv1v2]]]].
+    rewrite v1zero, GMplus_0_l in vv1v2.
+    subst. auto.
+- replace ((a :: Ps1) ++ Ps2) with (a :: Ps1 ++ Ps2) by auto.
+  rewrite multi_subspace_sum_cons.
+  unfold subspace_sum in *.
+  simpl; split; intros; auto. 
+  + destruct H as [v1 [v2 [av1 [mult_v2 vv1v2]]]].
+    rewrite IHPs1 in mult_v2.
+    destruct mult_v2 as [v0 [v3 [mult_v0 [mult_v3 v2v0v3]]]].
+    exists (v1 .+ v0). exists v3.
+    split. 
+    * exists v1. exists v0.
+      repeat split; auto. 
+    * repeat split; auto. 
+      rewrite vv1v2, v2v0v3.
+      rewrite GMplus_assoc. auto.
+  + destruct H as [v1 [v2 [[vh [vt [avh [mult_vt v1vhvt]]]] [mult_v2 vv1v2]]]].
+    exists vh. exists (vt .+ v2). split; auto.
+    split. rewrite IHPs1.
+    exists vt. exists v2. repeat split; auto.
+    rewrite vv1v2, v1vhvt. rewrite GMplus_assoc. auto.
+Qed.
+
+Lemma multi_subspace_sum_is_subspace : forall {n : nat} {Ps : list (GenVector n -> Prop)},
+    Forall subspace Ps -> subspace (multi_subspace_sum Ps).
+Proof. intros n Ps H. induction H.
+  - simpl. apply zerospace_is_subspace.
+  - repeat split; intros; subst; try rewrite multi_subspace_sum_cons in *;
+      destruct (subspace_sum_is_subspace H IHForall) as [H' [H'' [H''' H'''']]]; auto.
+Qed.
+
+Lemma multi_subspace_sum_dimension_cons : 
+  forall {n : nat} (d : nat) (P : GenVector n -> Prop) (Ps : list (GenVector n -> Prop)),
+dimension (multi_subspace_sum (P :: Ps)) d <->
+  dimension (subspace_sum P (multi_subspace_sum Ps)) d.
+Proof. intros n d P Ps.
+  unfold dimension.
+  split; intros.
+  - destruct H as [A [WFA basisA]].
+    exists A. split; auto.
+  - destruct H as [A [WFA basisA]].
+    exists A. split; auto.
+Qed.
+
+Lemma multi_subspace_sum_permutation : forall {n : nat} {Ps1 Ps2 : list (GenVector n -> Prop)},
+    Permutation Ps1 Ps2 ->
+    (forall v : GenVector n, multi_subspace_sum Ps1 v <-> multi_subspace_sum Ps2 v).
+Proof. intros n Ps1 Ps2 H.
+  induction H as [ | P Ps1 Ps2 | P1 P2 Ps | Ps1 Ps2 Ps3].
+  - split; auto.
+  - split; simpl; intros.
+    + destruct H0 as [vh [vt [Pvh [Ps1vt vvhvt]]]].
+      rewrite IHPermutation in Ps1vt.
+      exists vh. exists vt. repeat split; auto.
+    + destruct H0 as [vh [vt [Pvh [Ps2vt vvhvt]]]].
+      rewrite <- IHPermutation in Ps2vt.
+      exists vh. exists vt. repeat split; auto.
+  - intros v. split; auto; simpl in *; intros.
+    + destruct H as [vh [vt [P2vh [[vh0 [vt0 [P1vh0 [Psvt0 vtvh0vt0]]]] vvhvt]]]].
+      exists vh0. exists (vh .+ vt0). split; auto. split.
+      * exists vh. exists vt0. repeat split; auto.
+      * rewrite vvhvt, vtvh0vt0; lgma.
+    + destruct H as [vh [vt [P1vh [[vh0 [vt0 [P2vh0 [Psvt0 vtvh0vt0]]]] vvhvt]]]].
+      exists vh0. exists (vh .+ vt0). split; auto. split.
+      * exists vh. exists vt0. repeat split; auto.
+      * rewrite vvhvt, vtvh0vt0; lgma.
+  - intros; split; intros.
+    + rewrite <- IHPermutation2, <- IHPermutation1; auto.
+    +  rewrite IHPermutation1, IHPermutation2; auto.
+Qed.
+
+Lemma multi_subspace_sum_span_left_Mmult : 
+  forall {m n o : nat} (A : GenMatrix m n) (Lm : list (GenMatrix n o)),
+    (forall v : GenVector n,
+      multi_subspace_sum (map (fun m : GenMatrix n o => span m) Lm) v ->
+      multi_subspace_sum (map (fun m : GenMatrix n o => span (A × m)) Lm) (A × v)).
+Proof. intros. gen v. induction Lm; intros.
+- simpl in *. subst. rewrite GMmult_0_r. auto.
+- simpl in *.
+  destruct H as [vh [vt [span_a_vh [mult_vt vvhvt]]]].
+  specialize (IHLm vt mult_vt).
+  exists (A × vh). exists (A × vt).
+  repeat split; auto.
+  + unfold span in *.
+    destruct span_a_vh as [b [WFb vhab]].
+    exists b. split; auto. subst.
+    rewrite GMmult_assoc. auto.
+  + rewrite vvhvt. distribute_plus. auto.
+Qed.
+
+
+Fixpoint multi_no_subspace_overlap {n : nat} (Ps : list (GenVector n -> Prop)) :=
+  match Ps with
+  | [] => True
+  | P :: Ps' => no_subspace_overlap P (multi_subspace_sum Ps') /\
+                multi_no_subspace_overlap Ps'
+  end.
+
+Lemma multi_no_subspace_overlap_permutation : 
+  forall {n : nat} (Ps1 Ps2 : list (GenVector n -> Prop)),
+    Permutation Ps1 Ps2 ->
+    Forall subspace Ps1 -> multi_no_subspace_overlap Ps1 -> 
+    multi_no_subspace_overlap Ps2.
+Proof. intros n Ps1 Ps2 H H0 H1.
+  induction H; auto.
+  - rewrite Forall_cons_iff in H0. destruct H0.
+    simpl in *.
+    destruct H1.
+    split; auto.
+    unfold no_subspace_overlap in *.
+    intros v H4 H5.
+    rewrite <- (multi_subspace_sum_permutation H) in H5.
+    apply H1; auto.
+  - rewrite Forall_cons_iff in H0. destruct H0.
+    rewrite Forall_cons_iff in H0. destruct H0.
+    simpl in *.
+    destruct H1 as [H1 [H3 H4]].
+    repeat split; auto.
+    + unfold no_subspace_overlap in *.
+      intros v xv H6. 
+      destruct H6 as [vh [vt [yvh [multi_l_vt vvhvt]]]].
+      specialize (H1 vh yvh).
+      assert (exists vh0 vt : GenVector n,
+                 x vh0 /\ multi_subspace_sum l vt /\ vh = vh0 .+ vt).
+      { exists v. exists ((- 1%F) .* vt). repeat split; auto; try rewrite vvhvt; try lgma.
+        destruct (multi_subspace_sum_is_subspace H2) as [H5 [H5' [H5'' H5''']]].
+        apply H5'''; auto. }
+      specialize (H1 H5). subst.
+      rewrite GMplus_0_l in *.
+      apply H3; auto.
+    + unfold no_subspace_overlap in *.
+      intros v H5 H6.
+      destruct H0 as [H0 [H0' [H0'' H0''']]].
+      specialize (H1 v H5).
+      assert (exists vh vt : GenVector n, x vh /\ multi_subspace_sum l vt /\ v = vh .+ vt).
+      { exists Zero. exists v. repeat split; auto; lgma. }
+      specialize (H1 H7). auto.
+  - apply IHPermutation2.
+    + rewrite Forall_forall. intros. apply Permutation_in with (l' := l) in H3.
+      * rewrite Forall_forall in H0. apply H0; auto.
+      * apply Permutation_sym; auto.
+    + apply IHPermutation1; auto.
+Qed.  
+
+Lemma multi_subspace_sum_dimension : 
+  forall {m : nat} (Ps : list (GenVector m -> Prop)) (Ld : list nat),
+    length Ps = length Ld -> 
+    Forall (fun p => dimension (fst p) (snd p)) (combine Ps Ld) ->
+    multi_no_subspace_overlap Ps ->
+    dimension (multi_subspace_sum Ps) (fold_right plus 0%nat Ld)%nat.
+Proof. intros m Ps Ld H H0 H1.
+  gen Ld. induction Ps; intros.
+  - destruct Ld; try discriminate.
+    simpl. unfold dimension.
+    exists Zero. split; auto with wf_db.
+    unfold basis. split. apply zerospace_is_subspace.
+    split. intros. unfold get_col, Zero. prep_genmatrix_equality. bdestruct_all; auto.
+    split. intros. rewrite H2. unfold span. exists Zero. split; auto with wf_db; lgma.
+    unfold linearly_independent. intros a H2 H3.
+    prep_genmatrix_equality. unfold Zero. rewrite H2; auto; lia.
+  - destruct Ld; try discriminate.
+     replace (fold_right Init.Nat.add 0%nat (n :: Ld)) with 
+                (n + (fold_right Init.Nat.add 0%nat Ld))%nat by (simpl; auto).
+    rewrite multi_subspace_sum_dimension_cons.
+    destruct H1.
+    simpl in *.
+    apply Nat.succ_inj in H.
+    inversion H0; subst; clear H0.
+    simpl in H5.
+    apply subspace_sum_dimension; auto.
+Qed.
+
 End SubspacesOverField.
-
-
 
