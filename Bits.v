@@ -1,5 +1,5 @@
-Require Export Pad.
 Require Export CauchySchwarz.
+Require Import Modulus.
 
 Local Open Scope nat_scope. 
 
@@ -399,6 +399,15 @@ Proof.
   assumption.
 Qed.
 
+Lemma nat_lt_pow2_funbool_to_nat_ind (P : nat -> Prop) n
+  (H : forall f, P (funbool_to_nat n f)) : 
+  forall i, i < 2 ^ n -> P i.
+Proof.
+  intros i Hi.
+  rewrite <- (nat_to_funbool_inverse n i Hi).
+  apply H.
+Qed.
+
 Local Opaque Nat.mul.
 Lemma nat_to_binlist'_even : forall n, (n > 0)%nat -> 
   nat_to_binlist' (2 * n) = false :: nat_to_binlist' n.
@@ -476,90 +485,6 @@ Proof.
   apply IHn; lia.
 Qed.
 
-Lemma funbool_to_nat_inverse : forall len f i, (i < len)%nat -> 
-  nat_to_funbool len (funbool_to_nat len f) i = f i.
-Proof.
-  intros.
-  assert (list_to_funbool_append1 : forall l1 l2,
-            (i >= length l2)%nat ->
-            (len <= length l1 + length l2)%nat ->
-            list_to_funbool len (l1 ++ l2) i = list_to_funbool len l1 i).
-  { intros.
-    generalize dependent len.
-    induction l1; intros; simpl in *.
-    generalize dependent len.
-    induction l2.
-    reflexivity.
-    intros.
-    simpl in *. 
-    unfold update.  
-    bdestructΩ (i =? len - 1).
-    unfold update.
-    bdestruct (i =? len - 1).
-    reflexivity.
-    apply IHl1; lia. }
-  assert (list_to_funbool_append2 : forall l1 l2,
-            (i < length l2)%nat ->
-            (len >= length l1 + length l2)%nat ->
-            list_to_funbool len (l1 ++ l2) i = 
-              list_to_funbool (len - length l1) l2 i).
-  { clear.
-    intros.
-    generalize dependent len.
-    induction l1; intros; simpl in *.
-    rewrite Nat.sub_0_r.
-    reflexivity.
-    unfold update.
-    bdestructΩ (i =? len - 1).
-    rewrite IHl1 by lia.
-    replace (len - 1 - length l1)%nat with (len - S (length l1))%nat by lia.
-    reflexivity. }
-  unfold nat_to_funbool, funbool_to_nat, nat_to_binlist.
-  remember (binlist_to_nat (funbool_to_list len f)) as n.
-  bdestructΩ (len - length (nat_to_binlist' n) <=? i).
-  rewrite list_to_funbool_append1.
-  all: try rewrite repeat_length; try lia.
-  subst.
-  rewrite binlist_to_nat_inverse.
-  clear - H.
-  induction len.
-  lia.
-  simpl.
-  rewrite Nat.sub_0_r.
-  bdestruct (i =? len). subst.
-  rewrite update_index_eq. 
-  reflexivity.
-  rewrite update_index_neq by lia.
-  rewrite IHlen by lia.
-  reflexivity.
-  rewrite list_to_funbool_append2.
-  all: try rewrite repeat_length; try lia.
-  assert (f i = false).
-  { subst.
-    clear - H0.
-    induction len.
-    simpl in H0. lia.
-    remember (binlist_to_nat (funbool_to_list (S len) f)) as n.
-    bdestruct (n =? 0).
-    subst. rewrite H in *.
-    eapply funbool_to_nat_0. apply H. 
-    lia.
-    apply IHlen.
-    subst. 
-    simpl in *.
-    destruct (f len); simpl Nat.b2n in *.
-    rewrite Nat.add_comm in H0.
-    rewrite nat_to_binlist'_odd in H0.
-    simpl in H0. lia.
-    rewrite Nat.add_0_l in *.
-    rewrite nat_to_binlist'_even in H0 by lia.
-    simpl in H0. lia. }
-  rewrite list_to_funbool_repeat_false.
-  rewrite H1.
-  reflexivity.
-Qed.
-Local Transparent Nat.mul.
-
 Lemma testbit_binlist {n : nat} {k : list bool} :
   Nat.testbit (binlist_to_nat k) n = nth n k false.
 Proof.
@@ -568,26 +493,106 @@ Proof.
   intros k.
   - cbn.
     destruct k; [easy|].  
-    destruct b; cbn;
-    rewrite Nat.add_0_r.
+    destruct b; cbn.
     2: rewrite <- Nat.negb_even;
       symmetry; apply negb_sym; cbn.
     1: rewrite Nat.odd_succ.
-    all: rewrite Nat.even_add;
-      apply eqb_reflx.
+    all: rewrite Nat.even_mul; easy.
   - destruct k.
     + rewrite Nat.testbit_0_l; easy.
     + simpl. 
       destruct b;
       simpl Nat.b2n.
       * rewrite Nat.add_1_l.
-        rewrite Nat.add_0_r, double_mult.
         rewrite div2_S_double.
         apply IHn.
-      * rewrite Nat.add_0_l, Nat.add_0_r, double_mult.
+      * rewrite Nat.add_0_l.
         rewrite Nat.div2_double.
         apply IHn.
 Qed.
+
+Lemma testbit_funbool_to_nat {n0 n} {f} :
+  Nat.testbit (funbool_to_nat n0 f) n = if n <? n0 then f (n0 - (S n)) else false.
+Proof.
+  unfold funbool_to_nat.
+  rewrite testbit_binlist.
+  gen n0 f;
+  induction n; intros n0 f.
+  - induction n0.
+    + easy.
+    + cbn.
+      rewrite Nat.sub_0_r.
+      easy.
+  - induction n0.
+    + easy.
+    + cbn. rewrite IHn. easy.
+Qed.
+
+Lemma nth_nat_to_binlist {len n} : forall k,
+  nth k (nat_to_binlist len n) false = Nat.testbit n k.
+Proof.
+  intros k.
+  rewrite <- testbit_binlist, nat_to_binlist_inverse.
+  easy.
+Qed.
+
+Lemma list_to_funbool_eq {k : list bool} {n0} :
+  (list_to_funbool n0 k) = fun n => if n <=? (n0 - 1) then nth (n0 - S n) k false else false.
+Proof.
+  gen n0;
+  induction k; intros n0.
+  - apply functional_extensionality; intros n.
+    destruct (n0 - S n); rewrite Tauto.if_same; easy.
+  - destruct n0.
+    1: apply functional_extensionality; intros n; destruct n; try easy.
+      simpl. rewrite IHk.
+      unfold update. easy.
+    simpl list_to_funbool. 
+    rewrite IHk.
+    apply functional_extensionality.
+    intros n.
+    unfold update.
+    rewrite Nat.sub_0_r.
+    replace (S n0 - 1) with n0 by lia.
+    bdestruct (n <=? n0).
+    + bdestruct (n =? n0).
+      * subst.
+        replace (S n0 - S n0) with 0 by lia.
+        easy.
+      * bdestruct (n <=? n0 - 1); [|lia].
+        destruct (S n0 - S n) as [|n'] eqn:Hn'; [lia|].
+        simpl nth.
+        replace (n0 - S n) with n' by lia.
+        easy.
+    + bdestruct (n =? n0); subst; try lia.
+      bdestruct (n <=? n0 - 1); subst; try lia.
+Qed.
+
+Lemma list_to_funbool_eq' {k : list bool} {n0 n} :
+  list_to_funbool n0 k n = if n <=? (n0 - 1) then nth (n0 - S n) k false else false.
+Proof.
+  rewrite list_to_funbool_eq. easy.
+Qed.
+
+Lemma nat_to_funbool_eq {n j} :
+  nat_to_funbool n j = fun k => if k <=? n - 1 then Nat.testbit j (n - S k) else false.
+Proof.
+  apply functional_extensionality; intros k.
+  unfold nat_to_funbool.
+  rewrite list_to_funbool_eq', nth_nat_to_binlist.
+  easy.
+Qed.
+
+Lemma funbool_to_nat_inverse : forall len f i, (i < len)%nat -> 
+  nat_to_funbool len (funbool_to_nat len f) i = f i.
+Proof.
+  intros.
+  rewrite nat_to_funbool_eq.
+  rewrite testbit_funbool_to_nat.
+  rewrite sub_S_sub_S by easy.
+  bdestructΩ'.
+Qed.
+Local Transparent Nat.mul.
 
 Lemma binlist_mod {k : list bool} {n0 : nat} :
   (binlist_to_nat k) mod (2^n0) = binlist_to_nat (firstn n0 k).
@@ -647,79 +652,6 @@ Proof.
     easy.
 Qed.
 
-Lemma testbit_funbool_to_nat {n0 n} {f} :
-  Nat.testbit (funbool_to_nat n0 f) n = if n <? n0 then f (n0 - (S n)) else false.
-Proof.
-  unfold funbool_to_nat.
-  rewrite testbit_binlist.
-  gen n0 f;
-  induction n; intros n0 f.
-  - induction n0.
-    + cbn. easy.
-    + replace (0 <? S n0) with true by easy.
-      cbn.
-      rewrite Nat.sub_0_r.
-      easy.
-  - induction n0.
-    + cbn. easy.
-    + cbn. rewrite IHn. easy.
-Qed.
-
-Lemma list_to_funbool_eq {k : list bool} {n0} :
-  (list_to_funbool n0 k) = fun n => if n <=? (n0 - 1) then nth (n0 - S n) k false else false.
-Proof.
-  gen n0;
-  induction k; intros n0.
-  - apply functional_extensionality; intros n.
-    destruct (n0 - S n); rewrite Tauto.if_same; easy.
-  - destruct n0.
-    1: apply functional_extensionality; intros n; destruct n; try easy.
-      simpl. rewrite IHk.
-      unfold update. easy.
-    simpl list_to_funbool. 
-    rewrite IHk.
-    apply functional_extensionality.
-    intros n.
-    unfold update.
-    rewrite Nat.sub_0_r.
-    replace (S n0 - 1) with n0 by lia.
-    bdestruct (n <=? n0).
-    + bdestruct (n =? n0).
-      * subst.
-        replace (S n0 - S n0) with 0 by lia.
-        easy.
-      * bdestruct (n <=? n0 - 1); [|lia].
-        destruct (S n0 - S n) as [|n'] eqn:Hn'; [lia|].
-        simpl nth.
-        replace (n0 - S n) with n' by lia.
-        easy.
-    + bdestruct (n =? n0); subst; try lia.
-      bdestruct (n <=? n0 - 1); subst; try lia.
-Qed.
-
-Lemma list_to_funbool_eq' {k : list bool} {n0 n} :
-  list_to_funbool n0 k n = if n <=? (n0 - 1) then nth (n0 - S n) k false else false.
-Proof.
-  rewrite list_to_funbool_eq. easy.
-Qed.
-
-Lemma nth_nat_to_binlist {len n} : forall k,
-  nth k (nat_to_binlist len n) false = Nat.testbit n k.
-Proof.
-  intros k.
-  rewrite <- testbit_binlist, nat_to_binlist_inverse.
-  easy.
-Qed.
-
-Lemma nat_to_funbool_eq {n j} :
-  nat_to_funbool n j = fun k => if k <=? n - 1 then Nat.testbit j (n - S k) else false.
-Proof.
-  apply functional_extensionality; intros k.
-  unfold nat_to_funbool.
-  rewrite list_to_funbool_eq', nth_nat_to_binlist.
-  easy.
-Qed.
-
 Lemma nat_to_funbool_mod {n1 j} {k} (n0:nat) : k < n1 ->
   nat_to_funbool n1 (j mod 2 ^ n1) k = nat_to_funbool (n0 + n1) j (k + n0).
 Proof.
@@ -740,6 +672,57 @@ Proof.
   rewrite Nat.div_pow2_bits.
   f_equal.
   lia.
+Qed.
+
+Lemma funbool_to_nat_add_pow2_join n f g m : 
+  funbool_to_nat n f * 2 ^ m + funbool_to_nat m g = 
+  funbool_to_nat (n + m) (fun k => if k <? n then f k else g (k - n)).
+Proof.
+  apply bits_inj.
+  intros s.
+  rewrite testbit_add_pow2_split by apply funbool_to_nat_bound.
+  rewrite 3!testbit_funbool_to_nat.
+  bdestructΩ'; f_equal; lia.
+Qed.
+
+Lemma funbool_to_nat_div_pow2 n m f : 
+  funbool_to_nat n f / 2 ^ m = funbool_to_nat (n - m) f.
+Proof.
+  apply bits_inj.
+  intros s.
+  rewrite testbit_div_pow2, 2!testbit_funbool_to_nat.
+  bdestructΩ'; f_equal; lia.
+Qed.
+
+Lemma funbool_to_nat_mod_pow2 n m f : 
+  (funbool_to_nat n f) mod 2 ^ m = 
+  funbool_to_nat (min n m) (fun k => f (n + k - (min n m))).
+Proof.
+  apply bits_inj.
+  intros s.
+  rewrite testbit_mod_pow2, 2!testbit_funbool_to_nat.
+  rewrite min_ltb.
+  bdestructΩ'; f_equal; lia.
+Qed.
+
+Lemma funbool_to_nat_eq_iff n f g  :
+  (forall k, k < n -> f k = g k) <-> funbool_to_nat n f = funbool_to_nat n g.
+Proof.
+  split; 
+  [apply funbool_to_nat_eq|].
+  intros H k Hk.
+  apply (f_equal (fun f => Nat.testbit f (n - S k))) in H.
+  revert H.
+  rewrite 2!testbit_funbool_to_nat.
+  simplify_bools_lia.
+  now replace (n - S (n - S k)) with k by lia.
+Qed.
+
+Lemma nat_to_funbool_eq' n j k :
+  nat_to_funbool n j k = 
+  if k <=? n - 1 then Nat.testbit j (n - S k) else false.
+Proof.
+  now rewrite nat_to_funbool_eq.
 Qed.
 
 Fixpoint product (x y : nat -> bool) n :=
@@ -800,4 +783,38 @@ Proof.
   rewrite update_index_neq by lia.
   rewrite list_to_funbool_repeat_false.
   reflexivity.
+Qed.
+
+Lemma nat_to_funbool_add_pow2_split i j n m 
+  (Hi : i < 2 ^ n) (Hj : j < 2 ^ m) : 
+  nat_to_funbool (n + m) (i * 2 ^ m + j) =
+  (fun s => 
+    if s <? n then nat_to_funbool n i s
+    else nat_to_funbool m j (s - n)).
+Proof.
+  apply functional_extensionality; intros s.
+  rewrite !nat_to_funbool_eq.
+  rewrite testbit_add_pow2_split by easy.
+  bdestructΩ'; try (f_equal; lia).
+  - replace n with 0 in * by lia.
+    replace m with 0 in * by lia.
+    destruct i, j; [|cbn in Hi, Hj; lia..].
+    easy.
+  - replace m with 0 in * by lia.
+    destruct j; [|cbn in Hj; lia].
+    easy.
+Qed.
+
+Lemma nat_to_funbool_inj_upto_small i j n (Hi : i < 2^n) (Hj : j < 2^n) :
+  (forall s, s < n -> nat_to_funbool n i s = nat_to_funbool n j s) <->
+  i = j.
+Proof.
+  split; [|now intros ->].
+  intros Hij.
+  rewrite <- (bits_inj_upto_small i j n) by assumption.
+  intros s Hs.
+  generalize (Hij (n - S s) ltac:(lia)).
+  rewrite 2!nat_to_funbool_eq.
+  simplify_bools_lia_one_kernel.
+  now rewrite sub_S_sub_S.
 Qed.

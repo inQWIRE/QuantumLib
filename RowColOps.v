@@ -2529,6 +2529,32 @@ Proof. intros.
        rewrite <- matrix_by_basis_adjoint, <- matrix_by_basis; auto.
 Qed.
 
+Lemma mat_equiv_of_equiv_on_ei : forall {n m} (A B : Matrix n m),
+  (forall k, (k < m)%nat -> A × e_i k ≡ B × e_i k) ->
+  A ≡ B.
+Proof.
+  intros n m A B Heq.
+  intros i j Hi Hj.
+  specialize (Heq j Hj).
+  rewrite <- 2!(matrix_by_basis _ _ Hj) in Heq.
+  specialize (Heq i O Hi ltac:(lia)).
+  unfold get_col in Heq.
+  rewrite Nat.eqb_refl in Heq.
+  easy.
+Qed.
+
+Lemma eq_of_eq_on_ei : forall {n m} (A B : Matrix n m),
+  WF_Matrix A -> WF_Matrix B ->
+  (forall k, (k < m)%nat -> A × e_i k = B × e_i k) ->
+  A = B.
+Proof.
+  intros n m A B HA HB HAB.
+  apply mat_equiv_eq; [easy..|].
+  apply mat_equiv_of_equiv_on_ei.
+  intros k Hk.
+  now rewrite HAB by easy.
+Qed.
+
 
 (** * Lemmas related to 1pad *)
 

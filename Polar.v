@@ -1,5 +1,5 @@
+Require Import Modulus.
 Require Export Complex. 
-
 
 (******************************)
 (* Defining polar coordinates *)
@@ -143,6 +143,68 @@ Proof. intros.
            apply PI_RGT_0. }
          lra. 
 Qed.         
+
+Lemma get_arg_R_pos (r : R) (Hr : 0 < r) : get_arg r = 0.
+Proof.
+  unfold get_arg.
+  simpl.
+  destruct (Rcase_abs 0) as [Hfalse | Hge0]; [lra|].
+  unfold Rdiv.
+  rewrite Cmod_R, Rabs_pos_eq, Rinv_r, acos_1 by lra.
+  reflexivity.
+Qed.
+
+Lemma get_arg_R_neg (r : R) (Hr : r < 0) : get_arg r = PI.
+Proof.
+  unfold get_arg.
+  simpl.
+  destruct (Rcase_abs 0) as [Hfalse | Hge0]; [lra|].
+  rewrite Cmod_R, Rabs_left, Rdiv_opp_r by auto.
+  unfold Rdiv. 
+  rewrite Rinv_r, acos_opp, acos_1 by lra.
+  lra.
+Qed.
+
+Lemma get_arg_Rmult (r : R) c (Hr : 0 < r) : 
+  get_arg (r * c) = get_arg c.
+Proof.
+  unfold get_arg.
+  cbn.
+  rewrite 2!Rmult_0_l, Rplus_0_r, Rminus_0_r.
+  rewrite 2!if_sumbool.
+  apply f_equal_if.
+  - destruct (Rcase_abs (snd c)) as [Hlt0 | Hgt0], 
+      (Rcase_abs (r * snd c)) as [Hlt0' | Hgt0'];
+    [reflexivity | | | reflexivity].
+    + exfalso.
+      revert Hgt0'.
+      apply Rgt_not_ge.
+      apply Rlt_gt.
+      rewrite Rmult_comm.
+      rewrite <-(Rmult_0_r (snd c)); apply Rmult_lt_gt_compat_neg_l; auto.
+    + exfalso.
+      revert Hlt0'.
+      apply Rle_not_lt.
+      apply Rmult_le_pos; lra.
+  - f_equal.
+    f_equal.
+    rewrite Cmod_mult, Cmod_R, Rabs_pos_eq by lra.
+    unfold Rdiv.
+    rewrite Rinv_mult.
+    rewrite <- Rmult_assoc.
+    f_equal.
+    field.
+    lra.
+  - f_equal.
+    rewrite Cmod_mult, Cmod_R, Rabs_pos_eq by lra.
+    unfold Rdiv.
+    rewrite Rinv_mult.
+    rewrite <- Rmult_assoc.
+    f_equal.
+    field.
+    lra.
+Qed.
+
 
 Lemma polar_to_rect_to_polar : forall (p : R * R),
   WF_polar p ->
@@ -434,3 +496,30 @@ Qed.
 (****)
 (*****)
 (***)
+
+
+Definition Clog (c : C) :=
+  (ln (Cmod c), get_arg c).
+
+Lemma CexpC_Clog (c : C) (Hc : c <> 0) : 
+  CexpC (Clog c) = c.
+Proof.
+  unfold Clog, CexpC.
+  cbn.
+  rewrite exp_ln.
+  - exact (rect_to_polar_to_rect c Hc).
+  - apply Cmod_gt_0, Hc.
+Qed.
+
+Lemma Cexp_get_arg_unit (z : C) : Cmod z = 1 ->
+  Cexp (get_arg z) = z.
+Proof.
+  intros Hmod.
+  rewrite <- (CexpC_Clog z) at 2 by 
+    (intros H; rewrite H, Cmod_0 in Hmod; lra).
+  rewrite Cexp_CexpC.
+  f_equal.
+  unfold Clog.
+  rewrite Hmod, ln_1.
+  reflexivity.
+Qed.

@@ -1,13 +1,12 @@
 
 (** This file contains more concepts relevent to quantum computing, as well as some more general linear algebra concepts such as Gram-Schmidt and eigenvectors/eigenvalues. *)
  
+Require Import Permutations.
 Require Import List.        
 Require Export Complex.
 Require Export CauchySchwarz.
 Require Export Quantum. 
 Require Import FTA.
-Require Import Permutations.
-
 
 (****************************)
 (** * Proving some indentities *)
@@ -133,6 +132,17 @@ Proof. intros n U. split.
          * rewrite H2; try nia; easy.
 Qed.
 
+Lemma unitary_abs_le_1 {n} {A : Matrix n n} (HA: WF_Unitary A) :
+  forall i j, 
+  (Cmod (A i j) <= 1)%R.
+Proof.
+  intros i j.
+  bdestruct (i <? n); bdestruct (j <? n); 
+  [|rewrite (proj1 HA); [rewrite ?Cmod_0; lra | auto]..].
+  apply normal_matrix_le_1; [easy..|].
+  apply (proj1 (unit_is_orthonormal A) HA).
+Qed.
+
 Lemma det_by_unit : forall {n} (A B X : Square n),
   WF_Matrix A -> WF_Matrix B -> 
   WF_Unitary X -> (forall i, A × (get_col X i) = B × (get_col X i)) -> A = B.
@@ -170,6 +180,21 @@ Proof. intros.
        apply H.
 Qed.
 
+Lemma unit_det_Cmod_1 : forall {n} (U : Square n),
+  WF_Unitary U -> Cmod (Determinant U) = 1%R.
+Proof.
+  intros n U [HWF Hinv].
+  apply (f_equal (fun A => √ (Cmod (Determinant A)))) in Hinv.
+  revert Hinv.
+  rewrite <- Determinant_multiplicative, <- Determinant_adjoint.
+  rewrite Cmod_mult, Cmod_Cconj. 
+  let a := constr:(Cmod (Determinant U)) in
+  replace (a * a)%R with (a ^ 2)%R by lra.
+  rewrite sqrt_pow2 by apply Cmod_ge_0.
+  intros ->.
+  rewrite Det_I, Cmod_1.
+  apply sqrt_1.
+Qed.
 
 (***********************************************************************************)
 (** * We now define diagonal matrices and diagonizable matrices, proving basic lemmas *)
@@ -1970,7 +1995,7 @@ Proof. intros.
        intros. 
        bdestruct (i <? n); bdestruct (j <? n).
        destruct H.
-       rewrite perm_mat_conjugate; auto.
+       rewrite perm_mat_conjugate; auto with perm_bounded_db.
        apply H4.
        contradict H1.
        apply (permutation_is_injective n) in H1; auto.
@@ -1995,7 +2020,7 @@ Proof. intros.
        destruct H.
        rewrite 2 perm_mat_conjugate; auto; try lia.
        apply H1; try lia. 
-       all : apply stack_fswaps_permutation; auto; apply id_permutation.
+       all: auto with perm_bounded_db perm_db.
 Qed.
 
 Lemma pos_semi_def_diag_implies_nonneg : forall {n} (A : Square n), 
@@ -2260,15 +2285,11 @@ Proof. intros.
        replace ((Cmod (A i i)) ^*)%C with (RtoC (Cmod (A i i))).
        replace (Cmod (A i i) * / (A i i) ^* * (Cmod (A i i) * / A i i))%C
                with ((Cmod (A i i) * Cmod (A i i)) * ((/ (A i i)^* * / (A i i))))%C by lca.
-                Search (/ _ * / _)%C.
       rewrite <- Cinv_mult_distr, <- Cmod_sqr; simpl.
       rewrite Cmult_1_r, Cinv_r; auto.
       apply Cmult_neq_0.
-      all : try (contradict n0; apply Cmod_eq_0; apply RtoC_inj in n0; auto). 
-      apply Cconj_neq_0; auto.
-      auto.
-      unfold Cconj, Cmod.
-      apply c_proj_eq; simpl; lra.
+      all : try (contradict n0; apply Cmod_eq_0; apply RtoC_inj in n0; auto).
+      lca.
       intros. 
       unfold normalize_diagonal.
       bdestruct_all; simpl.
@@ -2408,7 +2429,7 @@ Proof. intros.
        easy.
 Qed.
 
-Lemma hermitiam_real_eigenvalues : forall {n} (A : Square n) (v : Vector n) (λ : C),
+Lemma hermitian_real_eigenvalues : forall {n} (A : Square n) (v : Vector n) (λ : C),
   WF_Matrix A -> 
   hermitian A -> WF_Matrix v -> 
   v <> Zero ->
@@ -2422,7 +2443,10 @@ Proof. intros.
        rewrite <- inner_product_scale_l, <- inner_product_scale_r, <- H3, 
          inner_product_adjoint_switch.
        rewrite H0; easy.
-Qed.       
+Qed.
+
+#[deprecated(note="Use hermitian_real_eigenvalues instead")]
+Notation hermitiam_real_eigenvalues := hermitian_real_eigenvalues.
 
 Lemma unitary_eigenvalues_norm_1 : forall {n} (U : Square n) (v : Vector n) (λ : C),
   WF_Unitary U -> WF_Matrix v -> 
@@ -2677,22 +2701,22 @@ Local Close Scope nat_scope.
 
 
 Lemma EigenXp : Eigenpair σx (∣+⟩, C1).
-Proof. unfold Eigenpair. solve_matrix. Qed.
+Proof. unfold Eigenpair. simpl. lma'. Qed.
 
 Lemma EigenXm : Eigenpair σx (∣-⟩, -C1).
-Proof. unfold Eigenpair. solve_matrix. Qed.
+Proof. unfold Eigenpair. simpl. lma'. Qed.
 
 Lemma EigenYp : Eigenpair σy (∣R⟩, C1).
-Proof. unfold Eigenpair. solve_matrix. Qed.
+Proof. unfold Eigenpair. simpl. lma'. Qed.
 
 Lemma EigenYm : Eigenpair σy (∣L⟩, -C1).
-Proof. unfold Eigenpair. solve_matrix. Qed.
+Proof. unfold Eigenpair. simpl. lma'. Qed.
 
 Lemma EigenZp : Eigenpair σz (∣0⟩, C1).
-Proof. unfold Eigenpair. solve_matrix. Qed.
+Proof. unfold Eigenpair. simpl. lma'. Qed.
 
 Lemma EigenZm : Eigenpair σz (∣1⟩, -C1).
-Proof. unfold Eigenpair. solve_matrix. Qed.
+Proof. unfold Eigenpair. simpl. lma'. Qed.
 
 Lemma EigenXXB : Eigenpair (σx ⊗ σx) (∣Φ+⟩, C1).
 Proof. unfold Eigenpair. lma'. Qed.

@@ -100,15 +100,30 @@ Proof. intros. rewrite H. easy. Qed.
 Lemma f_equal_gen : forall {A B} (f g : A -> B) a b, f = g -> a = b -> f a = g b.
 Proof. intros. subst. reflexivity. Qed.
 
-(** Currying *)
-
-Definition curry {A B C : Type} (f : A * B -> C) : (A -> B -> C) :=
-  fun x y => f (x,y).
-
-Definition uncurry {A B C : Type} (f : A -> B -> C) : (A * B -> C) :=
-  fun p => f (fst p) (snd p).
-
 (** Lists *)
+
+Lemma map_nth_eq [A B] (dnew : A) (f : A -> B) (l : list A) (d : B) i : 
+  f dnew = d ->
+  nth i (map f l) d = f (nth i l dnew).
+Proof.
+  intros <-.
+  apply map_nth.
+Qed.
+
+Lemma map_map_nth {A B} (f : A -> B) (l : list (list A)) i : 
+  nth i (map (map f) l) [] = map f (nth i l []).
+Proof.
+  now apply map_nth_eq.
+Qed.
+
+Lemma map_nth_small [A B] (dnew : A) (f : A -> B) (l : list A) (d : B) i : 
+  i < length l ->
+  nth i (map f l) d = f (nth i l dnew).
+Proof.
+  intros Hi.
+  rewrite (nth_indep _ d (f dnew)) by (now rewrite map_length).
+  apply map_nth.
+Qed.
 
 Notation "l !! i" := (nth_error l i) (at level 20).
 
@@ -139,11 +154,9 @@ Qed.
 
 Lemma repeat_combine : forall A n1 n2 (a : A), 
   List.repeat a n1 ++ List.repeat a n2 = List.repeat a (n1 + n2).
-Proof.
-  induction n1; trivial. 
-  intros. simpl. 
-  rewrite IHn1.
-  reflexivity.
+Proof.  
+  intros.
+  now rewrite repeat_app.
 Qed.
 
 Lemma rev_repeat : forall A (a : A) n, rev (repeat a n) = repeat a n.
@@ -153,7 +166,7 @@ Proof.
   rewrite (repeat_combine A n 1).
   rewrite Nat.add_1_r.
   reflexivity.
-Qed.
+Qed. 
 
 Lemma firstn_repeat_le : forall A (a : A) m n, (m <= n)%nat -> 
   firstn m (repeat a n) = repeat a m.  
@@ -196,21 +209,6 @@ Proof.
   - destruct n; trivial.
     simpl.
     apply IHm.
-Qed.
-
-Lemma skipn_length : forall {A} (l : list A) n, 
-  length (skipn n l) = (length l - n)%nat. 
-Proof.
-  Transparent skipn.
-  intros A l.
-  induction l.
-  intros [|n]; easy.
-  intros [|n].
-  easy.
-  simpl.
-  rewrite IHl.
-  easy.
-  Opaque skipn.
 Qed.
 
 Lemma nth_firstn : forall {A} i n (l : list A) d,
@@ -288,6 +286,9 @@ Ltac apply_with_obligations H :=
     replace a with a'; [replace b with b'; [replace c with c'; [replace d with d'; [replace e with e'; [replace f with f'; 
     [replace g with g'; [apply H|]|]|]|]|]|]|]; trivial end 
   end.
+
+Ltac gen a :=
+  generalize dependent a.
 
 (** From SF - up to five arguments *)
 Tactic Notation "gen" ident(X1) :=

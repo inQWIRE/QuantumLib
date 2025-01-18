@@ -1,4 +1,5 @@
 Require Import VectorStates.
+Require Import Modulus.
 
 (** This file contains predicates for describing the outcomes of measurement. *)
 
@@ -36,18 +37,18 @@ Lemma rewrite_I_as_sum : forall m n,
   I m = big_sum (fun i => (basis_vector n i) × (basis_vector n i)†) m.
 Proof.
   intros.
-  induction m.
-  simpl.
-  unfold I.
-  prep_matrix_equality.
-  bdestruct_all; reflexivity.
+  induction m; [simpl; lma'|].
   simpl.
   rewrite <- IHm by lia.
+  change (Matrix (S m) (S m)) with (Matrix n n).
+  apply mat_equiv_eq; [auto_wf| 
+  apply WF_Matrix_dim_change, WF_plus; auto with wf_db zarith |];
+  [unfold I; intros ? ? []; Modulus.bdestructΩ'..|].
+  intros i j Hi Hj.
   unfold basis_vector.
-  solve_matrix.
-  bdestruct_all; simpl; try lca. 
-  all: destruct m; simpl; try lca.
-  all: bdestruct_all; lca.
+  autounfold with U_db.
+  simpl.
+  bdestruct_all; lca.
 Qed.
 
 Lemma prob_partial_meas_alt : 
@@ -59,7 +60,7 @@ Proof.
   unfold prob_partial_meas.
   rewrite norm_squared.
   unfold inner_product, Mmult, adjoint.
-  rewrite (@big_sum_func_distr C R _ C_is_group _ R_is_group), Nat.mul_1_l.
+  rewrite Re_big_sum, Nat.mul_1_l.
   apply big_sum_eq_bounded; intros. 
   unfold probability_of_outcome.
   assert (H' : forall c, ((Cmod c)^2)%R = fst (c^* * c)).
@@ -69,20 +70,18 @@ Proof.
     simpl; lra. }
   rewrite H'. 
   apply f_equal.
-  assert (H'' : forall a b, a = b -> a^* * a = b^* * b). { intros; subst; easy. }
-  apply H''.
+  apply (f_equal (fun x => x^* * x)).
   unfold inner_product, Mmult.
   apply big_sum_eq_bounded; intros. 
   apply f_equal_gen; auto.
   apply f_equal.
   unfold kron, adjoint.
   rewrite Cconj_mult_distr.
-  rewrite Nat.div_0_l, Nat.mod_0_l, (Nat.div_small x (2^n)), (Nat.mod_small x); try nia.
+  rewrite Nat.Div0.div_0_l, Nat.Div0.mod_0_l, 
+    (Nat.div_small x (2^n)), (Nat.mod_small x) by nia.
   apply f_equal_gen; auto.
   unfold basis_vector, I.
   bdestruct_all; try lia; simpl; try lca.
-  intros.
-  destruct a; destruct b; easy. 
 Qed.
 
 Lemma partial_meas_tensor : 
