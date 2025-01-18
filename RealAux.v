@@ -851,6 +851,181 @@ Proof.
     + lra.
 Qed.
 
+Lemma pos_IZR (p : positive) : IZR (Z.pos p) = INR (Pos.to_nat p).
+Proof.
+  induction p.
+  - rewrite IZR_POS_xI.
+    rewrite Pos2Nat.inj_xI.
+    rewrite IHp.
+    rewrite S_INR, mult_INR.
+    simpl.
+    lra.
+  - rewrite IZR_POS_xO.
+    rewrite Pos2Nat.inj_xO.
+    rewrite IHp.
+    rewrite mult_INR.
+    simpl.
+    lra.
+  - reflexivity.
+Qed.
+
+Lemma INR_to_nat (z : Z) : (0 <= z)%Z ->
+  INR (Z.to_nat z) = IZR z.
+Proof.
+  intros Hz.
+  destruct z; [reflexivity| | ].
+  - simpl.
+    rewrite pos_IZR.
+    reflexivity.
+  - lia.
+Qed.
+
+(* For compatibility pre-8.18 FIXME: Remove when we deprecate those versions *)
+Lemma Int_part_spec_compat : forall r z, r - 1 < IZR z <= r -> z = Int_part r.
+Proof.
+  unfold Int_part; intros r z [Hle Hlt]; apply Z.add_move_r, tech_up.
+  - rewrite <-(Rplus_0_r r), <-(Rplus_opp_l 1), <-Rplus_assoc, plus_IZR.
+    now apply Rplus_lt_compat_r.
+  - now rewrite plus_IZR; apply Rplus_le_compat_r.
+Qed.
+Lemma Rplus_Int_part_frac_part_compat : forall r, r = IZR (Int_part r) + frac_part r.
+Proof. now unfold frac_part; intros r; rewrite Rplus_minus. Qed.
+
+Notation Rplus_Int_part_frac_part := Rplus_Int_part_frac_part_compat.
+Notation Int_part_spec := Int_part_spec_compat.
+
+
+Lemma lt_S_Int_part r : r < IZR (1 + Int_part r).
+Proof.
+  rewrite (Rplus_Int_part_frac_part r) at 1.
+  rewrite Z.add_comm, plus_IZR.
+  pose proof (base_fp r).
+  lra.
+Qed.
+
+Lemma lt_Int_part (r s : R) : (Int_part r < Int_part s)%Z -> r < s.
+Proof.
+  intros Hlt.
+  apply Rlt_le_trans with (IZR (Int_part s));
+  [apply Rlt_le_trans with (IZR (1 + Int_part r))|].
+  - apply lt_S_Int_part.
+  - apply IZR_le.
+    lia.
+  - apply base_Int_part.
+Qed.
+
+Lemma Int_part_le (r s : R) : r <= s -> (Int_part r <= Int_part s)%Z.
+Proof.
+  intros Hle.
+  rewrite <- Z.nlt_ge.
+  intros H%lt_Int_part.
+  lra.
+Qed.
+
+Lemma IZR_le_iff (z y : Z) : IZR z <= IZR y <-> (z <= y)%Z.
+Proof.
+  split.
+  - apply le_IZR.
+  - apply IZR_le.
+Qed.
+
+Lemma IZR_lt_iff (z y : Z) : IZR z < IZR y <-> (z < y)%Z.
+Proof.
+  split.
+  - apply lt_IZR.
+  - apply IZR_lt.
+Qed.
+
+Lemma Int_part_IZR (z : Z) : Int_part (IZR z) = z.
+Proof.
+  symmetry.
+  apply Int_part_spec.
+  change 1 with (INR (Pos.to_nat 1)).
+  rewrite <- pos_IZR, <- minus_IZR.
+  rewrite IZR_le_iff, IZR_lt_iff.
+  lia.
+Qed.
+
+Lemma Int_part_ge_iff (r : R) (z : Z) : 
+  (z <= Int_part r)%Z <-> (IZR z <= r).
+Proof.
+  split.
+  - intros Hle.
+    apply Rle_trans with (IZR (Int_part r)).
+    + apply IZR_le, Hle.
+    + apply base_Int_part.
+  - intros Hle.
+    rewrite <- (Int_part_IZR z).
+    apply Int_part_le, Hle.
+Qed.
+
+Lemma Rpower_pos (b c : R) : 
+  0 < Rpower b c.
+Proof.
+  apply exp_pos.
+Qed.
+
+Lemma ln_nondecreasing x y : 0 < x ->
+  x <= y -> ln x <= ln y.
+Proof.
+  intros Hx [Hlt | ->]; [|right; reflexivity].
+  left.
+  apply ln_increasing; auto.
+Qed.
+
+Lemma ln_le_inv x y : 0 < x -> 0 < y ->
+  ln x <= ln y -> x <= y.
+Proof.
+  intros Hx Hy [Hlt | Heq];
+  [left; apply ln_lt_inv; auto|].
+  right.
+  apply ln_inv; auto.
+Qed.
+
+
+Lemma Rdiv_le_iff a b c (Hb : 0 < b) : 
+  a / b <= c <-> a <= b * c.
+Proof.
+  split.
+  - intros Hle.
+    replace a with (b * (a / b)).
+    2: {
+      unfold Rdiv.
+      rewrite <- Rmult_assoc, (Rmult_comm b a), Rmult_assoc.
+      rewrite Rinv_r; lra.
+    }
+    apply Rmult_le_compat_l; lra.
+  - intros Hle.
+    apply Rle_trans with (b * c / b).
+    + apply Rmult_le_compat_r.
+      * enough (0 < / b) by lra.
+        now apply Rinv_0_lt_compat.
+      * easy.
+    + rewrite Rmult_comm.
+      unfold Rdiv.
+      rewrite Rmult_assoc, Rinv_r; lra.
+Qed.
+
+Lemma div_Rpower_le_of_le (r b c d : R) : 
+  0 < r -> 1 < b -> 0 < c -> 0 < d ->
+  ln (r / d) / ln b <= c ->
+  r / (Rpower b c) <= d.
+Proof.
+  intros Hr Hb Hc Hd Hle.
+  assert (0 < Rpower b c) by apply Rpower_pos.
+  rewrite Rdiv_le_iff, Rmult_comm, 
+    <- Rdiv_le_iff by auto.
+  apply ln_le_inv;
+  [apply Rdiv_lt_0_compat; lra|auto|].
+  unfold Rpower.
+  rewrite ln_exp.
+  rewrite Rmult_comm.
+  rewrite <- Rdiv_le_iff; [auto|].
+  rewrite <- ln_1.
+  apply ln_increasing; lra.
+Qed.
+
+
 Section Rnthroot_def.
 
 Lemma Rpow_1_l n : 1 ^ n = 1.

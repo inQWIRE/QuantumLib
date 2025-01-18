@@ -2288,11 +2288,8 @@ Proof. intros.
       rewrite <- Cinv_mult_distr, <- Cmod_sqr; simpl.
       rewrite Cmult_1_r, Cinv_r; auto.
       apply Cmult_neq_0.
-      all : try (contradict n0; apply Cmod_eq_0; apply RtoC_inj in n0; auto). 
-      apply Cconj_neq_0; auto.
-      auto.
-      unfold Cconj, Cmod.
-      apply c_proj_eq; simpl; lra.
+      all : try (contradict n0; apply Cmod_eq_0; apply RtoC_inj in n0; auto).
+      lca.
       intros. 
       unfold normalize_diagonal.
       bdestruct_all; simpl.

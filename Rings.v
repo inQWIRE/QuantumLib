@@ -60,6 +60,13 @@ Proof. intros.
        - lca.
 Qed.
 
+Lemma Cpow_pos_0 : forall (p : positive), Cpow_pos C0 p = C0. 
+Proof.
+  intros p.
+  rewrite Cpow_pos_to_nat.
+  apply Cpow_0_l.
+  lia.
+Qed.
 
 Lemma Cpow_pos_nonzero : forall (c : C) (p : positive), c <> C0 -> Cpow_pos c p <> C0. 
 Proof. intros.
@@ -103,30 +110,30 @@ Proof. intros.
 Qed.
 
 Lemma Cpow_pos_pred_double : forall (c : C) (p : positive), 
-  c <> 0 -> 
   Cpow_pos c (Pos.pred_double p) = (/ c) * (Cpow_pos c p * Cpow_pos c p).
-Proof. intros.
-       induction p; simpl; auto.
-       - repeat rewrite Cmult_assoc.
-         rewrite Cinv_l; try lca; auto.
-       - rewrite IHp.
-         repeat rewrite Cmult_assoc.
-         rewrite Cinv_r; try lca; auto.
-       - rewrite Cmult_assoc, Cinv_l; try lca; auto.
+Proof. 
+  intros c p.
+  destruct (Ceq_dec c 0); [subst; rewrite Cpow_pos_0; lca|].
+  induction p; simpl; auto.
+  - repeat rewrite Cmult_assoc.
+    rewrite Cinv_l; try lca; auto.
+  - rewrite IHp.
+    repeat rewrite Cmult_assoc.
+    rewrite Cinv_r; try lca; auto.
+  - rewrite Cmult_assoc, Cinv_l; try lca; auto.
 Qed.
 
 Lemma Cpow_pos_inv : forall (c : C) (p : positive),
-  c <> 0 -> 
   Cpow_pos (/ c) p = / (Cpow_pos c p).
-Proof. intros. 
-       induction p; simpl.
-       - rewrite IHp.
-         repeat rewrite Cinv_mult_distr; auto.
-         2 : apply Cmult_neq_0.
-         all : try apply Cpow_pos_nonzero; auto.
-       - rewrite IHp.
-         rewrite Cinv_mult_distr; try apply Cpow_pos_nonzero; auto.
-       - easy.
+Proof. 
+  intros c p. 
+  destruct (Ceq_dec c 0); [subst; rewrite Cinv_0, Cpow_pos_0; lca|].
+  induction p; simpl.
+  - rewrite IHp.
+    repeat rewrite Cinv_mult_distr; auto.
+  - rewrite IHp.
+    rewrite Cinv_mult_distr; try apply Cpow_pos_nonzero; auto.
+  - easy.
 Qed.
 
 Lemma Cpow_pos_real : forall (c : C) (p : positive), 
@@ -171,21 +178,30 @@ Proof. intros.
          apply Cpow_pos_nonzero; easy.
 Qed.
 
+Lemma Cpow_int_0_l : forall (z : Z), z <> 0%Z -> C0 ^^ z = C0.
+Proof.
+  intros z Hz.
+  destruct z; [easy|..];
+  simpl.
+  - apply Cpow_pos_0.
+  - rewrite Cpow_pos_0, Cinv_0.
+    reflexivity.
+Qed.
 
 Lemma Cpow_int_add_1 : forall (c : C) (z : Z), 
   c <> C0 -> c ^^ (1 + z) = c * c^^z.
-Proof. intros.
-       destruct z; try lca.
-       - destruct p; simpl; try lca. 
-         rewrite Cpow_pos_succ; lca.
-       - destruct p; simpl.
-         + rewrite <- Cmult_assoc, (Cinv_mult_distr c); auto.
-           rewrite Cmult_assoc, Cinv_r; try lca; auto.
-           apply Cmult_neq_0; apply Cpow_pos_nonzero; easy.
-         + rewrite Cpow_pos_pred_double, Cinv_mult_distr, Cinv_inv; auto.
-           apply nonzero_div_nonzero; auto. 
-           apply Cmult_neq_0; apply Cpow_pos_nonzero; easy.
-         + rewrite Cinv_r; easy.
+Proof. 
+  intros.
+  destruct z; try lca.
+  - destruct p; simpl; try lca. 
+    rewrite Cpow_pos_succ; lca.
+  - destruct p; simpl.
+    + rewrite <- Cmult_assoc, (Cinv_mult_distr c); auto.
+      destruct (Ceq_dec c 0);
+      [subst; now rewrite Cpow_pos_0, !Cmult_0_l, Cinv_0|].
+      rewrite Cmult_assoc, Cinv_r; try lca; auto.
+    + rewrite Cpow_pos_pred_double, Cinv_mult_distr, Cinv_inv; auto.
+    + rewrite Cinv_r; easy.
 Qed.
 
 Lemma Cpow_int_minus_1 : forall (c : C) (z : Z), 
@@ -200,9 +216,7 @@ Proof. intros.
        - destruct p; simpl; try lca. 
          + rewrite Cpow_pos_succ, <- Cinv_mult_distr; auto.
            apply f_equal; lca.
-           repeat apply Cmult_neq_0; try apply Cpow_pos_nonzero; auto.
          + rewrite <- Cmult_assoc, Cinv_mult_distr; auto.
-           apply Cmult_neq_0; apply Cpow_pos_nonzero; auto.
          + rewrite Cinv_mult_distr; easy.
 Qed.
 
@@ -242,7 +256,6 @@ Proof. intros.
        all : rewrite Cpow_pos_mult_r; try lca. 
        all : rewrite Cpow_pos_inv; try apply Cpow_pos_nonzero; auto.
        rewrite Cinv_inv; auto.
-       do 2 apply Cpow_pos_nonzero; easy.
 Qed.
 
 Lemma Cpow_int_mult_l : forall (c1 c2 : C) (z : Z), 

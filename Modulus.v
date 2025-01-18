@@ -906,6 +906,75 @@ Proof.
   apply Nat.Div0.mod_add.
 Qed.
 
+Lemma div_eq a b : a / b = (a - a mod b) / b.
+Proof.
+  rewrite (Nat.div_mod_eq a b) at 2.
+  rewrite Nat.add_sub.
+  bdestruct (b =? 0).
+  - now subst.
+  - now rewrite Nat.mul_comm, Nat.div_mul by easy.
+Qed.
+
+Lemma sub_mod_le n m : m <= n ->
+  (n - m mod n) mod n = (n - m) mod n.
+Proof.
+  intros Hm.
+  bdestruct (m =? n).
+  - subst.
+    now rewrite Nat.Div0.mod_same, Nat.sub_0_r, Nat.sub_diag,
+      Nat.Div0.mod_same, Nat.Div0.mod_0_l.
+  - now rewrite (Nat.mod_small m) by lia.
+Qed.
+
+Lemma mod_mul_sub_le a b c : c <> 0 -> a <= b * c -> 
+  (b * c - a) mod c = 
+  c * Nat.b2n (¬ a mod c =? 0) - a mod c.
+Proof.
+  intros Hc Ha.
+  bdestruct (a =? b * c).
+  - subst.
+    rewrite Nat.sub_diag, Nat.Div0.mod_mul, Nat.Div0.mod_0_l.
+    cbn; lia.
+  - rewrite (Nat.div_mod_eq a c) at 1.
+    assert (a < b * c) by lia.
+    assert (a / c < b) by (apply Nat.Div0.div_lt_upper_bound; lia).
+    assert (a mod c < c) by show_moddy_lt.
+    replace (b * c - (c * (a / c) + a mod c)) with 
+      ((b - a / c - 1) * c + (c - a mod c)) by nia.
+    rewrite mod_add_l.
+    bdestruct (a mod c =? 0).
+    + replace -> (a mod c).
+      rewrite Nat.sub_0_r, Nat.Div0.mod_same.
+      cbn; lia.
+    + rewrite Nat.mod_small by lia.
+      cbn; lia.
+Qed. 
+
+Lemma div_sub a b c : c <> 0 -> 
+  (b * c - a) / c = b - a / c - Nat.b2n (¬ a mod c =? 0).
+Proof.
+  intros Hc.
+  bdestruct (a <? b * c); cycle 1.
+  - replace (b * c - a) with 0 by lia.
+    rewrite Nat.Div0.div_0_l.
+    pose proof (Nat.div_le_lower_bound a c b); lia.
+  - assert (a / c < b) by show_moddy_lt.
+    apply (Nat.mul_cancel_r _ _ c Hc).
+    rewrite div_mul_not_exact by easy.
+    rewrite 2!Nat.mul_sub_distr_r.
+    rewrite div_mul_not_exact by easy.
+    pose proof (Nat.mod_le (b * c - a) c Hc).
+    pose proof (Nat.mod_le a c Hc).
+    enough (a + (b * c - a) mod c = 
+      (a + c * Nat.b2n (¬ a mod c =? 0) - a mod c))
+      by lia.
+    rewrite <- Nat.add_sub_assoc by 
+      (pose proof (Nat.mod_upper_bound a c Hc);
+      bdestructΩ'; cbn; lia).
+    f_equal.
+    apply mod_mul_sub_le; lia.
+Qed.
+
 Lemma min_ltb n m : min n m = if n <? m then n else m.
 Proof.
   bdestructΩ'.
@@ -1022,6 +1091,16 @@ Proof.
   pose proof (Nat.mod_upper_bound n 2 ltac:(lia)).
   now destruct ((ltac:(lia) : n mod 2 = O \/ n mod 2 = 1%nat)) as
     [-> | ->].
+Qed.
+
+Lemma mod_2_succ n : (S n) mod 2 = 1 - (n mod 2).
+Proof.
+  pose proof (Nat.mod_upper_bound (S n) 2 ltac:(lia)).
+  pose proof (Nat.mod_upper_bound n 2 ltac:(lia)).
+  enough (~ (S n mod 2 = 0) <-> n mod 2 = 0) by lia.
+  rewrite <- Nat.eqb_neq, <- Nat.eqb_eq.
+  rewrite <- 2!even_eqb.
+  apply even_succ_false.
 Qed.
 
 Lemma double_add n m : n + m + (n + m) = n + n + (m + m).
@@ -1472,74 +1551,6 @@ Proof.
   bdestructΩ'; rewrite ?andb_true_r; f_equal; lia.
 Qed.
 
-Lemma div_eq a b : a / b = (a - a mod b) / b.
-Proof.
-  rewrite (Nat.div_mod_eq a b) at 2.
-  rewrite Nat.add_sub.
-  bdestruct (b =? 0).
-  - now subst.
-  - now rewrite Nat.mul_comm, Nat.div_mul by easy.
-Qed.
-
-Lemma mod_mul_sub_le a b c : c <> 0 -> a <= b * c -> 
-  (b * c - a) mod c = 
-  c * Nat.b2n (¬ a mod c =? 0) - a mod c.
-Proof.
-  intros Hc Ha.
-  bdestruct (a =? b * c).
-  - subst.
-    rewrite Nat.sub_diag, Nat.Div0.mod_mul, Nat.Div0.mod_0_l.
-    cbn; lia.
-  - rewrite (Nat.div_mod_eq a c) at 1.
-    assert (a < b * c) by lia.
-    assert (a / c < b) by (apply Nat.Div0.div_lt_upper_bound; lia).
-    assert (a mod c < c) by show_moddy_lt.
-    replace (b * c - (c * (a / c) + a mod c)) with 
-      ((b - a / c - 1) * c + (c - a mod c)) by nia.
-    rewrite mod_add_l.
-    bdestruct (a mod c =? 0).
-    + replace -> (a mod c).
-      rewrite Nat.sub_0_r, Nat.Div0.mod_same.
-      cbn; lia.
-    + rewrite Nat.mod_small by lia.
-      cbn; lia.
-Qed. 
-
-Lemma div_sub a b c : c <> 0 -> 
-  (b * c - a) / c = b - a / c - Nat.b2n (¬ a mod c =? 0).
-Proof.
-  intros Hc.
-  bdestruct (a <? b * c); cycle 1.
-  - replace (b * c - a) with 0 by lia.
-    rewrite Nat.Div0.div_0_l.
-    pose proof (Nat.div_le_lower_bound a c b); lia.
-  - assert (a / c < b) by show_moddy_lt.
-    apply (Nat.mul_cancel_r _ _ c Hc).
-    rewrite div_mul_not_exact by easy.
-    rewrite 2!Nat.mul_sub_distr_r.
-    rewrite div_mul_not_exact by easy.
-    pose proof (Nat.mod_le (b * c - a) c Hc).
-    pose proof (Nat.mod_le a c Hc).
-    enough (a + (b * c - a) mod c = 
-      (a + c * Nat.b2n (¬ a mod c =? 0) - a mod c))
-      by lia.
-    rewrite <- Nat.add_sub_assoc by 
-      (pose proof (Nat.mod_upper_bound a c Hc);
-      bdestructΩ'; cbn; lia).
-    f_equal.
-    apply mod_mul_sub_le; lia.
-Qed.
-
-Lemma mod_2_succ n : (S n) mod 2 = 1 - (n mod 2).
-Proof.
-  pose proof (Nat.mod_upper_bound (S n) 2 ltac:(lia)).
-  pose proof (Nat.mod_upper_bound n 2 ltac:(lia)).
-  enough (~ (S n mod 2 = 0) <-> n mod 2 = 0) by lia.
-  rewrite <- Nat.eqb_neq, <- Nat.eqb_eq.
-  rewrite <- 2!even_eqb.
-  apply even_succ_false.
-Qed.
-
 End nat_lemmas.
 
 Ltac simplify_mods_of a b :=
@@ -1582,6 +1593,12 @@ Ltac solve_simple_mod_eqns :=
 
 (** * Some useful lemmas **)
 Section Assorted_lemmas.
+
+Lemma if_sumbool {A P Q} (x y : A) (c : {P} + {Q}) : 
+  (if c then x else y) = if RMicromega.sumboolb c then x else y.
+Proof.
+  destruct c; reflexivity.
+Qed.
 
 Lemma if_true {A} b (u v : A) : 
   b = true ->
@@ -1778,11 +1795,11 @@ Proof. tauto. Qed.
 Lemma and_True_r P : P /\ True <-> P.
 Proof. tauto. Qed.
 
-Lemma and_iff_distr_l P Q R : 
+Lemma and_iff_distr_l (P Q R : Prop) :
   (P -> (Q <-> R)) <-> (P /\ Q <-> P /\ R).
 Proof. tauto. Qed.
 
-Lemma and_iff_distr_r P Q R : 
+Lemma and_iff_distr_r (P Q R : Prop) :
   (P -> (Q <-> R)) <-> (Q /\ P <-> R /\ P).
 Proof. rewrite and_iff_distr_l. now rewrite 2!(and_comm P). Qed.
 
