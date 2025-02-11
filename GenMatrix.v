@@ -1005,7 +1005,7 @@ Proof.
     trivial; lia.
 Qed.
 
-Lemma zero_transpose_eq : forall m n, (@Zero m n)⊤ = @Zero m n.
+Lemma zero_transpose_eq : forall m n, (@Zero m n)⊤ = @Zero n m.
 Proof. reflexivity. Qed.
 
 (* Lemma id_adjoint_eq : forall n, (I n)† = (I n).
