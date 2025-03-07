@@ -343,7 +343,7 @@ Proof. intros.
     apply H.
 Qed.
 
-Hint Resolve WF_GenMatrix_matrix_column_choose_indices_list_I_n WF_GenMatrix_matrix_column_choose_indices_list WF_GenMatrix_vector_row_choose_indices_list : wf_db.
+#[export] Hint Resolve WF_GenMatrix_matrix_column_choose_indices_list_I_n WF_GenMatrix_matrix_column_choose_indices_list WF_GenMatrix_vector_row_choose_indices_list : wf_db.
 
 
 
@@ -360,7 +360,7 @@ Proof. intros n P v H0 H1. destruct H0 as [WFP [PZero [Psum Pscale]]].
   auto.
 Qed.
 
-Hint Resolve WF_subspace : wf_db.
+#[export] Hint Resolve WF_subspace : wf_db.
 
 
 Lemma matrix_column_choose_original : forall {n m : nat} (A : GenMatrix n m),
@@ -750,7 +750,7 @@ Proof. intros n m M v H0 H1.
     lia.
 Qed.
 
-Hint Resolve WF_GenMatrix_col_insert_front : wf_db.
+#[export] Hint Resolve WF_GenMatrix_col_insert_front : wf_db.
  
 
 (* # ~12 *)
@@ -1720,7 +1720,7 @@ Proof. intros.
   destruct H0; lia.
 Qed.
 
-Hint Resolve WF_GenMatrix_submatrix_column : wf_db.
+#[export] Hint Resolve WF_GenMatrix_submatrix_column : wf_db.
 
 
 
