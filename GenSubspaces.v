@@ -29,7 +29,7 @@ Module SubspacesOverField
                         repeat rewrite Gplus_0_r).
 
 
-Program Instance F_is_module_space : Module_Space F F :=
+#[export] Program Instance F_is_module_space : Module_Space F F :=
   { Vscale := Gmult }.
 Next Obligation. field. Qed.
 Next Obligation. field. Qed.
