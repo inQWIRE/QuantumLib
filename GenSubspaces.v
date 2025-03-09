@@ -141,7 +141,7 @@ Proof. intros. rewrite H. easy. Qed.
 Lemma Mscale_inj : forall {m n} (A B : GenMatrix m n) (c : F), A = B -> (c .* A = c .* B)%GM.
 Proof. intros m n A B c H. rewrite H. easy. Qed. 
 
-Lemma Mscale_inv : forall {m n} (A B : GenMatrix m n) (c : F), c <> 0%G -> (c .* A = c .* B)%GM ->  A = B.
+Lemma Mscale_cancel : forall {m n} (A B : GenMatrix m n) (c : F), c <> 0%G -> (c .* A = c .* B)%GM ->  A = B.
 Proof. intros m n A B c H H0. apply Mscale_inj with (c:= /c) in H0.
   rewrite ! Mscale_assoc in H0. rewrite Finv_l in H0; try easy.
   rewrite ! Mscale_1_l in H0. easy.
@@ -3604,7 +3604,7 @@ Proof. intros n m P A v H0 H1 H2 H3 H4 H5.
     { intros n0 m0 A0 H11. lgma. }
     rewrite H11 in H7; auto with wf_db.
     rewrite GMplus_0_r, GMplus_0_l in H7.
-    apply Mscale_inv with (c := a m 0%nat); auto.
+    apply Mscale_cancel with (c := a m 0%nat); auto.
     rewrite H7.
     rewrite Mscale_mult_dist_r.
     rewrite Mscale_assoc.
