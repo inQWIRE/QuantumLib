@@ -17,17 +17,6 @@ Module SubspacesOverField
 
   Include VecSetOverField FM.
 
-  Ltac Fsimpl := repeat (repeat rewrite Gmult_plus_distr_l;
-                        repeat rewrite Gmult_plus_distr_r;
-                        repeat rewrite Gmult_assoc;
-                        repeat rewrite Gmult_1_l;
-                        repeat rewrite Gmult_1_r; 
-                        repeat rewrite Gmult_0_l;
-                        repeat rewrite Gmult_0_r;
-                        repeat rewrite Gplus_assoc;
-                        repeat rewrite Gplus_0_l;
-                        repeat rewrite Gplus_0_r).
-
 
 #[export] Program Instance F_is_module_space : Module_Space F F :=
   { Vscale := Gmult }.
@@ -3560,7 +3549,7 @@ Proof. intros n m P A v H0 H1 H2 H3 H4 H5.
       bdestruct_all.
       bdestruct (y =? 0)%nat;
         [rewrite H11; rewrite H9 | rewrite H6; try lia];
-        Fsimpl; auto;
+        dumb_lRa; auto;
         apply big_sum_eq_bounded;
         intros x0 H12;
         bdestruct_all;
@@ -3602,7 +3591,7 @@ Proof. intros n m P A v H0 H1 H2 H3 H4 H5.
           reflexivity.
       - setoid_rewrite H6 at 2; try lia.
         setoid_rewrite H2 at 3; try lia.
-        Fsimpl; auto.
+        dumb_lRa; auto.
         apply big_sum_eq_bounded.
         intros x0 H12.
         bdestruct_all.
