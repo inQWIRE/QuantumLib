@@ -1563,12 +1563,11 @@ Open Scope D_scope.
 
 Definition D8 := (Dyadic * Dyadic * Dyadic * Dyadic)%type.
 
-
 (* there are probably built in functions for this, but I could not find them *)
-Notation "x .1" := (fst (fst (fst x))) (at level 0). 
-Notation "x .2" := (snd (fst (fst x))) (at level 0). 
-Notation "x .3" := (snd (fst x)) (at level 0). 
-Notation "x .4" := (snd x) (at level 0). 
+Notation "x .1" := (fst (fst (fst x))) (at level 1, left associativity). 
+Notation "x .2" := (snd (fst (fst x))) (at level 1, left associativity). 
+Notation "x .3" := (snd (fst x)) (at level 1, left associativity). 
+Notation "x .4" := (snd x) (at level 1, left associativity). 
 
 
 

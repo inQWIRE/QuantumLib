@@ -499,7 +499,7 @@ Proof.
     1: rewrite Nat.odd_succ.
     all: rewrite Nat.even_mul; easy.
   - destruct k.
-    + rewrite Nat.testbit_0_l; easy.
+    + rewrite Nat.bits_0; easy.
     + simpl. 
       destruct b;
       simpl Nat.b2n.
