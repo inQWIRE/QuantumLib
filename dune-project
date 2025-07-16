@@ -18,4 +18,4 @@
               "\|  about quantum computation and quantum programs.
  )
  (depends
-   (coq (and (>= 8.16) (< 8.20)))))
+   (coq (and (>= 8.16) (<= 8.20)))))
