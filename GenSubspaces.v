@@ -1,4 +1,4 @@
-Require Import Permutation.
+From Stdlib Require Import Permutation.
 Require Export Summation.
 Require Export GenVecSet.
 
@@ -372,8 +372,8 @@ Proof. intros n m A H0.
     + rewrite nth_overflow.
       * rewrite H0; trivial.
         lia.
-      * rewrite map_length.
-        rewrite seq_length.
+      * rewrite length_map.
+        rewrite length_seq.
         assumption.
   - bdestruct (y <? m)%nat.
     + rewrite H.
@@ -382,8 +382,8 @@ Proof. intros n m A H0.
     + rewrite nth_overflow.
       * rewrite H0; trivial.
         lia.
-      * rewrite map_length.
-        rewrite seq_length.
+      * rewrite length_map.
+        rewrite length_seq.
         assumption.
 Qed.
 
@@ -409,7 +409,7 @@ Proof. intros n m P M a H0 H1 H2.
           subst.
           f_equal.
           2 : apply Gmult_comm.
-          rewrite seq_length.
+          rewrite length_seq.
           apply big_sum_eq_bounded.
           intros.
           rewrite seq_nth.
@@ -417,8 +417,8 @@ Proof. intros n m P M a H0 H1 H2.
           simpl.
           f_equal.
           rewrite nth_indep with (d' := (fun i0 x1 y : nat => if (y =? 0)%nat then M x1 i0 else 0) (S m)).
-          2 : rewrite map_length;
-          rewrite seq_length;
+          2 : rewrite length_map;
+          rewrite length_seq;
           assumption.
           rewrite map_nth with (d := S m).
           bdestruct_all.
@@ -431,7 +431,7 @@ Proof. intros n m P M a H0 H1 H2.
           bdestruct_all.
           rewrite Gmult_0_r, Gplus_0_r.
           f_equal.
-          2 : symmetry; apply seq_length.
+          2 : symmetry; apply length_seq.
           apply functional_extensionality; intros.
           assert ((x1 >= S m)%nat \/ (x0 >= 1)%nat). { right. assumption. }
           specialize (H0' x1 x0 H5).
@@ -448,10 +448,10 @@ Proof. intros n m P M a H0 H1 H2.
       unfold subspace in H1.
       destruct H1 as [WFP [PZero [Psum Pscale]]].
       apply Psum.
-    + rewrite ! seq_length.
+    + rewrite ! length_seq.
       apply IHm. 
       * pose (WF_GenMatrix_vector_row_choose_indices_list (List.seq 0 m) a).
-        rewrite ! seq_length in w; auto.
+        rewrite ! length_seq in w; auto.
       * intros i0 H1.
         assert (get_col (matrix_column_choose (List.seq 0 m) M) i0 = get_col M i0).
            { unfold matrix_column_choose, list_vector_to_matrix.
@@ -460,8 +460,8 @@ Proof. intros n m P M a H0 H1 H2.
              bdestruct_all; trivial.
              subst.
              rewrite nth_indep with (d' := (fun i1 x0 y : nat => if (y =? 0)%nat then M x0 i1 else 0) (S m)).
-             2 : rewrite map_length;
-             rewrite seq_length;
+             2 : rewrite length_map;
+             rewrite length_seq;
              assumption.
              rewrite map_nth with (d := S m).
              bdestruct_all.
@@ -718,7 +718,7 @@ Proof. intros A d l H0.
   apply nth_In.
   rewrite H0.
   rewrite removelast_last.
-  rewrite app_length.
+  rewrite length_app.
   simpl.
   lia.
 Qed.
@@ -946,15 +946,14 @@ Proof. intros n m M H0 H1 H2.
                                      (if x1 <? i then u x1 x0 else u (x1 + 1)%nat x0)))
                              (length (List.seq 0 i ++ List.seq (i + 1) (m - i - 1) ++ [i]))).
                  { rewrite app_assoc.
-                   setoid_rewrite app_length at 2.
+                   setoid_rewrite length_app at 2.
                    simpl.
-                   Search ((?x + 1)%nat = Datatypes.S ?x).
                    setoid_rewrite Nat.add_1_r at 6.
                    rewrite <- @big_sum_extend_r with (H := R0).
                    simpl.
                    assert (H9 : (length (List.seq 0 i ++ List.seq (i + 1) (m - i - 1))) = (m-1)%nat).
-                   { rewrite app_length.
-                     rewrite ! seq_length.
+                   { rewrite length_app.
+                     rewrite ! length_seq.
                      lia. }
                    rewrite ! H9.
                    bdestruct_all.
@@ -966,17 +965,17 @@ Proof. intros n m M H0 H1 H2.
                    bdestruct_all.
                    - setoid_rewrite app_nth1 at 2.
                      + reflexivity.
-                     + rewrite app_length.
-                       rewrite ! seq_length.
+                     + rewrite length_app.
+                       rewrite ! length_seq.
                        lia.
                    - setoid_rewrite app_nth1 at 2.
                      + reflexivity.
-                     + rewrite app_length.
-                       rewrite ! seq_length.
+                     + rewrite length_app.
+                       rewrite ! length_seq.
                        lia. }
                  rewrite H9.
-                 rewrite ! app_length.
-                 rewrite ! seq_length.
+                 rewrite ! length_app.
+                 rewrite ! length_seq.
                  simpl.
                  replace (i + (m - i - 1 + 1))%nat with m by lia.
                  assert (H10 : Σ (fun y : nat => M x y * u y x0) m
@@ -1004,19 +1003,19 @@ Proof. intros n m M H0 H1 H2.
                    bdestruct_all.
                    - rewrite <- nth_firstn with (n := i); try lia.
                      rewrite firstn_app.
-                     rewrite seq_length.
+                     rewrite length_seq.
                      replace (i - i)%nat with 0%nat by lia.
                      simpl.
                      rewrite app_nil_r.
                      replace i with (length (List.seq 0 i)) at 1
-                       by (rewrite seq_length; reflexivity).
+                       by (rewrite length_seq; reflexivity).
                      rewrite firstn_all.
                      rewrite seq_nth; try lia.
                      simpl. ring.
                    - subst.
                      rewrite app_assoc.
                      replace (m - 1)%nat with (length (List.seq 0 i ++ List.seq (i + 1) (m - i - 1)))
-                       by (rewrite app_length; rewrite ! seq_length; lia).
+                       by (rewrite length_app; rewrite ! length_seq; lia).
                      rewrite nth_middle.
                      reflexivity.
                    - bdestruct (x1 <? (m-1)%nat).
@@ -1026,12 +1025,12 @@ Proof. intros n m M H0 H1 H2.
                          rewrite removelast_last.
                          rewrite nth_firstn; try assumption.
                          rewrite app_nth2.
-                         -- rewrite seq_length.
+                         -- rewrite length_seq.
                             rewrite seq_nth; try lia.
                             replace (i + 1 + (x1 - i))%nat with (x1 + 1)%nat by lia.
                             reflexivity.
-                         -- rewrite seq_length; assumption.
-                       * rewrite ! app_length; rewrite ! seq_length; simpl; lia.
+                         -- rewrite length_seq; assumption.
+                       * rewrite ! length_app; rewrite ! length_seq; simpl; lia.
                      + remember H2 as H2'. clear HeqH2'.
                        unfold WF_GenMatrix in H2, H2'.
                        rewrite nth_overflow.
@@ -1041,10 +1040,10 @@ Proof. intros n m M H0 H1 H2.
                          specialize (H2' m 0%nat H14).
                          rewrite H2, H2'.
                          reflexivity.
-                       * rewrite ! app_length; rewrite ! seq_length; simpl; lia. }
+                       * rewrite ! length_app; rewrite ! length_seq; simpl; lia. }
                  rewrite H11.
                  apply big_sum_permutation with (f := fun z => M x z * u z x0).
-                 2: rewrite seq_length; lia.
+                 2: rewrite length_seq; lia.
                  replace (List.seq 0 m) with (List.seq 0 i ++ List.seq i (m - i))
                    by (rewrite <- seq_app; f_equal; lia).
                  apply Permutation_app.
@@ -1180,7 +1179,6 @@ Proof. intros n m M H0 H1.
                      apply Cplus_inv_r with (c := (M x i * u i 0%nat)%C).
                      replace (- (M x i * u i 0%nat) + M x i * u i 0%nat)%C with C0 by lca.
                      rewrite <- H4 at 1.
-                     Search big_sum.
 
                      assert (Σ
                                (fun x1 : nat =>
@@ -1196,15 +1194,14 @@ Proof. intros n m M H0 H1.
                                          (if x1 <? i then u x1 x0 else u (x1 + 1)%nat x0)))
                                  (length (List.seq 0 i ++ List.seq (i + 1) (m - i - 1) ++ [i]))).
                      { rewrite app_assoc.
-                       setoid_rewrite app_length at 2.
+                       setoid_rewrite length_app at 2.
                        simpl.
-                       Search ((?x + 1)%nat = Datatypes.S ?x).
                        setoid_rewrite Nat.add_1_r at 6.
                        rewrite <- @big_sum_extend_r with (H := C_is_monoid).
                        simpl.
                        assert ((length (List.seq 0 i ++ List.seq (i + 1) (m - i - 1))) = (m-1)%nat).
-                       { rewrite app_length.
-                         rewrite ! seq_length.
+                       { rewrite length_app.
+                         rewrite ! length_seq.
                          lia. }
                        rewrite ! H9.
                        bdestruct_all.
@@ -1216,17 +1213,17 @@ Proof. intros n m M H0 H1.
                        bdestruct_all.
                        - setoid_rewrite app_nth1 at 2.
                          + reflexivity.
-                         + rewrite app_length.
-                           rewrite ! seq_length.
+                         + rewrite length_app.
+                           rewrite ! length_seq.
                            lia.
                        - setoid_rewrite app_nth1 at 2.
                          + reflexivity.
-                         + rewrite app_length.
-                           rewrite ! seq_length.
+                         + rewrite length_app.
+                           rewrite ! length_seq.
                            lia. }
                      rewrite H9.
-                     rewrite ! app_length.
-                     rewrite ! seq_length.
+                     rewrite ! length_app.
+                     rewrite ! length_seq.
                      simpl.
                      replace (i + (m - i - 1 + 1))%nat with m by lia.
                      assert (Σ (fun y : nat => M x y * u y x0) m
@@ -1254,19 +1251,19 @@ Proof. intros n m M H0 H1.
                        bdestruct_all.
                        - rewrite <- nth_firstn with (n := i); try lia.
                          rewrite firstn_app.
-                         rewrite seq_length.
+                         rewrite length_seq.
                          replace (i - i)%nat with 0%nat by lia.
                          simpl.
                          rewrite app_nil_r.
                          replace i with (length (List.seq 0 i)) at 1
-                           by (rewrite seq_length; reflexivity).
+                           by (rewrite length_seq; reflexivity).
                          rewrite firstn_all.
                          rewrite seq_nth; try lia.
                          lca.
                        - subst.
                          rewrite app_assoc.
                          replace (m - 1)%nat with (length (List.seq 0 i ++ List.seq (i + 1) (m - i - 1)))
-                           by (rewrite app_length; rewrite ! seq_length; lia).
+                           by (rewrite length_app; rewrite ! length_seq; lia).
                          rewrite nth_middle.
                          reflexivity.
                        - bdestruct (x1 <? (m-1)%nat).
@@ -1276,12 +1273,12 @@ Proof. intros n m M H0 H1.
                              rewrite removelast_last.
                              rewrite nth_firstn; try assumption.
                              rewrite app_nth2.
-                             -- rewrite seq_length.
+                             -- rewrite length_seq.
                                 rewrite seq_nth; try lia.
                                 replace (i + 1 + (x1 - i))%nat with (x1 + 1)%nat by lia.
                                 reflexivity.
-                             -- rewrite seq_length; assumption.
-                           * rewrite ! app_length; rewrite ! seq_length; simpl; lia.
+                             -- rewrite length_seq; assumption.
+                           * rewrite ! length_app; rewrite ! length_seq; simpl; lia.
                          + remember H2 as H2'. clear HeqH2'.
                            unfold WF_GenMatrix in H2, H2'.
                            rewrite nth_overflow.
@@ -1291,10 +1288,10 @@ Proof. intros n m M H0 H1.
                              specialize (H2' m 0%nat H14).
                              rewrite H2, H2'.
                              reflexivity.
-                           * rewrite ! app_length; rewrite ! seq_length; simpl; lia. }
+                           * rewrite ! length_app; rewrite ! length_seq; simpl; lia. }
                      rewrite H11.
                      apply big_sum_permutation with (f := fun z => M x z * u z x0).
-                     2: rewrite seq_length; lia.
+                     2: rewrite length_seq; lia.
                      replace (List.seq 0 m) with (List.seq 0 i ++ List.seq i (m - i))
                        by (rewrite <- seq_app; f_equal; lia).
                      apply Permutation_app.
@@ -1343,12 +1340,12 @@ Proof. intros n m M H0 H1.
                                   rewrite seq_nth; try lia.
                                   rewrite <- nth_firstn with (n := i); try lia.
                                   rewrite firstn_app.
-                                  rewrite seq_length.
+                                  rewrite length_seq.
                                   replace (i - i)%nat with 0%nat by lia.
                                   simpl.
                                   rewrite app_nil_r.
                                   replace i with (length (List.seq 0 i)) at 1
-                                    by (rewrite seq_length; reflexivity).
+                                    by (rewrite length_seq; reflexivity).
                                   rewrite firstn_all.
                                   rewrite seq_nth; lia.
                              ---- rewrite in_seq in H13.
@@ -1358,27 +1355,27 @@ Proof. intros n m M H0 H1.
                          *** f_equal.
                              ---- rewrite map_ext_nth.
                                   assert (length (List.seq (i + 1) (m - i - 1)) = length (List.seq i (m - i - 1))).
-                                  { rewrite ! seq_length.
+                                  { rewrite ! length_seq.
                                     reflexivity. }
                                   split; try assumption.
                                   intros n0 H14.
-                                  rewrite seq_length in H14.
+                                  rewrite length_seq in H14.
                                   f_equal.
                                   ++++ f_equal.
                                        rewrite ! seq_nth; try lia.
                                        **** rewrite <- nth_firstn with (n := (i + n0 + 1)%nat).
                                          ----- rewrite <- Nat.add_assoc with (n := i) (m := n0) (p := 1%nat).
                                          replace i with (length (List.seq 0 i)) at 3
-                                           by (rewrite seq_length; reflexivity).
+                                           by (rewrite length_seq; reflexivity).
                                          rewrite firstn_app_2.
                                          rewrite app_nth2 with (n := (i + n0)%nat);
-                                           try (rewrite seq_length; lia).
-                                         rewrite seq_length.
+                                           try (rewrite length_seq; lia).
+                                         rewrite length_seq.
                                          replace (i + n0 - i)%nat with n0 by lia.
                                          rewrite nth_firstn; try lia.
                                          rewrite <- nth_firstn with (n := (m - i - 1)%nat); try lia.
                                          rewrite firstn_app.
-                                         rewrite seq_length.
+                                         rewrite length_seq.
                                          replace (m - i - 1 - (m - i - 1))%nat with 0%nat by lia.
                                          simpl.
                                          rewrite app_nil_r.
@@ -1401,8 +1398,8 @@ Proof. intros n m M H0 H1.
                                   +++++ f_equal.
                                   rewrite seq_nth; try lia.
                                   assert (length (List.seq 0 i ++ List.seq (i + 1) (m - i - 1)) + 0 = m - 1)%nat.
-                                  { rewrite app_length.
-                                    rewrite ! seq_length.
+                                  { rewrite length_app.
+                                    rewrite ! length_seq.
                                     lia. }
                                   rewrite <- H15.
                                   rewrite app_assoc.
@@ -1695,7 +1692,7 @@ Proof. intros.
   - rewrite nth_overflow.
     + unfold WF_GenMatrix in H.
       rewrite H; auto.
-    + rewrite seq_length; trivial.
+    + rewrite length_seq; trivial.
 Qed.
 
 Lemma WF_GenMatrix_submatrix_column : forall {n m} (k : nat) (M : GenMatrix n m),
@@ -1731,7 +1728,6 @@ Proof. intros n m M H H0 H1.
   induction m.
   - exists 0%nat.
     intros.
-    Search Zero.
     unfold linearly_dependent in H1.
     destruct H1 as [a [H1 [H2 H3]]].
     contradict H2.
@@ -2440,24 +2436,24 @@ Proof. intros n m k indices_list A H H0.
     unfold get_col.
     bdestruct_all.
     f_equal.
-    rewrite ! app_nth1; trivial; rewrite firstn_length; lia.
+    rewrite ! app_nth1; trivial; rewrite length_firstn; lia.
   - rewrite H1.
     rewrite ! map_nth with (d := m).
     unfold get_col.
     bdestruct_all.
     f_equal.
     rewrite app_nth2.
-    + rewrite firstn_length.
+    + rewrite length_firstn.
       replace (Init.Nat.min k (length indices_list)) with k by lia.
       rewrite <- firstn_skipn with (n := (k + 1)%nat) at 1.
       rewrite app_nth2.
-      * rewrite firstn_length.
+      * rewrite length_firstn.
         replace (Init.Nat.min (k + 1) (length indices_list)) with (k + 1)%nat by lia.
         f_equal.
         lia.
-      * rewrite firstn_length.
+      * rewrite length_firstn.
         lia.
-    + rewrite firstn_length.
+    + rewrite length_firstn.
       lia.
 Qed.
 
@@ -2465,9 +2461,9 @@ Lemma length_delete_nth : forall {A : Type} (l : list A) (k : nat),
     (k < length l)%nat -> length (delete_nth l k) = ((length l) - 1)%nat.
 Proof. intros A l k H0. 
   unfold delete_nth.
-  rewrite app_length.
-  rewrite firstn_length.
-  rewrite skipn_length.
+  rewrite length_app.
+  rewrite length_firstn.
+  rewrite length_skipn.
   lia.
 Qed.
 
@@ -2583,7 +2579,7 @@ Proof. intros n m o P M A H0 H1 H2 H3 H4 nonzero_col_M nonzero_col_A  j H5.
   - right.
     exists (List.seq 0 m).
     split.
-    + rewrite seq_length. lia.
+    + rewrite length_seq. lia.
     + split.
       * unfold incl.
         intros a H6.
@@ -2602,7 +2598,7 @@ Proof. intros n m o P M A H0 H1 H2 H3 H4 nonzero_col_M nonzero_col_A  j H5.
              bdestruct_all.
              replace (y - 0)%nat with y by lia.
              reflexivity. }
-           rewrite seq_length.
+           rewrite length_seq.
            rewrite H9.
            split; auto.
   - assert (H6 : (j <= m)%nat). { lia. }
@@ -3149,7 +3145,7 @@ Proof. intros n l1 l2 H a H0.
       assert ((map (fun i0 : nat => a i0 0%nat) (List.seq 1 (length l)))
               = (map (fun i : nat => a (i + 1)%nat 0%nat) (List.seq 0 (length l)))).
       { apply nth_ext with (d := 0%G) (d' := 0%G).
-        - rewrite ! map_length, ! seq_length; reflexivity.
+        - rewrite ! length_map, ! length_seq; reflexivity.
         - intros n0 H2.
           rewrite nth_indep with (d' := a 0%nat 0%nat); auto.
           rewrite map_nth with (f := (fun i0 : nat => a i0 0%nat)) (d := 0%nat).
@@ -3158,8 +3154,8 @@ Proof. intros n l1 l2 H a H0.
           f_equal.
           rewrite ! seq_nth.
           lia.
-          all : try rewrite map_length, seq_length;
-          rewrite map_length, seq_length in H2;
+          all : try rewrite length_map, length_seq;
+          rewrite length_map, length_seq in H2;
             auto. }
       rewrite H2.
       assert ((map
@@ -3167,9 +3163,9 @@ Proof. intros n l1 l2 H a H0.
                  (List.seq 1 (length l')))
               = (map (fun i : nat => b i 0%nat) (List.seq 0 (length l')))).
       { apply nth_ext with (d := 0%G) (d' := 0%G).
-        - rewrite ! map_length, ! seq_length; reflexivity.
+        - rewrite ! length_map, ! length_seq; reflexivity.
         - intros n0 H3.
-          rewrite map_length, seq_length in H3.
+          rewrite length_map, length_seq in H3.
           rewrite nth_indep with (d' := (fun i0 : nat => if (i0 =? 0)%nat 
                                                    then a 0%nat 0%nat else b (i0 - 1)%nat 0%nat) 0%nat);
             auto.
@@ -3181,8 +3177,8 @@ Proof. intros n l1 l2 H a H0.
           + rewrite seq_nth in H4; auto; lia.
           + do 2 f_equal.
             rewrite ! seq_nth; auto; lia.
-          + rewrite map_length, seq_length; easy.
-          + rewrite map_length, seq_length; easy. }
+          + rewrite length_map, length_seq; easy.
+          + rewrite length_map, length_seq; easy. }
       rewrite H3.
       auto.
   - exists (fun r c => if (r =? 0)%nat then a 1%nat c else
@@ -3209,9 +3205,9 @@ Proof. intros n l1 l2 H a H0.
                 (List.seq 2 (length l))
               = map (fun i0 : nat => a i0 0%nat) (List.seq 2 (length l))).
       { apply nth_ext with (d := 0%G) (d' := 0%G).
-        - rewrite ! map_length; reflexivity.
+        - rewrite ! length_map; reflexivity.
         - intros n0 H.
-          rewrite ! map_length, seq_length in H.
+          rewrite ! length_map, length_seq in H.
           rewrite nth_indep with (d' := (fun i0 : nat =>
                                                  if (i0 =? 0)%nat
                                                  then a 1%nat 0%nat
@@ -3225,8 +3221,8 @@ Proof. intros n l1 l2 H a H0.
           bdestruct_all; auto.
           + rewrite seq_nth in H1; auto; lia.
           + rewrite seq_nth in H2; auto; lia.
-          + rewrite map_length, seq_length; auto.
-          + rewrite map_length, seq_length; auto. }
+          + rewrite length_map, length_seq; auto.
+          + rewrite length_map, length_seq; auto. }
       rewrite H.
       apply perm_swap.
   - destruct (IHPermutation1 a H0) as [b [H2 [H3 H4]]].
@@ -3251,10 +3247,10 @@ Proof. intros n l1 l2 H0 H1.
   rewrite H1 in H6.
   unfold Zero in H6.
   rewrite map_const_repeat in H6.
-  rewrite seq_length in H6.
+  rewrite length_seq in H6.
   rewrite <- (Permutation_length H0) in H6.
   assert (H7 : forall i, nth i (map (fun i : nat => a i 0%nat) (List.seq 0 (length l2))) 0%G = 0%G)
-    by (rewrite <- permutation_repeat_nth, map_length, seq_length; auto).
+    by (rewrite <- permutation_repeat_nth, length_map, length_seq; auto).
   assert (H8 : forall i, (i < length l2)%nat -> a i 0%nat = 0%G).
   { intros i0 H8.
     assert (H9 : a (length l2) 0%nat = 0%G) by (rewrite H2; auto).
@@ -3328,9 +3324,9 @@ Proof. intros n m indices_list1 indices_list2 M H0.
   rewrite Permutation_nth in H0.
   destruct H0 as [eq_len [f [bFunf [bInjf eq_nth]]]].
   rewrite Permutation_nth.
-  split; try rewrite ! map_length, eq_len; auto. 
+  split; try rewrite ! length_map, eq_len; auto. 
   exists f.
-  repeat split; try rewrite map_length; auto.
+  repeat split; try rewrite length_map; auto.
   intros x H0.
   setoid_rewrite map_nth with (f := (fun i0 : nat => get_col M i0)).
   f_equal.
@@ -3347,29 +3343,29 @@ Proof. intros n m indices_list1 indices_list2 P M H0 H1 H2.
   unfold basis, matrix_column_choose. 
   split; intros H3; destruct H3 as [H4 [H5 [H6 H7]]]; repeat (split; intros; auto).
   - pose (permutation_preserves_subspace_containment H4 p).
-    rewrite ! map_length in p0.
+    rewrite ! length_map in p0.
     specialize (p0 H5).
     apply p0; auto.
   -  pose (permutation_preserves_span p).
-     rewrite ! map_length in s.
+     rewrite ! length_map in s.
      specialize (s v).
      apply s; auto.
   - pose (permutation_preserves_linearly_indep p).
-    rewrite ! map_length in l.
+    rewrite ! length_map in l.
     specialize (l H7); auto.
   - apply Permutation_sym in p.
     pose (permutation_preserves_subspace_containment H4 p).
-    rewrite ! map_length in p0.
+    rewrite ! length_map in p0.
     specialize (p0 H5).
     apply p0; auto.
   - apply Permutation_sym in p.
     pose (permutation_preserves_span p).
-    rewrite ! map_length in s.
+    rewrite ! length_map in s.
     specialize (s v).
     apply s; auto.
   - apply Permutation_sym in p.
     pose (permutation_preserves_linearly_indep p).
-    rewrite ! map_length in l.
+    rewrite ! length_map in l.
     specialize (l H7); auto.
 Qed.
 
@@ -3483,7 +3479,7 @@ Proof. intros n m P M H H0 H1 H2 H3 H4.
                      reflexivity. }
                  rewrite ! H16.
                  destruct basis_P as [subspaceP [in_P [spans_P lin_ind]]].
-                 rewrite ! map_length.
+                 rewrite ! length_map.
                  repeat (split; auto).
         -- apply not_lindep_implies_linindep in H15.
            exists (delete_nth (List.seq 0 (S (S m))) i).
@@ -3502,17 +3498,17 @@ Proof. intros n m P M H H0 H1 H2 H3 H4.
                  { setoid_rewrite nth_helper with (x := 0%nat) at 2.
                    replace (S i) with (i + 1)%nat by lia.
                    rewrite seq_nth.
-                   all : try rewrite seq_length; auto. }
+                   all : try rewrite length_seq; auto. }
                  rewrite H16.
                  rewrite firstn_skipn.
                  apply seq_NoDup.
               ** unfold basis.
                  rewrite <- ! reduce_col_matrix_column_choose_delete; auto.
-                 2: rewrite seq_length; assumption.
+                 2: rewrite length_seq; assumption.
                  rewrite ! matrix_column_choose_original; auto.
                  rewrite ! length_delete_nth.
-                 2: rewrite seq_length; assumption.
-                 rewrite ! seq_length.
+                 2: rewrite length_seq; assumption.
+                 rewrite ! length_seq.
                  replace ((S (S m)) - 1)%nat with (S m) by lia.
                  repeat (split; auto).
   - apply not_lindep_implies_linindep in H5.
@@ -3523,7 +3519,7 @@ Proof. intros n m P M H H0 H1 H2 H3 H4.
       * apply seq_NoDup.
       * unfold basis.
         rewrite matrix_column_choose_original; auto.
-        rewrite ! seq_length.
+        rewrite ! length_seq.
         repeat (split; try assumption).
 Qed.
 
@@ -4129,13 +4125,13 @@ Proof. intros n d P A H H0 H1 H2 H3.
         exists (matrix_column_choose indices_list A).
         split; auto with wf_db. }
       pose (unique_dimension H9 H1').
-      rewrite seq_length, e; auto. }
+      rewrite length_seq, e; auto. }
     pose (NoDup_Permutation_bis NoDuplist H9 incl_list) as p.
     rewrite (permutation_preserves_basis H subspaceP p) in basisP.
     unfold basis in basisP.
     destruct basisP as [subspaceP' [AinP [AspansP linindepA]]].
     rewrite matrix_column_choose_original in *; auto.
-    rewrite ! seq_length in *; auto.
+    rewrite ! length_seq in *; auto.
 Qed.
 
 Lemma equal_dimension_span_basis : forall {n d : nat} {P : GenVector n -> Prop} {A : GenMatrix n d},
@@ -4430,7 +4426,7 @@ Proof. intros n m d M WFM H.
       pose (basis_equal_number WFB H1 basisB' basis_subset) as e.
       rewrite e.
       pose (NoDup_incl_length NoDup_indices incl_indices) as l.
-      rewrite seq_length in l. auto.
+      rewrite length_seq in l. auto.
 Qed.
 
 Lemma zerospace_is_subspace : forall {n : nat}, subspace (fun v : GenVector n => v = Zero).
@@ -4558,7 +4554,7 @@ Proof. intros n m M H.
   bdestruct_all.
   bdestruct (y <? m)%nat.
   - rewrite seq_nth; auto.
-  - rewrite nth_overflow; try rewrite seq_length; auto.
+  - rewrite nth_overflow; try rewrite length_seq; auto.
     rewrite ! H; auto.
 Qed.
 
@@ -4567,7 +4563,7 @@ Lemma list_vector_to_matrix_to_list_vector : forall {n : nat} {list_vector : lis
     matrix_to_list_vector (list_vector_to_matrix list_vector) = list_vector.
 Proof. intros n list_vector AllWFM.
   apply (nth_ext (matrix_to_list_vector (list_vector_to_matrix list_vector)) list_vector (@Zero n 1%nat) (@Zero n 1%nat)); unfold matrix_to_list_vector, list_vector_to_matrix;
-    rewrite map_length, seq_length; auto.
+    rewrite length_map, length_seq; auto.
   intros n0 H0.
   assert (@Zero n 1%nat = @get_col n (length list_vector) (fun r c : nat => nth c list_vector (@Zero n 1%nat) r 0%nat) (length list_vector)).
   { prep_genmatrix_equality.
@@ -4601,8 +4597,8 @@ Proof. intros m n2 n1 A1 A2.
     apply nth_ext with (d := (fun i x y : nat =>
                                if y =? 0 then if i <? n1 then A1 x i else A2 x (i - n1)%nat else 0) 0%nat) 
                        (d' := (fun i x y : nat => if y =? 0 then A2 x i else 0) 0%nat).
-    + rewrite ! map_length. rewrite ! seq_length. auto.
-    + intros n H. rewrite ! map_length in H. rewrite ! seq_length in H.
+    + rewrite ! length_map. rewrite ! length_seq. auto.
+    + intros n H. rewrite ! length_map in H. rewrite ! length_seq in H.
       rewrite ! map_nth with (d := 0%nat).
       prep_genmatrix_equality.
       bdestruct_all; auto.
@@ -4621,12 +4617,12 @@ Proof. intros m n2 n1 A1 A2 H H0 H1.
   rewrite <- matrix_to_list_vector_to_matrix; auto with wf_db.
   pose (permutation_preserves_linearly_indep H2) as l.
   assert ((@length (GenVector m) (@matrix_to_list_vector m (n2 + n1) (smash A2 A1))) =
-            n2 + n1). { unfold matrix_to_list_vector. rewrite map_length, seq_length. auto. }
+            n2 + n1). { unfold matrix_to_list_vector. rewrite length_map, length_seq. auto. }
   rewrite H3 in l.
   apply l. 
   rewrite matrix_to_list_vector_to_matrix; auto with wf_db.
   assert ((@length (GenVector m) (@matrix_to_list_vector m (n1 + n2) (smash A1 A2))) =
-            n1 + n2). { unfold matrix_to_list_vector. rewrite map_length, seq_length. auto. }
+            n1 + n2). { unfold matrix_to_list_vector. rewrite length_map, length_seq. auto. }
   rewrite H4.
   auto.
 Qed.
@@ -4650,8 +4646,8 @@ Proof. intros.
   rewrite <- matrix_to_list_vector_to_matrix; auto with wf_db.
   assert (length (matrix_to_list_vector (smash A2 A1)) = (n2 + n1)%nat).
   { unfold matrix_to_list_vector.
-    rewrite map_length.
-    rewrite seq_length. auto. }
+    rewrite length_map.
+    rewrite length_seq. auto. }
   pose (@permutation_preserves_span m 
   (matrix_to_list_vector (smash A1 A2))
   (matrix_to_list_vector (smash A2 A1)) H2) as e.
@@ -4660,8 +4656,8 @@ Proof. intros.
   rewrite matrix_to_list_vector_to_matrix; auto with wf_db.
   assert (length (matrix_to_list_vector (smash A1 A2)) = (n1 + n2)%nat).
   { unfold matrix_to_list_vector.
-    rewrite map_length.
-    rewrite seq_length. auto. } 
+    rewrite length_map.
+    rewrite length_seq. auto. } 
   rewrite H4.
   apply H1; auto.
 Qed.

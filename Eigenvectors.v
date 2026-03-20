@@ -2,7 +2,7 @@
 (** This file contains more concepts relevent to quantum computing, as well as some more general linear algebra concepts such as Gram-Schmidt and eigenvectors/eigenvalues. *)
  
 Require Import Permutations.
-Require Import List.        
+From Stdlib Require Import List.        
 Require Export Complex.
 Require Export CauchySchwarz.
 Require Export Quantum. 
@@ -270,16 +270,15 @@ Qed.
 Lemma div_mod_eq : forall (a b m : nat),
   m <> 0 -> (a / m = b / m) -> (a mod m = b mod m) -> a = b.
 Proof. intros a b m H0 Hdiv Hmod.
-       rewrite (Nat.mod_eq a m), (Nat.mod_eq b m) in Hmod.
+       rewrite (Nat.Div0.mod_eq a m), (Nat.Div0.mod_eq b m) in Hmod.
        rewrite Hdiv in Hmod.
        assert (H : m * (b / m) + (a - m * (b / m)) = m * (b / m) + (b - m * (b / m))).
        { rewrite Hmod. reflexivity. }
        rewrite <- (le_plus_minus'  (m * (b / m)) a) in H.
        rewrite <- (le_plus_minus'  (m * (b / m)) b) in H.
        apply H.
-       apply Nat.mul_div_le; apply H0.
-       rewrite <- Hdiv; apply Nat.mul_div_le; apply H0.
-       apply H0. apply H0.
+       apply Nat.Div0.mul_div_le; apply H0.
+       rewrite <- Hdiv; apply Nat.Div0.mul_div_le; apply H0.
 Qed.
 
 Lemma diag_kron : forall {n m : nat} (A : Square n) (B : Square m), 
@@ -1841,22 +1840,23 @@ Proof. intros.
        apply (@Gplus_cancel_l C _ C_is_group) in H1.
        symmetry in H1. 
        destruct i; try lia.
-       eapply big_sum_squeeze in H1. 
+       eapply big_sum_squeeze in H1.
+       2:{ 
+
+        intros.
+        rewrite Cmult_comm, <- Cmod_sqr.
+        simpl. autorewrite with R_db.  
+        replace (Cmod (T 0%nat (S x)) * Cmod (T 0%nat  (S x)))%R with (Rsqr (Cmod (T 0%nat (S x)))).
+        apply Rle_0_sqr.
+        unfold Rsqr; easy. 
+       } 
        replace (fst (T 0 (S i) * (T 0 (S i)) ^*)%C) with 
-                 ((Rsqr (fst (T O (S i))) + Rsqr (snd (T O (S i))))%R) in H1. 
-       apply c_proj_eq.
-       apply Rplus_sqr_eq_0_l in H1; auto.
-       rewrite Rplus_comm in H1.
-       apply Rplus_sqr_eq_0_l in H1; auto. 
-       unfold Rsqr; simpl. lra.
-       intros. 
-       rewrite Cmult_comm, <- Cmod_sqr.
-       simpl. autorewrite with R_db.  
-       replace (Cmod (T 0%nat (S x)) * Cmod (T 0%nat (S x)))%R with (Rsqr (Cmod (T 0%nat (S x)))).
-       apply Rle_0_sqr.
-       unfold Rsqr; easy. 
-       apply Nat.succ_lt_mono in H3.
-       easy.
+                 ((Rsqr (fst (T O (S i))) + Rsqr (snd (T O (S i))))%R) in H1.
+       2:{ unfold Rsqr; simpl. lra. }
+       2:{ lia. }
+
+       apply Rplus_sqr_eq_0 in H1; destruct H1.
+       apply c_proj_eq; auto.
 Qed.
 
 (* this is the crucial step of Schur for => spectral theorem *)

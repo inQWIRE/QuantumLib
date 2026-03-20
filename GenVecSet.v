@@ -3,8 +3,8 @@
 (** In this file, we define more advanced linear algebra concepts such as bases, linear independence, etc... *)
 
 
-Require Import Psatz.  
-Require Import Reals.
+From Stdlib Require Import Psatz.  
+From Stdlib Require Import Reals.
 
 Require Export GenRowColOps.
 

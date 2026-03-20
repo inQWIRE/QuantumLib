@@ -1,5 +1,5 @@
-Require Import Psatz.  
-Require Import Reals.
+From Stdlib Require Import Psatz.
+From Stdlib Require Import Reals.
   
 Require Export VecSet.
 
