@@ -1,4 +1,6 @@
 From Stdlib Require Import Permutation.
+From Stdlib Require Import Logic.
+From Stdlib Require Import Vectors.FinFun.
 Require Export Summation.
 Require Export GenVecSet.
 
@@ -3072,24 +3074,13 @@ Lemma permutation_repeat_nth : forall {A : Type} {a : A} {l : list A},
     Permutation l (repeat a (length l)) <-> (forall i, nth i l a = a).
 Proof. intros A a l.
   split; intros.
-  - rewrite Permutation_nth in H.
-    destruct H as [H [f [H0 [H1 H2]]]].
-    remember H1 as H3. clear HeqH3.
-    rewrite FinFun.bInjective_bSurjective in H3; auto.
-    destruct (FinFun.bSurjective_bBijective H0 H3) as [g [H4 H5]].
-    bdestruct (i <? length l)%nat.
-    + destruct (H5 i H6) as [H7 H8].
-      unfold FinFun.bFun in H4.
-      specialize (H4 i H6).
-      specialize (H2 (g i) H4).
-      rewrite H8 in H2.
-      rewrite <- H2.
-      rewrite nth_repeat.
-      reflexivity.
-    + rewrite nth_overflow; auto; lia.
+  - apply Permutation_repeat in H. rewrite H.
+    apply nth_repeat.
+
   - rewrite <- repeat_nth in H.
     rewrite <- H.
     apply Permutation_refl.
+ 
 Qed.
 
 Lemma permutation_list_vector_to_matrix_times_vector : forall {n : nat} {l1 l2 : list (GenVector n)},
@@ -3301,8 +3292,8 @@ Proof. intros n l1 l2 P H0 H1 H2 i0 H3.
   rewrite Permutation_nth in H4.
   destruct H4 as [H4 [f [H5 [H6 H7]]]].
   remember H6 as H8. clear HeqH8.
-  rewrite (FinFun.bInjective_bSurjective H5) in H8.
-  destruct (FinFun.bSurjective_bBijective H5 H8) as [g [H9 H10]].
+  rewrite (bInjective_bSurjective H5) in H8.
+  destruct (bSurjective_bBijective H5 H8) as [g [H9 H10]].
   rewrite H4 in *.
   rewrite H7; auto.
 Qed.

@@ -19,4 +19,4 @@
               "\|  about quantum computation and quantum programs.
  )
  (depends
-   (rocq (and (>= 9.0) (< 9.1)))))
+   (rocq-prover (and (>= 9.0.0) (< 9.2)))))

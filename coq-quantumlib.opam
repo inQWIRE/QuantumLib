@@ -14,7 +14,7 @@ doc: "https://inqwire.github.io/QuantumLib/toc.html"
 bug-reports: "https://github.com/inQWIRE/QuantumLib/issues"
 depends: [
   "dune" {>= "3.11"}
-  "rocq" {>= "9.0" & < "9.1"}
+  "rocq-prover" {>= "9.0.0" & < "9.2"}
   "odoc" {with-doc}
 ]
 build: [
