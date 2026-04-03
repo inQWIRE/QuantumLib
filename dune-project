@@ -1,7 +1,8 @@
-(lang dune 2.8)
+(lang dune 3.11)
 (name coq-quantumlib)
 (version 1.8.0)
-(using coq 0.2)
+(using coq 0.3)
+(warnings (deprecated_coq_lang_lt_08 disabled))
 
 (generate_opam_files true)
 
@@ -18,4 +19,4 @@
               "\|  about quantum computation and quantum programs.
  )
  (depends
-   (coq (and (>= 8.16) (< 8.21)))))
+   (rocq-prover (and (>= 9.0.0) (< 9.2)))))

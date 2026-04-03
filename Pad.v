@@ -1,8 +1,8 @@
 Require Export Complex.
 Require Export Quantum.
-Require Export Init.Datatypes.
-Require Export Coq.Sorting.Permutation.
-Require Export Coq.Lists.List.
+From Stdlib Require Export Init.Datatypes.
+From Stdlib Require Export Sorting.Permutation.
+From Stdlib Require Export Lists.List.
 (** This file provides padding functions to extend a matrix to a larger space.
    This is useful for describing the effect of 1- and 2-qubit gates on a larger
    quantum space. *)

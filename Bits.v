@@ -353,7 +353,7 @@ Lemma nat_to_binlist_length : forall len n,
 Proof.
   intros len n Hlen.
   unfold nat_to_binlist.
-  rewrite app_length, repeat_length. 
+  rewrite length_app, repeat_length. 
   bdestruct (n =? 0); subst; simpl. lia.
   apply nat_to_binlist_length' in Hlen.
   lia.
@@ -646,8 +646,7 @@ Proof.
     easy.
   - rewrite (funbool_to_nat_shift _ _ n0); [|lia].
     replace (n0 + S n1 - n0) with (S n1) by lia.
-    rewrite Nat.add_comm, Nat.mul_comm, Nat.mod_add;
-    [|apply Nat.pow_nonzero; easy].
+    rewrite Nat.add_comm, Nat.mul_comm, Nat.Div0.mod_add.
     rewrite Nat.mod_small; [|apply funbool_to_nat_bound].
     easy.
 Qed.

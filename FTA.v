@@ -47,7 +47,7 @@ Proof. intros.
          destruct n as [n [a [p' [H H0] ] ] ].
          rewrite H0, app_C0_compactify_reduce, app_nonzero_compactify_reduce; auto.
          unfold poly_coef_norm.
-         rewrite app_length, big_sum_sum, <- (Rplus_0_r).
+         rewrite length_app, big_sum_sum, <- (Rplus_0_r).
          apply f_equal_gen. 
          apply f_equal_gen; auto.
          apply big_sum_eq_bounded; intros. 
@@ -119,7 +119,7 @@ Proof. intros.
        apply Rlt_minus_r.
        replace (Cmod z - Cmod z * / 2)%R with (Cmod z /2 + Cmod z /2 - Cmod z * / 2)%R.
        lra.
-       rewrite <- (double_var (Cmod z)); easy.
+       rewrite <- (Rplus_half_diag (Cmod z)). lra.
 Qed.
 
 Lemma leading_term_dom : forall (p : Polynomial) (a c : C),
@@ -333,7 +333,7 @@ Proof. intros.
                       (repeat C0 (k + 1)) ++ (C0 :: p)).
        { replace (C0 :: p) with ([C0] ++ p) by easy.
          rewrite app_assoc, <- repeat_cons; simpl. 
-         rewrite app_length, repeat_length; simpl; easy. }
+         rewrite length_app, repeat_length; simpl; easy. }
        rewrite H5, mul_by_x_to_n, Cpow_mul_l, (Cmult_comm (ϵ ^ (k + 1))), Cmult_assoc.
        repeat rewrite Cmod_mult.
        rewrite RtoC_pow, Cmod_R, Rabs_pos_eq; try (apply pow_le; lra).

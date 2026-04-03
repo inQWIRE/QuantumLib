@@ -1,8 +1,8 @@
 
 (** In this file, we define specific objects/concepts specific to quantum computing and we prove lemmas about thems. *)
 
-Require Import Psatz.
-Require Import Reals.
+From Stdlib Require Import Psatz.
+From Stdlib Require Import Reals.
 Require Export VecSet.
 Require Export CauchySchwarz.
 Require Import Kronecker.
@@ -312,7 +312,7 @@ Lemma WF_bools_to_matrix : forall l,
 Proof. 
   induction l; auto with wf_db.
   unfold bools_to_matrix in *; simpl.
-  apply WF_kron; try rewrite map_length; try lia.
+  apply WF_kron; try rewrite length_map; try lia.
   apply WF_bool_to_matrix.
   apply IHl.
 Qed.

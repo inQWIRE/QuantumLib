@@ -806,7 +806,7 @@ Lemma length_apply_u : forall n (u : Square (2 ^ n)),
 Proof.
   intros n u.
   unfold apply_u.
-  rewrite map_length.
+  rewrite length_map.
   rewrite vec_to_list_length.
   reflexivity.
 Qed.
@@ -847,7 +847,7 @@ Proof.
   assumption.
   apply basis_vector_WF.
   apply pow_positive. lia.
-  rewrite map_length.  
+  rewrite length_map.  
   rewrite vec_to_list_length.
   assumption.
 Qed.
@@ -920,7 +920,7 @@ Qed.
 
 Lemma length_uniform : forall l r, (l <= r)%nat -> (length (uniform l r) = r)%nat.
 Proof.
-  intros. unfold uniform. rewrite app_length, repeat_length, repeat_length. lia.
+  intros. unfold uniform. rewrite length_app, repeat_length, repeat_length. lia.
 Qed.
 
 
@@ -951,7 +951,7 @@ Definition join l1 l2 := join' l1 l2 (length l1).
 
 Lemma fst_0 : forall m, fst m 0 = O.
 Proof.
-  intros. unfold fst. apply Nat.div_0_l. apply Nat.pow_nonzero. lia. 
+  intros. unfold fst. apply Nat.Div0.div_0_l.
 Qed.
 
 Lemma fst_plus : forall m x, fst m (2 ^ m + x) = S (fst m x).
@@ -969,7 +969,7 @@ Proof. intros. unfold fst. apply Nat.div_small. auto. Qed.
 
 Lemma snd_0 : forall m, snd m 0 = O.
 Proof.
-  intros. unfold snd. apply Nat.mod_0_l. apply Nat.pow_nonzero. lia. 
+  intros. unfold snd. apply Nat.Div0.mod_0_l.
 Qed.
 
 Lemma snd_small : forall m x, (x < 2 ^ m)%nat -> snd m x = x.
@@ -981,8 +981,7 @@ Proof.
   unfold snd.
   rewrite Nat.add_comm.
   rewrite <- (Nat.mul_1_l (2 ^ m)) at 1. 
-  apply Nat.mod_add.
-  apply Nat.pow_nonzero. lia. 
+  apply Nat.Div0.mod_add.
 Qed.
 
 Lemma simplify_fst : forall n x y,
@@ -1005,11 +1004,9 @@ Proof.
   intros n x y Hy.
   unfold snd. 
   rewrite Nat.add_comm.
-  rewrite Nat.mod_add.
+  rewrite Nat.Div0.mod_add.
   apply Nat.mod_small. 
   assumption.
-  apply Nat.pow_nonzero.
-  lia.
 Qed.
 
 Lemma sum_over_list_scale : forall x l,
@@ -1334,7 +1331,7 @@ Lemma length_join' : forall x l1 l2 m,
 Proof.
   induction x; intros.
   - reflexivity.
-  - simpl. rewrite app_length. rewrite IHx with (m := m).
+  - simpl. rewrite length_app. rewrite IHx with (m := m).
     rewrite length_scale. rewrite H. lia. lia.
     intros. apply H. lia.
 Qed.
@@ -1366,7 +1363,9 @@ Proof.
   Local Opaque firstn.
   simpl length.
   rewrite <- big_sum_extend_r, Rplus_comm.
-  repeat rewrite firstn_length_le.
+  simpl in Hn.
+  repeat rewrite firstn_length_le by lia.
+  
   assert (aux : forall a b c d, (a < 2 + d)%nat ->
             nth a (b :: c :: firstn d l) 0 = nth a (b :: c :: l) 0).
   { clear.
@@ -1379,16 +1378,18 @@ Proof.
     apply nth_firstn.
     lia. }
   apply f_equal2.
-  rewrite aux. reflexivity. lia.
+  { rewrite aux; auto. }
+  
+  
   rewrite <- big_sum_extend_r, Rplus_comm.
   apply f_equal2.
-  rewrite aux. reflexivity. lia.
+  { rewrite aux; auto. lia. }
+  rewrite firstn_length_le. 2:{ simpl. lia. }
+
   apply big_sum_eq_bounded.
   intros i Hi.
   rewrite aux by lia. 
-  rewrite nth_firstn. reflexivity. lia.
-  lia.
-  simpl in Hn. lia.
+  rewrite nth_firstn; auto.
 Qed.
 
 (** If the probability of f1 in distr1(=l1) is r1 and the probability of 
@@ -1518,7 +1519,7 @@ Proof.
     rewrite fx.
     reflexivity. 
   - unfold apply_u.
-    rewrite map_length.
+    rewrite length_map.
     rewrite vec_to_list_length.
     easy.
 Qed. 

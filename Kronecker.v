@@ -172,7 +172,7 @@ Proof. unfold mx_to_vec; auto with wf_db. Qed.
 #[export] Hint Resolve WF_mx_to_vec : wf_db.
 
 (* Compute vec_to_list (mx_to_vec (Matrix.I 2)). *)
-From Coq Require Import ZArith.
+From Stdlib Require Import ZArith.
 Ltac Zify.zify_post_hook ::= PreOmega.Z.div_mod_to_equations.
 
 Lemma kron_comm_mx_to_vec_helper : forall i p q, (i < p * q)%nat ->

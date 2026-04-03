@@ -1,5 +1,5 @@
 
-Require Import List.       
+From Stdlib Require Import List.
 Require Export Complex.
 
 (*
@@ -320,7 +320,7 @@ Proof. intros.
        induction n; try easy.
        rewrite <- Cpow_int_cons in *.
        replace (S n) with (1 + n)%nat by lia.
-       rewrite Nat2Z.inj_add, Z.pow_add_r, Cpow_add_r; try lia.
+       rewrite Znat.Nat2Z.inj_add, Z.pow_add_r, Cpow_add_r; try lia.
        rewrite mult_IZR, <- IHn, RtoC_mult, RtoC_pow, pow_IZR.
        apply f_equal_gen; auto.
 Qed.
@@ -524,7 +524,7 @@ Proof.
     rewrite H in H'; easy.
   - assert (H' := DtoC_neq_0 z z0).
     rewrite H in H'; easy.
-  - destruct (Ztrichotomy_inf z z1) as [[H0 | H0] | H0].
+  - destruct (Zorder.Ztrichotomy_inf z z1) as [[H0 | H0] | H0].
     + apply DtoC_inj_uneq_case in H; lia. 
     + subst.
       apply move_power_2 in H.
@@ -579,7 +579,7 @@ Definition Dplus (x y : Dyadic) : Dyadic :=
   | (D0, _) => y
   | (_, D0) => x
   | (Dn n x', Dn m y') => 
-      match Ztrichotomy_inf n m with
+      match Zorder.Ztrichotomy_inf n m with
       | inleft (left _) =>                      (* x has lower power of 2 *)
           Dn n (2^(m-n-1) * (2*y'+1) + x')      
       | inleft (right _) =>                     (* equal power of 2 *)
@@ -633,7 +633,7 @@ Infix "^," := Dpow (at level 30) : D_scope.
 Lemma DtoC_plus : forall d1 d2, DtoC (d1 +, d2) = (DtoC d1 + DtoC d2)%C.
 Proof. intros.
        destruct d1; destruct d2; simpl; try lca.
-       unfold Dplus; destruct (Ztrichotomy_inf z z1); try destruct s. 
+       unfold Dplus; destruct (Zorder.Ztrichotomy_inf z z1); try destruct s. 
        - unfold Dplus, DtoC. 
          fastZtoC. 
          rewrite (Cmult_plus_distr_l _ _ z0), (Cmult_assoc C2).
@@ -1087,7 +1087,7 @@ Lemma DisZ_plus : forall (d1 d2 : Dyadic),
 Proof. intros.
        destruct d1; destruct d2; try easy.
        unfold Dplus, DisZ in *.
-       destruct (Ztrichotomy_inf z z1); try lia.
+       destruct (Zorder.Ztrichotomy_inf z z1); try lia.
        destruct s; try lia.  
        destruct (odd_part (2 * z0 + 1 + (2 * z2 + 1))); auto; 
          apply Z.le_ge; apply Z.add_nonneg_nonneg; try lia.
@@ -1133,7 +1133,7 @@ Lemma DisZ_dec : forall (d : Dyadic),
 Proof. intros. 
        destruct d; try (left; easy).
        simpl.
-       apply Z_ge_dec.
+       apply ZArith_dec.Z_ge_dec.
 Qed.
 
 

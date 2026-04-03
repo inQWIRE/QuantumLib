@@ -485,19 +485,19 @@ Proof. lia. Qed.
 Lemma div0_div_le_mono : forall a b c : nat, a <= b -> a / c <= b / c.
 Proof.
   intros a b []; [easy|].
-  apply Nat.div_le_mono; easy.
+  apply Nat.Div0.div_le_mono; easy.
 Qed.
 
 Lemma div0_div_lt_upper_bound : forall a b c : nat, a < b * c -> 
   a / b < c.
 Proof.
-  intros a b c H; apply Nat.div_lt_upper_bound; lia.
+  intros a b c H; apply Nat.Div0.div_lt_upper_bound; lia.
 Qed.
 
 Lemma div0_div_div : forall a b c, a / b / c = a / (b * c).
 Proof.
   intros a [] []; [rewrite ?Nat.mul_0_r; easy..|].
-  now apply Nat.div_div.
+  now apply Nat.Div0.div_div.
 Qed.
 
 Lemma nat_mod_0_r : forall a, a mod 0 = a.
@@ -506,13 +506,13 @@ Proof. easy. Qed.
 Lemma div0_mod_0_l : forall a, 0 mod a = 0.
 Proof.
   intros []; [easy|];
-  now apply Nat.mod_0_l.
+  now apply Nat.Div0.mod_0_l.
 Qed.
 
 Lemma div0_mod_add : forall a b c, (a + b * c) mod c = a mod c.
 Proof.
   intros a b []; [f_equal; lia|];
-  now apply Nat.mod_add.
+  now apply Nat.Div0.mod_add.
 Qed.
 
 Lemma div0_mod_mul_r : forall a b c, 
@@ -520,37 +520,37 @@ Lemma div0_mod_mul_r : forall a b c,
 Proof. 
   intros a [] []; rewrite ?Nat.mul_0_r, ?Nat.mul_0_l, 
     ?nat_mod_0_r; [lia..| pose proof (Nat.div_mod_eq a (S n)); lia |].
-  now apply Nat.mod_mul_r.
+  now apply Nat.Div0.mod_mul_r.
 Qed.
 
 Lemma div0_mod_mod : forall a n, (a mod n) mod n = a mod n.
 Proof.
-  intros a []; [easy|]; now apply Nat.mod_mod.
+  intros a []; [easy|]; now apply Nat.Div0.mod_mod.
 Qed.
 
 Lemma div0_mod_mul : forall a b, (a * b) mod b = 0.
 Proof.
   intros a []; [cbn;lia|];
-  now apply Nat.mod_mul.
+  now apply Nat.Div0.mod_mul.
 Qed.
 
 Lemma div0_add_mod_idemp_l : forall a b n : nat, 
   (a mod n + b) mod n = (a + b) mod n.
 Proof.
-  intros a b []; [easy|]; now apply Nat.add_mod_idemp_l.
+  intros a b []; [easy|]; now apply Nat.Div0.add_mod_idemp_l.
 Qed.
 
 Lemma div0_add_mod : forall a b n, 
   (a + b) mod n = (a mod n + b mod n) mod n.
 Proof.
   intros a b []; [easy|];
-  now apply Nat.add_mod.
+  now apply Nat.Div0.add_mod.
 Qed.
 
 Lemma div0_mod_same : forall n, 
   n mod n = 0.
 Proof.
-  intros []; [easy|]; now apply Nat.mod_same.
+  intros []; [easy|]; now apply Nat.Div0.mod_same.
 Qed.
 
 Lemma div0_div_0_l : forall n, 0 / n = 0.
@@ -854,7 +854,7 @@ Lemma div_mul_not_exact a b : b <> 0 ->
   (a / b) * b = a - (a mod b).
 Proof.
   intros Hb.
-  rewrite (Nat.div_mod a b Hb) at 1 2.
+  rewrite (Nat.Div0.div_mod a b) at 1 2.
   rewrite Nat.add_sub.
   rewrite (Nat.mul_comm b (a/b)), Nat.add_comm, Nat.div_add by easy.
   rewrite Nat.div_small by (apply Nat.mod_upper_bound; easy).
@@ -963,8 +963,8 @@ Proof.
     rewrite div_mul_not_exact by easy.
     rewrite 2!Nat.mul_sub_distr_r.
     rewrite div_mul_not_exact by easy.
-    pose proof (Nat.mod_le (b * c - a) c Hc).
-    pose proof (Nat.mod_le a c Hc).
+    pose proof (Nat.Div0.mod_le (b * c - a) c).
+    pose proof (Nat.Div0.mod_le a c).
     enough (a + (b * c - a) mod c = 
       (a + c * Nat.b2n (¬ a mod c =? 0) - a mod c))
       by lia.
@@ -1177,7 +1177,7 @@ Proof.
   intros m n.
   destruct n.
   - cbn; lia.
-  - pose proof (Nat.div_mod m (S n)).
+  - pose proof (Nat.Div0.div_mod m (S n)).
     lia.
 Qed.
 
@@ -1307,8 +1307,8 @@ Proof.
     easy.
   - intros Heq s Hs.
     rewrite 2!Nat.testbit_eqb.
-    rewrite (Nat.div_mod i (2^(S s)) ltac:(apply Nat.pow_nonzero; lia)).
-    rewrite (Nat.div_mod j (2^(S s)) ltac:(apply Nat.pow_nonzero; lia)).
+    rewrite (Nat.Div0.div_mod i (2^(S s))).
+    rewrite (Nat.Div0.div_mod j (2^(S s))).
     rewrite (mod_pow2_eq_closed_down i j (S s) n ltac:(lia) Heq).
     rewrite 2!(Nat.mul_comm (2^ S s)), 2!(Nat.add_comm (_*_)).
     rewrite Nat.pow_succ_r by lia.
@@ -1331,7 +1331,7 @@ Proof.
   split; [|intros ->; easy].
   intros H; apply bits_inj_upto in H.
   assert (H2n : 2^n <> 0) by (apply Nat.pow_nonzero; lia).
-  rewrite (Nat.div_mod i (2^n) H2n), (Nat.div_mod j (2^n) H2n).
+  rewrite (Nat.Div0.div_mod i (2^n)), (Nat.Div0.div_mod j (2^n)).
   rewrite 2!Nat.div_small, Nat.mul_0_r by lia.
   easy.
 Qed.

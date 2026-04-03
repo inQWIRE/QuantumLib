@@ -1,8 +1,8 @@
-Require Import Psatz.
-Require Import String.
+From Stdlib Require Import Psatz.
+From Stdlib Require Import String.
 Require Export Complex. 
-Require Import List. 
-Require Import Setoid.
+From Stdlib Require Import List. 
+From Stdlib Require Import Setoid.
  
 Declare Scope poly_scope.
 Delimit Scope poly_scope with P.
@@ -58,7 +58,7 @@ Proof. intros X p n H H0.
          rewrite (destruct_from_last n' x); auto. 
          apply H0.
          apply IHn'.
-         rewrite firstn_length, H1.
+         rewrite length_firstn, H1.
          rewrite min_l; lia.
 Qed.
        
@@ -165,7 +165,7 @@ Proof. induction p1 as [| a1].
          apply f_equal_gen; try lca. 
          apply f_equal_gen; try easy. 
          unfold Peval.
-         rewrite map_length, (@big_sum_mult_l C _ _ _ C_is_ring).
+         rewrite length_map, (@big_sum_mult_l C _ _ _ C_is_ring).
          apply big_sum_eq_bounded; intros. 
          replace C0 with (Cmult a1 C0) by lca. 
          rewrite map_nth, Cmult_0_r.
@@ -186,11 +186,11 @@ Lemma app_eval : forall (f g : Polynomial),
 Proof. intros. 
        apply functional_extensionality; intros.  
        unfold Peval.
-       rewrite app_length, big_sum_sum. 
+       rewrite length_app, big_sum_sum. 
        apply Cplus_simplify.
        apply big_sum_eq_bounded; intros. 
        rewrite app_nth1; easy.
-       rewrite app_length, big_sum_sum.
+       rewrite length_app, big_sum_sum.
        rewrite repeat_length.  
        assert (big_sum (fun i : nat => nth i (repeat C0 (Datatypes.length f) ++ g) C0 * x ^ i) 
                     (length f) = C0).
@@ -222,7 +222,7 @@ Lemma mul_by_x_to_n : forall (f : Polynomial) (n : nat) (c : C),
   ((repeat C0 n) ++ f)[[c]] = f[[c]] * c^n.
 Proof. intros.   
        unfold Peval.
-       rewrite app_length, big_sum_sum, <- Cplus_0_l.
+       rewrite length_app, big_sum_sum, <- Cplus_0_l.
        apply Cplus_simplify.
        apply (@big_sum_0_bounded C C_is_monoid); intros. 
        rewrite app_nth1, nth_repeat; auto; lca.
@@ -548,12 +548,13 @@ Proof. intros.
              left; apply (Rmin_pos δ1 δ2); auto. }
          destruct H5 as [b [H5 H6] ].
          assert (H7 : Cmod (f b - L1) + Cmod (f b - L2) < Cmod (L1 - L2)).
-         rewrite (double_var (Cmod (L1 - L2))).
-         apply Rplus_lt_compat.
-         apply H2; auto. 
-         assert (H' := (Rmin_l δ1 δ2)). lra. 
-         apply H4; auto. 
-         assert (H' := (Rmin_r δ1 δ2)). lra. 
+         { rewrite <- (Rplus_half_diag (Cmod (L1 - L2))).
+           apply Rplus_lt_compat.
+           apply H2; auto. 
+           assert (H' := (Rmin_l δ1 δ2)). lra. 
+           apply H4; auto. 
+           assert (H' := (Rmin_r δ1 δ2)). lra.
+         } 
          assert (H8 :  Cmod (L1 - (f b) + (f b - L2)) <= Cmod (L1 - f b) + Cmod (f b - L2)).
          { apply Cmod_triangle. }
          replace (L1 - f b + (f b - L2)) with (L1 - L2) in H8 by lca. 
@@ -758,7 +759,7 @@ Lemma power_x_eval : forall (n : nat) (a x : C),
   (repeat C0 n ++ [a]) [[x]] = a * x^n.
 Proof. intros.
        unfold Peval. 
-       rewrite app_length; simpl. 
+       rewrite length_app; simpl. 
        rewrite Nat.add_1_r, <- big_sum_extend_r, <- (Nat.add_0_r (length (repeat C0 n))), 
        app_nth2_plus, Nat.add_0_r, repeat_length; simpl. 
        rewrite <- Cplus_0_l.
@@ -991,7 +992,7 @@ Lemma last_C0_Peq_front : forall (p : Polynomial),
 Proof. intros. 
        unfold Peq, Peval. 
        apply functional_extensionality; intros. 
-       rewrite app_length; simpl.
+       rewrite length_app; simpl.
        rewrite Nat.add_1_r, <- big_sum_extend_r.
        rewrite app_nth2, Nat.sub_diag; auto; simpl.
        rewrite Cmult_0_l, Cplus_0_r.
@@ -1072,7 +1073,7 @@ Lemma compactify_length : forall (p : Polynomial),
   length (compactify p) <= length p.
 Proof. intros. 
        unfold compactify.
-       rewrite rev_length, <- (rev_length p).
+       rewrite length_rev, <- (length_rev p).
        apply prune_length.
 Qed.
 
@@ -1272,7 +1273,7 @@ Proof. induction p1 as [| h].
            do 2 rewrite Pplus_0_r.
            rewrite map_app.
            split; try easy. 
-           rewrite map_length; easy.
+           rewrite length_map; easy.
        - intros. 
          simpl.  
          destruct (IHp1 p2) as [p [H1 H2] ].     
@@ -1280,8 +1281,8 @@ Proof. induction p1 as [| h].
          split. 
          rewrite H1, app_comm_cons. 
          apply Pplus_lt_app.
-         rewrite map_length, app_length; simpl; lia. 
-         rewrite Pplus_length1, map_length, app_length; simpl.
+         rewrite length_map, length_app; simpl; lia. 
+         rewrite Pplus_length1, length_map, length_app; simpl.
          lia. 
 Qed.
 
@@ -1291,7 +1292,7 @@ Lemma Pmult_length_le : forall (p1 p2 : Polynomial),
 Proof. induction p1 as [| a1].
        - intros; destruct p2; try easy; simpl; lia.
        - intros. destruct p2; try easy; simpl.
-         rewrite Pplus_length1, map_length.
+         rewrite Pplus_length1, length_map.
          destruct p2; try lia.  
 Qed.   
 
@@ -1301,10 +1302,10 @@ Lemma Pmult_length_helper : forall (n : nat) (a1 a2 : C) (p1 p2 : Polynomial),
 Proof. induction n as [| n'].
        - intros.
          destruct p1; try easy; simpl. 
-         rewrite Pplus_0_r, map_length.
+         rewrite Pplus_0_r, length_map.
          easy. 
        - intros; simpl.  
-         rewrite Pplus_length1, map_length; simpl. 
+         rewrite Pplus_length1, length_map; simpl. 
          destruct p1.
          + simpl; lia. 
          + rewrite max_r, IHn'.
@@ -1444,9 +1445,9 @@ Proof. intros.
          rewrite <- H; auto. 
          apply f_equal_gen; auto.
          rewrite last_C0_Peq_front; easy.
-       + rewrite app_nonzero_compactify_reduce, app_length in *; auto.
+       + rewrite app_nonzero_compactify_reduce, length_app in *; auto.
          rewrite (p_Peq_compactify_p p1), Pplus_lt_app.
-         rewrite app_nonzero_compactify_reduce, app_length; auto.
+         rewrite app_nonzero_compactify_reduce, length_app; auto.
          do 2 (apply f_equal_gen; auto).
          rewrite Pplus_length2; auto.
          all : simpl in *; lia. 
@@ -1646,7 +1647,7 @@ Proof. intros.
            rewrite H0; simpl. 
            rewrite <- poly_shift_const; easy.
            unfold poly_shift.  
-           rewrite H0, app_length, Nat.add_1_r; simpl.  
+           rewrite H0, length_app, Nat.add_1_r; simpl.  
             assert (H1 : degree (p' ++ [a]) =
                           degree
                             (map (Cmult (nth (Datatypes.length p') (p' ++ [a]) C0))
@@ -1656,7 +1657,7 @@ Proof. intros.
                ([a] *, (Ppow [- m; C1] (Datatypes.length p'))) by easy.
              rewrite Pmult_degree, Ppow_degree. 
              unfold degree.
-             rewrite <- H0, compactify_idempotent, H0, app_length; simpl.
+             rewrite <- H0, compactify_idempotent, H0, length_app; simpl.
              unfold compactify, prune; simpl.
              destruct (Ceq_dec a C0); try easy.
              assert (H' := C1_neq_C0).
@@ -1672,7 +1673,7 @@ Proof. intros.
            rewrite Pplus_degree2; try easy.
            rewrite <- H1.
            replace (degree (p' ++ [a])) with (length p') by 
-           (unfold degree; rewrite <- H0, compactify_idempotent, H0, app_length; simpl; lia). 
+           (unfold degree; rewrite <- H0, compactify_idempotent, H0, length_app; simpl; lia). 
            rewrite E1. 
            apply Nat.lt_succ_r; apply Psum_degree; intros. 
            replace (map (Cmult (nth i (p' ++ [a]) C0)) (Ppow [- m; C1] i) +, [C0]) with

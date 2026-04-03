@@ -1,5 +1,5 @@
-Require Import List.
-Require Export Prelim. 
+From Stdlib Require Import List.
+Require Export Prelim.
   
 Declare Scope group_scope.
 Delimit Scope group_scope with G.
@@ -651,8 +651,8 @@ Proof.
       rewrite Nat.div_add_l by assumption.
       rewrite Nat.div_small; trivial.
       rewrite Nat.add_0_r.
-      rewrite Nat.add_mod by assumption.
-      rewrite Nat.mod_mul by assumption.
+      rewrite Nat.Div0.add_mod by assumption.
+      rewrite Nat.Div0.mod_mul by assumption.
       rewrite Nat.add_0_l.
       repeat rewrite Nat.mod_small; trivial. }
     rewrite <- big_sum_sum.
@@ -676,7 +676,7 @@ Proof. induction m as [| m'].
          rewrite Nat.mul_comm.
          rewrite Nat.div_add_l; try lia.  
          rewrite (Nat.add_comm (m' * n)).
-         rewrite Nat.mod_add; try lia.
+         rewrite Nat.Div0.mod_add; try lia.
          destruct (Nat.mod_small_iff x n) as [_ HD]; try lia.
          destruct (Nat.div_small_iff x n) as [_ HA]; try lia.
          rewrite HD, HA; try lia.
