@@ -2,12 +2,12 @@
  
 (** This file contains basic utility, definitions, and proofs. *)
 
-Require Export Bool.
-Require Export Arith.
-Require Export Reals.
-Require Export Psatz.
-Require Export Program. 
-Require Export List.
+From Stdlib Require Export Bool.
+From Stdlib Require Export Arith.
+From Stdlib Require Export Reals.
+From Stdlib Require Export Psatz.
+From Stdlib Require Export Program. 
+From Stdlib Require Export List.
 
 Export ListNotations.
 
@@ -121,7 +121,7 @@ Lemma map_nth_small [A B] (dnew : A) (f : A -> B) (l : list A) (d : B) i :
   nth i (map f l) d = f (nth i l dnew).
 Proof.
   intros Hi.
-  rewrite (nth_indep _ d (f dnew)) by (now rewrite map_length).
+  rewrite (nth_indep _ d (f dnew)) by (now rewrite length_map).
   apply map_nth.
 Qed.
 

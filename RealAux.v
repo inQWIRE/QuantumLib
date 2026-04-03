@@ -1,8 +1,8 @@
 (** Supplement to Coq's axiomatized Reals *)
   
-Require Export Reals.
-Require Import Psatz.
-Require Export Program.
+From Stdlib Require Export Reals.
+From Stdlib Require Import Psatz.
+From Stdlib Require Export Program.
 Require Export Summation.
  
 (** * Basic lemmas *)
@@ -398,12 +398,12 @@ Proof. intros.
        destruct (Z_plusminus_nat a) as [x [H0 | H0]]; subst.
        induction x; auto.
        replace (S x) with (1 + x)%nat by lia.
-       rewrite Nat2Z.inj_add, Z.pow_add_r, two_val_mult; try lia.
+       rewrite Znat.Nat2Z.inj_add, Z.pow_add_r, two_val_mult; try lia.
        rewrite IHx; auto; try lia.
        try (apply (Z.pow_nonzero 2 x); lia).
        induction x; auto.
        replace (S x) with (1 + x)%nat by lia.
-       rewrite Nat2Z.inj_add, Z.opp_add_distr, Z.pow_add_r, two_val_mult; try lia.
+       rewrite Znat.Nat2Z.inj_add, Z.opp_add_distr, Z.pow_add_r, two_val_mult; try lia.
 Qed.
 
 Lemma twoadic_nonzero : forall (a b : Z),
@@ -441,7 +441,7 @@ Proof. intros.
        - replace (2 ^ S x * (2 * b + 1)) with (2 * (2 ^ x * (2 * b + 1))).
          rewrite odd_part_reduce, IHx; try lia.
          replace (S x) with (1 + x)%nat by lia.
-         rewrite Nat2Z.inj_add, Z.pow_add_r; try lia.
+         rewrite Znat.Nat2Z.inj_add, Z.pow_add_r; try lia.
        - destruct x; try easy.
          replace (2 ^ (- 0%nat) * (2 * b + 1)) with (2 * b + 1) by lia.
          destruct b; simpl; auto.

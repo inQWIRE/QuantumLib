@@ -431,8 +431,7 @@ Proof.
   - destruct H1.
     replace (y * r)%nat with (r * y)%nat by lia.
     rewrite <- H1, <- H2.
-    apply Nat.div_mod.
-    lia.
+    apply Nat.Div0.div_mod.
 Qed.
 
 Lemma split_basis_vector : forall m n x y,

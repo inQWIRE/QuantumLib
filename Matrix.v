@@ -1,12 +1,12 @@
 
 (** In this file, we define matrices and prove many basic facts from linear algebra *)
 
-Require Import Psatz. 
-Require Import String.
-Require Import Program.
+From Stdlib Require Import Psatz. 
+From Stdlib Require Import String.
+From Stdlib Require Import Program.
 Require Export Complex. 
-Require Import List.
-Require Import Setoid.
+From Stdlib Require Import List.
+From Stdlib Require Import Setoid.
 Require Import Modulus.
 
 
@@ -1789,8 +1789,8 @@ Proof.
     bdestruct (x mod n =? y mod n); simpl; try lca.
     destruct n; try lca.    
     contradict Eq.
-    rewrite (Nat.div_mod x (S n)) by lia.
-    rewrite (Nat.div_mod y (S n)) by lia.
+    rewrite (Nat.Div0.div_mod x (S n)) by lia.
+    rewrite (Nat.Div0.div_mod y (S n)) by lia.
     rewrite H, H0; reflexivity.
 Qed.
 
@@ -1912,7 +1912,7 @@ Proof. induction l1.
        - intros. simpl. rewrite IHl1. 
          rewrite kron_assoc.
          do 2 (rewrite <- Nat.pow_add_r).
-         rewrite app_length.
+         rewrite length_app.
          reflexivity.
          assert (H' := H 0); simpl in H'; easy.
          all : try apply (WF_big_kron _ _ _ (@Zero n m)); try easy. 
@@ -2256,8 +2256,8 @@ Proof.
   rewrite make_WF_equiv.
   intros i j Hi Hj.
   unfold list2D_to_matrix.
-  rewrite (map_nth_small Zero) by now rewrite map_length, seq_length.
-  rewrite (map_nth_small 0) by now rewrite seq_length.
+  rewrite (map_nth_small Zero) by now rewrite length_map, length_seq.
+  rewrite (map_nth_small 0) by now rewrite length_seq.
   rewrite nth_vec_to_list by easy.
   now rewrite seq_nth by easy.
 Qed.

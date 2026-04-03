@@ -2054,8 +2054,8 @@ Proof.
 	  rewrite <- Nat.add_assoc.
 	  replace (n - m mod n + m) with
 	    (n - m mod n + (n * (m / n) + m mod n)) by
-	    (rewrite <- (Nat.div_mod m n Hn0); easy).
-	  pose proof (Nat.mod_upper_bound m n Hn0).
+	    (rewrite <- (Nat.Div0.div_mod m n); easy).
+	  pose proof (Nat.mod_upper_bound m n).
 	  replace (n - m mod n + (n * (m / n) + m mod n)) with
 	    (n * (1 + m / n)) by lia.
 	  rewrite Nat.mul_comm, Nat.Div0.mod_add.

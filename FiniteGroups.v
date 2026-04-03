@@ -1,9 +1,9 @@
-Require Import List.
+From Stdlib Require Import List.
 Require Import Prelim.
 Require Import Summation. 
-Require Import FinFun. 
-Require Import ListDec.
-Require Import Setoid.
+From Stdlib Require Import FinFun. 
+From Stdlib Require Import ListDec.
+From Stdlib Require Import Setoid.
 
 (* two important list functions used are NoDup and incl *)
 (* in the following sections, we expand on these list functions *)
@@ -27,7 +27,7 @@ Proof. induction l.
          destruct l'; easy.
        - intros.
          simpl in *; subst.
-         rewrite app_length, (IHl (G_big_plus l)); easy. 
+         rewrite length_app, (IHl (G_big_plus l)); easy. 
 Qed.
 
 Lemma length_big_sum_list : forall {X} (l : list (list X)),
@@ -182,9 +182,9 @@ Proof. induction l1; intros; inversion H.
          subst. 
          apply EMP_reduce in H.
          apply IHl1 in H.
-         rewrite app_length; simpl. 
+         rewrite length_app; simpl. 
          rewrite Nat.add_succ_r; apply eq_S. 
-         rewrite <- app_length.
+         rewrite <- length_app.
          easy. 
 Qed.
 
@@ -527,11 +527,11 @@ Proof. intros.
        unfold coset_rep_list_to_cosets.
        rewrite length_big_sum_list.
        rewrite (big_plus_constant _ (group_size H)).
-       rewrite times_n_nat, map_map, map_length; easy. 
+       rewrite times_n_nat, map_map, length_map; easy. 
        intros.
        rewrite map_map in H7.
        apply in_map_iff in H7; destruct H7 as [x [H7 H8]]; subst.
-       rewrite map_map, map_length; easy.
+       rewrite map_map, length_map; easy.
 Qed.
 
 
@@ -561,17 +561,17 @@ Lemma get_coset_rep_list2 : forall H G `{FiniteGroup H} `{FiniteGroup G} (f : H 
   exists l, group_size H * length l >= group_size G /\ NoDup (coset_rep_list_to_cosets H G f l).
 Proof. intros. 
        destruct (get_coset_rep_list1 H G f (group_size G / group_size H)%nat) as [l [H7 H8]]; auto.
-       apply Nat.mul_div_le. 
-       assert (H' := group_size_gt_0 H). lia. 
+       apply Nat.Div0.mul_div_le.
+       assert (H' := group_size_gt_0 H).
        bdestruct (group_size H * length l <? group_size G).
        - destruct (extend_coset_rep_list H G f l) as [g H10]; auto.
          rewrite length_cosets; auto.
          exists (g :: l); split; auto.
          simpl; rewrite H7.
-         assert (H' := group_size_gt_0 H).
-         assert (H'' : group_size H <> 0). 
+         assert (H'' := group_size_gt_0 H).
+         assert (H''' : group_size H <> 0). 
          destruct (group_size H); try easy.
-         apply (Nat.mul_succ_div_gt (group_size G) (group_size H)) in H''.
+         apply (Nat.mul_succ_div_gt (group_size G) (group_size H)) in H'''.
          lia.
        - exists l; split; easy.
 Qed.         

@@ -874,7 +874,7 @@ Proof.
     rewrite Rmult_div.
     rewrite Rmult_opp_opp.
     unfold Rminus.
-    rewrite <- Ropp_div.
+  rewrite <- Rdiv_opp_l.
     rewrite <- Rdiv_plus_distr.
     rewrite Rmult_plus_distr_r.
     rewrite Rmult_plus_distr_l.
@@ -1724,7 +1724,7 @@ Qed.
 Lemma Cexp_PIm4 : Cexp (- PI / 4) = /√2 - /√2 * Ci.
 Proof.
   unfold Cexp. 
-  rewrite Ropp_div.
+  rewrite Rdiv_opp_l.
   rewrite sin_antisym.
   rewrite cos_neg.
   rewrite sin_PI4, cos_PI4.
@@ -1775,7 +1775,7 @@ Proof.
   replace (7 * PI / 4)%R with (- PI / 4 + 2 * INR 1 * PI)%R.
   2:{ R_field_simplify. rewrite Rmult_1_r. lra. }
   rewrite cos_period, sin_period.
-  rewrite Ropp_div.
+  rewrite Rdiv_opp_l.
   rewrite cos_neg, sin_neg.
   rewrite sin_PI4, cos_PI4.
   eapply c_proj_eq; simpl.
@@ -1866,8 +1866,8 @@ Proof.
 		rewrite Rmult_0_l.
 		left.
 		apply Cexp_0.
-	-	rewrite S_O_plus_INR.
-		rewrite Rmult_plus_distr_r.
+	- rewrite S_O_plus_INR_depr.
+    rewrite Rmult_plus_distr_r.
 		rewrite Rmult_1_l.
 		rewrite Rplus_comm.
 		rewrite Cexp_plus_PI.
@@ -1887,7 +1887,7 @@ Proof.
 	- rewrite S_INR.
 		rewrite 2 Rmult_plus_distr_r.
 		rewrite Rmult_1_l.
-		rewrite double.
+		rewrite <- Rplus_diag.
 		rewrite <- Rplus_assoc.
 		rewrite 2 Cexp_plus_PI.
 		rewrite IHa.

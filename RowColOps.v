@@ -1,5 +1,5 @@
-Require Import Psatz.   
-Require Import Reals. 
+From Stdlib Require Import Psatz.   
+From Stdlib Require Import Reals. 
   
 Require Export Matrix.
 
@@ -438,14 +438,6 @@ Proof. unfold WF_Matrix in *.
          bdestruct (x <? spot); bdestruct (x =? spot); easy. 
 Qed.
 
-#[deprecated(note="Use WF_col_wedge instead")]
-Notation WF_col_append := WF_col_wedge (only parsing).
-
-
-#[deprecated(note="Use WF_row_wedge instead")]
-Notation WF_row_append := WF_row_wedge (only parsing).
-
-
 Lemma WF_smash : forall {m n1 n2} (T1 : Matrix m n1) (T2 : Matrix m n2),
   WF_Matrix T1 -> WF_Matrix T2 -> WF_Matrix (smash T1 T2).
 Proof. unfold WF_Matrix, smash in *.
@@ -528,7 +520,7 @@ Qed.
 
 
 #[export] Hint Resolve WF_get_col WF_get_row WF_reduce_row WF_reduce_col WF_reduce_vecn WF_get_minor : wf_db.
-#[export] Hint Resolve WF_row_append WF_col_append WF_row_wedge WF_col_wedge WF_smash : wf_db.
+#[export] Hint Resolve WF_row_wedge WF_col_wedge WF_smash : wf_db.
 #[export] Hint Resolve WF_col_swap WF_row_swap WF_col_scale WF_row_scale WF_col_add WF_row_add : wf_db.
 #[export] Hint Resolve WF_gen_new_col WF_gen_new_row WF_col_add_many WF_row_add_many : wf_db.
 #[export] Hint Resolve WF_col_scale_many WF_row_scale_many WF_col_add_each WF_row_add_each  : wf_db.
